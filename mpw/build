@@ -1,0 +1,124 @@
+# build
+
+# Copyright (C) 2001 Paul Pratt
+
+# You can redistribute this file and/or modify it under the terms
+# of version 2 of the GNU General Public License as published by
+# the Free Software Foundation.  You should have received a copy
+# of the license along with with this file; see the file COPYING.
+
+# This file is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# license for more details.
+
+# ###########
+
+# This is a script to build the Mini vMac application using
+# the Macintosh Programmers Workshop (MPW).  Open this file
+# with MPW, choose the 'Select All' command in the Edit menu,
+# and click on the box labeled 'MPW Shell' at the top of
+# this files window.  You will be asked for the location
+# of the minivmac folder.  When the script finishes executing,
+# the Mini vMac application should be found in the folder "drv"
+# that has been created within the Mini vMac folder.
+
+
+Set my_project_name minivmac
+Export my_project_name
+
+Set OkSoFar 0
+Set my_project_d ""
+Set my_project_d "`GetFileName -d -s -q -m 'Please find the '{my_project_name}' folder'`"
+IF {my_project_d} == ''
+	# cancel button was pressed
+	# calling exit doesn't work nicely in this context
+ELSE
+	IF not "`exists -q "{my_project_d}c_src:"`"
+		Alert "That doesn't seem to be the right folder."
+	ELSE
+		Set OkSoFar 1
+	END
+END
+
+IF {OkSoFar}
+	Export my_project_d
+	
+	Set my_debug_level NoDebug
+	Export my_debug_level
+	
+	Set x `Gestalt sysa`
+	Set x `Evaluate {x}` # force to decimal representation
+		# since different versions of Gestalt give different representations
+	IF {x} == 2
+		Set my_target_env PowerPC
+	ELSE
+		Set x `Gestalt 'fpu '`
+		Set x `Evaluate {x}` # force to decimal representation
+		IF {x} > 0
+			Set my_target_env FPU
+		ELSE
+			Set my_target_env SANE
+		END
+	END
+	Export my_target_env
+	
+	IF {my_target_env} == PowerPC
+		IF "`exists -q "{MPW}Tools:MrC"`"
+			Set my_compiler SC_MrC
+		ELSE IF "`exists -q "{MPW}Tools:MWCPPC"`"
+			Set my_compiler metrowerks
+		ELSE
+			Set my_compiler C_PPCC
+		END
+	END
+	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+		IF "`exists -q "{MPW}Tools:SC"`"
+			Set my_compiler SC_MrC
+		ELSE IF "`exists -q "{MPW}Tools:MWC68K"`"
+			Set my_compiler metrowerks
+		ELSE
+			Set my_compiler C_PPCC
+		END
+	END
+	Export my_compiler
+	
+	Set my_derived_d "{my_project_d}drv:"
+	Export my_derived_d
+	IF not "`exists -q "{my_derived_d}"`"
+		NewFolder "{my_derived_d}"
+	END
+	
+	Execute "{my_project_d}mpw:set_up"
+	
+	IF "`exists -q "{my_built_program}"`"
+		Set exit 0
+		Delete "{my_built_program}" ·· Dev:Null
+		Set x `evaluate {status} == 2`
+		Set exit 1
+		IF {x} # busy
+			"{my_built_program}"
+			exit
+		END
+	END
+	
+	IF {my_compiler} == metrowerks
+		directory "{my_c_src_d}"
+	END
+	
+	Set LinkFiles "{LinkLibs}"
+	Open "{my_progress_log}"
+	Echo "Compiling" >> "{my_progress_log}"
+	Date >> "{my_progress_log}"
+	FOR x in {my_c_files}
+		Echo {x} >> "{my_progress_log}"
+		{CallC} "{my_c_src_d}{x}.c" -o "{my_c_obj_d}{x}.c.o" ·· "{my_progress_log}"
+		Set LinkFiles "{LinkFiles} "¶'"{my_c_obj_d}{x}.c.o"¶'
+	END
+	Date >> "{my_progress_log}"
+	Echo "Linking" >> "{my_progress_log}"
+	Duplicate -y "{my_main_res_file}" "{my_built_program}" ·· "{my_progress_log}"
+	{LinkLine} -o "{my_built_program}" {LinkFiles} ·· "{my_progress_log}"
+	SetFile -d . -m . -a B "{my_built_program}"
+	Echo "Done" >> "{my_progress_log}"
+END

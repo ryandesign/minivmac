@@ -1,0 +1,144 @@
+(*
+	build
+
+	Copyright (C) 2001 Paul Pratt
+
+	You can redistribute this file and/or modify it under the terms
+	of version 2 of the GNU General Public License as published by
+	the Free Software Foundation.  You should have received a copy
+	of the license along with with this file; see the file COPYING.
+
+	This file is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	license for more details.
+*)
+
+(*
+	This is an AppleScript to build the Mini vMac application using
+	Metrowerks CodeWarrior.  Open this file with "Script Editor"
+	and press the "Run" button. You may be asked to locate the
+	CodeWarrior application, and you will be asked for the location
+	of the minivmac folder. When the script finishes executing,
+	the Mini vMac application should be found in the folder "drv"
+	that has been created within the Mini vMac folder. (Ignore
+	the link warning about a SIZE resource.)
+	 
+	If this script doesn't work, you can just use it as a guide
+	for manually setting up a Metrowerks project.
+	 
+	This script has only been tested so far with
+	"CodeWarrior IDE 2.1". Changes will likely be needed for
+	other versions.  Please send such fixes to me.  Any other
+	improvements would also be welcome; AppleScripting is new
+	to me, so this script is likely clumsy.
+*)
+
+set my_project_name to "minivmac"
+
+choose folder with prompt ("Please find the \"" & my_project_name & "\" folder.")
+set my_project_d to result as text
+
+set my_derived_d to my_project_d & "drv:"
+set my_c_src_d to my_project_d & "c_src:"
+
+set oksofar to false
+tell application "Finder"
+	if not (exists alias my_c_src_d) then
+		display dialog "That doesn't seem to be the right folder." buttons {"OK"} default button 1
+	else if exists alias my_derived_d then
+		activate
+		open alias my_project_d
+		select alias my_derived_d
+		display dialog "Please remove the existing \"drv\" folder." buttons {"OK"} default button 1
+	else
+		make new folder at alias my_project_d with properties {name:"drv"}
+		set oksofar to true
+	end if
+end tell
+
+if oksofar then
+	tell application "CodeWarrior IDE 2.1"
+		activate
+		
+		-- find the path to the CodeWarrior folder, so can later refer to libraries
+		set warrior_path to ((path to it) as text)
+		-- strip application name from end of path
+		-- using code from metrowerks example script	
+		set old_delimits to AppleScript's text item delimiters
+		set AppleScript's text item delimiters to ":"
+		set warrior_path to ((text items 1 thru ((count of text items of warrior_path) - 1) of warrior_path) as string) & ":"
+		set AppleScript's text item delimiters to old_delimits
+		
+		Create Project (my_derived_d & my_project_name & ".µ")
+		
+		-- set various preferences for the project
+		
+		set Preferences of panel "Target Settings" to {Linker:"MacOS PPC Linker"}
+		
+		set theAccessPaths to Get Preferences from panel "access paths"
+		set User Paths of theAccessPaths to {}
+		set System Paths of theAccessPaths to {}
+		set Preferences of panel "access paths" to theAccessPaths
+		set User Paths of theAccessPaths to {{name:"::c_src:", recursive:true, origin:project relative}, {name:"::mac_res:", recursive:true, origin:project relative}}
+		set System Paths of theAccessPaths to {{name:":", recursive:true, origin:shell relative}}
+		set Preferences of panel "access paths" to theAccessPaths
+		
+		set Preferences of panel "PPC Project" to {File Name:my_project_name}
+		set Preferences of panel "PPC Project" to {File Creator:"MnvM"}
+		set Preferences of panel "PPC Project" to {File Type:"APPL"}
+		set Preferences of panel "PPC Project" to {Min Heap Size:1500}
+		set Preferences of panel "PPC Project" to {Preferred Heap Size:5000}
+		
+		set Preferences of panel "C/C++ Compiler" to {Prefix File:""}
+		set Preferences of panel "C/C++ Compiler" to {Require Function Prototypes:true}
+		
+		set Preferences of panel "C/C++ Warnings" to {Illegal Pragmas:true}
+		set Preferences of panel "C/C++ Warnings" to {Empty Declarations:true}
+		set Preferences of panel "C/C++ Warnings" to {Possible Errors:true}
+		set Preferences of panel "C/C++ Warnings" to {Unused Variables:true}
+		set Preferences of panel "C/C++ Warnings" to {Unused Arguments:true}
+		set Preferences of panel "C/C++ Warnings" to {Extra Commas:true}
+		set Preferences of panel "C/C++ Warnings" to {Extended Error Checking:true}
+		
+		set Preferences of panel "PPC CodeGen" to {Struct Alignment:PowerPC} (* can be: mc68k, mc68k4, or PowerPC *)
+		set Preferences of panel "PPC CodeGen" to {Instruction Scheduling:PowerPC603} (* can be: off, PowerPC601, 603 or 604 *)
+		set Preferences of panel "PPC CodeGen" to {Optimization Level:4} (* can be: 1, 2, 3 or 4 *)
+		set Preferences of panel "PPC CodeGen" to {Global Optimization:true}
+		
+		-- add the right libraries		
+		Add Files (warrior_path & "MacOS Support:Libraries:Runtime:Runtime PPC:MSL RuntimePPC.LIB")
+		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:InterfaceLib")
+		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:AppearanceLib")
+		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:NavigationLib")
+		
+		-- add the resource file	
+		Add Files (my_project_d & "mac_res:main.r")
+		
+		-- add all the C source files	
+		open file (my_project_d & "lists:c_files")
+		set NumLines to count lines of document 1
+		set CurLine to 1
+		repeat until CurLine > NumLines
+			select line CurLine of document 1
+			get selection of document 1
+			if result is not "" then
+				Add Files (my_c_src_d & result & ".c")
+			end if
+			set CurLine to CurLine + 1
+		end repeat
+		close document 1
+		
+		-- project should be all set up, go ahead and build		
+		Make Project
+	end tell
+
+	-- show the user the appication we just built	
+	tell application "Finder"
+		if exists alias (my_derived_d & my_project_name) then
+			activate
+			open alias my_derived_d
+			select alias (my_derived_d & my_project_name)
+		end if
+	end tell
+end if

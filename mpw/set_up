@@ -1,0 +1,296 @@
+# set_up
+
+# Copyright (C) 2001 Paul Pratt
+
+# You can redistribute this file and/or modify it under the terms
+# of version 2 of the GNU General Public License as published by
+# the Free Software Foundation.  You should have received a copy
+# of the license along with with this file; see the file COPYING.
+
+# This file is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# license for more details.
+
+# ###########
+
+# This script is used by the 'build' script to determine
+# various parameters of the project, given the target
+# information.
+
+# This script is also used by my usual development
+# environment scripts, which is why it is a seperate
+# file instead of included in the build script.
+
+
+Set my_lists_d "{my_project_d}lists:"
+Export my_lists_d
+
+Set my_progress_log "{my_derived_d}progress"
+Export my_progress_log
+IF not "`exists -q "{my_progress_log}"`"
+	Echo -n > "{my_progress_log}"
+END
+
+Set my_built_program "{my_derived_d}{my_project_name}"
+Export my_built_program
+
+Set my_res_d "{my_project_d}mac_res:"
+Export my_res_d
+
+Set my_main_res_file "{my_res_d}main.r"
+Export my_main_res_file
+
+#----- file lists
+
+Set my_c_files "`Catenate "{my_lists_d}c_files"`"
+Export my_c_files
+
+Set my_h_files "`Catenate "{my_lists_d}h_files"`"
+Export my_h_files
+
+#----- Source directories
+
+Set my_c_src_d "{my_project_d}c_src:"
+Export my_c_src_d
+
+#----- Object directories
+
+Set my_c_obj_d "{my_derived_d}c_obj:"
+Export my_c_obj_d
+IF not "`exists -q "{my_c_obj_d}"`"
+	NewFolder "{my_c_obj_d}"
+END
+
+#----  CallC / CallCFast  ---
+
+IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	IF {my_compiler} == SC_MrC
+		Set CallC "SC -proto strict -w 17"
+	END
+	IF {my_compiler} == metrowerks
+		Set CallC "MWC68K -r -intsize 2"
+	END
+	IF {my_compiler} == C_PPCC
+		Set CallC "C -r"
+	END
+	IF {my_target_env} == FPU #----  For FPU ---
+		Set CallC "{CallC} -mc68020 -mc68881"
+		IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
+			Set CallC "{CallC} -elems881"
+		END
+	END
+	IF ({my_compiler} == SC_MrC) || ({my_compiler} == metrowerks)
+		Set CallC "{CallC} -align mac68k"
+	END
+	Set CallC "{CallC} -b"
+	IF {my_debug_level} == NoDebug
+		Set CallC "{CallC} -mbg off"
+	END
+	Set CallC "{CallC} -model farCode"
+	Set CallCFast "{CallC}"
+	IF ({my_debug_level} == NoDebug) || ({my_debug_level} == Debug)
+		IF {my_compiler} == SC_MrC
+			Set CallC "{CallC} -opt space"
+		END
+		IF {my_compiler} == metrowerks
+			Set CallC "{CallC} -opt size"
+		END
+		IF ({my_compiler} == SC_MrC) || ({my_compiler} == metrowerks)
+			Set CallCFast "{CallCFast} -opt speed"
+		END
+	END
+END
+
+IF {my_target_env} == PowerPC #---- For PowerPC ---
+
+	IF {my_compiler} == SC_MrC
+		# Set CallC "MrC -proto strict -w 17"
+# use the c++ compiler to allow inlines
+		Set CallC "MrCpp -w 17"
+	END
+	IF {my_compiler} == metrowerks
+		Set callc "MWCPPC -r"
+	END
+	IF {my_compiler} == C_PPCC
+		Set callc "PPCC -appleext on"
+	END
+	
+	Set CallC "{CallC} -align mac68k"
+	
+	IF ({my_debug_level} != NoDebug) && ({my_compiler} != C_PPCC)
+		Set CallC "{CallC} -traceback"
+	END
+	Set CallCFast "{CallC}"
+	
+	IF ({my_debug_level} == NoDebug) || ({my_debug_level} == Debug)
+		IF {my_compiler} == SC_MrC
+			Set CallC "{CallCFast} -opt speed"
+#			Set CallC "{CallC} -opt size"
+# -opt size doesn't seem to be reliable
+			Set CallCFast "{CallCFast} -opt speed"
+		END
+		IF {my_compiler} == metrowerks
+			Set CallC "{CallC} -opt global,peep,schedule,l3,size"
+			Set CallCFast "{CallC} -opt all"
+		END
+		IF {my_compiler} == C_PPCC
+			Set CallC "{CallC} -opt size"
+			Set CallCFast "{CallCFast} -opt speed"
+		END
+	END
+
+END
+
+#----  LinkLine  ---
+
+IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	
+	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
+		Set LinkLine "Link"
+	END
+	IF {my_compiler} == metrowerks
+		Set LinkLine "MWLink68K"
+	END
+
+	IF {my_debug_level} == NoDebug
+		Set LinkLine "{LinkLine} -rn"
+	END
+
+	Set LinkLine "{LinkLine} -model far"
+
+	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
+		Set LinkLine "{LinkLine} -srtsg all"
+	END
+	Set LinkLine "{LinkLine} -sg Main=STDCLIB,SANELIB,CSANELib,SADEV,STDIO"
+
+END
+
+IF {my_target_env} == PowerPC #---- For PowerPC ---
+	
+	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
+		Set LinkLine "PPCLink"
+	END
+	IF {my_compiler} == metrowerks
+		Set LinkLine "MWLinkPPC"
+	END
+
+END
+
+# Set LinkLine "{LinkLine} -p"
+
+Set LinkLine "{LinkLine} -t 'APPL' -c 'MnvM'"
+
+#----  LinkLibs  ---
+
+IF {my_target_env} == SANE #----  For 68k Sane ---
+
+IF ({my_compiler} == SC_MrC)
+Set LinkLibs "¶
+{Libraries}Interface.o ¶
+{Libraries}MacRuntime.o ¶
+{Libraries}MathLib.o"
+END
+
+IF {my_compiler} == metrowerks
+Set LinkLibs "¶
+{MW68KLibraries}CPlusPlus.lib ¶
+{MW68KLibraries}MacOS.lib ¶
+{MW68KLibraries}'MathLib68K (2i/8d)'.Lib ¶
+{MW68KLibraries}'ANSI (2i/8d) C++.68K'.Lib ¶
+{MW68KLibraries}'ANSI (2i/8d) C.68K'.Lib ¶
+{MW68KLibraries}PLStringFuncs.glue.lib ¶
+{MW68KLibraries}SIOUX.68K.Lib"
+END
+
+IF ({my_compiler} == C_PPCC)
+Set LinkLibs "¶
+{Libraries}Interface.o ¶
+{Libraries}Runtime.o ¶
+{CLibraries}CSANELib.o ¶
+{CLibraries}Math.o"
+END
+
+END
+
+IF {my_target_env} == FPU #----  For FPU ---
+
+IF ({my_compiler} == SC_MrC)
+Set LinkLibs "¶
+{CLibraries}CLib881.o ¶
+{Libraries}Interface.o ¶
+{Libraries}MacRuntime.o ¶
+{Libraries}MathLib881.o ¶
+{CLibraries}StdCLib.o"
+END
+IF {my_compiler} == metrowerks
+Set LinkLibs "¶
+{MW68KLibraries}CPlusPlus.lib ¶
+{MW68KLibraries}MacOS.lib ¶
+{MW68KLibraries}'MathLib68K (2i/f/8d)'.Lib ¶
+{MW68KLibraries}'ANSI (2i/F/8d) C++.68K'.Lib ¶
+{MW68KLibraries}'ANSI (2i/F/8d) C.68K'.Lib ¶
+{MW68KLibraries}PLStringFuncs.glue.lib ¶
+{MW68KLibraries}SIOUX.68K.Lib"
+END
+IF ({my_compiler} == C_PPCC)
+Set LinkLibs "¶
+{CLibraries}CLib881.o ¶
+{CLibraries}CSANELib881.o ¶
+{Libraries}Interface.o ¶
+{Libraries}Runtime.o ¶
+{CLibraries}StdCLib.o"
+END
+
+END
+
+IF {my_target_env} == PowerPC #---- For PowerPC ---
+
+IF ({my_compiler} == SC_MrC)
+IF 0 # for carbon
+Set LinkLibs "¶
+'{SharedLibraries}CarbonLib' ¶
+'{SharedLibraries}StdCLib' ¶
+'{PPCLibraries}StdCRuntime.o' ¶
+'{PPCLibraries}PPCToolLibs.o' ¶
+'{PPCLibraries}PPCCRuntime.o'"
+ELSE
+Set LinkLibs "¶
+'{SharedLibraries}MathLib' ¶
+'{SharedLibraries}InterfaceLib' ¶
+'{SharedLibraries}StdCLib' ¶
+'{SharedLibraries}NavigationLib' ¶
+'{SharedLibraries}AppearanceLib' ¶
+'{PPCLibraries}StdCRuntime.o' ¶
+'{PPCLibraries}PPCToolLibs.o' ¶
+'{PPCLibraries}PPCCRuntime.o'"
+# {PPCLibraries}x80.o
+END
+END
+
+IF {my_compiler} == metrowerks
+Set LinkLibs " ¶
+{MWPPCLibraries}MathLib ¶
+{MWPPCLibraries}MWCRuntime.Lib ¶
+{MWPPCLibraries}'ANSI C.PPC.Lib' ¶
+{MWPPCLibraries}SIOUX.PPC.Lib ¶
+{MWPPCLibraries}PLStringFuncsPPC.lib ¶
+{MWPPCLibraries}x80.o ¶
+{SharedLibraries}InterfaceLib"
+END
+
+IF ({my_compiler} == C_PPCC)
+Set LinkLibs " ¶
+ -libRename MathLib.xcoff=MathLib ¶
+ -libRename InterfaceLib.xcoff=InterfaceLib ¶
+ -libRename StdCLib.xcoff=StdCLib ¶
+{PPCLibraries}MathLib.xcoff ¶
+{PPCLibraries}InterfaceLib.xcoff ¶
+{PPCLibraries}StdCLib.xcoff ¶
+{PPCLibraries}StdCRuntime.o ¶
+{PPCLibraries}PPCToolLibs.o ¶
+{PPCLibraries}x80.o ¶
+{PPCLibraries}PPCCRuntime.o"
+END
+
+END

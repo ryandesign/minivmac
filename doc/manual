@@ -1,0 +1,78 @@
+Mini vMac: doc > manual
+Paul C. Pratt
+www.gryphel.com
+February 24, 2001
+
+How to use the Mini vMac program.
+
+
+vMac requires ROM image file from a Mac Plus to run.
+The ROM image file can be made with the CopyRom utility,
+available from www.vMac.org.  The resulting ROM image
+file is copyright Apple Computer, and may not be
+redistributed.  (Do not ask me for a copy.)
+
+The rom image file should be named 'vMac.ROM' and
+placed in the folder containing Mini vMac.
+
+The emulated floppy drives use 'disk image' files.
+The program 'Disk Copy', from Apple, which comes
+with Mac OS, can be used to create and edit disk
+images.
+
+
+Menu Commands
+-------------
+
+Apple
+	About Mini vMac...
+		Gives a short message about the program.
+		Choose 'OK' to continue.
+		
+File
+	Open Disk Image...
+		Brings up the standard dialog to select
+		a disk image file to open. This has
+		the effect of inserting the emulated
+		disk into an emulated floppy drive.
+		Mini vMac can have up to three disk
+		images mounted at once. Attempting to
+		mount more the three will result
+		in an error alert.
+	Quit
+		Quits Mini vMac. Sort of like flipping
+		the power switch on the emulated machine.
+		The emulated machine should be shut down
+		first. Mini vMac will bring up a warning
+		OK/Cancel dialog if any disks are still
+		mounted (as a substitute for trying
+		determine if the machine has been shut
+		down).
+
+Special
+	Share Time
+		Allows other programs to run in the
+		background. This is normally off to
+		provide the smoothest possible emulation.
+		One noticeable side effect of having
+		'Share Time' off is that the clock in the
+		menu bar doesn't update.
+	Limit Speed
+		Limits the speed of the emulated machine
+		to approximately that of the original
+		Mac Plus. This makes some games more
+		playable.
+	Reset
+		The reset button for the emulated Mac
+		Plus. All unsaved changes are lost.
+		Mini vMac will bring up a warning
+		OK/Cancel dialog first.
+	Interrupt
+		The interrupt button for the emulated
+		Mac Plus.  This invokes any installed
+		debugger.  However no debugger yet
+		works with Mini vMac, because of problems
+		with the keyboard and mouse emulation,
+		so this isn't very useful yet.
+		Mini vMac will bring up a warning
+		OK/Cancel dialog first.

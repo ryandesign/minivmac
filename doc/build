@@ -1,0 +1,38 @@
+Mini vMac: doc > build
+Paul C. Pratt
+www.gryphel.com
+February 24, 2001
+
+How to build the Mini vMac program
+from the source files:
+
+
+Building Mini vMac involves compiling all the
+C source files and linking the results with
+various libraries. The details of compiler
+options, linker options, and which libraries
+depend on the development environment. To
+make this easier, I have included scripts
+that figure out these details for two
+different development environments:
+
+Building with MPW:
+	The Macintosh Programmers Workshop may be
+	downloaded free from Apple. see:
+		http://developer.apple.com/tools/mpw-tools/
+	MPW has its own scripting language. The
+	file 'build' inside the 'mpw' folder is
+	such a script. See the comments at the
+	beginning of the file on how to use it.
+	
+Building with Metrowerks CodeWarrior:
+	Information about CodeWarrior can be found at
+		http://www.metrowerks.com/platforms/mactools/
+	CodeWarrior can be scripted with AppleScript.
+	For information about AppleScript, see:
+		http://www.apple.com/applescript/
+	The file 'build' inside the 'mw' folder is
+	such a script. It can be opened and run with
+	the program 'Script Editor' from Apple, that
+	comes with Mac OS. See the comments at the
+	beginning of the file on how to use it.
