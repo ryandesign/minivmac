@@ -41,7 +41,7 @@ static SCC_Ty SCC;
 static UBYTE SCC_Mode;
 static UBYTE SCC_Reg;
 
-Boolean Mouse_Enabled(void)
+blnr Mouse_Enabled(void)
 {
 	return ((SCC.A.WR[9] & 0x08) != 0x00);
 }
@@ -84,8 +84,8 @@ static void  SCC_PutBReg (UBYTE in)
 }
 
 extern ULONG DataBus;
-extern Boolean ByteSizeAccess;
-extern Boolean WriteMemAccess;
+extern blnr ByteSizeAccess;
+extern blnr WriteMemAccess;
 
 void SCC_Access(CPTR addr)
 {

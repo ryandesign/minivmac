@@ -20,8 +20,9 @@
 #define GLOBGLUE_H
 #endif
 
-extern void ZapGlobalVars(void);
-extern Boolean InitProgram(void);
+extern void ZapProgramVars(void);
+extern blnr InitProgram(void);
+extern void UnInitProgram(void);
 extern void customreset(void);
 extern void SixtiethSecondNotify(void);
 extern void OneSecondNotify(void);

@@ -213,12 +213,13 @@ static void Sony_Install (void)
 	UWORD *pfrom = (UWORD *)sony_driver;
 
 	for (i = sizeof(sony_driver) / 2; --i >=0; ) {
-		do_put_mem_word(pto, *pfrom++);
+		do_put_mem_word(pto, *pfrom);
+		pfrom++;
 		pto++;
 	}
 }
 
-Boolean ROM_Init(void)
+blnr ROM_Init(void)
 {
   if ((do_get_mem_word(&ROM[0]) == 0x4D1E)
 		&& (do_get_mem_word(&ROM[1]) == 0xEEE1))
@@ -234,8 +235,8 @@ Boolean ROM_Init(void)
     //printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 3, 'Loud Harmonicas'.\n");
   } else {
 	//printf("vMac: vMac.ROM loaded successfully, but we don't support this ROM yet.\n");
-	  MacMsg("\pUnsupported ROM.","\pvMac.ROM loaded successfully, but we don't support this ROM yet.",true);
-	  return false;
+	  MacMsg("Unsupported ROM.","vMac.ROM loaded successfully, but we don't support this ROM yet.",trueblnr);
+	  return falseblnr;
   }
   do_put_mem_word(&ROM[3450/2],0x6022); /* skip the rom checksum */
 #if 1
@@ -244,5 +245,5 @@ Boolean ROM_Init(void)
 #endif
   /* do_put_mem_word(&ROM[862/2],0x4E71); */ /* shorten set memory*/
   Sony_Install();
-  return true;
+  return trueblnr;
 }

@@ -1,7 +1,7 @@
 /*
-	PROGMAIN.h
+	OSGLUWIN.h
 	
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -14,10 +14,17 @@
 	license for more details.
 */
 
-#ifdef PROGMAIN_H
+/*
+	Operating System GLUe for WINdows.
+	
+	This file exists only to follow the convention of
+	a header file for every c file.
+*/
+
+#ifdef OSGLUWIN_H
 #error "header already included"
 #else
-#define PROGMAIN_H
+#define OSGLUWIN_H
 #endif
 
-extern void ProgramMain(void);
+#include "OSGLUSTB.h"

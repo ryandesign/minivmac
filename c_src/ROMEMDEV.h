@@ -20,4 +20,4 @@
 #define ROMEMDEV_H
 #endif
 
-extern Boolean ROM_Init (void);
+extern blnr ROM_Init (void);

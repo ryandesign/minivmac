@@ -101,7 +101,7 @@ void  Keyboard_Put (UBYTE in)
 			Keyboard_Data = 0;
 			break;
 		default :
-			Debugger();
+			/* Debugger(); */
 			Keyboard_Data = 0;
 			break;
 	}
@@ -145,13 +145,17 @@ Modifier Bit Meanings are
 
 void PC_PostEvent (UWORD What, ULONG Msg, UWORD Mods);
 
+#ifndef MacTarget
+#define MacTarget 0
+#endif
+
 void Keyboard_Down (ULONG Key)
 {
-  #ifdef _MacOS
+  #if MacTarget
   PC_PostEvent(0x0003, (Key & 0xFFFF), ((Key & 0x1F000000) >> 16));
   #else
   UBYTE ScanCode = KeyCode_Table[Key & 0x7F];
-  UWORD Modifier = 0;
+  UWORD Modifier = ((Key & 0x1F000000) >> 16);
 
   if ((ScanCode & 0x80) == 0x80)
   {
@@ -164,7 +168,7 @@ void Keyboard_Down (ULONG Key)
 
 void Keyboard_Up (ULONG Key)
 {
-  #ifdef _MacOS
+  #if MacTarget
   PC_PostEvent(0x0004, (Key & 0xFFFF), ((Key & 0x1F000000) >> 16));
   #else
   // Work via ASCII Input
@@ -182,7 +186,7 @@ void Keyboard_Up (ULONG Key)
 
 void Keyboard_Auto (ULONG Key)
 {
-  #ifdef _MacOS
+  #if MacTarget
   PC_PostEvent(0x0005, (Key & 0xFFFF), ((Key & 0x1F000000) >> 16));
   #else
   // Work via ASCII Input
@@ -226,41 +230,41 @@ void Keyboard_Auto (ULONG Key)
 
 void PC_PostEvent (UWORD What, ULONG Msg, UWORD Mods)
 {
-  ULONG Buffer = get_long(kEventBuffer);	// Buffer for Event Queue
-  ULONG Limit = Buffer + (get_word(kEventCount) * 22);  // Address of Tail
+	ULONG Buffer = get_long(kEventBuffer);	// Buffer for Event Queue
+	ULONG Limit = Buffer + (get_word(kEventCount) * 22);  // Address of Tail
+	ULONG FirstEvent = get_long(kEventQueue + kqHead);
+	ULONG NewEvent;
 
-  if (Keyboard_Enabled == 0)
-    return; // Not initalized!
+	if (Keyboard_Enabled == 0) {
+		return; // Not initalized!
+	}
 
-  if (get_long(kEventQueue + kqHead) == 0x00000000) // Nothing in the Queue
-  {
-    put_long(Buffer + kqLink, 0x00000000);
-    put_word(Buffer + kqType, 0x0004); // Event Queue
-    put_word(Buffer + kqWhat, What);
-    put_long(Buffer + kqMsg, Msg);
-    put_long(Buffer + kqWhen, get_long(kTicks));
-    put_long(Buffer + kqWhere, get_long(kMouse));
-    put_word(Buffer + kqMods, Mods);
+	if (FirstEvent == 0x00000000) { // Nothing in the Queue
+		NewEvent = Buffer;
+		put_long(kEventQueue + kqHead, NewEvent);
+	} else {
+		ULONG LastEvent = get_long(kEventQueue + kqTail);
+		NewEvent = LastEvent + 22; // Get to next
+		
+		if (NewEvent == Limit) {
+			NewEvent = Buffer; /* wrap back to first */
+		}
+		
+		if (NewEvent == FirstEvent) {
+			return; // No more space!
+		}
+	
+		put_long(LastEvent + kqLink, NewEvent);
+	}
+    put_long(kEventQueue + kqTail, NewEvent);
 
-    put_long(kEventQueue + kqHead, get_long(kEventBuffer));
-    put_long(kEventQueue + kqTail, get_long(kEventBuffer));
-  }
-  else
-  {
-    if ((kEventQueue + kqTail) == Limit)
-      return; // No more space!
-
-    Buffer = get_long(kEventQueue + kqTail) + 22; // Get to next
-    put_long(Buffer + kqLink, 0x00000000);
-    put_word(Buffer + kqType, 0x0004); // Event Queue
-    put_word(Buffer + kqWhat, What);
-    put_long(Buffer + kqMsg, Msg);
-    put_long(Buffer + kqWhen, get_long(kTicks));
-    put_long(Buffer + kqWhere, get_long(kMouse));
-    put_word(Buffer + kqMods, Mods);
-
-    put_long(kEventQueue + kqTail, Buffer);
-  }
+	put_long(NewEvent + kqLink, 0x00000000);
+	put_word(NewEvent + kqType, 0x0004); // Event Queue
+	put_word(NewEvent + kqWhat, What);
+	put_long(NewEvent + kqMsg, Msg);
+	put_long(NewEvent + kqWhen, get_long(kTicks));
+	put_long(NewEvent + kqWhere, get_long(kMouse));
+	put_word(NewEvent + kqMods, Mods);
 }
 
 void KeyBoard_Update(void)

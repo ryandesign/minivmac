@@ -46,10 +46,8 @@ static struct regstruct
     CPTR  usp,isp;
     UWORD sr;
     flagtype t1;
-    flagtype t0;
     flagtype s;
     flagtype m;
-    flagtype x;
     flagtype stopped;
     int intmask;
     ULONG pc;
@@ -60,15 +58,6 @@ static struct regstruct
 #define m68k_dreg(r,num) ((r).regs[(num)])
 #define m68k_areg(r,num) ((r).regs[(num)+8])
 
-#ifndef BIGENDIAN 
-struct flag_struct {
-    unsigned int c;
-    unsigned int z;
-    unsigned int n;
-    unsigned int v; 
-    unsigned int x;
-};
-#else
 struct flag_struct {
     unsigned char c;
     unsigned char z;
@@ -76,7 +65,6 @@ struct flag_struct {
     unsigned char v;
     unsigned char x;
 };
-#endif
 
 static struct flag_struct regflags;
 
@@ -85,12 +73,6 @@ static struct flag_struct regflags;
 #define CFLG (regflags.c)
 #define VFLG (regflags.v)
 #define XFLG (regflags.x)
-
-#ifdef __MWERKS__
-#define MayInline __inline__
-#else
-#define MayInline inline
-#endif
 
 #define LOCALPROCUSEDONCE static MayInline void
 
@@ -222,7 +204,7 @@ static MayInline ULONG nextibyte(void)
 //    ULONG r = do_get_mem_byte(pc_p+1);
     ULONG r;
 
-//debugout(true, "nextibyte = %02x\n", (UBYTE) pc_p);
+//debugout(trueblnr, "nextibyte = %02x\n", (UBYTE) pc_p);
     r = do_get_mem_byte(pc_p+1);
     pc_p += 2;
     return r;
@@ -233,7 +215,7 @@ static MayInline ULONG nextiword(void)
 //    ULONG r = do_get_mem_word((UWORD *)pc_p);
     ULONG r;
 
-//debugout(true, "nextiword = %04hx\n", (UWORD) pc_p);
+//debugout(trueblnr, "nextiword = %04hx\n", (UWORD) pc_p);
     r = do_get_mem_word((UWORD *)pc_p);
     pc_p += 2;
     return r;
@@ -243,7 +225,7 @@ static MayInline ULONG nextilong(void)
 {
 //    ULONG r = do_get_mem_long((ULONG *)pc_p);
     ULONG r;
-//debugout(true, "nextilong = %08lx\n", (ULONG) pc_p);
+//debugout(trueblnr, "nextilong = %08lx\n", (ULONG) pc_p);
     r = do_get_mem_long((ULONG *)pc_p);
     pc_p += 4;
     return r;
@@ -424,7 +406,7 @@ if(nr != 10)
 #endif
     m68k_areg(regs, 7) -= 4;
     put_long (m68k_areg(regs, 7), m68k_getpc ());
-kludge_me_do:
+/* kludge_me_do: */
     m68k_areg(regs, 7) -= 2;
     put_word (m68k_areg(regs, 7), regs.sr);
     m68k_setpc(get_long(4*nr));
@@ -451,13 +433,13 @@ void DiskInsertedPsuedoException(CPTR newpc, ULONG data)
     regs.spcflags &= ~(SPCFLAG_DOTRACE);
 }
 
-Boolean ViaException(void)
+blnr ViaException(void)
 {
 	if (regs.intmask <= 1) {
 		Exception(25);
-		return true;
+		return trueblnr;
 	} else {
-		return false;
+		return falseblnr;
 	}
 }
 
@@ -699,7 +681,7 @@ static void SetArgValue(LONG v)
 			regs.sr = v;
 			MakeFromSR();
 			break;
-		defaut:
+		default:
 			op_illg (/* opcode */0);
 			break;
 	}
@@ -1161,7 +1143,7 @@ static void DoBinBitOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 			WritelnDebug('**** Operation not allowed on Address Registers');
 			emuerror;
 		*/
-		Debugger();
+		/* Debugger(); */
 	} else {
 		if (m2 != 0) {
 			srcvalue &= 7;
@@ -1417,7 +1399,7 @@ static ULONG bitop(void)
 			return BinOpBSet;
 			break;
 		default :
-			Debugger();
+			/* Debugger(); */
 			return -1;
 			break;
 	}
@@ -1432,14 +1414,14 @@ static ULONG octdat(ULONG x)
 	}
 }
 
-static Boolean GetEffectiveAddress(LONG *v)
+static blnr GetEffectiveAddress(LONG *v)
 {
 	if (ArgKind == AKMemory) {
 		*v = ArgAddr;
-		return true;
+		return trueblnr;
 	} else {
-		Debugger();
-		return false;
+		/* Debugger(); */
+		return falseblnr;
 	}
 }
 
@@ -1515,7 +1497,7 @@ LOCALPROCUSEDONCE DoCode0(void)
 			FindOpSizeFromb76();
 			DoCompare(7, 4, mode, reg);
 		} else if (rg9 == 7) {
-			Debugger();
+			/* Debugger(); */
 			/* MoveS */
 
 			if (!regs.s) {
@@ -2239,7 +2221,7 @@ LOCALPROCUSEDONCE DoCodeC(void)
 		switch (b76) {
     		case 0 :
 				/* ABCD 1100ddd10000mrrr */
-				/* Debugger(); */ /* does anyone use this? */
+				/* does anyone use this? */
 				opsize = 1;
 				if (mode == 0) {
 					DoBinOp1(0,reg,0,rg9,BinOpAddBCD);

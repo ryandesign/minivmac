@@ -277,8 +277,8 @@ void  VIA_Reset (void)
 }
 
 extern ULONG DataBus;
-extern Boolean ByteSizeAccess;
-extern Boolean WriteMemAccess;
+extern blnr ByteSizeAccess;
+extern blnr WriteMemAccess;
 
 void VIA_Access(CPTR addr)
 {

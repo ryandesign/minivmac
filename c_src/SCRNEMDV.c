@@ -32,7 +32,7 @@
 
 UBYTE vPage2 = 1;
 
-static Boolean FindFirstChangeInLVecs(long *ptr1, long *ptr2,
+static blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 					long L, long *j)
 {
 /*
@@ -46,13 +46,13 @@ static Boolean FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 		if (*p1++ != *p2++) {
 			--p1;
 			*j = p1 - ptr1;
-			return true;
+			return trueblnr;
 		}
 	}
-	return false;
+	return falseblnr;
 }
 
-static Boolean FindLastChangeInLVecs(long *ptr1, long *ptr2,
+static blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 					long L, long *j)
 {
 /*
@@ -65,10 +65,10 @@ static Boolean FindLastChangeInLVecs(long *ptr1, long *ptr2,
 	for (i = L; --i >= 0; ) {
 		if (*--p1 != *--p2) {
 			*j = p1 - ptr1;
-			return true;
+			return trueblnr;
 		}
 	}
-	return false;
+	return falseblnr;
 }
 
 void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right);
@@ -102,7 +102,7 @@ void Screen_Draw (void)
 		copyrows = j1 - j0;
 		copyoffset = j0 * vMacScreenByteWidth;
 		copysize = copyrows * vMacScreenByteWidth;
-		MyMoveBytes(screencurrentbuff + copyoffset, screencomparebuff + copyoffset, copysize);
+		MyMoveBytes((anyp)screencurrentbuff + copyoffset, (anyp)screencomparebuff + copyoffset, copysize);
 
 		HaveChangedScreenBuff(j0, 0, j0 + copyrows, vMacScreenWidth);
 	}

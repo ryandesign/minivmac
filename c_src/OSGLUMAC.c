@@ -22,22 +22,40 @@
 	
 	This code is descended from Richard F. Bannister's Macintosh
 	port of vMac, by Philip Cummins.
+	
+	The main entry point 'main' is at the end of this file.
 */
+
+#include "SYSDEPNS.h"
+
+#ifndef MacTarget
+#define MacTarget 0
+#endif
+
+#if MacTarget /* This entire file is for macintosh only */
+
+#ifndef HaveOSTarget
+#error "HaveOSTarget undefined"
+#endif
 
 #if 0 /* set 1 to experiment with carbon API */
 #define TARGET_API_MAC_CARBON 1
 #endif
 
-#define NavigationAvail 1
-#define AppearanceAvail 1
+#ifndef NavigationAvail
+#define NavigationAvail 0
+#endif
 
-#include "SYSDEPNS.h"
+#ifndef AppearanceAvail
+#define AppearanceAvail 0
+#endif
 
-#include "OSGLUSTB.h"
+#include "OSGLUMAC.h"
 
 #include "OSGIMPRT.h"
 
 /* #include <types.h> */
+#include <Types.h>
 #include <MixedMode.h>
 #include <Gestalt.h>
 #include <Errors.h>
@@ -87,11 +105,7 @@
 #define CALL_NOT_IN_CARBON 1
 #endif /* !defined(CALL_NOT_IN_CARBON) */
 
-#if CALL_NOT_IN_CARBON
-#if defined(__SC__) || ((defined(powerc) || defined(__powerc)) && ! defined(__MWERKS__))
-/* GLOBALVAR */ QDGlobals qd;
-#endif
-#endif
+/*--- mac resource file ids ---*/
 
 // Menu Constants
 #define kAppleMenu		128
@@ -103,6 +117,7 @@
 
 // File
 #define kFileOpenDiskImage 1
+/* -- seperator 2  */
 #define kFileQuitItem 3
 
 // Hardware
@@ -113,17 +128,204 @@
 #define kSpecialResetItem 4
 #define kSpecialInterruptItem 5
 
-void ForceShowCursor(void);
+/*--- initial initialization ---*/
+
+#if CALL_NOT_IN_CARBON
+#if defined(__SC__) || ((defined(powerc) || defined(__powerc)) && ! defined(__MWERKS__))
+/* GLOBALVAR */ QDGlobals qd;
+#endif
+#endif
+
+static blnr InitMacManagers(void)
+{
+#if CALL_NOT_IN_CARBON
+	MaxApplZone();
+#endif
+
+	{	
+		int i;
+		
+		for (i = 7; --i >=0; ) {
+			MoreMasters();
+		}
+	}
+	
+#if CALL_NOT_IN_CARBON
+	InitGraf(&qd.thePort);
+	InitFonts();
+	InitWindows();
+	InitMenus();
+	TEInit();
+	InitDialogs(NULL);
+#endif
+	InitCursor();
+	return trueblnr;
+}
+
+/*--- some simple utilities ---*/
+
+#define PowOf2(p) ((unsigned long)1 << (p))
+#define TestBit(i, p) (((unsigned long)(i) & PowOf2(p)) != 0)
+
+void MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
+{
+	BlockMove((Ptr)srcPtr, (Ptr)destPtr, byteCount);
+}
+
+/* don't want to include c libraries, so: */
+static LONG CStrLen(char *src)
+{
+	char *p = src;
+	while (*p++ != 0) {
+	}
+	return ((LONG)p) - ((LONG)src) - 1;
+}
+
+static void CopyC2PStr(ps3p dst, /*CONST*/ char *src)
+{
+	LONG L;
+
+	L = CStrLen(src);
+	if (L > 255) {
+		L = 255;
+	}
+	*dst++ = L;
+	MyMoveBytes((anyp)src, (anyp)dst, L);
+}
+
+/*--- information about the environment ---*/
+
+static blnr MyEnvrAttrAppleEvtMgrAvail;
+#if AppearanceAvail
+static blnr gWeHaveAppearance;
+#endif
+#if NavigationAvail
+static blnr gNavServicesExists;
+#endif
+
+static blnr InitCheckMyEnvrn(void)
+{
+	long result;
+
+	MyEnvrAttrAppleEvtMgrAvail = falseblnr;
+#if AppearanceAvail
+	gWeHaveAppearance = falseblnr;
+#endif
+#if NavigationAvail
+	gNavServicesExists = falseblnr;
+#endif
+
+#if AppearanceAvail
+	// Appearance Manager
+	if (Gestalt(gestaltAppearanceAttr, &result) == 0)
+	{
+		gWeHaveAppearance = trueblnr;
+	}
+#endif
+	
+	// Navigation
+#if NavigationAvail
+	gNavServicesExists=NavServicesAvailable();
+#endif
+
+	if (Gestalt(gestaltAppleEventsAttr, &result) == 0)
+	if (TestBit(result, gestaltAppleEventsPresent))
+	{
+		MyEnvrAttrAppleEvtMgrAvail = trueblnr;
+	}
+	return trueblnr;
+}
+
+/*--- basic dialogs ---*/
+
+void MacMsg(char *briefMsg, char *longMsg, blnr fatal)
+{
+	Str255 briefMsgp;
+	Str255 longMsgp;
+	
+	CopyC2PStr(briefMsgp, briefMsg);
+	CopyC2PStr(longMsgp, longMsg);
+#if AppearanceAvail
+	if (gWeHaveAppearance) {
+		AlertStdAlertParamRec	param;
+		short					itemHit;
+			
+		param.movable 		= 0;
+		param.filterProc 	= nil;
+		param.defaultText 	= "\pOK";
+		param.cancelText 	= nil;
+		param.otherText 	= nil;
+		param.helpButton 	= false;
+		param.defaultButton = kAlertStdAlertOKButton;
+		param.cancelButton 	= 0;
+		param.position 		= kWindowDefaultPosition;
+		
+		StandardAlert((fatal)? kAlertStopAlert : kAlertCautionAlert, briefMsgp, longMsgp, &param, &itemHit);
+	} else
+#endif
+	{	
+		ParamText(briefMsgp, longMsgp, "\p", "\p");
+		if (fatal) {
+			while (StopAlert(131, NULL) != 1) {
+			}
+		} else {
+			while (CautionAlert(131, NULL) != 1) {
+			}
+		}
+		/* Alert (131, 0L); */
+	}
+}
+
+blnr OkCancelAlert(char *briefMsg, char *longMsg)
+{
+	Str255 briefMsgp;
+	Str255 longMsgp;
+	
+	CopyC2PStr(briefMsgp, briefMsg);
+	CopyC2PStr(longMsgp, longMsg);
+#if AppearanceAvail
+	if (gWeHaveAppearance) {
+		short itemHit;
+		AlertStdAlertParamRec param;
+			
+		param.movable 		= 0;
+		param.filterProc 	= nil;
+		param.defaultText 	= "\pOK";
+		param.cancelText 	= "\pCancel";
+		param.otherText 	= nil;
+		param.helpButton 	= false;
+		param.defaultButton = kAlertStdAlertCancelButton;
+		param.cancelButton 	= 0;
+		param.position 		= kWindowDefaultPosition;
+		
+		StandardAlert(kAlertCautionAlert, briefMsgp, longMsgp, &param, &itemHit);
+		
+		return (itemHit == kAlertStdAlertOKButton);
+	} else
+#endif
+	{	
+		short itemHit;
+
+		ParamText(briefMsgp, longMsgp, "\p", "\p");
+		do {
+			itemHit = CautionAlert(132, NULL);
+		} while ((itemHit != 1) && (itemHit != 2));
+		return (itemHit == 2);
+	}
+}
+
+/*--- sending debugging info to file ---*/
 
 #define MakeDumpFile 0
 
 #if MakeDumpFile
 FILE *DumpFile;
 
-static void StartDump(void)
+static blnr StartDump(void)
 {
 	DumpFile = fopen("DumpFile", "w");
 	fprintf(DumpFile, "// vMac Dump File\n");
+	return trueblnr;
 }
 
 static void EndDump(void)
@@ -148,364 +350,48 @@ void DumpANote(char *s)
 
 #endif
 
-extern void  RTC_Save (void);
+static WindowPtr gMyMainWindow = NULL;
 
-void UnInitProgram(void)
+static blnr CreateMainWindow(void)
 {
-#if MakeDumpFile
-	EndDump();
-#endif
-	RTC_Save();
-	 
-	ForceShowCursor();
-	FlushEvents(everyEvent,0);
-	ExitToShell();
-}
-
-static Boolean MyEnvrAttrAppleEvtMgrAvail;
-
-#define PowOf2(p) ((unsigned long)1 << (p))
-#define TestBit(i, p) (((unsigned long)(i) & PowOf2(p)) != 0)
-
-#if AppearanceAvail
-static Boolean gWeHaveAppearance;
-#endif
-#if NavigationAvail
-static Boolean gNavServicesExists;
-#endif
-
-static Boolean InitCheckMyEnvrn(void)
-{
-	long result;
-
-	MyEnvrAttrAppleEvtMgrAvail = false;
-#if AppearanceAvail
-	gWeHaveAppearance = false;
-#endif
-#if NavigationAvail
-	gNavServicesExists = false;
-#endif
-
-#if AppearanceAvail
-	// Appearance Manager
-	if (Gestalt(gestaltAppearanceAttr, &result) == 0)
-	{
-		gWeHaveAppearance = true;
-	}
-#endif
-	
-	// Navigation
-#if NavigationAvail
-	gNavServicesExists=NavServicesAvailable();
-#endif
-
-	if (Gestalt(gestaltAppleEventsAttr, &result) == 0)
-	if (TestBit(result, gestaltAppleEventsPresent))
-	{
-		MyEnvrAttrAppleEvtMgrAvail = true;
-	}
-	return true;
-}
-
-Boolean Screen_Init(void);
-
-void main(void)
-{
+	Rect Bounds;
+	short leftPos;
+	short topPos;
+	blnr IsOk = falseblnr;
+	Rect *rp;
 #if CALL_NOT_IN_CARBON
-	MaxApplZone();
-#endif
-
-	{	
-		int i;
-		
-		for (i = 7; --i >=0; ) {
-			MoreMasters();
-		}
-	}
-	
-#if CALL_NOT_IN_CARBON
-	InitGraf(&qd.thePort);
-	InitFonts();
-	InitWindows();
-	InitMenus();
-	TEInit();
-	InitDialogs(NULL);
-#endif
-	InitCursor();
-
-	ProgramMain();
-}
-
-extern unsigned char SpeedLimit;
-
-static Boolean gBackgroundFlag = false;
-
-static WindowPtr gMyMainWindow=0L;
-
-#if ! CALL_NOT_IN_CARBON
-#define CheckItem CheckMenuItem
-#endif
-
-static void MacOS_UpdateMenus(void)
-{
-	MenuHandle	hHardware;
-	
-	hHardware=GetMenuHandle(kSpecialMenu);
-	CheckItem(hHardware,kSpecialShareTimeItem,! HogCPU);
-	CheckItem(hHardware,kSpecialLimitSpeedItem,SpeedLimit);
-}
-
-void InsertADisk(void);
-
-static Boolean OkCancelAlert(Str255 briefMsg, Str255 longMsg);
-
-static void MacOS_HandleMenu (short menuID, short menuItem)
-{	
-	switch (menuID) {
-		case kAppleMenu:
-	  		if (menuItem == kAppleAboutItem) {
-				MacMsg("\pMini vMac 0.1.0, Copyright 2001.","\pIncluding or based upon code by Bernd Schmidt, Philip Cummins, Richard F. Bannister, and Paul Pratt, and others. See the README file for details.",false);
-	  		} else {
-#if CALL_NOT_IN_CARBON
-				Str32		name;
-				GrafPtr		savePort;
-
-	 			GetPort(&savePort);
-	 			GetMenuItemText(GetMenuHandle(kAppleMenu), menuItem, name);
-				OpenDeskAcc(name);
-				SystemTask();
-				SetPort(savePort);
-#endif
-			}
-			break;
-	 	
-	 	case kFileMenu:
-			switch (menuItem) {
-				case kFileOpenDiskImage:
-					InsertADisk();
-					break;
-				
-				case kFileQuitItem:
-					if ((! AnyDiskInserted()) ||
-						OkCancelAlert("\pAre you sure you want to Quit?",
-							"\pYou should shut down the emulated machine before quiting Mini vMac to prevent data corruption."))
-					{
-						SetProgramDone();
-					}
-					break;
-			}
-	 		break;
-	 	
-	 	case kSpecialMenu:
-			switch (menuItem) {
-				case kSpecialShareTimeItem:
-					HogCPU = !HogCPU;
-					break;
-				case kSpecialLimitSpeedItem:
-					SpeedLimit=!SpeedLimit;
-					break;
-				case kSpecialResetItem:
-					if ((! AnyDiskInserted()) ||
-						OkCancelAlert("\pAre you sure you want to Reset?",
-							"\pUnsaved changes will be lost, and there is a risk of data corruption."))
-					{
-						m68k_reset();
-					}
-					break;
-				case kSpecialInterruptItem:
-					if (OkCancelAlert("\pAre you sure you want to Interrupt?",
-							"\pThis will invoke any installed debugger. But as yet, most debuggers do not work with Mini vMac."))
-					{
-						MacInterrupt();
-					}
-					break;
-			}
-	 		break;
-
-		default:
-			/* if menuID == 0, then no command chosen from menu */
-			/* do nothing */
-	 		break;
-	}
-}
-
-#define openOnly 1
-#define openPrint 2
-
-static Boolean GotRequiredParams(AppleEvent *theAppleEvent)
-{
-	DescType typeCode;
-	Size actualSize;
-	OSErr theErr;
-
-	theErr = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
-				typeWildCard, &typeCode, NULL, 0, &actualSize);
-	if (theErr == errAEDescNotFound) { /*No more required params.*/
-		return true;
-	} else if (theErr == noErr) { /*More required params!*/
-		return /* CheckSysCode(errAEEventNotHandled) */ false;
-	} else { /*Unexpected Error!*/
-		return /* CheckSysCode(theErr) */ false;
-	}
-}
-
-static Boolean GotRequiredParams0(AppleEvent *theAppleEvent)
-{
-	DescType typeCode;
-	Size actualSize;
-	OSErr theErr;
-
-	theErr = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
-				typeWildCard, &typeCode, NULL, 0, &actualSize);
-	if (theErr == errAEDescNotFound) { /*No more required params.*/
-		return true;
-	} else if (theErr == noErr) { /*More required params!*/
-		return true; /* errAEEventNotHandled; */ /*^*/
-	} else { /*Unexpected Error!*/
-		return /* CheckSysCode(theErr) */false;
-	}
-}
-
-Boolean InsertADiskFromFileRef(FSSpec *spec);
-
-/* call back */ static pascal OSErr OpenOrPrintFiles(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
-{
-	/*Adapted from IM VI: AppleEvent Manager: Handling Required AppleEvents*/
-	FSSpec myFSS;
-	AEDescList docList;
-	long index;
-	long itemsInList;
-	Size actualSize;
-	AEKeyword keywd;
-	DescType typeCode;
-
-	UnusedParam(reply);
-	UnusedParam(aRefCon);
-	/*put the direct parameter (a list of descriptors) into docList*/
-	if (0 ==(AEGetParamDesc(theAppleEvent, keyDirectObject, typeAEList, &docList))) {
-		if (GotRequiredParams0(theAppleEvent)) { /*Check for missing required parameters*/
-			if (0 ==(AECountItems(&docList, &itemsInList))) {
-				for (index = 1; index <= itemsInList; ++index) { /*Get each descriptor from the list, get the alias record, open the file, maybe print it.*/
-					if (0 ==(AEGetNthPtr(&docList, index, typeFSS, &keywd, &typeCode,
-										(Ptr)&myFSS, sizeof(FSSpec), &actualSize))) {
-						/* printIt = (aRefCon == openPrint) */
-						/* DoGetAliasFileRef(&myFSS); */
-						if (! InsertADiskFromFileRef(&myFSS)) {
-							break;
-						}
-					}
-					if (/* errCode != 0 */ false) {
-						break;
-					}
-				}
-			}
-		}
-		/* vCheckSysCode */ (void) (AEDisposeDesc(&docList));
-	}
-	return /* GetASysResultCode() */0;
-}
-
-/* call back */ static pascal OSErr DoOpenEvent(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
-/*This is the alternative to getting an open document event on startup.*/
-{
-	UnusedParam(reply);
-	UnusedParam(aRefCon);
-	if (GotRequiredParams0(theAppleEvent)) {
-	}
-	return /* GetASysResultCode() */0; /*Make sure there are no additional "required" parameters.*/
-}
-
-
-static Boolean needQuit;
-
-/* call back */ static pascal OSErr DoQuitEvent(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
-{
-	UnusedParam(reply);
-	UnusedParam(aRefCon);
-	if (GotRequiredParams(theAppleEvent)) {
-		needQuit = true;
-		/* SetUsrEventPending(); */
-	}
-	return /* GetASysResultCode() */ 0;
-}
-
-#if CALL_NOT_IN_CARBON
-#define MyNewAEEventHandlerUPP NewAEEventHandlerProc
+	rp = &qd.screenBits.bounds;
 #else
-#define MyNewAEEventHandlerUPP NewAEEventHandlerUPP
-#endif
-
-static Boolean MyInstallEventHandler(AEEventClass theAEEventClass, AEEventID theAEEventID,
-						ProcPtr p, long handlerRefcon, Boolean isSysHandler)
-{
-	return 0 == (AEInstallEventHandler(theAEEventClass, theAEEventID,
-#if /* useUPP */1
-			MyNewAEEventHandlerUPP((AEEventHandlerProcPtr)p),
-#else
-			(AEEventHandlerUPP)p,
-#endif
-			handlerRefcon, isSysHandler));
-}
-
-Boolean InitOSGLUSTB(void)
-{
-	if (InitCheckMyEnvrn())
-	{
+	BitMap screenBits;
 	
-#if AppearanceAvail
-		if (gWeHaveAppearance) {
-			RegisterAppearanceClient();
-		}
+	GetQDGlobalsScreenBits(&screenBits);
+	rp = &screenBits.bounds;
 #endif
 
-		if (MyEnvrAttrAppleEvtMgrAvail) {
-			if (AESetInteractionAllowed(kAEInteractWithLocal) == 0)
-			if (MyInstallEventHandler(kCoreEventClass, kAEOpenApplication, (ProcPtr)DoOpenEvent, 0, false))
-			if (MyInstallEventHandler(kCoreEventClass, kAEOpenDocuments, (ProcPtr)OpenOrPrintFiles, openOnly, false))
-			if (MyInstallEventHandler(kCoreEventClass, kAEPrintDocuments, (ProcPtr)OpenOrPrintFiles, openPrint, false))
-			if (MyInstallEventHandler(kCoreEventClass, kAEQuitApplication, (ProcPtr)DoQuitEvent, 0, false))
-			{
-			}
-		}
+	// Create window rectangle and centre it on the screen
+	leftPos=((rp->right - rp->left) - vMacScreenWidth) / 2;
+	topPos=((rp->bottom - rp->top) - vMacScreenHeight) / 2;
+	SetRect(&Bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+	OffsetRect( &Bounds, leftPos, topPos);
 
-		// And some menus...
-		{
-			Handle menuBar;
-			menuBar=GetNewMBar(128);
-			SetMenuBar(menuBar);
-#if CALL_NOT_IN_CARBON
-			AppendResMenu(GetMenuHandle(kAppleMenu), 'DRVR');
-#endif
-			DrawMenuBar();
-		}
-
-		if (Screen_Init())
-		if (InitSixtiethInt())
-		if (RAM_Init())
-		if (Load_ROM())
-		{
-#if MakeDumpFile
-			StartDump();
-#endif
-			return true;
-		}
+	gMyMainWindow = NewWindow(0L,&Bounds,"\pMini vMac",true, noGrowDocProc ,(WindowPtr) -1,true,0);
+	if (gMyMainWindow != NULL) {
+		IsOk = trueblnr;
 	}
-	return false;
+ 	
+	return IsOk;
 }
 
-void Update_Screen(void);
-
-static Boolean HaveCursorHidden = false;
-
-void ForceShowCursor(void)
+static blnr AllocateScreenCompare(void)
 {
-	if (HaveCursorHidden) {
-		HaveCursorHidden = false;
-		ShowCursor();
+	screencomparebuff = NewPtr (vMacScreenNumBytes);
+	if (screencomparebuff == NULL) {
+		MacMsg("Not enough memory", "There is not enough memory available to allocate the screencomparebuff.", trueblnr);
+		return falseblnr;
+	} else {
+		return trueblnr;
 	}
 }
-
-UBYTE CurTrueMouseButton = false;
 
 #if CALL_NOT_IN_CARBON
 #define SetPortFromWindow(w) SetPort(w)
@@ -513,36 +399,102 @@ UBYTE CurTrueMouseButton = false;
 #define SetPortFromWindow(w) SetPort(GetWindowPort(w))
 #endif
 
-static void Mouse_Update1 (void)
+static void Update_Screen(void)
 {
-	Point CurMouse;
- 	GrafPtr oldPort;
-	Boolean ShouldHaveCursorHidden;
+	GrafPtr		savePort;
+	BitMap		src;
+
+	src.baseAddr = screencomparebuff;
+	src.rowBytes = vMacScreenByteWidth;
+	SetRect(&src.bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+	GetPort(&savePort);
+	SetPortFromWindow(gMyMainWindow);
+#if CALL_NOT_IN_CARBON
+	CopyBits(&src, &gMyMainWindow->portBits, &src.bounds, &gMyMainWindow->portRect, srcCopy,NULL);
+#else
+	{
+		Rect pr;
+		CGrafPtr wp = GetWindowPort(gMyMainWindow);
+		GetPortBounds(wp, &pr);
+		CopyBits(&src,
+			GetPortBitMapForCopyBits(wp),
+			&src.bounds, &pr, srcCopy,NULL);
+	}
+#endif
+	SetPort(savePort);
+}
+
+void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
+{
+	GrafPtr		savePort;
+	BitMap		src;
+	Rect        SrcRect;
+
+	SrcRect.left = left;
+	SrcRect.right = right;
+	SrcRect.top = top;
+	SrcRect.bottom = bottom;
+
+	src.baseAddr = screencomparebuff;
+	src.rowBytes = vMacScreenByteWidth;
+	SetRect(&src.bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+	GetPort(&savePort);
+	SetPortFromWindow(gMyMainWindow);
+	CopyBits(&src,
+#if CALL_NOT_IN_CARBON
+		&gMyMainWindow->portBits,
+#else
+		GetPortBitMapForCopyBits(GetWindowPort(gMyMainWindow)),
+#endif
+		&SrcRect,&SrcRect,srcCopy,NULL);
+	/* FrameRect(&SrcRect); for testing */
+	SetPort(savePort);
+}
+
+static blnr gBackgroundFlag = falseblnr;
+
+static blnr CurTrueMouseButton = falseblnr;
+
+static blnr HaveCursorHidden = falseblnr;
+
+static void ForceShowCursor(void)
+{
+	if (HaveCursorHidden) {
+		HaveCursorHidden = falseblnr;
+		ShowCursor();
+	}
+}
+
+static void CheckMouseState (void)
+{
+	blnr ShouldHaveCursorHidden;
 	UBYTE NewMouseButton;
+	Point NewMousePos;
+ 	GrafPtr oldPort;
  
 	GetPort(&oldPort);
 	SetPortFromWindow(gMyMainWindow);
-	GetMouse(&CurMouse);
+	GetMouse(&NewMousePos);
 	NewMouseButton = Button();
 	SetPort(oldPort);
  
-	ShouldHaveCursorHidden = true;
+	ShouldHaveCursorHidden = trueblnr;
 	if (gBackgroundFlag) {
-		ShouldHaveCursorHidden = false;
+		ShouldHaveCursorHidden = falseblnr;
 	}
-	if (CurMouse.v < 0) {
-		CurMouse.v = 0;
-		ShouldHaveCursorHidden = false;
-	} else if (CurMouse.v >= 342) {
-		CurMouse.v = 341;
-		ShouldHaveCursorHidden = false;
+	if (NewMousePos.h < 0) {
+		NewMousePos.h = 0;
+		ShouldHaveCursorHidden = falseblnr;
+	} else if (NewMousePos.h >= vMacScreenWidth) {
+		NewMousePos.h = vMacScreenWidth - 1;
+		ShouldHaveCursorHidden = falseblnr;
 	}
-	if (CurMouse.h < 0) {
-		CurMouse.h = 0;
-		ShouldHaveCursorHidden = false;
-	} else if (CurMouse.h >= 512) {
-		CurMouse.h = 511;
-		ShouldHaveCursorHidden = false;
+	if (NewMousePos.v < 0) {
+		NewMousePos.v = 0;
+		ShouldHaveCursorHidden = falseblnr;
+	} else if (NewMousePos.v >= vMacScreenHeight) {
+		NewMousePos.v = vMacScreenHeight - 1;
+		ShouldHaveCursorHidden = falseblnr;
 	}
 
 	if (CurTrueMouseButton != NewMouseButton) {
@@ -553,15 +505,16 @@ static void Mouse_Update1 (void)
 			So if have mouse down outside our window, CurMouseButton will
 			stay false even if mouse dragged back over our window.
 			and if mouse down inside our window, CurMouseButton will
-			staty true even in mouse dragged outside our window.
+			state true even in mouse dragged outside our window.
 		*/
 	}
+
 	/* if (ShouldHaveCursorHidden || CurMouseButton) */
 	/* for a game like arkanoid, would like mouse to still
 	move even when outside window in one direction */
 	{
-		CurMouseV = CurMouse.v;
-		CurMouseH = CurMouse.h;
+		CurMouseV = NewMousePos.v;
+		CurMouseH = NewMousePos.h;
 	}
 
 	if (HaveCursorHidden != ShouldHaveCursorHidden) {
@@ -574,309 +527,18 @@ static void Mouse_Update1 (void)
 	}
 }
 
-static long NoEventsCounter = 0;
+#define NotAfileRef (-1)
 
-static void MacOS_HandleEvent(void)
+static short Drives[NumDrives]; /* open disk image files */
+
+static void InitDrives(void)
 {
-	EventRecord theEvent;
-	WindowPtr whichWindow;
-	Point x;
-	GrafPtr savePort;
-#if CALL_NOT_IN_CARBON
-	Boolean PrivateEvent;
-#endif
-	long waitTime;
+	WORD i;
 
-	do {
-
-	Mouse_Update1();
-	GetKeys(*(KeyMap *)theKeys);
-	SetEventMask(-1); /* want keyUp events */
-
-#if CALL_NOT_IN_CARBON
-	if (! OSEventAvail(everyEvent, &theEvent)) {
-		++NoEventsCounter;
-		if ((NoEventsCounter >= 120) && HogCPU && ! gBackgroundFlag) {
-			/*
-				if no OSEvent now, and not looking for aftermath of
-				event, assume there is no event of any kind we need to look at
-			*/
-			return;
-		} else {
-			if (gBackgroundFlag) {
-				waitTime = 5*60*60;
-			} else {
-				waitTime = 0;
-			}
-			/* let system do as it pleases */
-			if (WaitNextEvent(everyEvent, &theEvent, waitTime, NULL))
-			{
-				NoEventsCounter = 0;
-			}
-		}
-	} else {
-		PrivateEvent = false;
-		switch (theEvent.what) {
-			case keyDown:
-			case autoKey:
-			case keyUp:
-			case mouseUp:
-				PrivateEvent = true;
-				break;
-			case mouseDown:
-				if ((FindWindow(theEvent.where, &whichWindow) == inContent) && (whichWindow == gMyMainWindow)) {
-					PrivateEvent = true;
-				}	
-				break;
-		}
-		if (PrivateEvent && HogCPU && ! gBackgroundFlag) {
-			/*
-				if event can effect only us, and not looking out for aftermath
-				of another event, then hog the cpu
-			*/
-			GetOSEvent(everyEvent,&theEvent);
-		} else {
-			NoEventsCounter = 0;
-			/*
-				Have an OSEvent, so reset NoEventsCounter, no matter what.
-				WaitNextEvent can return false, even if it did handle an
-				event. Such as a click in the collapse box. In this case
-				we need to look out for update events.
-			*/
-
-			/* let system handle the event */
-			if (WaitNextEvent(everyEvent,&theEvent, 0L ,NULL))
-			{
-			}
-		}
-	}
-#else
-	/* can't hog cpu in carbon. OSEventAvail and GetOSEvent not available. */
-	if (gBackgroundFlag) {
-		waitTime = 5*60*60;
-	} else {
-		waitTime = 0;
-	}
-
-	if (WaitNextEvent(everyEvent, &theEvent, waitTime, NULL))
-	{
-	}
-#endif
-	
-	switch(theEvent.what) {
-		case mouseDown:	
-			switch (FindWindow(theEvent.where, &whichWindow)) {
-				case inSysWindow:
-#if CALL_NOT_IN_CARBON
-					SystemClick(&theEvent, whichWindow);
-#endif
-					break;
-				case inMenuBar:
-					MacOS_UpdateMenus();
-					ForceShowCursor();
-					{
-						long menuSelection = MenuSelect(theEvent.where);
-						MacOS_HandleMenu(HiWord(menuSelection), LoWord(menuSelection));
-					}
-					HiliteMenu(0);
-					break;
-		
-				case inDrag:
-					{
-						Rect *rp;
-#if CALL_NOT_IN_CARBON
-						rp = &qd.screenBits.bounds;
-#else
-						BitMap screenBits;
-						
-						GetQDGlobalsScreenBits(&screenBits);
-						rp = &screenBits.bounds;
-#endif
-
-						DragWindow(whichWindow, theEvent.where, rp);
-	
-						GetPort(&savePort);
-						SetPortFromWindow(whichWindow);
-						x.h=x.v=0;
-						LocalToGlobal(&x);
-						x.h&=0xfff8;
-						MoveWindow(whichWindow, x.h, x.v, true);
-						SetPort(savePort);
-					}
-					break;
-	
-				case inContent:
-					if (FrontWindow() != whichWindow) {
-						SelectWindow(whichWindow);
-					}
-					break;
-	
-#if 0 /* no close box on our window */
-				case inGoAway:
-					if (TrackGoAway(whichWindow, theEvent.where)) {
-	 					SetProgramDone();
-					}
-					break;
-#endif
-				
-				case inZoomIn:
-				case inZoomOut:
-					// Zoom Boxes
-					break;
-			}
-			break;
-				
-		case updateEvt:
-			GetPort(&savePort);
-					
-			BeginUpdate( (WindowPtr) theEvent.message );
-			
-			if ((WindowPtr)theEvent.message == gMyMainWindow) {
-				Update_Screen();
-			}
-			
-			EndUpdate((WindowPtr) theEvent.message);
-					
-			SetPort(savePort);
-			break;
-	
-		case keyDown:
-			if (! gBackgroundFlag) {
-				Keyboard_Down((theEvent.modifiers << 16) + theEvent.message);
-			}
-			break;
-		case autoKey:
-			if (! gBackgroundFlag) {
-				Keyboard_Auto((theEvent.modifiers << 16) + theEvent.message);
-			}
-			break;
-		case keyUp:
-			if (! gBackgroundFlag) {
-				// if(!(theEvent.modifiers & cmdKey & shiftKey))
-				Keyboard_Up((theEvent.modifiers << 16) + theEvent.message);
-			}
-			break;
-		case osEvt:
-			if ((theEvent.message >> 24) & suspendResumeMessage) {
-				if (theEvent.message & 1) {	
-					gBackgroundFlag = false;
-
-#if CALL_NOT_IN_CARBON
-					SetCursor(&qd.arrow);
-#else
-					{
-						Cursor c;
-
-						GetQDGlobalsArrow(&c);
-						SetCursor(&c);
-					}
-#endif
-				} else {
-					ForceShowCursor(); 
-					gBackgroundFlag = true;
-				}
-			}
-			break;
-		case kHighLevelEvent:
-			if ((AEEventClass)theEvent.message == kCoreEventClass) {
-				if (/* CheckSysCode */0 == (AEProcessAppleEvent(&theEvent))) {
-				}
-			} else {
-				/* vCheckSysCode(errAENotAppleEvent); */
-			}
-			break;
-	}
-
-	} while (gBackgroundFlag);
-	/*
-		When in background, halt the emulator by
-		continuously running the event loop
-	*/
-}
-
-void MacMsg(Str255 briefMsg, Str255 longMsg, Boolean fatal)
-{
-#if AppearanceAvail
-	if (gWeHaveAppearance) {
-		AlertStdAlertParamRec	param;
-		short					itemHit;
-			
-		param.movable 		= 0;
-		param.filterProc 	= nil;
-		param.defaultText 	= "\pOK";
-		param.cancelText 	= nil;
-		param.otherText 	= nil;
-		param.helpButton 	= false;
-		param.defaultButton = kAlertStdAlertOKButton;
-		param.cancelButton 	= 0;
-		param.position 		= kWindowDefaultPosition;
-		
-		StandardAlert((fatal)? kAlertStopAlert : kAlertCautionAlert, briefMsg, longMsg, &param, &itemHit);
-	} else
-#endif
-	{	
-		ParamText(briefMsg,longMsg,"\p","\p");
-		if (fatal) {
-			while (StopAlert(131, NULL) != 1) {
-			}
-		} else {
-			while (CautionAlert(131, NULL) != 1) {
-			}
-		}
-		/* Alert (131, 0L); */
-	}
-	
-	if (fatal) ExitToShell();
-}
-
-static Boolean OkCancelAlert(Str255 briefMsg, Str255 longMsg)
-{
-
-#if AppearanceAvail
-	if (gWeHaveAppearance) {
-		short itemHit;
-		AlertStdAlertParamRec param;
-			
-		param.movable 		= 0;
-		param.filterProc 	= nil;
-		param.defaultText 	= "\pOK";
-		param.cancelText 	= "\pCancel";
-		param.otherText 	= nil;
-		param.helpButton 	= false;
-		param.defaultButton = kAlertStdAlertCancelButton;
-		param.cancelButton 	= 0;
-		param.position 		= kWindowDefaultPosition;
-		
-		StandardAlert(kAlertCautionAlert, briefMsg, longMsg, &param, &itemHit);
-		
-		return (itemHit == kAlertStdAlertOKButton);
-	} else
-#endif
-	{	
-		short itemHit;
-
-		ParamText(briefMsg,longMsg,"\p","\p");
-		do {
-			itemHit = CautionAlert(132, NULL);
-		} while ((itemHit != 1) && (itemHit != 2));
-		return (itemHit == 2);
+	for (i = 0; i < NumDrives; ++i) {
+		Drives[i] = NotAfileRef;;
 	}
 }
-
-
-ULONG GetMacDateInSecond(void)
-{
-	unsigned long secs;
-
-	GetDateTime(&secs);
-	return secs;
-}
-
-#define _Sony_Writable
-
-/* FILE * */ short Drives[NumDrives]; // File link to virtual Sony Drives
-
-#define NotAfileRef (-1) /* NULL */
 
 WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
 {
@@ -923,10 +585,10 @@ WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Coun
 	return result;
 }
 
-Boolean vSonyDiskLocked(UWORD Drive_No)
+blnr vSonyDiskLocked(UWORD Drive_No)
 {
 	UnusedParam(Drive_No);
-	return false;
+	return falseblnr;
 }
 
 WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
@@ -999,12 +661,66 @@ WORD vSonyFormat(UWORD Drive_No)
 	return result;
 }
 
-Boolean vSonyInserted (UWORD Drive_No)
+blnr vSonyInserted (UWORD Drive_No)
 {
 	if (Drive_No >= NumDrives) {
-		return false;
+		return falseblnr;
 	} else {
 		return (Drives[Drive_No] != NotAfileRef);
+	}
+}
+
+static blnr FirstFreeDisk(UWORD *Drive_No)
+{
+	WORD i;
+
+	for (i = 0; i < NumDrives; ++i) {
+		if (Drives[i] == NotAfileRef) {
+			*Drive_No = i;
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
+
+blnr AnyDiskInserted(void)
+{
+	WORD i;
+
+	for (i = 0; i < NumDrives; ++i) {
+		if (Drives[i] != NotAfileRef) {
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
+
+static blnr Sony_Insert0(short refnum)
+{
+	UWORD Drive_No;
+	
+	if (! FirstFreeDisk(&Drive_No)) {
+		(void) FSClose(refnum);
+		MacMsg(kStrTooManyImagesTitle, kStrTooManyImagesMessage, falseblnr);
+		return falseblnr;
+	} else {
+		Drives[Drive_No] = refnum;
+		MountPending |= ((ULONG)1 << Drive_No);
+		return trueblnr;
+	}
+}
+
+static blnr InsertADiskFromFileRef(FSSpec *spec)
+{
+	short refnum;
+	OSErr err;
+
+	err = FSpOpenDF(spec, fsRdWrPerm, &refnum);
+	if (err != 0) {
+		/* report this */
+		return falseblnr;
+	} else {
+		return Sony_Insert0(refnum);
 	}
 }
 
@@ -1056,61 +772,7 @@ pascal void NavigationEventProc(const NavEventCallbackMessage callBackSelector, 
 }
 #endif
 
-static Boolean FirstFreeDisk(UWORD *Drive_No)
-{
-	WORD i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		if (Drives[i] == NotAfileRef) {
-			*Drive_No = i;
-			return true;
-		}
-	}
-	return false;
-}
-
-Boolean AnyDiskInserted(void)
-{
-	WORD i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		if (Drives[i] != NotAfileRef) {
-			return true;
-		}
-	}
-	return false;
-}
-
-static Boolean Sony_Insert0(short refnum)
-{
-	UWORD Drive_No;
-	
-	if (! FirstFreeDisk(&Drive_No)) {
-		(void) FSClose(refnum);
-		MacMsg("\pToo many Disk Images.","\pvMac can not mount more than three Disk Images. Try ejecting one.",false);
-		return false;
-	} else {
-		Drives[Drive_No] = refnum;
-		vSonyInsertNotify(Drive_No);
-		return true;
-	}
-}
-
-static Boolean InsertADiskFromFileRef(FSSpec *spec)
-{
-	short refnum;
-	OSErr err;
-
-	err = FSpOpenDF(spec, fsRdWrPerm, &refnum);
-	if (err != 0) {
-		/* report this */
-		return false;
-	} else {
-		return Sony_Insert0(refnum);
-	}
-}
-
-void InsertADisk(void)
+static void InsertADisk(void)
 {
 #if NavigationAvail
 #if CALL_NOT_IN_CARBON
@@ -1209,157 +871,47 @@ void InsertADisk(void)
 	FlushEvents(keyDownMask | keyUpMask | autoKeyMask,0);
 }
 
-static void vSonyEjectAllDisks(void)
+static blnr AllocateMacROM(void)
 {
-	WORD i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		if (vSonyInserted(i)) {
-			(void) vSonyEject(i);
-		}
-	}
-}
-
-void zapOSGLUMACVars(void)
-{
-	WORD i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		Drives[i] = NotAfileRef;;
-	}
-}
-
-void ResetOSGLUMAC(void)
-{
-	vSonyEjectAllDisks();
-}
-
-Boolean Screen_Init(void)
-{
-	Rect	Bounds;
-	short	leftPos, topPos;
-	Boolean IsOk = false;
-	Rect *rp;
-#if CALL_NOT_IN_CARBON
-	rp = &qd.screenBits.bounds;
-#else
-	BitMap screenBits;
-	
-	GetQDGlobalsScreenBits(&screenBits);
-	rp = &screenBits.bounds;
-#endif
-
-	// Create window rectangle and centre it on the screen
-	leftPos=((rp->right - rp->left) - vMacScreenWidth) / 2;
-	topPos=((rp->bottom - rp->top) - vMacScreenHeight) / 2;
-	SetRect(&Bounds,0,0,vMacScreenWidth,vMacScreenHeight);
-	OffsetRect( &Bounds, leftPos, topPos);
-
-	gMyMainWindow = NewWindow(0L,&Bounds,"\pMini vMac",true, noGrowDocProc ,(WindowPtr) -1,false,0);
-	if (gMyMainWindow != NULL) {
-	
-		screencomparebuff = NewPtr (vMacScreenNumBytes);
-		if (screencomparebuff != NULL) {
-			IsOk = true;
-		}
-	}
- 	
-	return IsOk;
-}
-
-// Draw the screen
-void Update_Screen(void)
-{
-	GrafPtr		savePort;
-	BitMap		src;
-
-	src.baseAddr = screencomparebuff;
-	src.rowBytes = vMacScreenByteWidth;
-	SetRect(&src.bounds,0,0,vMacScreenWidth,vMacScreenHeight);
-	GetPort(&savePort);
-	SetPortFromWindow(gMyMainWindow);
-#if CALL_NOT_IN_CARBON
-	CopyBits(&src, &gMyMainWindow->portBits, &src.bounds, &gMyMainWindow->portRect, srcCopy,NULL);
-#else
-	{
-		Rect pr;
-		CGrafPtr wp = GetWindowPort(gMyMainWindow);
-		GetPortBounds(wp, &pr);
-		CopyBits(&src,
-			GetPortBitMapForCopyBits(wp),
-			&src.bounds, &pr, srcCopy,NULL);
-	}
-#endif
-	SetPort(savePort);
-}
-
-void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
-{
-	GrafPtr		savePort;
-	BitMap		src;
-	Rect        SrcRect;
-
-	SrcRect.left = left;
-	SrcRect.right = right;
-	SrcRect.top = top;
-	SrcRect.bottom = bottom;
-
-	src.baseAddr = screencomparebuff;
-	src.rowBytes = vMacScreenByteWidth;
-	SetRect(&src.bounds,0,0,vMacScreenWidth,vMacScreenHeight);
-	GetPort(&savePort);
-	SetPortFromWindow(gMyMainWindow);
-	CopyBits(&src,
-#if CALL_NOT_IN_CARBON
-		&gMyMainWindow->portBits,
-#else
-		GetPortBitMapForCopyBits(GetWindowPort(gMyMainWindow)),
-#endif
-		&SrcRect,&SrcRect,srcCopy,NULL);
-	/* FrameRect(&SrcRect); for testing */
-	SetPort(savePort);
-}
-
-/*
-	only look at when TickCount changes, rather than otherwise
-	using its value, so as to avoid getting confused if it
-	overflows and wraps.
-*/
-
-static long int lastinterupttime;
-
-Boolean CheckIntSixtieth(void)
-{
-	long int ClockTick;
-
-	ClockTick = TickCount();
-	if (ClockTick != lastinterupttime) {
-		MacOS_HandleEvent();
-		lastinterupttime = ClockTick;
-		return true;
+	ROM = (UWORD *)NewPtr(kROM_Size);
+	if (ROM == NULL) {
+		MacMsg("Not enough Memory.", "Unable to allocate ROM.", trueblnr);
+		return falseblnr;
 	} else {
-		return false;
+		return trueblnr;
 	}
 }
 
-void WaitForIntSixtieth(void)
+static blnr LoadMacRom(void)
 {
-	while (TickCount() == lastinterupttime) {
+	FCBPBRec pb;
+	Str255 fileName;
+	OSErr err;
+	FSSpec spec;
+	short refnum;
+	long count = kROM_Size;
+
+	pb.ioNamePtr = fileName;
+	pb.ioVRefNum = 0;
+	pb.ioRefNum = CurResFile();
+	pb.ioFCBIndx = 0;
+	err = PBGetFCBInfoSync(&pb);
+	if (err == 0) {
+		err = FSMakeFSSpec(pb.ioFCBVRefNum, pb.ioFCBParID, "\pvMac.ROM", &spec);
+		if (err == fnfErr) {
+    		MacMsg("Unable to locate ROM image.", "The file vMac.ROM could not be found. Please read the manual for instructions on where to get this file.", trueblnr);
+		} else if (err == 0) {
+			err = FSpOpenDF(&spec, fsRdPerm, &refnum);
+			if (err == 0) {
+				err = FSRead(refnum, &count, ROM);
+				(void) FSClose(refnum);
+			}
+		}
 	}
+	return (err == 0);
 }
 
-Boolean InitSixtiethInt(void)
-{
-  lastinterupttime = TickCount();
-  return true;
-}
-
-void MyMoveBytes(Ptr srcPtr, Ptr destPtr, LONG byteCount)
-{
-	BlockMove(srcPtr, destPtr, byteCount);
-}
-
-Boolean RAM_Init (void)
+static blnr AllocateMacRAM (void)
 {	
 #define MemLeaveInMacHeap (128 * 1024L)
 	kRAM_Size = FreeMem() - MemLeaveInMacHeap;
@@ -1379,7 +931,7 @@ Boolean RAM_Init (void)
 	} else if (kRAM_Size > 0x00100000) {
 		kRAM_Size = 0x00100000;
 	} else {
-		return false;
+		return falseblnr;
 	}
 
 	RAM = (UWORD *)NewPtr(kRAM_Size);
@@ -1387,42 +939,11 @@ Boolean RAM_Init (void)
 	return (RAM != NULL);
 }
 
-Boolean Load_ROM(void)
-{
-	FCBPBRec pb;
-	Str255 fileName;
-	OSErr err;
-	FSSpec spec;
-	short refnum;
-	long count = kROM_Size;
+static blnr SpeedLimit = falseblnr;
 
-	ROM = (UWORD *)NewPtr(kROM_Size);
-	if (ROM == NULL) {
-		MacMsg("\pNot enough Memory.","\pUnable to allocate ROM.",true);
-		return false;
-	}
+static blnr HogCPU = trueblnr;
 
-	pb.ioNamePtr = fileName;
-	pb.ioVRefNum = 0;
-	pb.ioRefNum = CurResFile();
-	pb.ioFCBIndx = 0;
-	err = PBGetFCBInfoSync(&pb);
-	if (err == 0) {
-		err = FSMakeFSSpec(pb.ioFCBVRefNum, pb.ioFCBParID, "\pvMac.ROM", &spec);
-		if (err == fnfErr) {
-    		MacMsg("\pUnable to locate ROM image.","\pThe file vMac.ROM could not be found. Please read the manual for instructions on where to get this file.",true);
-		} else if (err == 0) {
-			err = FSpOpenDF(&spec, fsRdPerm, &refnum);
-			if (err == 0) {
-				err = FSRead(refnum, &count, ROM);
-				(void) FSClose(refnum);
-			}
-		}
-	}
-	return (err == 0);
-}
-
-UBYTE RTC_Load (void)
+static blnr RTC_Load (void)
 {
 	FCBPBRec pb;
 	Str255 fileName;
@@ -1442,14 +963,23 @@ UBYTE RTC_Load (void)
 			err = FSpOpenDF(&spec, fsRdPerm, &refnum);
 			if (err == 0) {
 				err = FSRead(refnum, &count, PARAMRAM);
+				if (err == 0) {
+					PARAMRAMloaded = true;
+				}
 				(void) FSClose(refnum);
 			}
 		}
 	}
-	return 0;
+
+	if (PARAMRAMloaded) {	
+		HogCPU = PARAMRAM[20];
+		SpeedLimit = PARAMRAM[21];
+	}
+
+	return trueblnr; /* keep going, even if couldn't load */
 }
 
-void RTC_Save0 (void)
+static void RTC_Save0 (void)
 {
 	FCBPBRec pb;
 	Str255 fileName;
@@ -1458,27 +988,583 @@ void RTC_Save0 (void)
 	short refnum;
 	long count = PARAMRAMSize;
 
-	pb.ioNamePtr = fileName;
-	pb.ioVRefNum = 0;
-	pb.ioRefNum = CurResFile();
-	pb.ioFCBIndx = 0;
-	err = PBGetFCBInfoSync(&pb);
-	if (err == 0) {
-		err = FSMakeFSSpec(pb.ioFCBVRefNum, pb.ioFCBParID, "\pvmac.PRAM", &spec);
-		if (err == fnfErr) {
-    		err = 0;
-		}
+	if (PARAMRAMloaded) {	
+		PARAMRAM[20] = HogCPU;
+		PARAMRAM[21] = SpeedLimit;
+
+		pb.ioNamePtr = fileName;
+		pb.ioVRefNum = 0;
+		pb.ioRefNum = CurResFile();
+		pb.ioFCBIndx = 0;
+		err = PBGetFCBInfoSync(&pb);
 		if (err == 0) {
-			err = FSpOpenDF(&spec, fsRdWrPerm, &refnum);
+			err = FSMakeFSSpec(pb.ioFCBVRefNum, pb.ioFCBParID, "\pvmac.PRAM", &spec);
 			if (err == fnfErr) {
-				if (FSpCreate(&spec, 'MnvM', 'pref', smSystemScript) == 0) {
-					err = FSpOpenDF(&spec, fsRdWrPerm, &refnum);
-				}
+    			err = 0;
 			}
 			if (err == 0) {
-				err = FSWrite(refnum, &count, PARAMRAM);
-				(void) FSClose(refnum);
+				err = FSpOpenDF(&spec, fsRdWrPerm, &refnum);
+				if (err == fnfErr) {
+					if (FSpCreate(&spec, 'MnvM', 'pref', smSystemScript) == 0) {
+						err = FSpOpenDF(&spec, fsRdWrPerm, &refnum);
+					}
+				}
+				if (err == 0) {
+					err = FSWrite(refnum, &count, PARAMRAM);
+					(void) FSClose(refnum);
+				}
 			}
 		}
 	}
 }
+
+ULONG GetMacDateInSecond(void)
+{
+	unsigned long secs;
+
+	GetDateTime(&secs);
+	return secs;
+}
+
+#define openOnly 1
+#define openPrint 2
+
+static blnr GotRequiredParams(AppleEvent *theAppleEvent)
+{
+	DescType typeCode;
+	Size actualSize;
+	OSErr theErr;
+
+	theErr = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
+				typeWildCard, &typeCode, NULL, 0, &actualSize);
+	if (theErr == errAEDescNotFound) { /*No more required params.*/
+		return trueblnr;
+	} else if (theErr == noErr) { /*More required params!*/
+		return /* CheckSysCode(errAEEventNotHandled) */ falseblnr;
+	} else { /*Unexpected Error!*/
+		return /* CheckSysCode(theErr) */ falseblnr;
+	}
+}
+
+static blnr GotRequiredParams0(AppleEvent *theAppleEvent)
+{
+	DescType typeCode;
+	Size actualSize;
+	OSErr theErr;
+
+	theErr = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
+				typeWildCard, &typeCode, NULL, 0, &actualSize);
+	if (theErr == errAEDescNotFound) { /*No more required params.*/
+		return trueblnr;
+	} else if (theErr == noErr) { /*More required params!*/
+		return trueblnr; /* errAEEventNotHandled; */ /*^*/
+	} else { /*Unexpected Error!*/
+		return /* CheckSysCode(theErr) */falseblnr;
+	}
+}
+
+/* call back */ static pascal OSErr OpenOrPrintFiles(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
+{
+	/*Adapted from IM VI: AppleEvent Manager: Handling Required AppleEvents*/
+	FSSpec myFSS;
+	AEDescList docList;
+	long index;
+	long itemsInList;
+	Size actualSize;
+	AEKeyword keywd;
+	DescType typeCode;
+
+	UnusedParam(reply);
+	UnusedParam(aRefCon);
+	/*put the direct parameter (a list of descriptors) into docList*/
+	if (0 ==(AEGetParamDesc(theAppleEvent, keyDirectObject, typeAEList, &docList))) {
+		if (GotRequiredParams0(theAppleEvent)) { /*Check for missing required parameters*/
+			if (0 ==(AECountItems(&docList, &itemsInList))) {
+				for (index = 1; index <= itemsInList; ++index) { /*Get each descriptor from the list, get the alias record, open the file, maybe print it.*/
+					if (0 ==(AEGetNthPtr(&docList, index, typeFSS, &keywd, &typeCode,
+										(Ptr)&myFSS, sizeof(FSSpec), &actualSize))) {
+						/* printIt = (aRefCon == openPrint) */
+						/* DoGetAliasFileRef(&myFSS); */
+						if (! InsertADiskFromFileRef(&myFSS)) {
+							break;
+						}
+					}
+					if (/* errCode != 0 */ false) {
+						break;
+					}
+				}
+			}
+		}
+		/* vCheckSysCode */ (void) (AEDisposeDesc(&docList));
+	}
+	return /* GetASysResultCode() */0;
+}
+
+/* call back */ static pascal OSErr DoOpenEvent(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
+/*This is the alternative to getting an open document event on startup.*/
+{
+	UnusedParam(reply);
+	UnusedParam(aRefCon);
+	if (GotRequiredParams0(theAppleEvent)) {
+	}
+	return /* GetASysResultCode() */0; /*Make sure there are no additional "required" parameters.*/
+}
+
+
+/* call back */ static pascal OSErr DoQuitEvent(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
+{
+	UnusedParam(reply);
+	UnusedParam(aRefCon);
+	if (GotRequiredParams(theAppleEvent)) {
+		RequestMacOff = trueblnr;
+	}
+	return /* GetASysResultCode() */ 0;
+}
+
+#if CALL_NOT_IN_CARBON
+#define MyNewAEEventHandlerUPP NewAEEventHandlerProc
+#else
+#define MyNewAEEventHandlerUPP NewAEEventHandlerUPP
+#endif
+
+static blnr MyInstallEventHandler(AEEventClass theAEEventClass, AEEventID theAEEventID,
+						ProcPtr p, long handlerRefcon, blnr isSysHandler)
+{
+	return 0 == (AEInstallEventHandler(theAEEventClass, theAEEventID,
+#if /* useUPP */1
+			MyNewAEEventHandlerUPP((AEEventHandlerProcPtr)p),
+#else
+			(AEEventHandlerUPP)p,
+#endif
+			handlerRefcon, isSysHandler));
+}
+
+static blnr InstallOurEventHandlers(void)
+{
+	if (MyEnvrAttrAppleEvtMgrAvail) {
+		if (AESetInteractionAllowed(kAEInteractWithLocal) == 0)
+		if (MyInstallEventHandler(kCoreEventClass, kAEOpenApplication, (ProcPtr)DoOpenEvent, 0, falseblnr))
+		if (MyInstallEventHandler(kCoreEventClass, kAEOpenDocuments, (ProcPtr)OpenOrPrintFiles, openOnly, falseblnr))
+		if (MyInstallEventHandler(kCoreEventClass, kAEPrintDocuments, (ProcPtr)OpenOrPrintFiles, openPrint, falseblnr))
+		if (MyInstallEventHandler(kCoreEventClass, kAEQuitApplication, (ProcPtr)DoQuitEvent, 0, falseblnr))
+		{
+		}
+	}
+	return trueblnr;
+}
+
+#if ! CALL_NOT_IN_CARBON
+#define CheckItem CheckMenuItem
+#endif
+
+static void MacOS_UpdateMenus(void)
+{
+	MenuHandle hHardware;
+	
+	hHardware = GetMenuHandle(kSpecialMenu);
+#if CALL_NOT_IN_CARBON
+	CheckItem(hHardware, kSpecialShareTimeItem, ! HogCPU);
+#else
+	CheckItem(hHardware, kSpecialShareTimeItem, true);
+#endif
+	CheckItem(hHardware, kSpecialLimitSpeedItem, SpeedLimit);
+}
+
+static void MacOS_HandleMenu (short menuID, short menuItem)
+{	
+	switch (menuID) {
+		case kAppleMenu:
+	  		if (menuItem == kAppleAboutItem) {
+				MacMsg(kStrAboutTitle, kStrAboutMessage, falseblnr);
+	  		} else {
+#if CALL_NOT_IN_CARBON
+				Str32		name;
+				GrafPtr		savePort;
+
+	 			GetPort(&savePort);
+	 			GetMenuItemText(GetMenuHandle(kAppleMenu), menuItem, name);
+				OpenDeskAcc(name);
+				SystemTask();
+				SetPort(savePort);
+#endif
+			}
+			break;
+	 	
+	 	case kFileMenu:
+			switch (menuItem) {
+				case kFileOpenDiskImage:
+					InsertADisk();
+					break;
+				
+				case kFileQuitItem:
+					RequestMacOff = trueblnr;
+					break;
+			}
+	 		break;
+	 	
+	 	case kSpecialMenu:
+			switch (menuItem) {
+				case kSpecialShareTimeItem:
+#if CALL_NOT_IN_CARBON
+					HogCPU = ! HogCPU;
+#else
+					MacMsg("Not Implemented.", "Share Time cannot be turned off in the version of Mini vMac.", falseblnr);
+#endif
+					break;
+				case kSpecialLimitSpeedItem:
+					SpeedLimit = ! SpeedLimit;
+					break;
+				case kSpecialResetItem:
+					RequestMacReset = trueblnr;
+					break;
+				case kSpecialInterruptItem:
+					RequestMacInterrupt = trueblnr;
+					break;
+			}
+	 		break;
+
+		default:
+			/* if menuID == 0, then no command chosen from menu */
+			/* do nothing */
+	 		break;
+	}
+}
+
+static long NoEventsCounter = 0;
+
+static void MacOS_HandleEvent(void)
+{
+	EventRecord theEvent;
+	WindowPtr whichWindow;
+	Point x;
+	GrafPtr savePort;
+#if CALL_NOT_IN_CARBON
+	blnr PrivateEvent;
+#endif
+	long waitTime;
+
+	do {
+
+	CheckMouseState();
+	GetKeys(*(KeyMap *)theKeys);
+	SetEventMask(-1); /* want keyUp events */
+
+#if CALL_NOT_IN_CARBON
+	if (! OSEventAvail(everyEvent, &theEvent)) {
+		++NoEventsCounter;
+		if ((NoEventsCounter >= 120) && HogCPU && ! gBackgroundFlag) {
+			/*
+				if no OSEvent now, and not looking for aftermath of
+				event, assume there is no event of any kind we need to look at
+			*/
+			return;
+		} else {
+			if (gBackgroundFlag) {
+				waitTime = 5*60*60;
+			} else {
+				waitTime = 0;
+			}
+			/* let system do as it pleases */
+			if (WaitNextEvent(everyEvent, &theEvent, waitTime, NULL))
+			{
+				NoEventsCounter = 0;
+			}
+		}
+	} else {
+		PrivateEvent = falseblnr;
+		switch (theEvent.what) {
+			case keyDown:
+			case autoKey:
+			case keyUp:
+			case mouseUp:
+				PrivateEvent = trueblnr;
+				break;
+			case mouseDown:
+				if ((FindWindow(theEvent.where, &whichWindow) == inContent) && (whichWindow == gMyMainWindow)) {
+					PrivateEvent = trueblnr;
+				}	
+				break;
+		}
+		if (PrivateEvent && HogCPU && ! gBackgroundFlag) {
+			/*
+				if event can effect only us, and not looking out for aftermath
+				of another event, then hog the cpu
+			*/
+			GetOSEvent(everyEvent,&theEvent);
+		} else {
+			NoEventsCounter = 0;
+			/*
+				Have an OSEvent, so reset NoEventsCounter, no matter what.
+				WaitNextEvent can return false, even if it did handle an
+				event. Such as a click in the collapse box. In this case
+				we need to look out for update events.
+			*/
+
+			/* let system handle the event */
+			if (WaitNextEvent(everyEvent,&theEvent, 0L ,NULL))
+			{
+			}
+		}
+	}
+#else
+	/* can't hog cpu in carbon. OSEventAvail and GetOSEvent not available. */
+	if (gBackgroundFlag) {
+		waitTime = 5*60*60;
+	} else {
+		waitTime = 0;
+	}
+
+	if (WaitNextEvent(everyEvent, &theEvent, waitTime, NULL))
+	{
+	}
+#endif
+	
+	switch(theEvent.what) {
+		case mouseDown:	
+			switch (FindWindow(theEvent.where, &whichWindow)) {
+				case inSysWindow:
+#if CALL_NOT_IN_CARBON
+					SystemClick(&theEvent, whichWindow);
+#endif
+					break;
+				case inMenuBar:
+					MacOS_UpdateMenus();
+					ForceShowCursor();
+					{
+						long menuSelection = MenuSelect(theEvent.where);
+						MacOS_HandleMenu(HiWord(menuSelection), LoWord(menuSelection));
+					}
+					HiliteMenu(0);
+					break;
+		
+				case inDrag:
+					{
+						Rect *rp;
+#if CALL_NOT_IN_CARBON
+						rp = &qd.screenBits.bounds;
+#else
+						BitMap screenBits;
+						
+						GetQDGlobalsScreenBits(&screenBits);
+						rp = &screenBits.bounds;
+#endif
+
+						DragWindow(whichWindow, theEvent.where, rp);
+	
+						GetPort(&savePort);
+						SetPortFromWindow(whichWindow);
+						x.h=x.v=0;
+						LocalToGlobal(&x);
+						x.h&=0xfff8;
+						MoveWindow(whichWindow, x.h, x.v, true);
+						SetPort(savePort);
+					}
+					break;
+	
+				case inContent:
+					if (FrontWindow() != whichWindow) {
+						SelectWindow(whichWindow);
+					}
+					break;
+	
+				case inGoAway:
+					if (TrackGoAway(whichWindow, theEvent.where)) {
+						RequestMacOff = trueblnr;
+					}
+					break;
+				
+				case inZoomIn:
+				case inZoomOut:
+					// Zoom Boxes
+					break;
+			}
+			break;
+				
+		case updateEvt:
+			GetPort(&savePort);
+					
+			BeginUpdate( (WindowPtr) theEvent.message );
+			
+			if ((WindowPtr)theEvent.message == gMyMainWindow) {
+				Update_Screen();
+			}
+			
+			EndUpdate((WindowPtr) theEvent.message);
+					
+			SetPort(savePort);
+			break;
+	
+		case keyDown:
+			if (! gBackgroundFlag) {
+				Keyboard_Down((theEvent.modifiers << 16) + theEvent.message);
+			}
+			break;
+		case autoKey:
+			if (! gBackgroundFlag) {
+				Keyboard_Auto((theEvent.modifiers << 16) + theEvent.message);
+			}
+			break;
+		case keyUp:
+			if (! gBackgroundFlag) {
+				// if(!(theEvent.modifiers & cmdKey & shiftKey))
+				Keyboard_Up((theEvent.modifiers << 16) + theEvent.message);
+			}
+			break;
+		case osEvt:
+			if ((theEvent.message >> 24) & suspendResumeMessage) {
+				if (theEvent.message & 1) {	
+					gBackgroundFlag = falseblnr;
+
+#if CALL_NOT_IN_CARBON
+					SetCursor(&qd.arrow);
+#else
+					{
+						Cursor c;
+
+						GetQDGlobalsArrow(&c);
+						SetCursor(&c);
+					}
+#endif
+				} else {
+					ForceShowCursor(); 
+					gBackgroundFlag = trueblnr;
+				}
+			}
+			break;
+		case kHighLevelEvent:
+			if ((AEEventClass)theEvent.message == kCoreEventClass) {
+				if (/* CheckSysCode */0 == (AEProcessAppleEvent(&theEvent))) {
+				}
+			} else {
+				/* vCheckSysCode(errAENotAppleEvent); */
+			}
+			break;
+	}
+
+	} while (gBackgroundFlag);
+	/*
+		When in background, halt the emulator by
+		continuously running the event loop
+	*/
+}
+
+/*
+	only look at when TickCount changes, rather than otherwise
+	using its value, so as to avoid getting confused if it
+	overflows and wraps.
+*/
+
+static long int lastinterupttime;
+
+static void WaitForIntSixtieth(void)
+{
+	while (TickCount() == lastinterupttime) {
+	}
+}
+
+static blnr Init60thCheck(void)
+{
+  lastinterupttime = TickCount();
+  return trueblnr;
+}
+
+blnr CheckIntSixtieth(blnr overdue)
+{
+	long int ClockTick;
+
+	if (SpeedLimit && overdue) {
+		WaitForIntSixtieth();
+	}
+
+	ClockTick = TickCount();
+	if (ClockTick != lastinterupttime) {
+		MacOS_HandleEvent();
+		lastinterupttime = ClockTick;
+		return trueblnr;
+	} else {
+		return falseblnr;
+	}
+}
+
+static void ZapOSGLUVars(void)
+{
+	InitDrives();
+}
+
+static blnr InstallOurMenus(void)
+{
+	Handle menuBar;
+
+	menuBar = GetNewMBar(128);
+	SetMenuBar(menuBar);
+#if CALL_NOT_IN_CARBON
+	AppendResMenu(GetMenuHandle(kAppleMenu), 'DRVR');
+#endif
+	DrawMenuBar();
+
+	return trueblnr;
+}
+
+static blnr InstallOurAppearanceClient(void)
+{
+#if AppearanceAvail
+	if (gWeHaveAppearance) {
+		RegisterAppearanceClient();
+	}
+#endif
+	return trueblnr;
+}
+
+static blnr InitOSGLU(void)
+{
+	if (InitMacManagers())
+	if (InitCheckMyEnvrn())
+#if AppearanceAvail
+	if (InstallOurAppearanceClient())
+#endif
+	if (InstallOurEventHandlers())
+	if (RTC_Load())
+	if (InstallOurMenus())
+	if (AllocateScreenCompare())
+	if (CreateMainWindow())
+	if (AllocateMacROM())
+	if (LoadMacRom())
+#if MakeDumpFile
+	if (StartDump())
+#endif
+	if (AllocateMacRAM())
+	if (Init60thCheck())
+	{
+		return trueblnr;
+	}
+	return falseblnr;
+}
+
+static void UnInitOSGLU(void)
+{
+#if MakeDumpFile
+	EndDump();
+#endif
+	RTC_Save0();
+	 
+	ForceShowCursor();
+	
+/*
+	we're relying on the operating
+	system to take care of disposing
+	our window, and any memory allocated
+	should disappear with the applications
+	heap.
+*/
+}
+
+void main(void)
+{
+	ZapOSGLUVars();
+	if (InitOSGLU()) {
+		ProgramMain();
+	}
+	UnInitOSGLU();
+}
+
+#endif /* MacTarget */

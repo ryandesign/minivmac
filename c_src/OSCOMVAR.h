@@ -20,10 +20,6 @@
 #define OSCOMVAR_H
 #endif
 
-extern Boolean HogCPU;
-
-extern unsigned char SpeedLimit;
-
 #define vMacScreenHeight 342
 #define vMacScreenWidth 512
 #define vMacScreenNumBits ((long)vMacScreenHeight * (long)vMacScreenWidth)
@@ -41,8 +37,8 @@ extern UWORD *RAM;
 extern UWORD *ROM;
 
 #define PARAMRAMSize 22
-
 extern UBYTE PARAMRAM[PARAMRAMSize];
+extern blnr PARAMRAMloaded;
 
 extern UWORD CurMouseV;
 extern UWORD CurMouseH;
@@ -50,4 +46,9 @@ extern UBYTE CurMouseButton;
 
 extern ULONG theKeys[4];
 
+extern blnr RequestMacOff;
+extern blnr RequestMacInterrupt;
+extern blnr RequestMacReset;
+
 #define NumDrives 3
+extern ULONG MountPending;

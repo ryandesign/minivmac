@@ -20,8 +20,7 @@
 #define RTCEMDEV_H
 #endif
 
-extern Boolean RTC_Init(void);
-extern void  RTC_Save (void);
+extern blnr RTC_Init(void);
 extern void RTC_Interrupt(void);
 
 // VIA Interface Functions

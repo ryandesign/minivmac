@@ -90,8 +90,8 @@ UBYTE IWM_Read_Reg  (void);
 void  IWM_Write_Reg (UBYTE in);
 
 extern ULONG DataBus;
-extern Boolean ByteSizeAccess;
-extern Boolean WriteMemAccess;
+extern blnr ByteSizeAccess;
+extern blnr WriteMemAccess;
 
 void IWM_Access(CPTR addr)
 {

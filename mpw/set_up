@@ -62,6 +62,100 @@ IF not "`exists -q "{my_c_obj_d}"`"
 	NewFolder "{my_c_obj_d}"
 END
 
+#----- C Configuration file
+
+Set CnfgGlob "{my_c_src_d}CNFGGLOB.h"
+Echo -n > "{CnfgGlob}"
+
+Echo "/* make sure this is correct CNFGGLOB */" >> "{CnfgGlob}"
+IF {my_compiler} == SC_MrC
+	IF {my_target_env} == PowerPC
+		Echo "#ifndef __MRC__" >> "{CnfgGlob}"
+		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+		Echo "#endif" >> "{CnfgGlob}"
+	END
+	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+		Echo "#ifndef __SC__" >> "{CnfgGlob}"
+		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+		Echo "#endif" >> "{CnfgGlob}"
+		Echo "#ifdef powerc" >> "{CnfgGlob}"
+		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+		Echo "#endif" >> "{CnfgGlob}"
+		Echo "#ifdef __powerc" >> "{CnfgGlob}"
+		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+		Echo "#endif" >> "{CnfgGlob}"
+	END
+END
+IF {my_compiler} == C_PPCC
+	IF {my_target_env} == PowerPC
+		Echo "#ifndef __PPCC__" >> "{CnfgGlob}"
+		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+		Echo "#endif" >> "{CnfgGlob}"
+	END
+	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+		Echo "#ifndef applec" >> "{CnfgGlob}"
+		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+		Echo "#endif" >> "{CnfgGlob}"
+	END
+END
+IF {my_compiler} == metrowerks
+	Echo "#ifndef __MWERKS__" >> "{CnfgGlob}"
+	Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
+	Echo "#endif" >> "{CnfgGlob}"
+END
+
+Echo "" >> "{CnfgGlob}"
+
+IF {my_compiler} == SC_MrC
+	IF {my_target_env} == PowerPC
+		Echo "#define MyCompilerMrC 1" >> "{CnfgGlob}"
+	ELSE
+		Echo "#define MyCompilerSC 1" >> "{CnfgGlob}"
+	END
+END
+IF {my_compiler} == C_PPCC
+	IF {my_target_env} == PowerPC
+		Echo "#define MyCompilerPPCC 1" >> "{CnfgGlob}"
+	ELSE
+		Echo "#define MyCompilerMPWC 1" >> "{CnfgGlob}"
+	END
+END
+IF {my_compiler} == metrowerks
+	Echo "#define MyCompilerMetrowerks 1" >> "{CnfgGlob}"
+END
+
+IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC) || ({my_compiler} == metrowerks)
+	IF ({my_target_env} == PowerPC) || ({my_target_env} == SANE) || ({my_target_env} == FPU)
+		Echo "" >> "{CnfgGlob}"
+		Echo "#define BigEndianUnaligned 1" >> "{CnfgGlob}"
+		Echo "" >> "{CnfgGlob}"
+		Echo "#define HaveOSTarget 1" >> "{CnfgGlob}"
+		Echo "#define MacTarget 1" >> "{CnfgGlob}"
+	END
+END
+IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC) # but not in metrowerks
+	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+		Echo "" >> "{CnfgGlob}"
+		Echo "#define ShouldUnloadDataInit 1" >> "{CnfgGlob}"
+	END
+END
+
+IF {my_compiler} == SC_MrC
+	IF {my_target_env} == PowerPC
+		Echo "#define MayInline inline" >> "{CnfgGlob}"
+	END
+END
+IF {my_compiler} == metrowerks
+	Echo "#define MayInline __inline__" >> "{CnfgGlob}"
+END
+
+IF "`exists -q {CIncludes}Navigation.h`"
+	Echo "#define NavigationAvail 1" >> "{CnfgGlob}"
+END
+IF "`exists -q {CIncludes}Appearance.h`"
+	Echo "#define AppearanceAvail 1" >> "{CnfgGlob}"
+END
+
 #----  CallC / CallCFast  ---
 
 IF ({my_target_env} == SANE) || ({my_target_env} == FPU)

@@ -1,77 +1,16 @@
-Mini vMac: README (version 0.1.0)
+Mini vMac: README
 Paul C. Pratt
 www.gryphel.com
-February 27, 2001
+March 14, 2001
 
+All documentation is in the 'doc' folder, in
+html format. The starting point is 'default.html'.
 
-Mini vMac is a minor spin off of the program
-vMac. Its goal is to provide the simplest usable
-emulation of a Macintosh, instead of the
-fastest or most usable emulation. It can serve
-as a programmers introduction to vMac, having
-only about one tenth as much source code.
+If by some chance you don't want to use a web browser,
+the html code is formatted to be more or less
+readable using any text editor.
 
-Mini vMac emulates a Mac Plus, a Macintosh computer
-sold between 1986 and 1990, and currently only runs
-on Macintosh computers. It can be used to run old
-software that otherwise couldn't be used on recent
-machines. Like vMac, it requires a ROM image file
-to run, and so can be legally used only by those
-who own a Mac Plus.
-
-Mini vMac is smaller than vMac because it uses a
-much simpler, though slower, emulation of the 68000
-processor, and strips out all extra features, such
-as printing or saving screen images.
-
-Mini vMac is based upon the Macintosh port of vMac
-(see http://www.bannister.org/software/).
-Please see the file CREDITS for more information.
-
-Mini vMac is distributed under the terms of the
-GNU Public License, version 2.  For more information,
-see the file COPYING.
-
-Mini vMac is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the
-implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the license for more details.
-
-vMac is not GPL'd. Mini vMac is distributed under the
-GPL license with the gracious permission of the
-authors of vMac.
-
------
-
-contents of the Mini vMac distribution:
-
-README: this document
-	
-COPYING: The GPL license
-	
-CREDITS: acknowledgments
-
-doc: documentation folder
-	
-	manual: How to use the Mini vMac program
-	
-	build: How to build the Mini vMac program
-           from the source files
-			
-	to_do: Possible improvements for future versions.
-
-c_src: contains all of the C source code files.
-
-lists: lists of source files. Used by the
-       automatic build scripts.
-	
-mpw: contains scripts for the Macintosh Programmers
-     Workshop.
-
-mw: contains an AppleScript for use with
-    Metrowerks CodeWarrior.
-
-mac_res: contains the Macintosh resource file.
-	
-mydriver: source code for a fake sony driver that
-	      is patched into the emulated rom.
+This documentation is identical to what appears
+on the web page "http://www.gryphel.com/c/minivmac",
+at the time of release. The web page may contain
+a newer version.

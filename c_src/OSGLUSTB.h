@@ -30,12 +30,9 @@
 #define OSGLUSTB_H
 #endif
 
-extern void MacMsg(Str255 briefMsg, Str255 longMsg, Boolean fatal);
+extern void MacMsg(char *briefMsg, char *longMsg, blnr fatal);
 
-extern void zapOSGLUMACVars(void);
-extern void ResetOSGLUMAC(void);
-extern Boolean InitOSGLUSTB(void);
-extern void UnInitProgram(void);
+extern blnr OkCancelAlert(char *briefMsg, char *longMsg);
 
 extern WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
 extern WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
@@ -43,21 +40,14 @@ extern WORD vSonyEject(UWORD Drive_No);
 extern WORD vSonyVerify(UWORD Drive_No);
 extern WORD vSonyFormat(UWORD Drive_No);
 extern WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count);
-extern Boolean vSonyInserted (UWORD Drive_No);
-extern Boolean vSonyDiskLocked(UWORD Drive_No);
-extern Boolean AnyDiskInserted(void);
+extern blnr vSonyInserted (UWORD Drive_No);
+extern blnr vSonyDiskLocked(UWORD Drive_No);
+extern blnr AnyDiskInserted(void);
 
-ULONG GetMacDateInSecond(void);
+extern ULONG GetMacDateInSecond(void);
 
-void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right);
+extern void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right);
 
-Boolean CheckIntSixtieth(void);
-void WaitForIntSixtieth(void);
-Boolean InitSixtiethInt(void);
+extern blnr CheckIntSixtieth(blnr overdue);
 
-void MyMoveBytes(Ptr srcPtr, Ptr destPtr, LONG byteCount);
-
-extern Boolean RAM_Init (void);
-extern Boolean Load_ROM(void);
-extern UBYTE RTC_Load (void);
-extern void RTC_Save0 (void);
+extern void MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount);

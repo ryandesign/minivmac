@@ -29,4 +29,4 @@ extern void SCC_Access(CPTR addr);
 extern UBYTE VIA_GORA7(void);
 extern void  VIA_PORA7(UBYTE Data);
 
-extern Boolean Mouse_Enabled(void);
+extern blnr Mouse_Enabled(void);

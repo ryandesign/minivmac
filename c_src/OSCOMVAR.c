@@ -26,13 +26,9 @@
 
 #include "OSCOMVAR.h"
 
-Boolean HogCPU;
-
-unsigned char SpeedLimit;
-
 char *screencomparebuff;
 
-UWORD *RAM = NULL;
+UWORD *RAM = nullpr;
 
 ULONG kRAM_Size = 0; 
 
@@ -42,6 +38,13 @@ UBYTE PARAMRAM[PARAMRAMSize];
 
 UWORD CurMouseV = 0;
 UWORD CurMouseH = 0;
-UBYTE CurMouseButton = false;
+UBYTE CurMouseButton = falseblnr;
 
 ULONG theKeys[4];
+
+blnr PARAMRAMloaded = falseblnr;
+blnr RequestMacOff = falseblnr;
+blnr RequestMacInterrupt = falseblnr;
+blnr RequestMacReset = falseblnr;
+
+ULONG MountPending = 0;

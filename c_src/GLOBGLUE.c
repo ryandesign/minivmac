@@ -42,21 +42,23 @@
 #include "MOUSEMDV.h"
 #include "KBRDEMDV.h"
 
-void ZapGlobalVars(void)
+void ZapProgramVars(void)
 {
-	zapOSGLUMACVars();
 	ZapNMemoryVars();
 }
 
-Boolean InitProgram(void)
+blnr InitProgram(void)
 {
-	if (InitOSGLUSTB())
 	if (RTC_Init())
 	if (ROM_Init())
 	{
-		return true;
+		return trueblnr;
 	}
-	return false;
+	return falseblnr;
+}
+
+void UnInitProgram(void)
+{
 }
 
 void customreset(void)
@@ -67,7 +69,6 @@ void customreset(void)
 	VIA_Reset();
 	Memory_Reset();
 	Sony_Reset();
-	ResetOSGLUMAC();
 }
 
 void SixtiethSecondNotify(void)

@@ -21,7 +21,6 @@
 #endif
 
 extern void Sony_Reset(void);
-extern void vSonyInsertNotify (UWORD Drive_No);
 
 extern void Sony_Access(CPTR addr);
 

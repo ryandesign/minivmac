@@ -24,9 +24,15 @@
 #define SYSDEPNS_H
 #endif
 
-#include <Types.h>
+#include "CNFGGLOB.h"
 
-#define _MacOS
+#ifndef MayInline
+#define MayInline
+#endif
+
+#ifndef UnusedParam
+#define UnusedParam(p) (void) p
+#endif
 
 /* If char has more then 8 bits, good night. */
 typedef unsigned char UBYTE;
@@ -46,4 +52,15 @@ typedef long LONG;
 
 typedef ULONG CPTR;
 
-#define UnusedParam(p) (void) p
+#define blnr int
+#define trueblnr 1
+#define falseblnr 0
+
+#define nullpr ((void *) 0)
+
+typedef unsigned char ui3b;
+typedef ui3b *ui3p;
+#define anyp ui3p
+
+/* pascal string, single byte characters */
+#define ps3p ui3p

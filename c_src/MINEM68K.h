@@ -20,7 +20,7 @@
 #define MINEM68K_H
 #endif
 
-extern Boolean ViaException(void);
+extern blnr ViaException(void);
 extern void DiskInsertedPsuedoException(CPTR newpc, ULONG data);
 extern void SetBusError(CPTR addr);
 extern void SetAutoVector(void);

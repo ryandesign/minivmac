@@ -29,13 +29,18 @@
 
 #include "OSCOMVAR.h"
 
-extern void MacInterrupt (void);
-extern void m68k_reset(void);
-
-extern void vSonyInsertNotify (UWORD Drive_No);
 extern void Keyboard_Down (ULONG Key);
 extern void Keyboard_Up (ULONG Key);
 extern void Keyboard_Auto (ULONG Key);
 
 extern void ProgramMain(void);
-extern void SetProgramDone(void);
+
+#define kStrAboutTitle "Mini vMac 0.1.1, Copyright 2001."
+/*
+	version string also in Mac 'vers' resource
+	and windows info resource
+*/
+
+#define kStrAboutMessage "Including or based upon code by Bernd Schmidt, Philip Cummins, Richard F. Bannister, Weston Pawlowski, Paul Pratt, and others. See the README file for details."
+#define kStrTooManyImagesTitle "Too many Disk Images."
+#define kStrTooManyImagesMessage "Mini vMac can not mount more than three Disk Images. Try ejecting one."

@@ -35,12 +35,12 @@
 extern WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
 extern WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
 extern WORD vSonyEject(UWORD Drive_No);
-extern Boolean AnyDiskInserted(void);
+extern blnr vSonyInserted (UWORD Drive_No);
+extern blnr AnyDiskInserted(void);
 extern WORD vSonyVerify(UWORD Drive_No);
 extern WORD vSonyFormat(UWORD Drive_No);
 extern WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count);
-extern Boolean vSonyDiskLocked(UWORD Drive_No);
-extern void SetProgramDone(void);
+extern blnr vSonyDiskLocked(UWORD Drive_No);
 
 #define kDSK_Block_Base 0x00F40000
 
@@ -66,10 +66,9 @@ extern void SetProgramDone(void);
 #define kDSKCmdGetSize 5
 
 #define MinTicksBetweenInsert 60
-	/* if call PostEvent too frequently, insert events seems to get lost */
+	/* if call PostEvent too frequently, insert events seem to get lost */
 
 UWORD kDSK_Var[kDSK_numvars];
-ULONG MountPending;
 UWORD DelayUntilNextInsert;
 
 // This checks every VBL to see if the disk has been read
@@ -103,14 +102,9 @@ void Sony_Update (void)
 	}
 }
 
-void vSonyInsertNotify (UWORD Drive_No)
-{
-	MountPending |= ((ULONG)1 << Drive_No);
-}
-
 extern ULONG DataBus;
-extern Boolean ByteSizeAccess;
-extern Boolean WriteMemAccess;
+extern blnr ByteSizeAccess;
+extern blnr WriteMemAccess;
 
 void Sony_Access(CPTR addr)
 {
@@ -149,7 +143,7 @@ void Sony_Access(CPTR addr)
 								result = vSonyEject(Drive_No);
 								if (do_get_mem_word(&kDSK_Var[kDSK_QuitOnEject]) != 0) {
 									if (! AnyDiskInserted()) {
-										SetProgramDone();
+										RequestMacOff = trueblnr;
 									}
 								}
 								break;
@@ -165,6 +159,10 @@ void Sony_Access(CPTR addr)
 									result = vSonyGetSize(Drive_No, &Sony_Count);
 									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
 								}
+								break;
+							default:
+								/* unimplemented command */
+								result = -1;
 								break;
 						}
 						do_put_mem_word((UWORD *)&kDSK_Var[kDSK_Err], result);
@@ -184,6 +182,5 @@ void Sony_Reset (void)
 	for (i = 0; i < kDSK_numvars; ++i) {
 		kDSK_Var[i] = 0;
 	}
-	MountPending = 0;
 	DelayUntilNextInsert = 0;
 }

@@ -34,8 +34,8 @@ extern UBYTE *get_real_address(CPTR addr);
 
 extern CPTR AddressBus;
 extern ULONG DataBus;
-extern Boolean ByteSizeAccess;
-extern Boolean WriteMemAccess;
+extern blnr ByteSizeAccess;
+extern blnr WriteMemAccess;
 
 // VIA Interface Functions
 

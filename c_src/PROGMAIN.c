@@ -28,52 +28,82 @@
 
 #include "MINEM68K.h"
 #include "OSGLUSTB.h"
+#include "OSCOMVAR.h"
 
-extern void ZapGlobalVars(void);
-extern Boolean InitProgram(void);
+extern void ZapProgramVars(void);
+extern blnr InitProgram(void);
+extern void UnInitProgram(void);
 extern void SixtiethSecondNotify(void);
 extern void OneSecondNotify(void);
 
-static Boolean ProgramDone;
-
-void SetProgramDone(void)
+static void vSonyEjectAllDisks(void)
 {
-	ProgramDone = true;
+	WORD i;
+
+	for (i = 0; i < NumDrives; ++i) {
+		if (vSonyInserted(i)) {
+			(void) vSonyEject(i);
+		}
+	}
+}
+
+static int TicksLeftInSecond = 60;
+static blnr ProgramDone = falseblnr;
+
+static void DoEach60th(void)
+{
+	if (RequestMacOff) {
+		RequestMacOff = falseblnr;
+		if ((! AnyDiskInserted()) ||
+			OkCancelAlert("Are you sure you want to Quit?",
+				"You should shut down the emulated machine before quiting Mini vMac to prevent data corruption."))
+		{
+			ProgramDone = trueblnr;
+		}
+	}
+	if (RequestMacInterrupt) {
+		RequestMacInterrupt = falseblnr;
+		if (OkCancelAlert("Are you sure you want to Interrupt?",
+				"This will invoke any installed debugger. But as yet, most debuggers do not work with Mini vMac."))
+		{
+			MacInterrupt();
+		}
+	}
+	if (RequestMacReset) {
+		RequestMacReset = falseblnr;
+		if ((! AnyDiskInserted()) ||
+			OkCancelAlert("Are you sure you want to Reset?",
+				"Unsaved changes will be lost, and there is a risk of data corruption."))
+		{
+			vSonyEjectAllDisks();
+			m68k_reset();
+		}
+	}
+	SixtiethSecondNotify();
+	if (--TicksLeftInSecond <= 0) {
+		OneSecondNotify();
+		TicksLeftInSecond = 60;
+	}
 }
 
 static void MainEventLoop(void)
 {
-	int TicksLeftInSecond = 60;
 	long KiloInstructionsCounter = 0;
 
-	ProgramDone = false;
 	do {
-		// Clock = 7833600 Hz (7.8336 mHz)
-		// At best, we can get 3916800 instructions per second
-		// Normally, it's probably a lot lower than that, say
-		// 783360 instructions/sec if there's 10 cycles per instr.
-
 		m68k_go_nInstructions(1024);
 		++KiloInstructionsCounter;
 
-		if (SpeedLimit && (KiloInstructionsCounter >= 12)) {
-			WaitForIntSixtieth();
-		}
-		
-		if (CheckIntSixtieth()) {
+		if (CheckIntSixtieth(KiloInstructionsCounter >= 12)) {
 			if (KiloInstructionsCounter < 6) {
 				/*
 					if haven't executed enough instructions
 					yet, skip this interupt, even though
-					this will mess up timing.
+					this will mess up emulated clock.
 				*/
 			} else {
 				KiloInstructionsCounter = 0;
-				SixtiethSecondNotify();
-				if (--TicksLeftInSecond <= 0) {
-					OneSecondNotify();
-					TicksLeftInSecond = 60;
-				}
+				DoEach60th();
 			}
 		}
 	} while (! ProgramDone);
@@ -81,7 +111,7 @@ static void MainEventLoop(void)
 
 void ProgramMain(void)
 {
-	ZapGlobalVars();
+	ZapProgramVars();
 	if (InitProgram()) {
 		m68k_reset();
 		MainEventLoop();

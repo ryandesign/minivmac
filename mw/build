@@ -106,6 +106,28 @@ if oksofar then
 		set Preferences of panel "PPC CodeGen" to {Optimization Level:4} (* can be: 1, 2, 3 or 4 *)
 		set Preferences of panel "PPC CodeGen" to {Global Optimization:true}
 		
+		open file (my_c_src_d & "CNFGGLOB.h")
+		select document 1
+		set selection of document 1 to ""
+		
+		set selection of document 1 to "/* make sure this is correct CNFGGLOB */" & return
+		set selection of document 1 to "#ifndef __MWERKS__" & return
+		set selection of document 1 to "#error wrong CNFGGLOB.h" & return
+		set selection of document 1 to "#endif" & return
+		set selection of document 1 to return
+		set selection of document 1 to "#define MyCompilerMetrowerks 1" & return
+		set selection of document 1 to return
+		set selection of document 1 to "#define HaveOSTarget 1" & return
+		set selection of document 1 to "#define MacTarget 1" & return
+		set selection of document 1 to return
+		set selection of document 1 to "#define BigEndianUnaligned 1" & return
+		set selection of document 1 to "#define MayInline __inline__" & return
+		set selection of document 1 to "#define NavigationAvail 1" & return
+		set selection of document 1 to "#define AppearanceAvail 1" & return
+	
+		save document 1
+		close document 1
+		
 		-- add the right libraries		
 		Add Files (warrior_path & "MacOS Support:Libraries:Runtime:Runtime PPC:MSL RuntimePPC.LIB")
 		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:InterfaceLib")

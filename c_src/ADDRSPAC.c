@@ -100,8 +100,8 @@ static UBYTE vOverlay;
 
 CPTR AddressBus;
 ULONG DataBus;
-Boolean ByteSizeAccess;
-Boolean WriteMemAccess;
+blnr ByteSizeAccess;
+blnr WriteMemAccess;
 
 static void MM_Access(void)
 {
@@ -181,7 +181,7 @@ static UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then Bank
 #define Overlay_ROMmem_mask ROMmem_mask
 #define ROMmem_mask (kROM_Size - 1)
 
-static void SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPTR VirtualStart, ULONG vMask, Boolean Writeable)
+static void SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPTR VirtualStart, ULONG vMask, blnr Writeable)
 {
 	int i;
 	
@@ -198,7 +198,7 @@ static void SetPtrVecToNULL(UBYTE **x, ULONG n)
 	int i;
 
 	for (i = 0; i < n; i++) {
-		*x++ = NULL;
+		*x++ = nullpr;
 	}
 }
 
@@ -209,13 +209,13 @@ static void SetUpMemBanks(void)
 	SetPtrVecToNULL(BankReadAddr, NumMemBanks);
 	SetPtrVecToNULL(BankWritAddr, NumMemBanks);
 
-	SetUpBankRange(kROM_BaseBank, kROM_TopBank, (UBYTE *) ROM, kROM_Base, ROMmem_mask, false);
+	SetUpBankRange(kROM_BaseBank, kROM_TopBank, (UBYTE *) ROM, kROM_Base, ROMmem_mask, falseblnr);
 
 	if (vOverlay) {
-		SetUpBankRange(kROM_Overlay_BaseBank, kROM_Overlay_TopBank, (UBYTE *)ROM, kROM_Overlay_Base, Overlay_ROMmem_mask, false);
-		SetUpBankRange(kRAM_Overlay_BaseBank, kRAM_Overlay_TopBank, (UBYTE *)RAM, kRAM_Overlay_Base, Overlay_RAMmem_mask, true);
+		SetUpBankRange(kROM_Overlay_BaseBank, kROM_Overlay_TopBank, (UBYTE *)ROM, kROM_Overlay_Base, Overlay_ROMmem_mask, falseblnr);
+		SetUpBankRange(kRAM_Overlay_BaseBank, kRAM_Overlay_TopBank, (UBYTE *)RAM, kRAM_Overlay_Base, Overlay_RAMmem_mask, trueblnr);
 	} else {
-		SetUpBankRange(kRAM_BaseBank, kRAM_TopBank, (UBYTE *)RAM, kRAM_Base, RAMmem_mask, true);
+		SetUpBankRange(kRAM_BaseBank, kRAM_TopBank, (UBYTE *)RAM, kRAM_Base, RAMmem_mask, trueblnr);
 	}
 }
 
@@ -278,7 +278,7 @@ ULONG get_long(CPTR addr)
 	} else {
 		UBYTE *ba = BankReadAddr[bankindex(addr)];
 		
-		if (ba != NULL) {
+		if (ba != nullpr) {
 		    ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
 		    return do_get_mem_long(m); 
 		} else {
@@ -317,14 +317,14 @@ ULONG get_word(CPTR addr)
 	} else {
 		UBYTE *ba = BankReadAddr[bankindex(addr)];
 
-		if (ba != NULL) {
+		if (ba != nullpr) {
 		    UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
 		    return do_get_mem_word(m); 
 		} else {
 			AddressBus = addr;
 			DataBus = 0;
-			ByteSizeAccess = false;
-			WriteMemAccess = false;
+			ByteSizeAccess = falseblnr;
+			WriteMemAccess = falseblnr;
 			MM_Access();
 			return (UWORD) DataBus;
 		}
@@ -340,14 +340,14 @@ ULONG get_byte(CPTR addr)
 	}
 #endif
 
-	if (ba != NULL) {
+	if (ba != nullpr) {
 		UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
 		return *m;
 	} else {
 		AddressBus = addr;
 		DataBus = 0;
-		ByteSizeAccess = true;
-		WriteMemAccess = false;
+		ByteSizeAccess = trueblnr;
+		WriteMemAccess = falseblnr;
 		MM_Access();
 		return (UBYTE) DataBus;
 	}
@@ -368,7 +368,7 @@ void put_long(CPTR addr, ULONG l)
 	}
 #endif
 
-		if (ba != NULL) {
+		if (ba != nullpr) {
 		    ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
 		    do_put_mem_long(m, l);
 		} else {
@@ -390,14 +390,14 @@ void put_word(CPTR addr, ULONG w)
 	}
 #endif
 
-		if (ba != NULL) {
+		if (ba != nullpr) {
 		    UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
 			do_put_mem_word(m, w);
 		} else {
 			AddressBus = addr;
 			DataBus = w;
-			ByteSizeAccess = false;
-			WriteMemAccess = true;
+			ByteSizeAccess = falseblnr;
+			WriteMemAccess = trueblnr;
 			MM_Access();
 		}
     }
@@ -412,14 +412,14 @@ void put_byte(CPTR addr, ULONG b)
 	}
 #endif
 
-	if (ba != NULL) {
+	if (ba != nullpr) {
 	    UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
 	    *m = b;
 	} else {
 		AddressBus = addr;
 		DataBus = b;
-		ByteSizeAccess = true;
-		WriteMemAccess = true;
+		ByteSizeAccess = trueblnr;
+		WriteMemAccess = trueblnr;
 		MM_Access();
 	}
 }
@@ -434,7 +434,7 @@ UBYTE *get_real_address(CPTR addr)
 {
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
 
-	if (ba != NULL) {
+	if (ba != nullpr) {
 	    return (UBYTE *)((addr & MemBankAddrMask) + ba);
 	} else {
 		return default_xlate(addr);

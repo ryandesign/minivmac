@@ -52,16 +52,12 @@ RTC_Ty RTC;
 
 // RTC Functions
 
-Boolean RTC_Init (void)
+blnr RTC_Init (void)
 {
 	int Counter;
 	ULONG secs;
-	Boolean IsOk;
 
 	RTC.Enabled = RTC.Clock = RTC.Mode = RTC.Command = RTC.Data = RTC.Counter = 0;  
-	for (Counter = 0; Counter < PARAMRAMSize; Counter++) {
-		PARAMRAM[Counter] = 0;
-	}
 	
 	secs = GetMacDateInSecond();
 
@@ -75,28 +71,27 @@ Boolean RTC_Init (void)
 	RTC.Seconds_2[2] = RTC.Seconds_1[2];
 	RTC.Seconds_2[3] = RTC.Seconds_1[3];
 
-	PARAMRAM[0]=168;
-	PARAMRAM[3]=34;
-	PARAMRAM[4]=204;
-	PARAMRAM[5]=10;
-	PARAMRAM[6]=204;
-	PARAMRAM[7]=10;
-	PARAMRAM[13]=2;
-	PARAMRAM[14]=99;
-	PARAMRAM[16]=3;
-	PARAMRAM[17]=83;
-	PARAMRAM[18]=4;
-	PARAMRAM[19]=76;
+	if (! PARAMRAMloaded) {	
+		for (Counter = 0; Counter < PARAMRAMSize; Counter++) {
+			PARAMRAM[Counter] = 0;
+		}
+		PARAMRAM[0]=168;
+		PARAMRAM[3]=34;
+		PARAMRAM[4]=204;
+		PARAMRAM[5]=10;
+		PARAMRAM[6]=204;
+		PARAMRAM[7]=10;
+		PARAMRAM[13]=2;
+		PARAMRAM[14]=99;
+		PARAMRAM[16]=3;
+		PARAMRAM[17]=83;
+		PARAMRAM[18]=4;
+		PARAMRAM[19]=76;
 	
-	PARAMRAM[20]=1; /* hog cpu */
-	PARAMRAM[21]=0; /* SpeedLimit */
-
-	IsOk = (RTC_Load() == 0);
+		PARAMRAMloaded = trueblnr;
+	}	
 	
-	HogCPU = PARAMRAM[20];
-	SpeedLimit = PARAMRAM[21];
-	
-	return IsOk;
+	return trueblnr;
 }
 
 void RTC_Interrupt (void)
@@ -193,7 +188,7 @@ void RTC_Read_Reg (void)
       RTC.Data = PARAMRAM[((RTC.Command & 0x3C) >> 2)]; break;
     default :
       RTC.Data = 0;
-      Debugger();
+      /* Debugger(); */
 #     ifdef _RTC_Debug
       printf("RTC Read Reg Unknown, %2x\n", RTC.Command);
 #     endif
@@ -246,14 +241,6 @@ void RTC_Write_Reg (void)
       break;
   }
   RTC.Command = RTC.Data = RTC.Counter = RTC.Mode = 0;
-}
-
-void RTC_Save (void)
-{
-
-	PARAMRAM[20] = HogCPU;
-	PARAMRAM[21] = SpeedLimit;
-	RTC_Save0();
 }
 
 // VIA Interface Functions

@@ -29,31 +29,52 @@
 #define ENDIANAC_H
 #endif
 
-#define BIGENDIAN
-#define PPC
+#ifndef BigEndianUnaligned
+#define BigEndianUnaligned 0
+#endif
 
-#ifndef BIGENDIAN
+#define do_get_mem_byte(a) (*((UBYTE *)(a)))
 
-static __inline__ ULONG do_get_mem_long(ULONG *a)
-{
-    UBYTE *b = (UBYTE *)a;
-    
-    return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
-}
-
-static __inline__ UWORD do_get_mem_word(UWORD *a)
+#if BigEndianUnaligned
+#define do_get_mem_word(a) (*((UWORD *)(a)))
+#else
+static MayInline UWORD do_get_mem_word(UWORD *a)
 {
     UBYTE *b = (UBYTE *)a;
     
     return (*b << 8) | (*(b+1));
 }
+#endif
 
-static __inline__ UBYTE do_get_mem_byte(UBYTE *a)
+#if BigEndianUnaligned
+#define do_get_mem_long(a) (*((ULONG *)(a)))
+#else
+static MayInline ULONG do_get_mem_long(ULONG *a)
 {
-    return *a;
+    UBYTE *b = (UBYTE *)a;
+    
+    return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
 }
+#endif
 
-static __inline__ void do_put_mem_long(ULONG *a, ULONG v)
+#define do_put_mem_byte(a, v) ((*((UBYTE *)(a))) = (v))
+
+#if BigEndianUnaligned
+#define do_put_mem_word(a, v) ((*((UWORD *)(a))) = (v))
+#else
+static MayInline void do_put_mem_word(UWORD *a, UWORD v)
+{
+    UBYTE *b = (UBYTE *)a;
+    
+    *b = v >> 8;
+    *(b+1) = v;
+}
+#endif
+
+#if BigEndianUnaligned
+#define do_put_mem_long(a, v) ((*((ULONG *)(a))) = (v))
+#else
+static MayInline void do_put_mem_long(ULONG *a, ULONG v)
 {
     UBYTE *b = (UBYTE *)a;
     
@@ -62,101 +83,4 @@ static __inline__ void do_put_mem_long(ULONG *a, ULONG v)
     *(b+2) = v >> 8;
     *(b+3) = v;
 }
-
-static __inline__ void do_put_mem_word(UWORD *a, UWORD v)
-{
-    UBYTE *b = (UBYTE *)a;
-    
-    *b = v >> 8;
-    *(b+1) = v;
-}
-
-static __inline__ void do_put_mem_byte(UBYTE *a, UBYTE v)
-{
-    *a = v;
-}
-
-#else /* Big endian memory functions */
-
-#if 0
-#define InLineKeyWord __inline__
-#else
-#define InLineKeyWord inline
-#endif
-
-#ifdef PPC
-#if 0
-static InLineKeyWord ULONG do_get_mem_long(ULONG *a)
-{
-    return *a;
-}
-#else
-#define do_get_mem_long(a) (*((ULONG *)(a)))
-#endif
-#else /* fixes IRIX, Solaris, and HP-UX. */
-static InLineKeyWord ULONG do_get_mem_long(ULONG *a)
-{
-    UBYTE *b = (UBYTE *)a;
-   
-    return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
-}
-#endif
-
-#if 0
-static InLineKeyWord UWORD do_get_mem_word(UWORD *a)
-{
-    return *a;
-}
-#else
-#define do_get_mem_word(a) (*((UWORD *)(a)))
-#endif
-
-#if 0
-static InLineKeyWord UBYTE do_get_mem_byte(UBYTE *a)
-{
-    return *a;
-}
-#else
-#define do_get_mem_byte(a) (*((UBYTE *)(a)))
-#endif
-
-#ifdef PPC
-#if 0
-static InLineKeyWord void do_put_mem_long(ULONG *a, ULONG v)
-{
-    *a = v;
-}
-#else
-#define do_put_mem_long(a, v) ((*((ULONG *)(a))) = (v))
-#endif
-#else /* fixes Solaris, IRIX, and HP-UX */
-static InLineKeyWord void do_put_mem_long(ULONG *a, ULONG v)
-{
-    UBYTE *b = (UBYTE *)a;
- 
-    *b = v >> 24;
-    *(b+1) = v >> 16;
-    *(b+2) = v >> 8;
-    *(b+3) = v;
-}  
-#endif
-
-#if 0
-static InLineKeyWord void do_put_mem_word(UWORD *a, UWORD v)
-{
-    *a = v;
-}
-#else
-#define do_put_mem_word(a, v) ((*((UWORD *)(a))) = (v))
-#endif
-
-#if 0
-static InLineKeyWord void do_put_mem_byte(UBYTE *a, UBYTE v)
-{
-    *a = v;
-}
-#else
-#define do_put_mem_byte(a, v) ((*((UBYTE *)(a))) = (v))
-#endif
-
 #endif

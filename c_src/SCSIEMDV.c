@@ -105,8 +105,8 @@ void  SCSI_Reset (void)
 }
 
 extern ULONG DataBus;
-extern Boolean ByteSizeAccess;
-extern Boolean WriteMemAccess;
+extern blnr ByteSizeAccess;
+extern blnr WriteMemAccess;
 
 void SCSI_Access(CPTR addr)
 {
