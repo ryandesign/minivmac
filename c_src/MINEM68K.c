@@ -1,7 +1,7 @@
 /*
 	MINEM68K.c
 
-	Copyright (C) 2001 Bernd Schmidt, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -29,18 +29,20 @@
 	processors or the FPU.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
 
 #include "ENDIANAC.h"
 
 #include "ADDRSPAC.h"
 #include "GLOBGLUE.h"
+#endif
 
 #include "MINEM68K.h"
 
 typedef unsigned char flagtype;
 
-static struct regstruct
+LOCALVAR struct regstruct
 {
 	ULONG regs[16];
 	CPTR usp;
@@ -52,16 +54,17 @@ static struct regstruct
 	flagtype m;
 	flagtype AutoVectorPending;
 	flagtype TracePending;
+	flagtype ExternalInterruptPending;
 } regs;
 
 #define m68k_dreg(num) (regs.regs[(num)])
 #define m68k_areg(num) (regs.regs[(num)+8])
 
-static flagtype regflags_c;
-static flagtype regflags_z;
-static flagtype regflags_n;
-static flagtype regflags_v;
-static flagtype regflags_x;
+LOCALVAR flagtype regflags_c;
+LOCALVAR flagtype regflags_z;
+LOCALVAR flagtype regflags_n;
+LOCALVAR flagtype regflags_v;
+LOCALVAR flagtype regflags_x;
 
 #define ZFLG (regflags_z)
 #define NFLG (regflags_n)
@@ -69,9 +72,9 @@ static flagtype regflags_x;
 #define VFLG (regflags_v)
 #define XFLG (regflags_x)
 
-#define LOCALPROCUSEDONCE static MayInline void
+#define LOCALPROCUSEDONCE LOCALFUNC MayInline void
 
-static MayInline int cctrue(const int cc)
+LOCALFUNC MayInline int cctrue(const int cc)
 {
 	switch(cc){
 		case 0:  return 1;                       /* T */
@@ -94,7 +97,7 @@ static MayInline int cctrue(const int cc)
 	}
 }
 
-static UWORD m68k_getSR(void)
+LOCALFUNC UWORD m68k_getSR(void)
 {
 	return (regs.t1 << 15)
 			| (regs.s << 13) | (regs.m << 12) | (regs.intmask << 8)
@@ -102,9 +105,9 @@ static UWORD m68k_getSR(void)
 			|  CFLG;
 }
 
-void NeedToGetOut(void);
+FORWARDPROC NeedToGetOut(void);
 
-static MayInline void m68k_setCR(UWORD newcr)
+LOCALFUNC MayInline void m68k_setCR(UWORD newcr)
 {
 	XFLG = (newcr >> 4) & 1;
 	NFLG = (newcr >> 3) & 1;
@@ -113,9 +116,12 @@ static MayInline void m68k_setCR(UWORD newcr)
 	CFLG = newcr & 1;
 }
 
-static void m68k_setSR(UWORD newsr)
+FORWARDPROC SetExternalInterruptPending(void);
+
+LOCALPROC m68k_setSR(UWORD newsr)
 {
 	int olds = regs.s;
+	int oldintmask = regs.intmask;
 
 	m68k_setCR(newsr);
 	regs.t1 = (newsr >> 15) & 1;
@@ -130,6 +136,9 @@ static void m68k_setSR(UWORD newsr)
 			regs.usp = m68k_areg(7);
 			m68k_areg(7) = regs.isp;
 		}
+	}
+	if (regs.intmask != oldintmask) {
+		SetExternalInterruptPending();
 	}
 
 	if (regs.t1) {
@@ -153,8 +162,8 @@ static void m68k_setSR(UWORD newsr)
 #define USE_POINTER
 
 #ifdef USE_POINTER
-	static UBYTE *pc_p;
-	static UBYTE *pc_oldp;
+	LOCALVAR UBYTE *pc_p;
+	LOCALVAR UBYTE *pc_oldp;
 #endif
 
 // bill comment ---
@@ -182,7 +191,7 @@ static void m68k_setSR(UWORD newsr)
 
 #ifdef USE_POINTER
 
-static MayInline ULONG nextibyte(void)
+LOCALFUNC MayInline ULONG nextibyte(void)
 {
 //    ULONG r = do_get_mem_byte(pc_p+1);
 	ULONG r;
@@ -193,7 +202,7 @@ static MayInline ULONG nextibyte(void)
 	return r;
 }
 
-static MayInline ULONG nextiword(void)
+LOCALFUNC MayInline ULONG nextiword(void)
 {
 //    ULONG r = do_get_mem_word((UWORD *)pc_p);
 	ULONG r;
@@ -204,7 +213,7 @@ static MayInline ULONG nextiword(void)
 	return r;
 }
 
-static MayInline ULONG nextilong(void)
+LOCALFUNC MayInline ULONG nextilong(void)
 {
 //    ULONG r = do_get_mem_long((ULONG *)pc_p);
 	ULONG r;
@@ -216,21 +225,21 @@ static MayInline ULONG nextilong(void)
 
 #else
 
-static MayInline ULONG nextibyte(void)
+LOCALFUNC MayInline ULONG nextibyte(void)
 {
 	ULONG r = get_byte(regs.pc+1);
 	regs.pc += 2;
 	return r;
 }
 
-static MayInline ULONG nextiword(void)
+LOCALFUNC MayInline ULONG nextiword(void)
 {
 	ULONG r = get_word(regs.pc);
 	regs.pc += 2;
 	return r;
 }
 
-static MayInline ULONG nextilong(void)
+LOCALFUNC MayInline ULONG nextilong(void)
 {
 	ULONG r = get_long(regs.pc);
 	regs.pc += 4;
@@ -239,7 +248,7 @@ static MayInline ULONG nextilong(void)
 
 #endif
 
-static MayInline void BackupPC(void)
+LOCALFUNC MayInline void BackupPC(void)
 {
 #ifdef USE_POINTER
 	pc_p -= 2;
@@ -251,9 +260,9 @@ static MayInline void BackupPC(void)
 #define MakeDumpFile 0
 
 #if MakeDumpFile
-extern void DumpAJump(CPTR fromaddr, CPTR toaddr);
+IMPORTPROC DumpAJump(CPTR fromaddr, CPTR toaddr);
 
-static void DumpAJump2(toaddr)
+LOCALPROC DumpAJump2(toaddr)
 {
 	CPTR fromaddr = regs.pc + ((char *)pc_p - (char *)pc_oldp);
 
@@ -272,7 +281,7 @@ static void DumpAJump2(toaddr)
 
 #ifdef USE_POINTER
 
-static MayInline void m68k_setpc(CPTR newpc)
+LOCALFUNC MayInline void m68k_setpc(CPTR newpc)
 {
 #if MakeDumpFile
 	DumpAJump2(newpc);
@@ -286,34 +295,27 @@ static MayInline void m68k_setpc(CPTR newpc)
 	regs.pc = newpc;
 }
 
-static MayInline CPTR m68k_getpc(void)
+LOCALFUNC MayInline CPTR m68k_getpc(void)
 {
 	return regs.pc + ((char *)pc_p - (char *)pc_oldp);
 }
 
 #else
 
-static MayInline void m68k_setpc(CPTR newpc)
+LOCALFUNC MayInline void m68k_setpc(CPTR newpc)
 {
 //    regs.pc = newpc;
 // bill mod
 	regs.pc = newpc & 0x00ffFFFF;
 }
 
-static MayInline CPTR m68k_getpc(void)
+LOCALFUNC MayInline CPTR m68k_getpc(void)
 {
 	return regs.pc;
 }
 #endif
 
-/* Opcode of faulting instruction */
-static UWORD last_op_for_exception_3;
-/* PC at fault time */
-static CPTR last_addr_for_exception_3;
-/* Address that generated the exception */
-static CPTR last_fault_for_exception_3;
-
-static void ExceptionTo(CPTR newpc)
+LOCALPROC ExceptionTo(CPTR newpc)
 {
 	UWORD saveSR = m68k_getSR();
 
@@ -331,29 +333,48 @@ static void ExceptionTo(CPTR newpc)
 	regs.TracePending = falseblnr;
 }
 
-static void Exception(int nr)
+LOCALPROC Exception(int nr)
 {
 	ExceptionTo(get_long(4 * nr));
 }
 
-void DiskInsertedPsuedoException(CPTR newpc, ULONG data)
+GLOBALPROC DiskInsertedPsuedoException(CPTR newpc, ULONG data)
 {
 	ExceptionTo(newpc);
 	m68k_areg(7) -= 4;
 	put_long (m68k_areg(7), data);
 }
 
-blnr ViaException(void)
+extern blnr VIAInterruptRequest;
+
+LOCALFUNC int ReadInterruptPriorityLevel(void)
 {
-	if (regs.intmask <= 1) {
-		Exception(25);
-		return trueblnr;
-	} else {
-		return falseblnr;
+	int v = 0;
+
+	if (VIAInterruptRequest) {
+		v |= 1;
+	}
+	return v;
+}
+
+LOCALPROC DoCheckExternalInterruptPending(void)
+{
+	int level = ReadInterruptPriorityLevel();
+	if ((level > regs.intmask) || (level == 7)) {
+		Exception(24 + level);
+		regs.intmask = level;
 	}
 }
 
-void m68k_reset(void)
+GLOBALPROC ViaException(void)
+{
+	int level = ReadInterruptPriorityLevel();
+	if ((level > regs.intmask) || (level == 7)) {
+		SetExternalInterruptPending();
+	}
+}
+
+GLOBALPROC m68k_reset(void)
 {
 
 	customreset();
@@ -369,16 +390,17 @@ void m68k_reset(void)
 	regs.t1 = 0;
 	ZFLG = CFLG = NFLG = VFLG = 0;
 	regs.AutoVectorPending = falseblnr;
+	regs.ExternalInterruptPending = falseblnr;
 	regs.TracePending = falseblnr;
 	regs.intmask = 7;
 }
 
-void MacInterrupt (void)
+GLOBALPROC MacInterrupt (void)
 {
 	Exception(28);
 }
 
-static MayInline ULONG get_disp_ea (ULONG base)
+LOCALFUNC MayInline ULONG get_disp_ea (ULONG base)
 {
 	UWORD dp = nextiword();
 	int reg = (dp >> 12) & 15;
@@ -388,9 +410,9 @@ static MayInline ULONG get_disp_ea (ULONG base)
 	return base + (BYTE)(dp) + regd;
 }
 
-static ULONG opsize;
+LOCALVAR ULONG opsize;
 
-static void op_illg(void);
+LOCALPROC op_illg(void);
 
 #define AKMemory 0
 #define AKAddrReg 1
@@ -399,10 +421,10 @@ static void op_illg(void);
 #define AKCCR 4
 #define AKSR 5
 
-static ULONG ArgKind;
-static ULONG ArgAddr;
+LOCALVAR ULONG ArgKind;
+LOCALVAR ULONG ArgAddr;
 
-static void DecodeModeRegister(ULONG themode, ULONG thereg)
+LOCALPROC DecodeModeRegister(ULONG themode, ULONG thereg)
 {
 	switch (themode) {
 		case 0 :
@@ -491,7 +513,7 @@ static void DecodeModeRegister(ULONG themode, ULONG thereg)
 	}
 }
 
-static LONG GetArgValue(void)
+LOCALFUNC LONG GetArgValue(void)
 {
 	LONG v;
 
@@ -505,6 +527,7 @@ static LONG GetArgValue(void)
 					v = (LONG)(WORD)get_word(ArgAddr);
 					break;
 				case 4:
+				default: /* for compiler. should be 1, 2, or 4 */
 					v = get_long(ArgAddr);
 					break;
 			}
@@ -537,6 +560,7 @@ static LONG GetArgValue(void)
 			}
 			break;
 		case AKSR:
+		default: /* for compiler. shouldn't be any other cases */
 			{
 #ifdef MyCompilerMrC
 #pragma noinline_site m68k_getSR
@@ -549,7 +573,7 @@ static LONG GetArgValue(void)
 	return v;
 }
 
-static void SetArgValue(LONG v)
+LOCALPROC SetArgValue(LONG v)
 {
 	switch (ArgKind) {
 		case AKMemory:
@@ -597,7 +621,7 @@ static void SetArgValue(LONG v)
 	}
 }
 
-static void DoMove(ULONG m1, ULONG r1, ULONG m2,ULONG r2) /* MOVE */
+LOCALPROC DoMove(ULONG m1, ULONG r1, ULONG m2,ULONG r2) /* MOVE */
 {
 	LONG src;
 
@@ -609,6 +633,16 @@ static void DoMove(ULONG m1, ULONG r1, ULONG m2,ULONG r2) /* MOVE */
 		ZFLG = (src == 0);
 		NFLG = (src < 0);
 	}
+	SetArgValue(src);
+}
+
+LOCALPROC DoMoveNoFlags(ULONG m1, ULONG r1, ULONG m2,ULONG r2) /* MOVE */
+{
+	LONG src;
+
+	DecodeModeRegister(m1, r1);
+	src = GetArgValue();
+	DecodeModeRegister(m2, r2);
 	SetArgValue(src);
 }
 
@@ -642,7 +676,7 @@ static void DoMove(ULONG m1, ULONG r1, ULONG m2,ULONG r2) /* MOVE */
 
 #define unextendopsizedstvalue() if (opsize == 1) {dstvalue = (UBYTE)dstvalue;} else if  (opsize == 2) {dstvalue = (UWORD)dstvalue;}
 
-static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
+LOCALPROC DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 {
 	LONG srcvalue;
 	LONG dstvalue;
@@ -977,7 +1011,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 	SetArgValue(dstvalue);
 }
 
-static void DoCompare(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
+LOCALPROC DoCompare(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
 {
 	LONG srcvalue;
 	LONG dstvalue;
@@ -1000,7 +1034,7 @@ static void DoCompare(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
 	}
 }
 
-static void DoCompareA(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
+LOCALPROC DoCompareA(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
 {
 	LONG srcvalue;
 	LONG dstvalue;
@@ -1033,7 +1067,7 @@ static void DoCompareA(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
 	}
 }
 
-static void DoBinBitOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
+LOCALPROC DoBinBitOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 {
 	LONG srcvalue;
 	LONG dstvalue;
@@ -1086,7 +1120,7 @@ static void DoBinBitOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 #define UniOpNbcd 3
 #define UniOpTAS 4
 
-static void DoUniOp1(ULONG m2, ULONG r2, ULONG uniop)
+LOCALPROC DoUniOp1(ULONG m2, ULONG r2, ULONG uniop)
 {
 	LONG dstvalue;
 
@@ -1173,7 +1207,7 @@ static void DoUniOp1(ULONG m2, ULONG r2, ULONG uniop)
 	}
 }
 
-static void DoBinOpMul1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
+LOCALPROC DoBinOpMul1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 {
 	LONG srcvalue;
 	LONG dstvalue;
@@ -1210,7 +1244,7 @@ static void DoBinOpMul1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 	SetArgValue(dstvalue);
 }
 
-static void DoBinOpDiv1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
+LOCALPROC DoBinOpDiv1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 {
 	LONG srcvalue;
 	LONG dstvalue;
@@ -1269,7 +1303,7 @@ static void DoBinOpDiv1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 	SetArgValue(dstvalue);
 }
 
-static ULONG opcode;
+LOCALVAR ULONG opcode;
 
 #define b76 ((opcode >> 6) & 3)
 #define b8 ((opcode >> 8) & 1)
@@ -1278,7 +1312,7 @@ static ULONG opcode;
 #define md6 ((opcode >> 6) & 7)
 #define rg9 ((opcode >> 9) & 7)
 
-static void FindOpSizeFromb76(void)
+LOCALPROC FindOpSizeFromb76(void)
 {
 	switch (b76) {
 		case 0 :
@@ -1293,7 +1327,7 @@ static void FindOpSizeFromb76(void)
 	}
 }
 
-static ULONG bitop(void)
+LOCALFUNC ULONG bitop(void)
 {
 	switch (b76) {
 		case 0 :
@@ -1315,7 +1349,7 @@ static ULONG bitop(void)
 	}
 }
 
-static ULONG octdat(ULONG x)
+LOCALFUNC ULONG octdat(ULONG x)
 {
 	if (x == 0) {
 		return 8;
@@ -1324,7 +1358,7 @@ static ULONG octdat(ULONG x)
 	}
 }
 
-static blnr GetEffectiveAddress(LONG *v)
+LOCALFUNC blnr GetEffectiveAddress(LONG *v)
 {
 	if (ArgKind == AKMemory) {
 		*v = ArgAddr;
@@ -1437,6 +1471,7 @@ LOCALPROCUSEDONCE DoCode0(void)
 					BinOp = BinOpAdd;
 					break;
 				case 5 :
+				default: /* for compiler. should be 0, 1, 2, 3, or 5 */
 					BinOp = BinOpEor;
 					break;
 			}
@@ -1516,7 +1551,7 @@ LOCALPROCUSEDONCE DoTest1(ULONG m1, ULONG r1)
 	NFLG = (srcvalue < 0);
 }
 
-static void reglist (WORD direction, ULONG m1, ULONG r1)
+LOCALPROC reglist (WORD direction, ULONG m1, ULONG r1)
 {
 	WORD z;
 	LONG p;
@@ -1608,7 +1643,7 @@ static void reglist (WORD direction, ULONG m1, ULONG r1)
 	}
 }
 
-void m68k_setstopped(void);
+FORWARDPROC m68k_setstopped(void);
 
 LOCALPROCUSEDONCE DoCode4(void)
 {
@@ -1638,7 +1673,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 					DoUniOp1(mode,reg, UniOpNegX);
 				} else {
 					opsize = 2;
-					DoMove(11,0, mode, reg);
+					DoMoveNoFlags(11,0, mode, reg);
 				}
 				break;
 			case 1 :
@@ -1649,7 +1684,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 				} else {
 					/* 0100001011mmmrrr */
 					opsize = 2;
-					DoMove(10, 0, mode, reg);
+					DoMoveNoFlags(10, 0, mode, reg);
 				}
 				break;
 			case 2 :
@@ -1660,7 +1695,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 				} else {
 					/* 0100010011mmmrrr */
 					opsize = 2;
-					DoMove(mode, reg, 10, 0);
+					DoMoveNoFlags(mode, reg, 10, 0);
 				}
 				break;
 			case 3 :
@@ -1671,7 +1706,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 				} else {
 					/* 0100011011mmmrrr */
 					opsize = 2;
-					DoMove(mode, reg, 11, 0);
+					DoMoveNoFlags(mode, reg, 11, 0);
 				}
 				break;
 			case 4 :
@@ -2158,7 +2193,7 @@ LOCALPROCUSEDONCE DoCodeD(void)
 	}
 }
 
-static ULONG rolops(ULONG x)
+LOCALFUNC ULONG rolops(ULONG x)
 {
 	ULONG binop;
 
@@ -2173,6 +2208,7 @@ static ULONG rolops(ULONG x)
 			binop = BinOpRXL;
 			break;
 		case 3 :
+		default: /* for compiler. should be 0, 1, 2, or 3 */
 			binop = BinOpROL;
 			break;
 	}
@@ -2204,15 +2240,15 @@ LOCALPROCUSEDONCE DoCodeF(void)
 	op_illg();
 }
 
-static void op_illg(void)
+LOCALPROC op_illg(void)
 {
 	BackupPC();
 	Exception(4);
 }
 
-static ULONG MaxInstructionsToGo;
+LOCALVAR ULONG MaxInstructionsToGo;
 
-static void m68k_go_MaxInstructions(void)
+LOCALPROC m68k_go_MaxInstructions(void)
 {
 	/* MaxInstructionsToGo must be >= 1 on entry */
 	do {
@@ -2272,9 +2308,9 @@ static void m68k_go_MaxInstructions(void)
 	} while (--MaxInstructionsToGo != 0);
 }
 
-static ULONG MoreInstructionsToGo;
+LOCALVAR ULONG MoreInstructionsToGo;
 
-void NeedToGetOut(void)
+LOCALPROC NeedToGetOut(void)
 {
 	if (MaxInstructionsToGo == 0) {
 		/*
@@ -2289,25 +2325,31 @@ void NeedToGetOut(void)
 	}
 }
 
-static void do_trace(void)
+LOCALPROC do_trace(void)
 {
 	regs.TracePending = trueblnr;
 	NeedToGetOut();
 }
 
-void SetAutoVector(void)
+GLOBALPROC SetAutoVector(void)
 {
 	regs.AutoVectorPending = trueblnr;
 	NeedToGetOut();
 }
 
-void m68k_setstopped(void)
+LOCALPROC SetExternalInterruptPending(void)
+{
+	regs.ExternalInterruptPending = trueblnr;
+	NeedToGetOut();
+}
+
+LOCALPROC m68k_setstopped(void)
 {
 	/* not implemented. doesn't seemed to be used on Mac Plus */
 	Exception(4); /* fake an illegal instruction */
 }
 
-void m68k_go_nInstructions(ULONG n)
+GLOBALPROC m68k_go_nInstructions(ULONG n)
 {
 	MaxInstructionsToGo = n;
 	do {
@@ -2319,6 +2361,10 @@ void m68k_go_nInstructions(ULONG n)
 		if (regs.AutoVectorPending) {
 			Exception(regs.intmask+24);
 			regs.AutoVectorPending = falseblnr;
+		}
+		if (regs.ExternalInterruptPending) {
+			DoCheckExternalInterruptPending();
+			regs.ExternalInterruptPending = falseblnr;
 		}
 		if (regs.TracePending) {
 			Exception(9);

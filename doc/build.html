@@ -5,10 +5,12 @@ Building Mini vMac
 
 </TITLE> </HEAD> <BODY>
 
-<A NAME="top"> </A>
-<I> <A href="http://www.gryphel.com">www.gryphel.com</A>/c/<A href="default.html">minivmac</A>/build </I>
+<A HREF="todo.html">Next</A> |
+<A HREF="contents.html">Back</A> |
+<I> <A href="http://www.gryphel.com">www.gryphel.com</A>/c/<A href="http://www.gryphel.com/c/minivmac">minivmac</A>/<A href="default.html">doc</A>/build </I>
+
 <BR>
-copyright (c) 2001 Paul C. Pratt - last update 3/27/01
+copyright (c) 2002 Paul C. Pratt - last update 1/19/02
 <BR>
 <HR>
 
@@ -20,7 +22,7 @@ copyright (c) 2001 Paul C. Pratt - last update 3/27/01
 
 How to build the Mini vMac program
 from the source files, for
-three supported development environments:
+four supported development environments:
 
 <P>
 Building with MPW:
@@ -58,22 +60,27 @@ Building with Metrowerks CodeWarrior:
 <P>
 Building with Microsoft Visual C++:
 	<BLOCKQUOTE>
-	This needs to be written.  Here are some brief notes
-	for the moment:
-	<P>
-	I don't know how
-	to set up a project with a script, so this
-	has to be done manually. Copy 'tool/msvc/CNFGGLOB.h'
-	into the 'c_src' folder, replacing the existing
-	file. Create a new project and add all the c files
-	in the 'c_src' folder. Also add the resource file
-	'platform/win/main.rc'. The project can now be
-	built.
 	
+	I don't know how to script Microsoft Visual C++ to
+	automate setting up a project and compiling. The file 'build'
+	inside the 'tool/msvc' folder has some instructions
+	for doing this manually.
+	
+	</BLOCKQUOTE>
+
+<P>
+Building with Bash (or similar shell for unix (or similar)):
+	<BLOCKQUOTE>
+	Bash can be to used run script files. The
+	file 'build' inside the 'tool/bash' folder is
+	such a script. See the comments at the
+	beginning of the file on how to use it.
 	</BLOCKQUOTE>
 
 <HR>
 
-<A HREF="todo.html">Next</A> | <A HREF="default.html">Index</A> | <A HREF="#top">Top</A>
+<A HREF="todo.html">Next</A> |
+<A HREF="contents.html">Back</A> |
+<I> <A href="http://www.gryphel.com">www.gryphel.com</A>/c/<A href="http://www.gryphel.com/c/minivmac">minivmac</A>/<A href="default.html">doc</A>/build </I>
 
 </BODY> </HTML>

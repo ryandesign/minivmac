@@ -1,7 +1,7 @@
 /*
 	GLOBGLUE.c
 
-	Copyright (C) 2001 Bernd Schmidt, Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -24,30 +24,42 @@
 	Bernd Schmidt.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+
+#include "MYOSGLUE.h"
+#endif
 
 #include "GLOBGLUE.h"
 
-#include "OSGLUSTB.h"
-#include "ADDRSPAC.h"
-#include "IWMEMDEV.h"
-#include "ROMEMDEV.h"
-#include "RTCEMDEV.h"
-#include "SCCEMDEV.h"
-#include "SCSIEMDV.h"
-#include "SCRNEMDV.h"
-#include "SONYEMDV.h"
-#include "VIAEMDEV.h"
-#include "PROGMAIN.h"
-#include "MOUSEMDV.h"
-#include "KBRDEMDV.h"
+IMPORTPROC ZapNMemoryVars(void);
 
-void ZapProgramVars(void)
+IMPORTFUNC blnr RTC_Init(void);
+IMPORTFUNC blnr ROM_Init(void);
+
+IMPORTPROC IWM_Reset(void);
+IMPORTPROC SCC_Reset(void);
+IMPORTPROC SCSI_Reset(void);
+IMPORTPROC VIA_Reset(void);
+IMPORTPROC Memory_Reset(void);
+IMPORTPROC Sony_Reset(void);
+
+IMPORTPROC VIA_Timer(void);
+IMPORTPROC Screen_Draw(void);
+IMPORTPROC Mouse_Update2(void);
+IMPORTPROC KeyBoard_Update(void);
+IMPORTPROC VIA_Int_Vertical_Blanking(void);
+IMPORTPROC Sony_Update(void);
+
+IMPORTPROC RTC_Interrupt(void);
+IMPORTPROC VIA_Int_One_Second(void);
+
+GLOBALPROC ZapProgramVars(void)
 {
 	ZapNMemoryVars();
 }
 
-blnr InitProgram(void)
+GLOBALFUNC blnr InitProgram(void)
 {
 	if (RTC_Init())
 	if (ROM_Init())
@@ -57,11 +69,11 @@ blnr InitProgram(void)
 	return falseblnr;
 }
 
-void UnInitProgram(void)
+GLOBALPROC UnInitProgram(void)
 {
 }
 
-void customreset(void)
+GLOBALPROC customreset(void)
 {
 	IWM_Reset();
 	SCC_Reset();
@@ -71,7 +83,7 @@ void customreset(void)
 	Sony_Reset();
 }
 
-void SixtiethSecondNotify(void)
+GLOBALPROC SixtiethSecondNotify(void)
 {
 	VIA_Timer();
 	Screen_Draw();
@@ -82,7 +94,7 @@ void SixtiethSecondNotify(void)
 	Sony_Update();
 }
 
-void OneSecondNotify(void)
+GLOBALPROC OneSecondNotify(void)
 {
 	RTC_Interrupt();
 	VIA_Int_One_Second();

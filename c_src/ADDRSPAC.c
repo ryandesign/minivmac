@@ -1,7 +1,7 @@
 /*
 	ADDRSPAC.c
 
-	Copyright (C) 2001 Bernd Schmidt, Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -24,21 +24,21 @@
 	Bernd Schmidt.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
-
+#include "MYOSGLUE.h"
 #include "GLOBGLUE.h"
-
+#endif
 #include "ENDIANAC.h"
+
 #include "ADDRSPAC.h"
 
-#include "MINEM68K.h"
-#include "OSCOMVAR.h"
-
-#include "IWMEMDEV.h"
-#include "SCCEMDEV.h"
-#include "SCSIEMDV.h"
-#include "VIAEMDEV.h"
-#include "SONYEMDV.h"
+IMPORTPROC SCSI_Access(CPTR addr);
+IMPORTPROC SCC_Access(CPTR addr);
+IMPORTPROC IWM_Access(CPTR addr);
+IMPORTPROC VIA_Access(CPTR addr);
+IMPORTPROC Sony_Access(CPTR addr);
+IMPORTPROC SetAutoVector(void);
 
 /* top 8 bits out of 32 are ignored, so total size of address space is 2 ** 24 bytes */
 
@@ -48,7 +48,7 @@
 
 /* map of address space */
 
-static UBYTE vOverlay;
+LOCALVAR UBYTE vOverlay;
 
 #define kROM_Overlay_Base 0x00000000 /* when overlay on */
 #define kROM_Overlay_Top  0x00100000
@@ -85,8 +85,6 @@ static UBYTE vOverlay;
 
 /* implementation of read/write for everything but RAM and ROM */
 
-#define kSCSI_Size 0x100
-
 #define kSCCRdBase 0x9FFFF8
 #define kSCCWrBase 0xBFFFF9
 
@@ -98,12 +96,12 @@ static UBYTE vOverlay;
 #define kIWM_Mask 0x001FFF // Allocated Memory Bandwidth for IWM
 #define kIWM_Base 0xDFE1FF // IWM Memory Base
 
-CPTR AddressBus;
-ULONG DataBus;
-blnr ByteSizeAccess;
-blnr WriteMemAccess;
+GLOBALVAR CPTR AddressBus;
+GLOBALVAR ULONG DataBus;
+GLOBALVAR blnr ByteSizeAccess;
+GLOBALVAR blnr WriteMemAccess;
 
-static void MM_Access(void)
+LOCALPROC MM_Access(void)
 {
 	AddressBus &= kAddrMask;
 
@@ -160,8 +158,8 @@ static void MM_Access(void)
 #define MemBanksMask (NumMemBanks - 1)
 #define MemBankAddrMask (BytesPerMemBank - 1)
 
-static UBYTE *BankReadAddr[NumMemBanks];
-static UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then BankWritAddr[i] == BankReadAddr[i] */
+LOCALVAR UBYTE *BankReadAddr[NumMemBanks];
+LOCALVAR UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then BankWritAddr[i] == BankReadAddr[i] */
 
 #define bankindex(addr) ((((CPTR)(addr)) >> ln2BytesPerMemBank) & MemBanksMask)
 
@@ -181,7 +179,7 @@ static UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then Bank
 #define Overlay_ROMmem_mask ROMmem_mask
 #define ROMmem_mask (kROM_Size - 1)
 
-static void SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPTR VirtualStart, ULONG vMask, blnr Writeable)
+LOCALPROC SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPTR VirtualStart, ULONG vMask, blnr Writeable)
 {
 	int i;
 
@@ -193,7 +191,7 @@ static void SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, C
 	}
 }
 
-static void SetPtrVecToNULL(UBYTE **x, ULONG n)
+LOCALPROC SetPtrVecToNULL(UBYTE **x, ULONG n)
 {
 	int i;
 
@@ -202,7 +200,7 @@ static void SetPtrVecToNULL(UBYTE **x, ULONG n)
 	}
 }
 
-static void SetUpMemBanks(void)
+LOCALPROC SetUpMemBanks(void)
 {
 	ULONG RAMmem_mask = kRAM_Size - 1;
 
@@ -219,12 +217,12 @@ static void SetUpMemBanks(void)
 	}
 }
 
-void ZapNMemoryVars(void)
+GLOBALPROC ZapNMemoryVars(void)
 {
 	vOverlay = 2; /* MemBanks uninitialized */
 }
 
-void  VIA_PORA4 (UBYTE Data)
+GLOBALPROC VIA_PORA4(UBYTE Data)
 {
 	if (vOverlay != Data) {
 		vOverlay = Data;
@@ -232,7 +230,7 @@ void  VIA_PORA4 (UBYTE Data)
 	}
 }
 
-UBYTE VIA_GORA4 (void) // Overlay/Normal Memory Mapping
+GLOBALFUNC UBYTE VIA_GORA4(void) // Overlay/Normal Memory Mapping
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA4 attempts to be an input\n");
@@ -240,7 +238,7 @@ UBYTE VIA_GORA4 (void) // Overlay/Normal Memory Mapping
 	return 0;
 }
 
-void  Memory_Reset (void)
+GLOBALPROC Memory_Reset(void)
 {
 	VIA_PORA4(1);
 }
@@ -254,7 +252,7 @@ void  Memory_Reset (void)
 	and back out of the current instruction.
 */
 
-ULONG get_long(CPTR addr)
+GLOBALFUNC ULONG get_long(CPTR addr)
 {
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
 
@@ -283,7 +281,7 @@ ULONG get_long(CPTR addr)
 	}
 }
 
-ULONG get_word(CPTR addr)
+GLOBALFUNC ULONG get_word(CPTR addr)
 {
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
 
@@ -300,7 +298,7 @@ ULONG get_word(CPTR addr)
 	}
 }
 
-ULONG get_byte(CPTR addr)
+GLOBALFUNC ULONG get_byte(CPTR addr)
 {
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
 
@@ -317,7 +315,7 @@ ULONG get_byte(CPTR addr)
 	}
 }
 
-void put_long(CPTR addr, ULONG l)
+GLOBALPROC put_long(CPTR addr, ULONG l)
 {
 	UBYTE *ba = BankWritAddr[bankindex(addr)];
 
@@ -333,7 +331,7 @@ void put_long(CPTR addr, ULONG l)
 	}
 }
 
-void put_word(CPTR addr, ULONG w)
+GLOBALPROC put_word(CPTR addr, ULONG w)
 {
 	UBYTE *ba = BankWritAddr[bankindex(addr)];
 
@@ -349,7 +347,7 @@ void put_word(CPTR addr, ULONG w)
 	}
 }
 
-void put_byte(CPTR addr, ULONG b)
+GLOBALPROC put_byte(CPTR addr, ULONG b)
 {
 	UBYTE *ba = BankWritAddr[bankindex(addr)];
 
@@ -365,13 +363,13 @@ void put_byte(CPTR addr, ULONG b)
 	}
 }
 
-static UBYTE *default_xlate(CPTR a)
+LOCALFUNC UBYTE *default_xlate(CPTR a)
 {
 	UnusedParam(a);
 	return (UBYTE *) RAM; /* So we don't crash. */
 }
 
-UBYTE *get_real_address(CPTR addr)
+GLOBALFUNC UBYTE *get_real_address(CPTR addr)
 {
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
 

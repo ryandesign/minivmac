@@ -1,6 +1,6 @@
 /*
 	RESIDMAC.h
-	Copyright (C) 2001 Paul Pratt
+	Copyright (C) 2002 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -46,11 +46,10 @@
 
 /* Special */
 
-#define kSpecialShareTimeItem 1
-#define kSpecialLimitSpeedItem 2
-/* -- seperator 3  */
-#define kSpecialResetItem 4
-#define kSpecialInterruptItem 5
+#define kSpecialLimitSpeedItem 1
+/* -- seperator 2  */
+#define kSpecialResetItem 3
+#define kSpecialInterruptItem 4
 
 /* Alerts */
 

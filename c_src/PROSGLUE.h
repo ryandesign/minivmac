@@ -1,7 +1,7 @@
 /*
-	OSGLUSTB.c
+	PROSGLUE.c
 
-	Copyright (C) 2001 Paul Pratt
+	Copyright (C) 2002 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 */
 
 /*
-	Operating System GLUe STuB.
+	PRivate implementation (stub) of Operating System GLUE.
 
 	If the target operating system hasn't been specified,
 	this file is used. It can be used at the starting
@@ -24,17 +24,9 @@
 	The main entry point 'main' is at the end of this file.
 */
 
-#include "SYSDEPNS.h"
-
-#ifndef HaveOSTarget
-
-#include "OSGLUMAC.h"
-
-#include "OSGIMPRT.h"
-
 /*--- some simple utilities ---*/
 
-void MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
+GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
 {
 	LONG i;
 	UBYTE *s = (UBYTE *)srcPtr;
@@ -47,21 +39,21 @@ void MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
 
 /*--- basic dialogs ---*/
 
-void MacMsg(char *briefMsg, char *longMsg, blnr fatal)
+GLOBALPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal)
 {
 	UnusedParam(briefMsg);
 	UnusedParam(longMsg);
 	UnusedParam(fatal);
 }
 
-blnr OkCancelAlert(char *briefMsg, char *longMsg)
+GLOBALFUNC blnr OkCancelAlert(char *briefMsg, char *longMsg)
 {
 	UnusedParam(briefMsg);
 	UnusedParam(longMsg);
 	return falseblnr;
 }
 
-void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
+GLOBALPROC HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
 {
 	UnusedParam(top);
 	UnusedParam(left);
@@ -73,7 +65,7 @@ void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
 
 void *Drives[NumDrives]; /* open disk image files */
 
-static void InitDrives(void)
+LOCALPROC InitDrives(void)
 {
 	WORD i;
 
@@ -82,7 +74,7 @@ static void InitDrives(void)
 	}
 }
 
-WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
 {
 	WORD result;
 
@@ -101,7 +93,7 @@ WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count
 	return result;
 }
 
-WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
 {
 	WORD result;
 
@@ -120,13 +112,13 @@ WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Coun
 	return result;
 }
 
-blnr vSonyDiskLocked(UWORD Drive_No)
+GLOBALFUNC blnr vSonyDiskLocked(UWORD Drive_No)
 {
 	UnusedParam(Drive_No);
 	return falseblnr;
 }
 
-WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
+GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
 {
 	WORD result;
 
@@ -143,7 +135,7 @@ WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
 	return result;
 }
 
-WORD vSonyEject(UWORD Drive_No)
+GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
 {
 	WORD result;
 
@@ -159,7 +151,7 @@ WORD vSonyEject(UWORD Drive_No)
 	return result;
 }
 
-WORD vSonyVerify(UWORD Drive_No)
+GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
 {
 	WORD result;
 
@@ -175,7 +167,7 @@ WORD vSonyVerify(UWORD Drive_No)
 	return result;
 }
 
-WORD vSonyFormat(UWORD Drive_No)
+GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
 {
 	WORD result;
 
@@ -191,7 +183,7 @@ WORD vSonyFormat(UWORD Drive_No)
 	return result;
 }
 
-blnr vSonyInserted (UWORD Drive_No)
+GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
 {
 	if (Drive_No >= NumDrives) {
 		return falseblnr;
@@ -200,7 +192,7 @@ blnr vSonyInserted (UWORD Drive_No)
 	}
 }
 
-static blnr FirstFreeDisk(UWORD *Drive_No)
+LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
 {
 	WORD i;
 
@@ -213,7 +205,7 @@ static blnr FirstFreeDisk(UWORD *Drive_No)
 	return falseblnr;
 }
 
-blnr AnyDiskInserted(void)
+GLOBALFUNC blnr AnyDiskInserted(void)
 {
 	WORD i;
 
@@ -225,46 +217,40 @@ blnr AnyDiskInserted(void)
 	return falseblnr;
 }
 
-static blnr AllocateMacROM(void)
+LOCALFUNC blnr AllocateMacROM(void)
 {
 	return falseblnr;
 }
 
-static blnr LoadMacRom(void)
+LOCALFUNC blnr LoadMacRom(void)
 {
 	return falseblnr;
 }
 
-static blnr AllocateMacRAM (void)
+LOCALFUNC blnr AllocateMacRAM (void)
 {
 	kRAM_Size = 0x00400000;
 	return falseblnr;
 }
 
-static blnr RTC_Load (void)
-{
-	return falseblnr;
-}
-
-ULONG GetMacDateInSecond(void)
+GLOBALFUNC ULONG GetMacDateInSecond(void)
 {
 	return 0;
 }
 
-blnr CheckIntSixtieth(blnr overdue)
+GLOBALFUNC blnr CheckIntSixtieth(blnr overdue)
 {
 	UnusedParam(overdue);
 	RequestMacOff = trueblnr;
 	return trueblnr;
 }
 
-static void ZapOSGLUVars(void)
+LOCALPROC ZapOSGLUVars(void)
 {
 }
 
-static blnr InitOSGLU(void)
+LOCALFUNC blnr InitOSGLU(void)
 {
-	if (RTC_Load())
 	if (AllocateMacROM())
 	if (LoadMacRom())
 	if (AllocateMacRAM())
@@ -274,7 +260,7 @@ static blnr InitOSGLU(void)
 	return falseblnr;
 }
 
-static void UnInitOSGLU(void)
+LOCALPROC UnInitOSGLU(void)
 {
 }
 
@@ -287,5 +273,3 @@ int main(void)
 	UnInitOSGLU();
 	return 0;
 }
-
-#endif /* HaveOSTarget not defined */

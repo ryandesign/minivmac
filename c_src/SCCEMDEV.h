@@ -1,7 +1,7 @@
 /*
 	SCCEMDEV.h
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,13 +20,13 @@
 #define SCCEMDEV_H
 #endif
 
-void  SCC_Reset(void);
+EXPORTPROC SCC_Reset(void);
 
-extern void SCC_Access(CPTR addr);
+EXPORTPROC SCC_Access(CPTR addr);
 
 // VIA Interface Headers
 
-extern UBYTE VIA_GORA7(void);
-extern void  VIA_PORA7(UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORA7(void);
+EXPORTPROC VIA_PORA7(UBYTE Data);
 
-extern blnr Mouse_Enabled(void);
+EXPORTFUNC blnr Mouse_Enabled(void);

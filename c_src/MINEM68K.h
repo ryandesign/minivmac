@@ -1,7 +1,7 @@
 /*
 	MINEM68K.h
 
-	Copyright (C) 2001 Bernd Schmidt, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,10 +20,10 @@
 #define MINEM68K_H
 #endif
 
-extern blnr ViaException(void);
-extern void DiskInsertedPsuedoException(CPTR newpc, ULONG data);
-extern void SetAutoVector(void);
-extern void MacInterrupt (void);
-extern void m68k_reset(void);
+EXPORTPROC ViaException(void);
+EXPORTPROC DiskInsertedPsuedoException(CPTR newpc, ULONG data);
+EXPORTPROC SetAutoVector(void);
+EXPORTPROC MacInterrupt (void);
+EXPORTPROC m68k_reset(void);
 
-extern void m68k_go_nInstructions(ULONG n);
+EXPORTPROC m68k_go_nInstructions(ULONG n);

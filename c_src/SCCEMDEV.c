@@ -1,7 +1,7 @@
 /*
 	SCCEMDEV.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,7 +22,12 @@
 	This code adapted from "SCC.c" in vMac by Philip Cummins.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+
+#include "ADDRSPAC.h"
+#endif
+
 #include "SCCEMDEV.h"
 
 typedef struct {
@@ -35,16 +40,16 @@ typedef struct {
 	Channel_Ty B;
 } SCC_Ty;
 
-static SCC_Ty SCC;
-static UBYTE SCC_Mode;
-static UBYTE SCC_Reg;
+LOCALVAR SCC_Ty SCC;
+LOCALVAR UBYTE SCC_Mode;
+LOCALVAR UBYTE SCC_Reg;
 
-blnr Mouse_Enabled(void)
+EXPORTFUNC blnr Mouse_Enabled(void)
 {
 	return ((SCC.A.WR[9] & 0x08) != 0x00);
 }
 
-void  SCC_Reset (void)
+GLOBALPROC SCC_Reset(void)
 {
 	int Counter;
 
@@ -60,31 +65,27 @@ void  SCC_Reset (void)
 	SCC.B.RR[0] = 0x04;
 }
 
-static UBYTE SCC_GetAReg (void)
+LOCALFUNC UBYTE SCC_GetAReg(void)
 {
 	return SCC.A.RR[SCC_Reg];
 }
 
-static void  SCC_PutAReg (UBYTE in)
+LOCALPROC SCC_PutAReg(UBYTE in)
 {
 	SCC.A.WR[SCC_Reg] = in;
 }
 
-static UBYTE SCC_GetBReg (void)
+LOCALFUNC UBYTE SCC_GetBReg(void)
 {
 	return SCC.B.RR[SCC_Reg];
 }
 
-static void  SCC_PutBReg (UBYTE in)
+LOCALPROC SCC_PutBReg(UBYTE in)
 {
 	SCC.B.WR[SCC_Reg] = in;
 }
 
-extern ULONG DataBus;
-extern blnr ByteSizeAccess;
-extern blnr WriteMemAccess;
-
-void SCC_Access(CPTR addr)
+GLOBALPROC SCC_Access(CPTR addr)
 {
 	if (ByteSizeAccess) {
 		if ((addr & 1) == 0) {
@@ -146,12 +147,12 @@ void SCC_Access(CPTR addr)
 
 // VIA Interface Functions
 
-UBYTE VIA_GORA7 (void)
+EXPORTFUNC UBYTE VIA_GORA7(void)
 {
 	return 1; // No Wait/Requests
 }
 
-void  VIA_PORA7 (UBYTE Data)
+GLOBALPROC VIA_PORA7(UBYTE Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug

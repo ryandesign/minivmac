@@ -6,11 +6,10 @@
 
 #define ID_FILE_INSERTDISK1             256
 #define ID_FILE_QUIT                    257
-#define ID_CONTROL_SHARETIME            258
-#define ID_CONTROL_LIMITSPEED           259
-#define ID_CONTROL_RESET                260
-#define ID_CONTROL_INTERRUPT            261
-#define ID_HELP_ABOUT                   262
+#define ID_CONTROL_LIMITSPEED           258
+#define ID_CONTROL_RESET                259
+#define ID_CONTROL_INTERRUPT            260
+#define ID_HELP_ABOUT                   261
 
 #define IDD_MYABOUTDIALOG               134
 

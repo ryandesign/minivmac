@@ -1,7 +1,7 @@
 /*
 	SCRNEMDV.c
 
-	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,16 +23,16 @@
 	macintosh port of vMac, by Philip Cummins.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+#include "MYOSGLUE.h"
+#endif
 
 #include "SCRNEMDV.h"
 
-#include "OSGLUSTB.h"
-#include "OSCOMVAR.h"
+LOCALVAR UBYTE vPage2 = 1;
 
-UBYTE vPage2 = 1;
-
-static blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
+LOCALFUNC blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 					long L, long *j)
 {
 /*
@@ -52,7 +52,7 @@ static blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 	return falseblnr;
 }
 
-static blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
+LOCALFUNC blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 					long L, long *j)
 {
 /*
@@ -71,10 +71,8 @@ static blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 	return falseblnr;
 }
 
-void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right);
-
 // Draw the screen
-void Screen_Draw (void)
+GLOBALPROC Screen_Draw(void)
 {
 	char *screencurrentbuff;
 	long j0;
@@ -110,7 +108,7 @@ void Screen_Draw (void)
 
 // VIA Interface Functions
 
-UBYTE VIA_GORA6 (void) // Main/Alternate Screen Buffer
+GLOBALFUNC UBYTE VIA_GORA6(void) // Main/Alternate Screen Buffer
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA6 attempts to be an input\n");
@@ -118,17 +116,17 @@ UBYTE VIA_GORA6 (void) // Main/Alternate Screen Buffer
 	return 0;
 }
 
-void  VIA_PORA6 (UBYTE Data)
+GLOBALPROC VIA_PORA6(UBYTE Data)
 {
 	vPage2 = Data;
 }
 
-UBYTE VIA_GORB6 (void) // Video Beam in Display
+GLOBALFUNC UBYTE VIA_GORB6(void) // Video Beam in Display
 {
 	return 0; // Assume it is
 }
 
-void  VIA_PORB6 (UBYTE Data)
+GLOBALPROC VIA_PORB6(UBYTE Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug

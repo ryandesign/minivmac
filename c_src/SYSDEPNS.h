@@ -1,7 +1,7 @@
 /*
 	SYSDEPNS.h
 
-	Copyright (C) 2001 Bernd Schmidt, Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -64,3 +64,31 @@ typedef ui3b *ui3p;
 
 /* pascal string, single byte characters */
 #define ps3p ui3p
+
+#define LOCALVAR static
+#ifdef AllFiles
+#define GLOBALVAR LOCALVAR
+#define EXPORTVAR(t, v)
+#else
+#define GLOBALVAR
+#define EXPORTVAR(t, v) extern t v
+#endif
+
+#define LOCALFUNC static
+#define FORWARDFUNC LOCALFUNC
+#ifdef AllFiles
+#define GLOBALFUNC LOCALFUNC
+#define EXPORTFUNC LOCALFUNC
+#else
+#define GLOBALFUNC
+#define EXPORTFUNC extern
+#endif
+#define IMPORTFUNC EXPORTFUNC
+#define TYPEDEFFUNC typedef
+
+#define LOCALPROC LOCALFUNC void
+#define GLOBALPROC GLOBALFUNC void
+#define EXPORTPROC EXPORTFUNC void
+#define IMPORTPROC IMPORTFUNC void
+#define FORWARDPROC FORWARDFUNC void
+#define TYPEDEFPROC TYPEDEFFUNC void

@@ -1,7 +1,7 @@
 /*
 	SCSIEMDV.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -24,10 +24,14 @@
 
 // NCR5380 chip emulation by Yoav Shadmi, 1998
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
-#include "SCSIEMDV.h"
+
 #include "ENDIANAC.h"
 #include "ADDRSPAC.h"
+#endif
+
+#include "SCSIEMDV.h"
 
 #define scsiRd           0x00
 #define scsiWr           0x01
@@ -48,9 +52,9 @@
 
 #define kSCSI_Size 0x00010
 
-static UBYTE SCSI [kSCSI_Size];
+LOCALVAR UBYTE SCSI [kSCSI_Size];
 
-void  SCSI_Reset (void)
+GLOBALPROC SCSI_Reset(void)
 {
 	int i;
 
@@ -59,7 +63,7 @@ void  SCSI_Reset (void)
 	}
 }
 
-static void SCSI_BusReset (void)
+LOCALPROC SCSI_BusReset(void)
 {
 	SCSI[scsiRd+sCDR] = 0;
 	SCSI[scsiWr+sODR] = 0;
@@ -86,7 +90,7 @@ static void SCSI_BusReset (void)
 	put_word(0xb22, get_word(0xb22) | 0x8000);
 }
 
-static void SCSI_Check (void)
+LOCALPROC SCSI_Check(void)
 {
 	// The arbitration select/reselect scenario [stub.. doesn't really work...]
 	if ((SCSI[scsiWr+sODR] >> 7) == 1) {  // Check if the Mac tries to be an initiator
@@ -120,11 +124,7 @@ static void SCSI_Check (void)
 	}
 }
 
-extern ULONG DataBus;
-extern blnr ByteSizeAccess;
-extern blnr WriteMemAccess;
-
-void SCSI_Access(CPTR addr)
+GLOBALPROC SCSI_Access(CPTR addr)
 {
 	if ((addr & 0xE) == 0) {
 		addr = (addr >> 3) | (addr & 1);

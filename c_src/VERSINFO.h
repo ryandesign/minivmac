@@ -1,6 +1,6 @@
 /*
 	VERSINFO.h
-	Copyright (C) 2001 Paul Pratt
+	Copyright (C) 2002 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,11 +22,11 @@
 
 #define kStrAppName "Mini vMac"
 
-#define kStrVersion "0.1.3"
+#define kStrVersion "0.1.7"
 #define kMajorVersion 0
 #define kMinorVersion 1
-#define kMinorSubVersion 3
+#define kMinorSubVersion 7
 
-#define kStrCopyrightYear "2001"
+#define kStrCopyrightYear "2002"
 
 #define kStrHomePage "http://www.gryphel.com/c/minivmac"

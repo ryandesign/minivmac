@@ -1,0 +1,48 @@
+# build
+
+# Copyright (C) 2002 Paul Pratt
+
+# You can redistribute this file and/or modify it under the terms
+# of version 2 of the GNU General Public License as published by
+# the Free Software Foundation.  You should have received a copy
+# of the license along with with this file; see the file COPYING.
+
+# This file is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# license for more details.
+
+# ###########
+
+# This is a script to build the autoquit application using
+# the Macintosh Programmers Workshop (MPW).
+# Adjust the following line to the directory containing this file:
+
+set my_project_d hd4:my:Topaz:minivmac:extras:autoquit:
+
+# Now open this file
+# with MPW, choose the 'Select All' command in the Edit menu,
+# and click on the box labeled 'MPW Shell' at the top left of
+# this file's window. When the script finishes executing,
+# the autoquit application should be found in the folder "drv"
+# that has been created within the autoquit folder.
+# WARNING: the autoquit application should only be run from
+# within Mini vMac!!
+
+# ########### ########### ########### ########### ###########
+
+Set my_project_name autoquit
+
+Set my_a_src_d {my_project_d}
+Set my_derived_d "{my_project_d}drv:"
+Set my_a_obj_d {my_derived_d}
+Set my_built_program {my_derived_d}autoquit
+
+IF not "`exists -q "{my_derived_d}"`"
+	NewFolder "{my_derived_d}"
+END
+
+ASM {my_a_src_d}autoquit.a -o {my_a_obj_d}autoquit.a.o
+Link -t FNDR -c MACS -p -rn -o {my_built_program} ·· {Worksheet} ¶
+	{my_a_obj_d}autoquit.a.o
+SetFile -d . -m . -a B {my_built_program}

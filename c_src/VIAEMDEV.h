@@ -1,7 +1,7 @@
 /*
 	VIAEMDEV.h
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,10 +22,14 @@
 
 // PC - VIA Memory Handlers
 
-extern void VIA_Reset(void);
+EXPORTVAR(blnr, VIAInterruptRequest);
 
-extern void VIA_Access(CPTR addr);
+EXPORTPROC VIA_Reset(void);
 
-void VIA_Timer (void);
-void VIA_Int_Vertical_Blanking(void);
-void VIA_Int_One_Second(void);
+EXPORTPROC VIA_Access(CPTR addr);
+
+EXPORTPROC VIA_Timer(void);
+EXPORTPROC VIA_Int_Vertical_Blanking(void);
+EXPORTPROC VIA_Int_One_Second(void);
+
+EXPORTPROC GotKeyBoardData(UBYTE v);

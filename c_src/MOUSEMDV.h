@@ -1,7 +1,7 @@
 /*
 	MOUSEMDV.h
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,15 +20,15 @@
 #define MOUSEMDV_H
 #endif
 
-void Mouse_Update2 (void);
+EXPORTPROC Mouse_Update2(void);
 
 // VIA Interface Headers
 
-extern UBYTE VIA_GORB5 (void); // Mouse Y2
-extern void  VIA_PORB5 (UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORB5 (void); // Mouse Y2
+EXPORTPROC VIA_PORB5(UBYTE Data);
 
-extern UBYTE VIA_GORB4 (void); // Mouse X2
-extern void  VIA_PORB4 (UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORB4 (void); // Mouse X2
+EXPORTPROC VIA_PORB4(UBYTE Data);
 
-extern UBYTE VIA_GORB3 (void); // Mouse Button
-extern void  VIA_PORB3 (UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORB3 (void); // Mouse Button
+EXPORTPROC VIA_PORB3(UBYTE Data);

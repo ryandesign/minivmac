@@ -1,7 +1,7 @@
 /*
 	GLOBGLUE.h
 
-	Copyright (C) 2001 Bernd Schmidt, Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,9 +20,9 @@
 #define GLOBGLUE_H
 #endif
 
-extern void ZapProgramVars(void);
-extern blnr InitProgram(void);
-extern void UnInitProgram(void);
-extern void customreset(void);
-extern void SixtiethSecondNotify(void);
-extern void OneSecondNotify(void);
+EXPORTPROC ZapProgramVars(void);
+EXPORTFUNC blnr InitProgram(void);
+EXPORTPROC UnInitProgram(void);
+EXPORTPROC customreset(void);
+EXPORTPROC SixtiethSecondNotify(void);
+EXPORTPROC OneSecondNotify(void);

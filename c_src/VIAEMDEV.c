@@ -1,7 +1,7 @@
 /*
 	VIAEMDEV.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,79 +22,70 @@
 	This code adapted from vMac by Philip Cummins.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+
+#include "ADDRSPAC.h"
+#include "MINEM68K.h"
+#endif
 
 #include "VIAEMDEV.h"
 
-#include "MINEM68K.h"
+IMPORTPROC Keyboard_Put(UBYTE in);
+IMPORTPROC Keyboard_Get(void);
 
-extern void  Keyboard_Put (UBYTE in);
-extern UBYTE Keyboard_Get (void);
+IMPORTFUNC UBYTE VIA_GORA7(void);  // SCC
+IMPORTPROC VIA_PORA7(UBYTE Data);
 
-extern UBYTE VIA_GORA7(void);  // SCC
-extern void  VIA_PORA7(UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA6(void); // Main/Alternate Screen Buffer
+IMPORTPROC VIA_PORA6(UBYTE Data);
 
-extern UBYTE VIA_GORA6 (void); // Main/Alternate Screen Buffer
-extern void  VIA_PORA6 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA5(void); // Floppy Disk Line SEL
+IMPORTPROC VIA_PORA5(UBYTE Data);
 
-extern UBYTE VIA_GORA5 (void); // Floppy Disk Line SEL
-extern void  VIA_PORA5 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA4(void); // Overlay/Normal Memory Mapping
+IMPORTPROC VIA_PORA4(UBYTE Data);
 
-extern UBYTE VIA_GORA4 (void); // Overlay/Normal Memory Mapping
-extern void  VIA_PORA4 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA3(void); // Main/Alternate Sound Buffer
+IMPORTPROC VIA_PORA3(UBYTE Data);
 
-extern UBYTE VIA_GORA3 (void); // Main/Alternate Sound Buffer
-extern void  VIA_PORA3 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA2(void); // Sound Volume Bit 2
+IMPORTPROC VIA_PORA2(UBYTE Data);
 
-extern UBYTE VIA_GORA2 (void); // Sound Volume Bit 2
-extern void  VIA_PORA2 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA1(void); // Sound Volume Bit 1
+IMPORTPROC VIA_PORA1(UBYTE Data);
 
-extern UBYTE VIA_GORA1 (void); // Sound Volume Bit 1
-extern void  VIA_PORA1 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORA0(void); // Sound Volume Bit 0
+IMPORTPROC VIA_PORA0(UBYTE Data);
 
-extern UBYTE VIA_GORA0 (void); // Sound Volume Bit 0
-extern void  VIA_PORA0 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB7(void); // Sound Enable
+IMPORTPROC VIA_PORB7(UBYTE Data);
 
-extern UBYTE VIA_GORB7 (void); // Sound Enable
-extern void  VIA_PORB7 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB6(void); // Video Beam in Display
+IMPORTPROC VIA_PORB6(UBYTE Data);
 
-extern UBYTE VIA_GORB6 (void); // Video Beam in Display
-extern void  VIA_PORB6 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB5(void); // Mouse Y2
+IMPORTPROC VIA_PORB5(UBYTE Data);
 
-extern UBYTE VIA_GORB5 (void); // Mouse Y2
-extern void  VIA_PORB5 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB4(void); // Mouse X2
+IMPORTPROC VIA_PORB4(UBYTE Data);
 
-extern UBYTE VIA_GORB4 (void); // Mouse X2
-extern void  VIA_PORB4 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB3(void); // Mouse Button
+IMPORTPROC VIA_PORB3(UBYTE Data);
 
-extern UBYTE VIA_GORB3 (void); // Mouse Button
-extern void  VIA_PORB3 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB2(void); // RTC Enable
+IMPORTPROC VIA_PORB2(UBYTE Data);
 
-extern UBYTE VIA_GORB2 (void); // RTC Enable
-extern void  VIA_PORB2 (UBYTE Data);
+IMPORTFUNC UBYTE VIA_GORB1(void); // RTC Data Clock
+IMPORTPROC VIA_PORB1(UBYTE Data);
 
-extern UBYTE VIA_GORB1 (void); // RTC Data Clock
-extern void  VIA_PORB1 (UBYTE Data);
-
-extern UBYTE VIA_GORB0 (void); // RTC Data
-extern void  VIA_PORB0 (UBYTE Data);
-
-// VIA Shift Register Interface
-
-static UBYTE VIA_Get_SR (void)
-{
-	return Keyboard_Get();
-}
-
-static void VIA_Put_SR (UBYTE Data)
-{
-	Keyboard_Put(Data);
-}
+IMPORTFUNC UBYTE VIA_GORB0(void); // RTC Data
+IMPORTPROC VIA_PORB0(UBYTE Data);
 
 // VIA_Get_ORA : VIA Get Port A Data
 // This function queries VIA Port A interfaced hardware about their status
 
-static UBYTE VIA_Get_ORA (UBYTE Selection)
+LOCALFUNC UBYTE VIA_Get_ORA(UBYTE Selection)
 {
 	UBYTE Value = 0;
 
@@ -136,7 +127,7 @@ static UBYTE VIA_Get_ORA (UBYTE Selection)
 // VIA_Get_ORB : VIA Get Port B Data
 // This function queries VIA Port B interfaced hardware about their status
 
-static UBYTE VIA_Get_ORB (UBYTE Selection)
+LOCALFUNC UBYTE VIA_Get_ORB(UBYTE Selection)
 {
 	UBYTE Value = 0;
 
@@ -175,7 +166,7 @@ static UBYTE VIA_Get_ORB (UBYTE Selection)
 	return Value;
 }
 
-static void  VIA_Put_ORA (UBYTE Selection, UBYTE Data)
+LOCALPROC VIA_Put_ORA(UBYTE Selection, UBYTE Data)
 {
 	if ((Selection & 0x80) != 0) { // SCC Wait/Request
 		VIA_PORA7((Data & 0x80) >> 7);
@@ -210,7 +201,7 @@ static void  VIA_Put_ORA (UBYTE Selection, UBYTE Data)
 	}
 }
 
-static void  VIA_Put_ORB (UBYTE Selection, UBYTE Data)
+LOCALPROC VIA_Put_ORB(UBYTE Selection, UBYTE Data)
 {
 	if ((Selection & 0x80) != 0) { // Sound Enable
 		VIA_PORB7((Data & 0x80) >> 7);
@@ -265,7 +256,7 @@ typedef struct {
 	UBYTE ORA;    // Buffer A
 } VIA_Ty;
 
-static VIA_Ty VIA;
+LOCALVAR VIA_Ty VIA;
 
 #define kORB    0x00
 #define kORA_H  0x01
@@ -284,16 +275,13 @@ static VIA_Ty VIA;
 #define kIER    0x0E
 #define kORA    0x0F
 
-#define kSR_Init_Time 0x007F // Was 0x09C9, trying less
+LOCALVAR UBYTE T1_Active = 0;
+LOCALVAR UBYTE T2_Active = 0;
+LOCALVAR UBYTE SR_Active = 0;
 
-UBYTE T1_Active = 0;
-UBYTE T2_Active = 0;
-UBYTE SR_Active = 0;
-UBYTE SR_Timer_Active = 0;
+GLOBALVAR blnr VIAInterruptRequest;
 
-ULONG SR_Time = 0;
-
-void  VIA_Reset (void)
+GLOBALPROC VIA_Reset(void)
 {
 	VIA.ORA   = 0x79; VIA.DDR_A = 0x7F;
 	VIA.ORB   = 0x87; VIA.DDR_B = 0x87;
@@ -301,15 +289,34 @@ void  VIA_Reset (void)
 	VIA.T2_L  = VIA.T2_H  = VIA.SR    = VIA.ACR   = 0x00;
 	VIA.PCR   = VIA.IFR   = VIA.IER   = 0x00;
 	T1_Active = T2_Active = SR_Active = 0x00;
-	SR_Time   = 0x0000;
-	SR_Timer_Active = 0x00;
+	VIAInterruptRequest = 0;
 }
 
-extern ULONG DataBus;
-extern blnr ByteSizeAccess;
-extern blnr WriteMemAccess;
+LOCALPROC CheckVIAInterruptFlag(void)
+{
+	blnr NewVIAInterruptRequest = (VIA.IFR & VIA.IER) != 0;
 
-void VIA_Access(CPTR addr)
+	if (NewVIAInterruptRequest != VIAInterruptRequest) {
+		VIAInterruptRequest = NewVIAInterruptRequest;
+		if (VIAInterruptRequest) {
+			ViaException();
+		}
+	}
+}
+
+LOCALPROC SetVIAInterruptFLag(UBYTE VIA_Int)
+{
+	VIA.IFR |= ((UBYTE)1 << VIA_Int);
+	CheckVIAInterruptFlag();
+}
+
+GLOBALPROC GotKeyBoardData(UBYTE v)
+{
+	VIA.SR = v;
+	SetVIAInterruptFLag(2);
+}
+
+GLOBALPROC VIA_Access(CPTR addr)
 {
 	if (ByteSizeAccess) {
 		if ((addr & 1) == 0) {
@@ -317,6 +324,7 @@ void VIA_Access(CPTR addr)
 				case kORB   :
 					if ((VIA.PCR & 0xE0) == 0) {
 						VIA.IFR &= 0xF7;
+						CheckVIAInterruptFlag();
 					}
 					if (WriteMemAccess) {
 						VIA_Put_ORB(VIA.DDR_B,DataBus);
@@ -342,6 +350,7 @@ void VIA_Access(CPTR addr)
 					break;
 				case kT1C_L :
 					VIA.IFR &= 0xBF; // Clear T1 Interrupt
+					CheckVIAInterruptFlag();
 					if (WriteMemAccess) {
 						VIA.T1C_L = DataBus;
 					} else {
@@ -366,6 +375,7 @@ void VIA_Access(CPTR addr)
 					if (WriteMemAccess) {
 						VIA.T1L_H = DataBus;
 						VIA.IFR &= 0xBF; // Clear T1 Interrupt
+						CheckVIAInterruptFlag();
 						VIA.T1C_H = VIA.T1L_H;
 						VIA.T1C_L = VIA.T1L_L;
 						T1_Active = 1;
@@ -378,6 +388,7 @@ void VIA_Access(CPTR addr)
 						VIA.T2_L = DataBus;
 					} else {
 						VIA.IFR &= 0xDF; // Clear T2 Interrupt
+						CheckVIAInterruptFlag();
 						DataBus = VIA.T2_L;
 					}
 					break;
@@ -385,6 +396,7 @@ void VIA_Access(CPTR addr)
 					if (WriteMemAccess) {
 						VIA.T2_H  = DataBus;
 						VIA.IFR &= 0xDF; // Clear T2 Interrupt
+						CheckVIAInterruptFlag();
 						T2_Active = 1;
 					} else {
 						DataBus = VIA.T2_H;
@@ -397,17 +409,16 @@ void VIA_Access(CPTR addr)
 					if (SR_Active == 1) {
 						switch ((VIA.ACR & 0x1C) >> 2) {
 							case 1 : case 2 : case 3 : // Shifting In
-								VIA.SR = VIA_Get_SR();
+								Keyboard_Get();
 								break;
 							case 4 : case 5 : case 6 : case 7 : // Shifting Out
 								if (WriteMemAccess) {
 									VIA.SR = DataBus;
 								}
-								VIA_Put_SR(VIA.SR);
+								Keyboard_Put(VIA.SR);
+								SetVIAInterruptFLag(2); /* don't wait */
 								break;
 						}
-						SR_Time = kSR_Init_Time; // Estimated
-						SR_Timer_Active = 1;
 						SR_Active = 0;
 					}
 					if (! WriteMemAccess) {
@@ -443,8 +454,12 @@ void VIA_Access(CPTR addr)
 						} else {
 							VIA.IFR = VIA.IFR | (DataBus & 0x7F); // Set Enable Bits
 						}
+						CheckVIAInterruptFlag();
 					} else {
 						DataBus = VIA.IFR;
+						if (VIA.IFR != 0) {
+							DataBus |= 0x80;
+						}
 					}
 					break;
 				case kIER   :
@@ -454,6 +469,7 @@ void VIA_Access(CPTR addr)
 						} else {
 							VIA.IER = VIA.IER | (DataBus & 0x7F); // Set Enable Bits
 						}
+						CheckVIAInterruptFlag();
 					} else {
 						DataBus = VIA.IER;
 					}
@@ -462,6 +478,7 @@ void VIA_Access(CPTR addr)
 				case kORA_H :
 					if ((VIA.PCR & 0xE) == 0) {
 						VIA.IFR &= 0xFE;
+						CheckVIAInterruptFlag();
 					}
 					if (WriteMemAccess) {
 						VIA_Put_ORA(VIA.DDR_A, DataBus);
@@ -484,36 +501,9 @@ void VIA_Access(CPTR addr)
 #define T2 5 /* Timer_2 */
 #define T1 6 /* Timer_1 */
 
-static void VIA_Interrupt (UBYTE VIA_Int)
-{
-	if ((VIA.IER & ((UBYTE)1 << VIA_Int)) != 0) {
-		VIA.IFR |= (((UBYTE)1 << VIA_Int) | 0x80);
-	}
-
-	if ((VIA.IFR & 0x80) != 0) {
-		(void) ViaException();
-	}
-}
-
-void VIA_Timer (void)
+GLOBALPROC VIA_Timer(void)
 {
 	UWORD Temp = 0;
-
-	if (SR_Timer_Active == 1) {
-		SR_Time -= 1;
-		if (SR_Time == 0) {
-			//SR_Timer_Active = 0;
-			if ((VIA.IER & 0x04) != 0) { // Shift Register Interrupts Enabled
-				VIA.IFR |= 0x84;
-			}
-
-			if ((VIA.IFR & 0x80) != 0)
-			if (ViaException())
-			{
-				SR_Timer_Active = 0;
-			}
-		}
-	}
 
 	if (T1_Active == 1) { // Timer 1 is Active
 		Temp = (VIA.T1C_H << 8) + VIA.T1C_L; // Get Timer 1 Counter
@@ -527,9 +517,7 @@ void VIA_Timer (void)
 			} else {
 				T1_Active = 0; // Deactivate Timer 1
 			}
-			if ((VIA.IER & 0x40) == 1) { // Timer 1 Interrupt Enabled
-				VIA.IFR |= 0xC0;
-			}
+			/* SetVIAInterruptFLag(6); */
 		}
 	}
 	if (T2_Active == 1) {
@@ -539,25 +527,19 @@ void VIA_Timer (void)
 		VIA.T2_L = Temp & 0xFF;
 		if (Temp == 0) {
 			T2_Active = 0; // Deactivate Timer 2
-			if ((VIA.IER & 0x20) == 1) { // Timer 2 Interrupt Enabled
-				VIA.IFR |= 0xA0;
-			}
+			/* SetVIAInterruptFLag(5); */
 		}
-	}
-	if ((VIA.IFR & 0x60) != 0)
-	{
-		(void) ViaException();
 	}
 }
 
 // VIA Interrupt Interface
 
-void VIA_Int_Vertical_Blanking(void)
+GLOBALPROC VIA_Int_Vertical_Blanking(void)
 {
-	VIA_Interrupt(CA1);
+	SetVIAInterruptFLag(CA1);
 }
 
-void VIA_Int_One_Second(void)
+GLOBALPROC VIA_Int_One_Second(void)
 {
-	VIA_Interrupt(CA2);
+	SetVIAInterruptFLag(CA2);
 }

@@ -1,3 +1,19 @@
+/*
+	main.r
+
+	Copyright (C) 2002 Philip Cummins, Richard F. Bannister, Paul Pratt
+
+	You can redistribute this file and/or modify it under the terms
+	of version 2 of the GNU General Public License as published by
+	the Free Software Foundation.  You should have received a copy
+	of the license along with with this file; see the file COPYING.
+
+	This file is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	license for more details.
+*/
+
 #include "Types.r"
 
 #define MyIsCompilingRez 1
@@ -69,19 +85,17 @@ resource 'MENU' (kFileMenu, preload) {
 resource 'MENU' (kSpecialMenu, preload) {
 	kSpecialMenu,
 	textMenuProc,
-	0x7FFFFFFB,
+	0x7FFFFFFD,
 	enabled,
 	"Special",
-	{	/* array: 5 elements */
+	{	/* array: 4 elements */
 		/* [1] */
-		"Share Time", noIcon, noKey, noMark, plain,
-		/* [2] */
 		"Limit Speed", noIcon, noKey, noMark, plain,
-		/* [3] */
+		/* [2] */
 		"-", noIcon, noKey, noMark, plain,
-		/* [4] */
+		/* [3] */
 		"Reset", noIcon, noKey, noMark, plain,
-		/* [5] */
+		/* [4] */
 		"Interrupt", noIcon, noKey, noMark, plain
 	}
 };
@@ -178,8 +192,8 @@ resource 'DITL' (kMyAboutAlert, purgeable) {
 			disabled,
 			"Including or based upon code by Bernd Sc"
 			"hmidt, Philip Cummins, Richard F. Bannis"
-			"ter, Weston Pawlowski, Paul Pratt, and o"
-			"thers."
+			"ter, Weston Pawlowski, Michael Hanni, "
+			"Paul Pratt, and others."
 		},
 		/* [4] */
 		{110, 97, 151, 455},

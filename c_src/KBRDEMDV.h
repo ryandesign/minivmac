@@ -1,7 +1,7 @@
 /*
 	KBRDEMDV.h
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,16 +20,7 @@
 #define KBRDEMDV_H
 #endif
 
-extern UBYTE Keyboard_Enabled;
+EXPORTPROC Keyboard_Put(UBYTE in);
+EXPORTPROC Keyboard_Get(void);
 
-extern int  Keyboard_Init (void);
-extern void Keyboard_Reset (void);
-
-extern void  Keyboard_Put (UBYTE in);
-extern UBYTE Keyboard_Get (void);
-
-extern void Keyboard_Down (ULONG Key);
-extern void Keyboard_Up (ULONG Key);
-extern void Keyboard_Auto (ULONG Key);
-
-extern void KeyBoard_Update(void);
+EXPORTPROC KeyBoard_Update(void);

@@ -1,7 +1,7 @@
 /*
 	PROGMAIN.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,21 +23,16 @@
 	This code is a distant descendent of code in vMac by Philip Cummins.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+#include "MYOSGLUE.h"
+#include "GLOBGLUE.h"
+#include "MINEM68K.h"
+#endif
 
 #include "PROGMAIN.h"
 
-#include "MINEM68K.h"
-#include "OSGLUSTB.h"
-#include "OSCOMVAR.h"
-
-extern void ZapProgramVars(void);
-extern blnr InitProgram(void);
-extern void UnInitProgram(void);
-extern void SixtiethSecondNotify(void);
-extern void OneSecondNotify(void);
-
-static void vSonyEjectAllDisks(void)
+LOCALPROC vSonyEjectAllDisks(void)
 {
 	WORD i;
 
@@ -48,10 +43,10 @@ static void vSonyEjectAllDisks(void)
 	}
 }
 
-static int TicksLeftInSecond = 60;
-static blnr ProgramDone = falseblnr;
+LOCALVAR int TicksLeftInSecond = 60;
+LOCALVAR blnr ProgramDone = falseblnr;
 
-static void DoEach60th(void)
+LOCALPROC DoEach60th(void)
 {
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
@@ -65,7 +60,7 @@ static void DoEach60th(void)
 	if (RequestMacInterrupt) {
 		RequestMacInterrupt = falseblnr;
 		if (OkCancelAlert("Are you sure you want to Interrupt?",
-				"This will invoke any installed debugger. But as yet, most debuggers do not work with Mini vMac."))
+				"This will invoke any installed debugger."))
 		{
 			MacInterrupt();
 		}
@@ -87,7 +82,7 @@ static void DoEach60th(void)
 	}
 }
 
-static void MainEventLoop(void)
+LOCALPROC MainEventLoop(void)
 {
 	long KiloInstructionsCounter = 0;
 
@@ -110,7 +105,7 @@ static void MainEventLoop(void)
 	} while (! ProgramDone);
 }
 
-void ProgramMain(void)
+GLOBALPROC ProgramMain(void)
 {
 	ZapProgramVars();
 	if (InitProgram()) {

@@ -1,7 +1,7 @@
 /*
 	ENDIANAC.c
 
-	Copyright (C) 2001 Bernd Schmidt, Paul Pratt
+	Copyright (C) 2002 Bernd Schmidt, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -24,7 +24,9 @@
 */
 
 #ifdef ENDIANAC_H
+#ifndef AllFiles
 #error "header already included"
+#endif
 #else
 #define ENDIANAC_H
 #endif

@@ -1,0 +1,108 @@
+# build
+
+# Copyright (C) 2002 Paul Pratt
+
+# You can redistribute this file and/or modify it under the terms
+# of version 2 of the GNU General Public License as published by
+# the Free Software Foundation.  You should have received a copy
+# of the license along with with this file; see the file COPYING.
+
+# This file is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# license for more details.
+
+# ###########
+
+# This is a script to build the Mini vMac application using
+# the bash shell (or similar) on a unix (or similar) system.
+# To use this script, set the current directory to the
+# directory containing this script, and then type 'bash build'
+# at a bash prompt. When the script finishes executing,
+# the Mini vMac application should be found in the folder "drv"
+# that has been created within the Mini vMac folder.
+# This file is not marked as executable (since that doesn't
+# move well to other filing systems) which is why typing
+# './build' would't work.
+# This script does not yet automatically configure itself,
+# so it is likely that you'll need to make some manual
+# adjustments in the lines below.
+
+# ###########
+
+# what compiler to use and what options
+
+CallC="gcc -c"
+CallC="${CallC} -Wall -Wmissing-prototypes -Wstrict-prototypes"
+CallC="${CallC} -O3"
+
+# what linker to use and what options
+
+LinkLine="gcc"
+
+# what libraries to link with
+
+LinkLibs="-L/usr/X11R6/lib -lXext -lX11"
+
+# set this to 1 for more speed if you have a PowerPC computer,
+# or other processor with big endian addressing that can
+# access unaligned data.
+
+BigEndianUnaligned=0
+
+### end of options
+
+# where are we?
+
+tool_bash_d="$(pwd)/"
+cd ${tool_bash_d}../..
+my_project_d="$(pwd)/"
+
+my_c_src_d=${my_project_d}c_src/
+my_derived_d=${my_project_d}drv/
+my_c_obj_d=${my_derived_d}c_obj/
+
+if test ! -d ${my_c_src_d} ; then
+	echo "${my_c_src_d}"
+	echo "the source folder doesn't exist"
+	cd ${tool_bash_d}
+	exit
+fi
+
+echo "#define HaveOSTarget 1" > ${my_c_src_d}CNFGGLOB.h
+echo "#define XWnTarget 1" >> ${my_c_src_d}CNFGGLOB.h
+echo "#define MayInline inline" >> ${my_c_src_d}CNFGGLOB.h
+
+if test ${BigEndianUnaligned} -ne 0 ; then
+	echo "#define BigEndianUnaligned 1" >> ${my_c_src_d}CNFGGLOB.h
+fi
+
+my_c_files=$(cat ${my_project_d}lists/c_files)
+
+if test ! -d ${my_derived_d} ; then
+	mkdir ${my_derived_d}
+fi
+
+if test ! -d ${my_c_obj_d} ; then
+	mkdir ${my_c_obj_d}
+fi
+
+echo "Compiling"
+
+LinkFiles="${LinkLibs}"
+cd ${my_c_src_d} # makes gcc happier
+for x in ${my_c_files}
+do
+	echo ${x}
+	${CallC} ${my_c_src_d}${x}.c -o ${my_c_obj_d}${x}.c.o
+	LinkFiles="${LinkFiles} ${my_c_obj_d}${x}.c.o"
+done
+
+echo "Linking"
+${LinkLine} -o ${my_derived_d}minivmac ${LinkFiles}
+
+rm ${my_c_obj_d}*.c.o
+
+echo "Done"
+
+cd ${tool_bash_d}

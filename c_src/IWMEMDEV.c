@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -26,7 +26,11 @@
 // a serial to parallel converter with some timing in-built into it to perform
 // handshaking. Emulation so far just includes Status and Mode Register Accesses.
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+
+#include "ADDRSPAC.h"
+#endif
 
 #include "IWMEMDEV.h"
 
@@ -56,7 +60,7 @@
 #define kq6  0x40
 #define kq7  0x80
 
-UBYTE vSel; // Selection Line from VIA
+LOCALVAR UBYTE vSel; // Selection Line from VIA
 
 typedef struct
 {
@@ -71,30 +75,26 @@ typedef struct
 
 IWM_Ty IWM;
 
-void IWM_Reset(void)
+GLOBALPROC IWM_Reset(void)
 {
 	IWM.DataIn = IWM.Handshake = IWM.Status = IWM.Mode = IWM.DataOut = IWM.Lines = 0;
 }
 
 typedef enum {On, Off} Mode_Ty;
 
-static void IWM_Set_Lines (UBYTE line, Mode_Ty mode)
+LOCALPROC IWM_Set_Lines(UBYTE line, Mode_Ty the_mode)
 {
-	if (mode == Off) {
+	if (the_mode == Off) {
 		IWM.Lines &= (0xFF - line);
 	} else {
 		IWM.Lines |= line;
 	}
 }
 
-UBYTE IWM_Read_Reg  (void);
-void  IWM_Write_Reg (UBYTE in);
+FORWARDFUNC UBYTE IWM_Read_Reg(void);
+FORWARDPROC IWM_Write_Reg(UBYTE in);
 
-extern ULONG DataBus;
-extern blnr ByteSizeAccess;
-extern blnr WriteMemAccess;
-
-void IWM_Access(CPTR addr)
+GLOBALPROC IWM_Access(CPTR addr)
 {
 	if (ByteSizeAccess) {
 		if ((addr & 1) == 0) {
@@ -161,7 +161,7 @@ void IWM_Access(CPTR addr)
 	}
 }
 
-UBYTE IWM_Read_Reg (void)
+LOCALFUNC UBYTE IWM_Read_Reg(void)
 {
 	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
 		case 0 :
@@ -189,7 +189,7 @@ UBYTE IWM_Read_Reg (void)
 	}
 }
 
-void IWM_Write_Reg (UBYTE in)
+LOCALPROC IWM_Write_Reg(UBYTE in)
 {
 	if (((IWM.Lines & kmtr) >> 4) == 0) {
 #ifdef _IWM_Debug
@@ -202,7 +202,7 @@ void IWM_Write_Reg (UBYTE in)
 
 // VIA Interface Headers
 
-UBYTE VIA_GORA5 (void) // Floppy Disk Line SEL
+GLOBALFUNC UBYTE VIA_GORA5(void) // Floppy Disk Line SEL
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA5 attempts to be an input\n");
@@ -210,7 +210,7 @@ UBYTE VIA_GORA5 (void) // Floppy Disk Line SEL
 	return 0;
 }
 
-void  VIA_PORA5 (UBYTE Data)
+GLOBALPROC VIA_PORA5(UBYTE Data)
 {
 	vSel = Data;
 }

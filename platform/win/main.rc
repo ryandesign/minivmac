@@ -114,11 +114,10 @@ BEGIN
     END
     POPUP "Special"
     BEGIN
-        MENUITEM "Share Time",                  ID_CONTROL_SHARETIME
         MENUITEM "Limit Speed",                 ID_CONTROL_LIMITSPEED
         MENUITEM SEPARATOR
         MENUITEM "Reset",                       ID_CONTROL_RESET
-        MENUITEM "Interrupt (Debugger)",        ID_CONTROL_INTERRUPT
+        MENUITEM "Interrupt",                   ID_CONTROL_INTERRUPT
     END
     POPUP "Help"
     BEGIN

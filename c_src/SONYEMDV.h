@@ -1,7 +1,7 @@
 /*
 	SONYEMDV.h
 
-	Copyright (C) 2001 Paul Pratt
+	Copyright (C) 2002 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 #define SONYEMDV_H
 #endif
 
-extern void Sony_Reset(void);
+EXPORTPROC Sony_Reset(void);
 
-extern void Sony_Access(CPTR addr);
+EXPORTPROC Sony_Access(CPTR addr);
 
-void Sony_Update (void);
+EXPORTPROC Sony_Update(void);

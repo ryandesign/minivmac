@@ -1,7 +1,7 @@
 /*
 	SONYEMDV.c
 
-	Copyright (C) 2001 Paul Pratt
+	Copyright (C) 2002 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,15 +23,15 @@
 	is not emulated.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
-
-#include "SONYEMDV.h"
-
+#include "MYOSGLUE.h"
 #include "ENDIANAC.h"
 #include "ADDRSPAC.h"
 #include "MINEM68K.h"
-#include "OSCOMVAR.h"
-#include "OSGLUSTB.h"
+#endif
+
+#include "SONYEMDV.h"
 
 #define kDSK_Command 0
 #define kDSK_Err 1
@@ -54,19 +54,19 @@
 #define kDSKCmdFormat 4
 #define kDSKCmdGetSize 5
 
-UWORD kDSK_Var[kDSK_numvars];
+LOCALVAR UWORD kDSK_Var[kDSK_numvars];
 
 #define MinTicksBetweenInsert 60
 	/* if call PostEvent too frequently, insert events seem to get lost */
 
-UWORD DelayUntilNextInsert;
+LOCALVAR UWORD DelayUntilNextInsert;
 
-ULONG ImageOffset[NumDrives]; /* size of any header in disk image file */
+LOCALVAR ULONG ImageOffset[NumDrives]; /* size of any header in disk image file */
 
 #define checkheadersize 84
 
 /* This checks to see if a disk (image) has been inserted */
-void Sony_Update (void)
+GLOBALPROC Sony_Update (void)
 {
 	if (DelayUntilNextInsert != 0) {
 		--DelayUntilNextInsert;
@@ -112,11 +112,7 @@ void Sony_Update (void)
 	}
 }
 
-extern ULONG DataBus;
-extern blnr ByteSizeAccess;
-extern blnr WriteMemAccess;
-
-void Sony_Access(CPTR addr)
+GLOBALPROC Sony_Access(CPTR addr)
 {
 	if (! ByteSizeAccess) {
 		if ((addr & 1) == 0) {
@@ -185,7 +181,7 @@ void Sony_Access(CPTR addr)
 	}
 }
 
-void Sony_Reset (void)
+GLOBALPROC Sony_Reset(void)
 {
 	int i;
 

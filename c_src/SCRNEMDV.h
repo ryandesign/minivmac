@@ -1,7 +1,7 @@
 /*
 	SCRNEMDV.h
 
-	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -25,12 +25,12 @@
 #define kMain_Buffer      (kRAM_Size - kMain_Offset)
 #define kAlternate_Buffer (kRAM_Size - kAlternate_Offset)
 
-extern void Screen_Draw  (void);
+EXPORTPROC Screen_Draw(void);
 
 // VIA Interface Headers
 
-extern UBYTE VIA_GORA6 (void); // Main/Alternate Screen Buffer
-extern void  VIA_PORA6 (UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORA6 (void); // Main/Alternate Screen Buffer
+EXPORTPROC VIA_PORA6(UBYTE Data);
 
-extern UBYTE VIA_GORB6 (void); // Video Beam in Display
-extern void  VIA_PORB6 (UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORB6 (void); // Video Beam in Display
+EXPORTPROC VIA_PORB6(UBYTE Data);

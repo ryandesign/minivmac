@@ -1,7 +1,7 @@
 /*
 	RTCEMDEV.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,12 +22,14 @@
 	This code adapted from "RTC.c" in vMac by Philip Cummins.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+#include "MYOSGLUE.h"
+#endif
 
 #include "RTCEMDEV.h"
 
-#include "OSCOMVAR.h"
-#include "OSGLUSTB.h"
+#define PARAMRAMSize 20
 
 typedef struct
 {
@@ -44,13 +46,15 @@ typedef struct
 	// RTC Registers
 	UBYTE Seconds_1[4]; // Apple Documented Seconds
 	UBYTE Seconds_2[4]; // Unknown (apparent) second Seconds backup
+	UBYTE PARAMRAM[PARAMRAMSize];
 } RTC_Ty;
 
-RTC_Ty RTC;
+
+LOCALVAR RTC_Ty RTC;
 
 // RTC Functions
 
-blnr RTC_Init (void)
+GLOBALFUNC blnr RTC_Init(void)
 {
 	int Counter;
 	ULONG secs;
@@ -69,29 +73,25 @@ blnr RTC_Init (void)
 	RTC.Seconds_2[2] = RTC.Seconds_1[2];
 	RTC.Seconds_2[3] = RTC.Seconds_1[3];
 
-	if (! PARAMRAMloaded) {
-		for (Counter = 0; Counter < PARAMRAMSize; Counter++) {
-			PARAMRAM[Counter] = 0;
-		}
-		PARAMRAM[0]=168;
-		PARAMRAM[3]=34;
-		PARAMRAM[4]=204;
-		PARAMRAM[5]=10;
-		PARAMRAM[6]=204;
-		PARAMRAM[7]=10;
-		PARAMRAM[13]=2;
-		PARAMRAM[14]=99;
-		PARAMRAM[17]=83;
-		PARAMRAM[18]=4;
-		PARAMRAM[19]=76;
-
-		PARAMRAMloaded = trueblnr;
+	for (Counter = 0; Counter < PARAMRAMSize; Counter++) {
+		RTC.PARAMRAM[Counter] = 0;
 	}
+	RTC.PARAMRAM[0]=168;
+	RTC.PARAMRAM[3]=34;
+	RTC.PARAMRAM[4]=204;
+	RTC.PARAMRAM[5]=10;
+	RTC.PARAMRAM[6]=204;
+	RTC.PARAMRAM[7]=10;
+	RTC.PARAMRAM[13]=2;
+	RTC.PARAMRAM[14]=99;
+	RTC.PARAMRAM[17]=83;
+	RTC.PARAMRAM[18]=4;
+	RTC.PARAMRAM[19]=76;
 
 	return trueblnr;
 }
 
-void RTC_Interrupt (void)
+GLOBALPROC RTC_Interrupt(void)
 {
 	long Seconds = 0;
 
@@ -110,9 +110,9 @@ void RTC_Interrupt (void)
 	RTC.Seconds_2[3] = (Seconds & 0xFF000000) >> 24;
 }
 
-void RTC_DoCmd(void);
+FORWARDPROC RTC_DoCmd(void);
 
-static void RTC_Put (UBYTE in)
+LOCALFUNC void RTC_Put (UBYTE in)
 {
 	RTC.Data = (RTC.Data << 1) + in;
 	RTC.Counter++;
@@ -121,16 +121,16 @@ static void RTC_Put (UBYTE in)
 	}
 }
 
-static UBYTE RTC_Get (void)
+LOCALFUNC UBYTE RTC_Get (void)
 {
 	return ((RTC.Data >> --RTC.Counter) & 0x01);
 }
 
-void RTC_Read_Reg (void);
+FORWARDPROC RTC_Read_Reg(void);
 
-void RTC_Write_Reg (void);
+FORWARDPROC RTC_Write_Reg(void);
 
-void RTC_DoCmd (void)
+LOCALPROC RTC_DoCmd(void)
 {
 	if (RTC.Mode == 0) { // This Byte is a RTC Command
 		RTC.Command = RTC.Data;
@@ -146,7 +146,7 @@ void RTC_DoCmd (void)
 	}
 }
 
-void RTC_Read_Reg (void)
+LOCALPROC RTC_Read_Reg(void)
 {
 #ifdef _RTC_Debug
 	printf("RTC Read Reg %2x\n", RTC.Command);
@@ -177,13 +177,13 @@ void RTC_Read_Reg (void)
 			RTC.Data = RTC.Seconds_2[3];
 			break;
 		case 8 : case 9 : case 10 : case 11 :
-			RTC.Data = PARAMRAM[((RTC.Command & 0x0C) >> 2) + 0x10];
+			RTC.Data = RTC.PARAMRAM[((RTC.Command & 0x0C) >> 2) + 0x10];
 			break;
 		case 16 : case 17 : case 18 : case 19 :
 		case 20 : case 21 : case 22 : case 23 :
 		case 24 : case 25 : case 26 : case 27 :
 		case 28 : case 29 : case 30 : case 31 :
-			RTC.Data = PARAMRAM[((RTC.Command & 0x3C) >> 2)];
+			RTC.Data = RTC.PARAMRAM[((RTC.Command & 0x3C) >> 2)];
 			break;
 		default :
 			RTC.Data = 0;
@@ -196,7 +196,7 @@ void RTC_Read_Reg (void)
 	RTC.Command = RTC.Mode = 0;
 }
 
-void RTC_Write_Reg (void)
+LOCALPROC RTC_Write_Reg(void)
 {
 #ifdef _RTC_Debug
 	printf("RTC Write Reg %2x %2x\n", RTC.Command, RTC.Data);
@@ -227,19 +227,18 @@ void RTC_Write_Reg (void)
 			RTC.Seconds_2[3] = RTC.Data;
 			break;
 		case 8 : case 9 : case 10 : case 11 :
-			PARAMRAM[((RTC.Command & 0x0C) >> 2) + 0x10] = RTC.Data;
+			RTC.PARAMRAM[((RTC.Command & 0x0C) >> 2) + 0x10] = RTC.Data;
 			break;
 		case 12 :
 			break; // Test Write, do nothing
 		case 13 :
 			/* RTC_Save(); */
-			/* write to disk when quit, no point in doing it sooner */
 			break; // Write_Protect Register
 		case 16 : case 17 : case 18 : case 19 :
 		case 20 : case 21 : case 22 : case 23 :
 		case 24 : case 25 : case 26 : case 27 :
 		case 28 : case 29 : case 30 : case 31 :
-			PARAMRAM[((RTC.Command & 0x3C) >> 2)] = RTC.Data;
+			RTC.PARAMRAM[((RTC.Command & 0x3C) >> 2)] = RTC.Data;
 			break;
 		default :
 			RTC.Data = 0;
@@ -253,7 +252,7 @@ void RTC_Write_Reg (void)
 
 // VIA Interface Functions
 
-UBYTE VIA_GORB2 (void) // RTC Enable
+GLOBALFUNC UBYTE VIA_GORB2(void) // RTC Enable
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORB2 attempts to be an input\n");
@@ -261,12 +260,12 @@ UBYTE VIA_GORB2 (void) // RTC Enable
 	return 0;
 }
 
-void VIA_PORB2 (UBYTE Data)
+GLOBALPROC VIA_PORB2(UBYTE Data)
 {
 	RTC.Enabled = Data;
 }
 
-UBYTE VIA_GORB1 (void) // RTC Data Clock
+GLOBALFUNC UBYTE VIA_GORB1(void) // RTC Data Clock
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORB1 attempts to be an input\n");
@@ -274,12 +273,12 @@ UBYTE VIA_GORB1 (void) // RTC Data Clock
 	return 0;
 }
 
-void VIA_PORB1 (UBYTE Data)
+GLOBALPROC VIA_PORB1(UBYTE Data)
 {
 	RTC.Clock = Data;
 }
 
-UBYTE VIA_GORB0 (void) // RTC Data
+GLOBALFUNC UBYTE VIA_GORB0(void) // RTC Data
 {
 	if ((RTC.Enabled == 0) && (RTC.Clock == 1)) {
 		return RTC_Get();
@@ -288,7 +287,7 @@ UBYTE VIA_GORB0 (void) // RTC Data
 	}
 }
 
-void VIA_PORB0 (UBYTE Data)
+GLOBALPROC VIA_PORB0(UBYTE Data)
 {
 	if ((RTC.Enabled == 0) && (RTC.Clock == 1)) {
 		RTC_Put(Data);

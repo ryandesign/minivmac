@@ -1,7 +1,7 @@
 /*
 	ROMEMDEV.c
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,15 +23,15 @@
 	This code descended from "ROM.c" in vMac by Philip Cummins.
 */
 
+#ifndef AllFiles
 #include "SYSDEPNS.h"
+#include "MYOSGLUE.h"
+#include "ENDIANAC.h"
+#endif
 
 #include "ROMEMDEV.h"
 
-#include "ENDIANAC.h"
-#include "OSGLUSTB.h"
-#include "OSCOMVAR.h"
-
-static const UWORD sony_driver[] = { // Replacement for .Sony driver
+LOCALVAR const UWORD sony_driver[] = { // Replacement for .Sony driver
 	0x4F00, 0x0000, 0x0000, 0x0000,
 	0x0018, 0x002C, 0x0040, 0x005C,
 	0x0092, 0x052E, 0x536F, 0x6E79,
@@ -206,7 +206,7 @@ static const UWORD sony_driver[] = { // Replacement for .Sony driver
 	0x4E5E, 0x4E75
 };
 
-static void Sony_Install (void)
+LOCALPROC Sony_Install(void)
 {
 	int i;
 	UWORD *pto = (UWORD *)(0x17D30 + (ULONG)ROM);
@@ -219,7 +219,7 @@ static void Sony_Install (void)
 	}
 }
 
-blnr ROM_Init(void)
+GLOBALFUNC blnr ROM_Init(void)
 {
 	if ((do_get_mem_word(&ROM[0]) == 0x4D1E)
 		&& (do_get_mem_word(&ROM[1]) == 0xEEE1))

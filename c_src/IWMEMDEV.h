@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.h
 
-	Copyright (C) 2001 Philip Cummins, Paul Pratt
+	Copyright (C) 2002 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,11 +20,11 @@
 #define IWMEVDEV_H
 #endif
 
-extern void IWM_Reset (void);
+EXPORTPROC IWM_Reset(void);
 
-extern void IWM_Access(CPTR addr);
+EXPORTPROC IWM_Access(CPTR addr);
 
 // VIA Interface Headers
 
-extern UBYTE VIA_GORA5 (void); // Floppy Disk Line SEL
-extern void  VIA_PORA5 (UBYTE Data);
+EXPORTFUNC UBYTE VIA_GORA5(void); // Floppy Disk Line SEL
+EXPORTPROC VIA_PORA5(UBYTE Data);

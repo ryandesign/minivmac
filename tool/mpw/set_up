@@ -1,6 +1,6 @@
 # set_up
 
-# Copyright (C) 2001 Paul Pratt
+# Copyright (C) 2002 Paul Pratt
 
 # You can redistribute this file and/or modify it under the terms
 # of version 2 of the GNU General Public License as published by
@@ -21,8 +21,6 @@
 # This script is also used by my usual development
 # environment scripts, which is why it is a seperate
 # file instead of included in the build script.
-
-Set UseCarbonLib 0 # for carbon
 
 Set my_lists_d "{my_project_d}lists:"
 Export my_lists_d
@@ -66,9 +64,21 @@ END
 Set my_r_obj_d "{my_derived_d}"
 Export my_r_obj_d
 
+#----- target cpu family
+
+IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	Set my_target_cpufam 68K
+END
+IF ({my_target_env} == PowerPC) || ({my_target_env} == Carbon)
+	Set my_target_cpufam PPC
+END
+IF ({my_target_env} == Win86)
+	Set my_target_cpufam X86
+END
+
 #----- check what's available in development environment
 
-IF {UseCarbonLib}
+IF {my_target_env} == Carbon
 	Set NavigationAvail 1
 	Set AppearanceAvail 1
 ELSE
@@ -96,6 +106,8 @@ ELSE
 	END
 END
 
+Set DragMgrAvail 1
+
 #----- C Configuration file
 
 Set CnfgGlob "{my_c_src_d}CNFGGLOB.h"
@@ -104,12 +116,12 @@ Echo -n > "{CnfgGlob}"
 Echo "/* make sure this is correct CNFGGLOB */" >> "{CnfgGlob}"
 Echo "#ifndef MyIsCompilingRez" >> "{CnfgGlob}"
 IF {my_compiler} == SC_MrC
-	IF {my_target_env} == PowerPC
+	IF {my_target_cpufam} == PPC
 		Echo "#ifndef __MRC__" >> "{CnfgGlob}"
 		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
 		Echo "#endif" >> "{CnfgGlob}"
 	END
-	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	IF {my_target_cpufam} == 68K
 		Echo "#ifndef __SC__" >> "{CnfgGlob}"
 		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
 		Echo "#endif" >> "{CnfgGlob}"
@@ -122,12 +134,12 @@ IF {my_compiler} == SC_MrC
 	END
 END
 IF {my_compiler} == C_PPCC
-	IF {my_target_env} == PowerPC
+	IF {my_target_cpufam} == PPC
 		Echo "#ifndef __PPCC__" >> "{CnfgGlob}"
 		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
 		Echo "#endif" >> "{CnfgGlob}"
 	END
-	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	IF {my_target_cpufam} == 68K
 		Echo "#ifndef applec" >> "{CnfgGlob}"
 		Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
 		Echo "#endif" >> "{CnfgGlob}"
@@ -143,14 +155,14 @@ Echo "#endif" >> "{CnfgGlob}"
 Echo "" >> "{CnfgGlob}"
 
 IF {my_compiler} == SC_MrC
-	IF {my_target_env} == PowerPC
+	IF {my_target_cpufam} == PPC
 		Echo "#define MyCompilerMrC 1" >> "{CnfgGlob}"
 	ELSE
 		Echo "#define MyCompilerSC 1" >> "{CnfgGlob}"
 	END
 END
 IF {my_compiler} == C_PPCC
-	IF {my_target_env} == PowerPC
+	IF {my_target_cpufam} == PPC
 		Echo "#define MyCompilerPPCC 1" >> "{CnfgGlob}"
 	ELSE
 		Echo "#define MyCompilerMPWC 1" >> "{CnfgGlob}"
@@ -161,7 +173,7 @@ IF {my_compiler} == metrowerks
 END
 
 IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC) || ({my_compiler} == metrowerks)
-	IF ({my_target_env} == PowerPC) || ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	IF ({my_target_cpufam} == PPC) || ({my_target_cpufam} == 68K)
 		Echo "" >> "{CnfgGlob}"
 		Echo "#define BigEndianUnaligned 1" >> "{CnfgGlob}"
 		Echo "" >> "{CnfgGlob}"
@@ -170,14 +182,14 @@ IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC) || ({my_compiler} == m
 	END
 END
 IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC) # but not in metrowerks
-	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+	IF {my_target_cpufam} == 68K
 		Echo "" >> "{CnfgGlob}"
 		Echo "#define ShouldUnloadDataInit 1" >> "{CnfgGlob}"
 	END
 END
 
 IF {my_compiler} == SC_MrC
-	IF {my_target_env} == PowerPC
+	IF {my_target_cpufam} == PPC
 		Echo "#define MayInline inline" >> "{CnfgGlob}"
 	END
 END
@@ -191,7 +203,10 @@ END
 IF {AppearanceAvail}
 	Echo "#define AppearanceAvail 1" >> "{CnfgGlob}"
 END
-IF {UseCarbonLib}
+IF {DragMgrAvail}
+	Echo "#define DragMgrAvail 1" >> "{CnfgGlob}"
+END
+IF {my_target_env} == Carbon
 	Echo "#define UseCarbonLib 1" >> "{CnfgGlob}"
 END
 
@@ -201,7 +216,7 @@ Set CallR "rez -t rsrc -c RSED"
 
 #----  CallC / CallCFast  ---
 
-IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+IF {my_target_cpufam} == 68K
 	IF {my_compiler} == SC_MrC
 		Set CallC "SC -proto strict -w 17"
 	END
@@ -239,7 +254,7 @@ IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
 	END
 END
 
-IF {my_target_env} == PowerPC #---- For PowerPC ---
+IF {my_target_cpufam} == PPC #---- For PowerPC ---
 
 	IF {my_compiler} == SC_MrC
 		# Set CallC "MrC -proto strict -w 17"
@@ -282,7 +297,7 @@ END
 
 #----  LinkLine  ---
 
-IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+IF {my_target_cpufam} == 68K
 
 	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
 		Set LinkLine "Link"
@@ -304,7 +319,7 @@ IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
 
 END
 
-IF {my_target_env} == PowerPC #---- For PowerPC ---
+IF {my_target_cpufam} == PPC #---- For PowerPC ---
 
 	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
 		Set LinkLine "PPCLink"
@@ -317,7 +332,7 @@ END
 
 # Set LinkLine "{LinkLine} -p"
 
-IF {UseCarbonLib}
+IF {my_target_env} == Carbon
 Set LinkLine "{LinkLine} -m main"
 END
 
@@ -392,10 +407,6 @@ END
 IF {my_target_env} == PowerPC #---- For PowerPC ---
 
 IF ({my_compiler} == SC_MrC)
-IF {UseCarbonLib}
-Set LinkLibs "¶
-'{SharedLibraries}CarbonLib'"
-ELSE
 Set LinkLibs "¶
 '{SharedLibraries}MathLib' ¶
 '{SharedLibraries}InterfaceLib'"
@@ -406,9 +417,11 @@ END
 IF {AppearanceAvail}
 	Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}AppearanceLib"¶'
 END
+IF {DragMgrAvail}
+	Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}DragLib"¶'
+END
 Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}StdCLib"¶'
 Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}StdCRuntime.o"¶'
-END
 Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}PPCToolLibs.o"¶'
 Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}PPCCRuntime.o"¶'
 END
@@ -436,6 +449,17 @@ Set LinkLibs " ¶
 {PPCLibraries}PPCToolLibs.o ¶
 {PPCLibraries}x80.o ¶
 {PPCLibraries}PPCCRuntime.o"
+END
+
+END
+
+IF {my_target_env} == Carbon #---- For PowerPC ---
+
+IF ({my_compiler} == SC_MrC)
+Set LinkLibs "¶
+'{SharedLibraries}CarbonLib'"
+Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}PPCToolLibs.o"¶'
+Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}PPCCRuntime.o"¶'
 END
 
 END
