@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,8 +18,8 @@
 	MY Operating System GLUE
 */
 
+#include "CNFGRAPI.h"
 #include "SYSDEPNS.h"
-#include "VERSINFO.h"
 
 #include "MYOSGLUE.h"
 
@@ -28,23 +28,23 @@ IMPORTPROC ProgramMain(void);
 
 GLOBALVAR char *screencomparebuff;
 
-GLOBALVAR UWORD *RAM = nullpr;
+GLOBALVAR ui4b *RAM = nullpr;
 
-GLOBALVAR ULONG kRAM_Size = 0;
+GLOBALVAR ui5b kRAM_Size = 0;
 
-GLOBALVAR UWORD *ROM;
+GLOBALVAR ui4b *ROM;
 
-GLOBALVAR UWORD CurMouseV = 0;
-GLOBALVAR UWORD CurMouseH = 0;
-GLOBALVAR UBYTE CurMouseButton = falseblnr;
+GLOBALVAR ui4b CurMouseV = 0;
+GLOBALVAR ui4b CurMouseH = 0;
+GLOBALVAR ui3b CurMouseButton = falseblnr;
 
-GLOBALVAR ULONG theKeys[4];
+GLOBALVAR ui5b theKeys[4];
 
 GLOBALVAR blnr RequestMacOff = falseblnr;
 GLOBALVAR blnr RequestMacInterrupt = falseblnr;
 GLOBALVAR blnr RequestMacReset = falseblnr;
 
-GLOBALVAR ULONG MountPending = 0;
+GLOBALVAR ui5b MountPending = 0;
 
 #define kStrTooManyImagesTitle "Too many Disk Images."
 #define kStrTooManyImagesMessage "Mini vMac can not mount more than three Disk Images. Try ejecting one."
@@ -62,26 +62,21 @@ GLOBALVAR ULONG MountPending = 0;
 #define XWnTarget 0
 #endif
 
-#ifndef HaveOSTarget
-
-#if MacTarget || WinTarget || XWnTarget
-#error "HaveOSTarget undefined"
-#endif
-
-#include "PROSGLUE.h"
-
-#else
-
 #if MacTarget /* This entire file is for macintosh only */
 #include "MCOSGLUE.h"
+#define Have_OSGLUEcore 1
 #endif /* MacTarget */
 
 #if WinTarget /* This entire file is for Windows only */
 #include "WNOSGLUE.h"
+#define Have_OSGLUEcore 1
 #endif /* WinTarget */
 
 #if XWnTarget /* This entire file is for X only */
 #include "XWOSGLUE.h"
+#define Have_OSGLUEcore 1
 #endif /* XWnTarget */
 
-#endif /* HaveOSTarget defined */
+#ifndef Have_OSGLUEcore
+#include "PROSGLUE.h"
+#endif

@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,19 +34,19 @@
 typedef struct
 {
 	// RTC VIA Flags
-	UBYTE Enabled;
-	UBYTE Clock;
+	ui3b Enabled;
+	ui3b Clock;
 
 	// RTC Data
-	UBYTE Mode;
-	UBYTE Command;
-	UBYTE Data;
-	UBYTE Counter;
+	ui3b Mode;
+	ui3b Command;
+	ui3b Data;
+	ui3b Counter;
 
 	// RTC Registers
-	UBYTE Seconds_1[4]; // Apple Documented Seconds
-	UBYTE Seconds_2[4]; // Unknown (apparent) second Seconds backup
-	UBYTE PARAMRAM[PARAMRAMSize];
+	ui3b Seconds_1[4]; // Apple Documented Seconds
+	ui3b Seconds_2[4]; // Unknown (apparent) second Seconds backup
+	ui3b PARAMRAM[PARAMRAMSize];
 } RTC_Ty;
 
 
@@ -57,7 +57,7 @@ LOCALVAR RTC_Ty RTC;
 GLOBALFUNC blnr RTC_Init(void)
 {
 	int Counter;
-	ULONG secs;
+	ui5b secs;
 
 	RTC.Enabled = RTC.Clock = RTC.Mode = RTC.Command = RTC.Data = RTC.Counter = 0;
 
@@ -76,17 +76,17 @@ GLOBALFUNC blnr RTC_Init(void)
 	for (Counter = 0; Counter < PARAMRAMSize; Counter++) {
 		RTC.PARAMRAM[Counter] = 0;
 	}
-	RTC.PARAMRAM[0]=168;
-	RTC.PARAMRAM[3]=34;
-	RTC.PARAMRAM[4]=204;
-	RTC.PARAMRAM[5]=10;
-	RTC.PARAMRAM[6]=204;
-	RTC.PARAMRAM[7]=10;
-	RTC.PARAMRAM[13]=2;
-	RTC.PARAMRAM[14]=99;
-	RTC.PARAMRAM[17]=83;
-	RTC.PARAMRAM[18]=4;
-	RTC.PARAMRAM[19]=76;
+	RTC.PARAMRAM[0] = 168;
+	RTC.PARAMRAM[3] = 34;
+	RTC.PARAMRAM[4] = 204;
+	RTC.PARAMRAM[5] = 10;
+	RTC.PARAMRAM[6] = 204;
+	RTC.PARAMRAM[7] = 10;
+	RTC.PARAMRAM[13] = 2;
+	RTC.PARAMRAM[14] = 99;
+	RTC.PARAMRAM[17] = 83;
+	RTC.PARAMRAM[18] = 4;
+	RTC.PARAMRAM[19] = 76;
 
 	return trueblnr;
 }
@@ -112,7 +112,7 @@ GLOBALPROC RTC_Interrupt(void)
 
 FORWARDPROC RTC_DoCmd(void);
 
-LOCALFUNC void RTC_Put (UBYTE in)
+LOCALFUNC void RTC_Put (ui3b in)
 {
 	RTC.Data = (RTC.Data << 1) + in;
 	RTC.Counter++;
@@ -121,7 +121,7 @@ LOCALFUNC void RTC_Put (UBYTE in)
 	}
 }
 
-LOCALFUNC UBYTE RTC_Get (void)
+LOCALFUNC ui3b RTC_Get (void)
 {
 	return ((RTC.Data >> --RTC.Counter) & 0x01);
 }
@@ -252,7 +252,7 @@ LOCALPROC RTC_Write_Reg(void)
 
 // VIA Interface Functions
 
-GLOBALFUNC UBYTE VIA_GORB2(void) // RTC Enable
+GLOBALFUNC ui3b VIA_GORB2(void) // RTC Enable
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORB2 attempts to be an input\n");
@@ -260,12 +260,12 @@ GLOBALFUNC UBYTE VIA_GORB2(void) // RTC Enable
 	return 0;
 }
 
-GLOBALPROC VIA_PORB2(UBYTE Data)
+GLOBALPROC VIA_PORB2(ui3b Data)
 {
 	RTC.Enabled = Data;
 }
 
-GLOBALFUNC UBYTE VIA_GORB1(void) // RTC Data Clock
+GLOBALFUNC ui3b VIA_GORB1(void) // RTC Data Clock
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORB1 attempts to be an input\n");
@@ -273,12 +273,12 @@ GLOBALFUNC UBYTE VIA_GORB1(void) // RTC Data Clock
 	return 0;
 }
 
-GLOBALPROC VIA_PORB1(UBYTE Data)
+GLOBALPROC VIA_PORB1(ui3b Data)
 {
 	RTC.Clock = Data;
 }
 
-GLOBALFUNC UBYTE VIA_GORB0(void) // RTC Data
+GLOBALFUNC ui3b VIA_GORB0(void) // RTC Data
 {
 	if ((RTC.Enabled == 0) && (RTC.Clock == 1)) {
 		return RTC_Get();
@@ -287,7 +287,7 @@ GLOBALFUNC UBYTE VIA_GORB0(void) // RTC Data
 	}
 }
 
-GLOBALPROC VIA_PORB0(UBYTE Data)
+GLOBALPROC VIA_PORB0(ui3b Data)
 {
 	if ((RTC.Enabled == 0) && (RTC.Clock == 1)) {
 		RTC_Put(Data);

@@ -1,25 +1,41 @@
-//Microsoft Developer Studio generated resource script.
+//  main.rc
 //
-#include "resource.h"
-
-#define APSTUDIO_READONLY_SYMBOLS
-/////////////////////////////////////////////////////////////////////////////
+//  Copyright (C) 2002 Philip Cummins, Weston Pawlowski, Paul Pratt
 //
-// Generated from the TEXTINCLUDE 2 resource.
+//  You can redistribute this file and/or modify it under the terms
+//  of version 2 of the GNU General Public License as published by
+//  the Free Software Foundation.  You should have received a copy
+//  of the license along with this file; see the file COPYING.
 //
-#include "afxres.h"
-#include "..\..\c_src\RESIDWIN.h"
-/////////////////////////////////////////////////////////////////////////////
-#undef APSTUDIO_READONLY_SYMBOLS
+//  This file is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  license for more details.
 
-/////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+//  tries to use the lowest common denominator of
+//  various windows resource compilers
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
-#endif //_WIN32
+#define IDI_VMAC                        256
+#define IDI_DISK                        257
+#define IDI_ROM                         258
+
+#define IDR_MAINMENU                    256
+
+#define ID_FILE_INSERTDISK1             256
+#define ID_FILE_QUIT                    257
+#define ID_CONTROL_LIMITSPEED           258
+#define ID_CONTROL_RESET                259
+#define ID_CONTROL_INTERRUPT            260
+#define ID_HELP_ABOUT                   261
+
+#define IDD_MYABOUTDIALOG               134
+
+#define ID_ABOUT_VERSION 128
+#define ID_ABOUT_AUTHORS 129
+#define ID_ABOUT_LICENSE 130
+#define ID_ABOUT_WARRNTY 131
+#define ID_ABOUT_FORINFO 132
+#define ID_ABOUT_WEBPAGE 133
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -31,72 +47,6 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 IDI_VMAC                ICON    DISCARDABLE     "app_icon.ico"
 IDI_DISK                ICON    DISCARDABLE     "dsk_icon.ico"
 IDI_ROM                 ICON    DISCARDABLE     "rom_icon.ico"
-
-#ifdef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// TEXTINCLUDE
-//
-
-1 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "resource.h\0"
-END
-
-2 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "#include ""afxres.h""\r\n"
-    "#include ""..\\..\\c_src\\RESIDWIN.h""\0"
-END
-
-3 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "\r\n"
-    "\0"
-END
-
-#endif    // APSTUDIO_INVOKED
-
-
-#ifndef _MAC
-/////////////////////////////////////////////////////////////////////////////
-//
-// Version
-//
-
-VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
- FILEFLAGSMASK 0x3fL
-#ifdef _DEBUG
- FILEFLAGS 0x1L
-#else
- FILEFLAGS 0x0L
-#endif
- FILEOS 0x40004L
- FILETYPE 0x1L
- FILESUBTYPE 0x0L
-BEGIN
-    BLOCK "StringFileInfo"
-    BEGIN
-        BLOCK "040904b0"
-        BEGIN
-            VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "Mini vMac for Win32\0"
-            VALUE "FileVersion", "\0"
-            VALUE "InternalName", "\0"
-            VALUE "OriginalFilename", "minivmac.exe\0"
-            VALUE "ProductName", "\0"
-            VALUE "ProductVersion", "\0"
-        END
-    END
-    BLOCK "VarFileInfo"
-    BEGIN
-        VALUE "Translation", 0x409, 1200
-    END
-END
-
-#endif    // !_MAC
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -131,52 +81,24 @@ END
 // Dialog
 //
 
+#define my_DS_MODALFRAME       0x80L   /* Can be combined with WS_CAPTION  */
+#define my_S_POPUP            0x80000000L
+#define my_WS_CAPTION          0x00C00000L     /* WS_BORDER | WS_DLGFRAME  */
+#define my_WS_SYSMENU          0x00080000L
+#define my_IDC_STATIC      (-1)
+#define my_IDCANCEL            2
+
 IDD_MYABOUTDIALOG DIALOG DISCARDABLE  0, 0, 256, 154
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+STYLE my_DS_MODALFRAME | my_S_POPUP | my_WS_CAPTION | my_WS_SYSMENU
 CAPTION "About"
 FONT 8, "MS Sans Serif"
 BEGIN
-    DEFPUSHBUTTON   "OK",IDCANCEL,191,124,50,14
+    DEFPUSHBUTTON   "OK",my_IDCANCEL,191,124,50,14
     LTEXT           "",ID_ABOUT_VERSION,88,7,161,14
     LTEXT           "",ID_ABOUT_AUTHORS,88,26,161,30
     LTEXT           "",ID_ABOUT_LICENSE,88,60,161,22
     LTEXT           "",ID_ABOUT_WARRNTY,7,85,242,30
     LTEXT           "",ID_ABOUT_FORINFO,7,116,94,11
     LTEXT           "",ID_ABOUT_WEBPAGE,22,132,134,15
-    ICON            IDI_VMAC,IDC_STATIC,34,34,18,20
+    ICON            IDI_VMAC,my_IDC_STATIC,34,34,18,20
 END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
-
-#ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO DISCARDABLE 
-BEGIN
-    IDD_MYABOUTDIALOG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 249
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 147
-    END
-END
-#endif    // APSTUDIO_INVOKED
-
-#endif    // English (U.S.) resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-
-#ifndef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 3 resource.
-//
-
-
-/////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
-

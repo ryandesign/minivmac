@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,8 +31,8 @@
 #include "SCCEMDEV.h"
 
 typedef struct {
-	UBYTE RR[16];
-	UBYTE WR[16];
+	ui3b RR[16];
+	ui3b WR[16];
 } Channel_Ty;
 
 typedef struct {
@@ -41,8 +41,8 @@ typedef struct {
 } SCC_Ty;
 
 LOCALVAR SCC_Ty SCC;
-LOCALVAR UBYTE SCC_Mode;
-LOCALVAR UBYTE SCC_Reg;
+LOCALVAR ui3b SCC_Mode;
+LOCALVAR ui3b SCC_Reg;
 
 EXPORTFUNC blnr Mouse_Enabled(void)
 {
@@ -65,22 +65,22 @@ GLOBALPROC SCC_Reset(void)
 	SCC.B.RR[0] = 0x04;
 }
 
-LOCALFUNC UBYTE SCC_GetAReg(void)
+LOCALFUNC ui3b SCC_GetAReg(void)
 {
 	return SCC.A.RR[SCC_Reg];
 }
 
-LOCALPROC SCC_PutAReg(UBYTE in)
+LOCALPROC SCC_PutAReg(ui3b in)
 {
 	SCC.A.WR[SCC_Reg] = in;
 }
 
-LOCALFUNC UBYTE SCC_GetBReg(void)
+LOCALFUNC ui3b SCC_GetBReg(void)
 {
 	return SCC.B.RR[SCC_Reg];
 }
 
-LOCALPROC SCC_PutBReg(UBYTE in)
+LOCALPROC SCC_PutBReg(ui3b in)
 {
 	SCC.B.WR[SCC_Reg] = in;
 }
@@ -147,12 +147,12 @@ GLOBALPROC SCC_Access(CPTR addr)
 
 // VIA Interface Functions
 
-EXPORTFUNC UBYTE VIA_GORA7(void)
+EXPORTFUNC ui3b VIA_GORA7(void)
 {
 	return 1; // No Wait/Requests
 }
 
-GLOBALPROC VIA_PORA7(UBYTE Data)
+GLOBALPROC VIA_PORA7(ui3b Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug

@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,38 +35,38 @@
 #define BigEndianUnaligned 0
 #endif
 
-#define do_get_mem_byte(a) (*((UBYTE *)(a)))
+#define do_get_mem_byte(a) (*((ui3b *)(a)))
 
 #if BigEndianUnaligned
-#define do_get_mem_word(a) (*((UWORD *)(a)))
+#define do_get_mem_word(a) (*((ui4b *)(a)))
 #else
-static MayInline UWORD do_get_mem_word(UWORD *a)
+static MayInline ui4b do_get_mem_word(ui4b *a)
 {
-	UBYTE *b = (UBYTE *)a;
+	ui3b *b = (ui3b *)a;
 
 	return (*b << 8) | (*(b+1));
 }
 #endif
 
 #if BigEndianUnaligned
-#define do_get_mem_long(a) (*((ULONG *)(a)))
+#define do_get_mem_long(a) (*((ui5b *)(a)))
 #else
-static MayInline ULONG do_get_mem_long(ULONG *a)
+static MayInline ui5b do_get_mem_long(ui5b *a)
 {
-	UBYTE *b = (UBYTE *)a;
+	ui3b *b = (ui3b *)a;
 
 	return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
 }
 #endif
 
-#define do_put_mem_byte(a, v) ((*((UBYTE *)(a))) = (v))
+#define do_put_mem_byte(a, v) ((*((ui3b *)(a))) = (v))
 
 #if BigEndianUnaligned
-#define do_put_mem_word(a, v) ((*((UWORD *)(a))) = (v))
+#define do_put_mem_word(a, v) ((*((ui4b *)(a))) = (v))
 #else
-static MayInline void do_put_mem_word(UWORD *a, UWORD v)
+static MayInline void do_put_mem_word(ui4b *a, ui4b v)
 {
-	UBYTE *b = (UBYTE *)a;
+	ui3b *b = (ui3b *)a;
 
 	*b = v >> 8;
 	*(b+1) = v;
@@ -74,11 +74,11 @@ static MayInline void do_put_mem_word(UWORD *a, UWORD v)
 #endif
 
 #if BigEndianUnaligned
-#define do_put_mem_long(a, v) ((*((ULONG *)(a))) = (v))
+#define do_put_mem_long(a, v) ((*((ui5b *)(a))) = (v))
 #else
-static MayInline void do_put_mem_long(ULONG *a, ULONG v)
+static MayInline void do_put_mem_long(ui5b *a, ui5b v)
 {
-	UBYTE *b = (UBYTE *)a;
+	ui3b *b = (ui3b *)a;
 
 	*b = v >> 24;
 	*(b+1) = v >> 16;

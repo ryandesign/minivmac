@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,8 +32,8 @@
 
 #include "MOUSEMDV.h"
 
-LOCALVAR UBYTE X2 = 0;
-LOCALVAR UBYTE Y2 = 0;
+LOCALVAR ui3b X2 = 0;
+LOCALVAR ui3b Y2 = 0;
 
 #if 0
 LOCALFUNC unsigned int mapmouse0(unsigned int i)
@@ -64,7 +64,7 @@ LOCALVAR int mousedeltah = 0;
 
 GLOBALPROC Mouse_Update2(void)
 {
-	ULONG NewMouse;
+	ui5b NewMouse;
 
 	if (Mouse_Enabled()) { // SCC activated yet
 #if 1
@@ -77,13 +77,13 @@ GLOBALPROC Mouse_Update2(void)
 			put_byte(0x08CE, 0xFF); // Tell MacOS to redraw the Mouse
 		}
 #else
-		UWORD CurMacMouseV = get_word(0x82C);
-		UWORD CurMacMouseH = get_word(0x82E);
-		WORD dv = CurMouseV - CurMacMouseV;
-		WORD dh = CurMouseH - CurMacMouseH;
+		ui4b CurMacMouseV = get_word(0x82C);
+		ui4b CurMacMouseH = get_word(0x82E);
+		si4b dv = CurMouseV - CurMacMouseV;
+		si4b dh = CurMouseH - CurMacMouseH;
 
 		if ((dv != 0) || (dh != 0)) {
-			UWORD CrsrThresh = get_word(0x8Ec);
+			ui4b CrsrThresh = get_word(0x8Ec);
 			blnr adv = dv;
 			blnr adh = dh;
 #if 0
@@ -122,22 +122,22 @@ GLOBALPROC Mouse_Update2(void)
 
 // VIA Interface Functions
 
-GLOBALFUNC UBYTE VIA_GORB5(void) // Mouse Y2
+GLOBALFUNC ui3b VIA_GORB5(void) // Mouse Y2
 {
 	return Y2;
 }
 
-GLOBALFUNC UBYTE VIA_GORB4(void) // Mouse X2
+GLOBALFUNC ui3b VIA_GORB4(void) // Mouse X2
 {
 	return X2;
 }
 
-GLOBALFUNC UBYTE VIA_GORB3(void) // Mouse Button
+GLOBALFUNC ui3b VIA_GORB3(void) // Mouse Button
 {
 	return ! CurMouseButton;
 }
 
-GLOBALPROC VIA_PORB5(UBYTE Data)
+GLOBALPROC VIA_PORB5(ui3b Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug
@@ -145,7 +145,7 @@ GLOBALPROC VIA_PORB5(UBYTE Data)
 #endif
 }
 
-GLOBALPROC VIA_PORB4(UBYTE Data)
+GLOBALPROC VIA_PORB4(ui3b Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug
@@ -153,7 +153,7 @@ GLOBALPROC VIA_PORB4(UBYTE Data)
 #endif
 }
 
-GLOBALPROC VIA_PORB3(UBYTE Data)
+GLOBALPROC VIA_PORB3(ui3b Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug

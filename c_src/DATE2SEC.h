@@ -5,7 +5,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -69,19 +69,19 @@
 /*                                                               */
 /* The number returned is adjusted by 5 to facilitate day of     */
 /* week calculations.  The mod of the returned value gives the   */
-/* day of the week the date is.  (ie: dow = days % 7 ) where     */
+/* day of the week the date is.  (ie: dow = days % 7) where      */
 /* dow will return 0=Sunday, 1=Monday, 2=Tuesday, etc...         */
 /*                                                               */
 /*****************************************************************/
 
-LOCALFUNC ULONG jdate( int day, int month, int year )
+LOCALFUNC ui5b jdate(int day, int month, int year)
 {
-	ULONG days;                      /* value returned */
+	ui5b days;                      /* value returned */
 	int mtable[] = {0,31,59,90,120,151,181,212,243,273,304,334};
 
 	/* First, calculate base number including leap and Centenial year stuff */
 
-	days=(((ULONG)year*365)+day+mtable[month-1]+
+	days = (((ui5b)year*365)+day+mtable[month-1]+
 		((year+4)/4) - ((year/100)-(year/400)));
 
 	/* now adjust for leap year before March 1st */
@@ -97,11 +97,11 @@ LOCALFUNC ULONG jdate( int day, int month, int year )
 	return(days+5);
 }
 
-LOCALFUNC ULONG Date2MacSeconds(int second, int minute, int hour,
+LOCALFUNC ui5b Date2MacSeconds(int second, int minute, int hour,
 		int day, int month, int year)
 {
-	ULONG curjdate;
-	ULONG basejdate;
+	ui5b curjdate;
+	ui5b basejdate;
 
 	curjdate = jdate(day, month, year);
 	basejdate = jdate(1, 1, 1904);

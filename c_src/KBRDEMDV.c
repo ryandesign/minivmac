@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,14 +33,14 @@
 
 #include "KBRDEMDV.h"
 
-LOCALVAR UBYTE CommandPending = 0;
+LOCALVAR ui3b CommandPending = 0;
 
-GLOBALPROC Keyboard_Put(UBYTE in)
+GLOBALPROC Keyboard_Put(ui3b in)
 {
 	CommandPending = in;
 }
 
-LOCALVAR ULONG theKeyCopys[4];
+LOCALVAR ui5b theKeyCopys[4];
 	/*
 		What the emulated keyboard thinks the mac thinks is the
 		state of the keyboard. This is compared to theKeys,
@@ -53,17 +53,17 @@ LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
 	int b;
 
 	for (j = 0; j < 16; ++j) {
-		UBYTE k1 = ((UBYTE *)theKeys)[j];
-		UBYTE k2 = ((UBYTE *)theKeyCopys)[j];
+		ui3b k1 = ((ui3b *)theKeys)[j];
+		ui3b k2 = ((ui3b *)theKeyCopys)[j];
 
 		if (k1 != k2) {
-			UBYTE bit = 1;
+			ui3b bit = 1;
 			for (b = 0; b < 8; ++b) {
-				UBYTE newk = k1 & bit;
-				UBYTE oldk = k2 & bit;
+				ui3b newk = k1 & bit;
+				ui3b oldk = k2 & bit;
 
 				if (oldk != newk) {
-					((UBYTE *)theKeyCopys)[j] = (k2 & ~ bit) | newk;
+					((ui3b *)theKeyCopys)[j] = (k2 & ~ bit) | newk;
 
 					*VirtualKey = j * 8 + b;
 					*KeyDown = (newk != 0);
@@ -77,13 +77,13 @@ LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
 	return falseblnr;
 }
 
-LOCALVAR UBYTE InstantCommandData = 0x7B;
+LOCALVAR ui3b InstantCommandData = 0x7B;
 
 LOCALFUNC blnr AttemptToFinishInquiry(void)
 {
 	int i;
 	blnr KeyDown;
-	UBYTE Keyboard_Data;
+	ui3b Keyboard_Data;
 
 	if (FindKeyEvent(&i, &KeyDown)) {
 		if (i < 64) {
@@ -133,7 +133,7 @@ GLOBALPROC Keyboard_Get(void)
 			{
 				int i;
 
-				for (i = 4; --i >=0; ) {
+				for (i = 4; --i >= 0; ) {
 					theKeyCopys[i] = 0;
 				}
 			}

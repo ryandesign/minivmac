@@ -5,7 +5,7 @@
 ;	You can redistribute this file and/or modify it under the terms
 ;	of version 2 of the GNU General Public License as published by
 ;	the Free Software Foundation.  You should have received a copy
-;	of the license along with with this file; see the file COPYING.
+;	of the license along with this file; see the file COPYING.
 ;
 ;	This file is distributed in the hope that it will be useful,
 ;	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +16,7 @@
 ;
 ;	#define kDSK_Block_Base 0x00F40000
 ;	#define kDSK_QuitOnEject 3
-;	
+;
 ;	void main(void)
 ;	{
 ;		MaxApplZone();
@@ -44,17 +44,17 @@
 autoquit MAIN EXPORT
 
 		LINK       A6, #-$0400
-		_MaxApplZone	
+		_MaxApplZone
 		PEA        -$0200(A6)
 ; I think the quickdraw variables are a bit over 200 bytes.
 ; left some space on either side just in case.
-		_InitGraf	
-		_InitFonts	
-		_InitWindows	
-		_InitMenus	
-		_TEInit	
+		_InitGraf
+		_InitFonts
+		_InitWindows
+		_InitMenus
+		_TEInit
 		CLR.L      -(A7)
-		_InitDialogs	
+		_InitDialogs
 		MOVEA.L    #$00F40006,A0
 		MOVE.W     #$01, (A0)
 		MOVE.W     #$0001, -(A7)
@@ -64,4 +64,4 @@ autoquit MAIN EXPORT
 
 		ENDMAIN
 
-        END
+		END

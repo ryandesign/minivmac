@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,13 +26,13 @@
 
 /*--- some simple utilities ---*/
 
-GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
+GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 {
-	LONG i;
-	UBYTE *s = (UBYTE *)srcPtr;
-	UBYTE *d = (UBYTE *)destPtr;
+	si5b i;
+	ui3b *s = (ui3b *)srcPtr;
+	ui3b *d = (ui3b *)destPtr;
 
-	for (i = byteCount; --i >=0; ) {
+	for (i = byteCount; --i >= 0; ) {
 		*d++ = *s++;
 	}
 }
@@ -53,7 +53,7 @@ GLOBALFUNC blnr OkCancelAlert(char *briefMsg, char *longMsg)
 	return falseblnr;
 }
 
-GLOBALPROC HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
+GLOBALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 {
 	UnusedParam(top);
 	UnusedParam(left);
@@ -67,16 +67,16 @@ void *Drives[NumDrives]; /* open disk image files */
 
 LOCALPROC InitDrives(void)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
 	}
 }
 
-GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	UnusedParam(Buffer);
 	UnusedParam(Sony_Start);
@@ -93,9 +93,9 @@ GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG 
 	return result;
 }
 
-GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	UnusedParam(Buffer);
 	UnusedParam(Sony_Start);
@@ -112,15 +112,15 @@ GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG
 	return result;
 }
 
-GLOBALFUNC blnr vSonyDiskLocked(UWORD Drive_No)
+GLOBALFUNC blnr vSonyDiskLocked(ui4b Drive_No)
 {
 	UnusedParam(Drive_No);
 	return falseblnr;
 }
 
-GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	UnusedParam(Sony_Count);
 	if (Drive_No < NumDrives) {
@@ -135,9 +135,9 @@ GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
+GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -151,9 +151,9 @@ GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
+GLOBALFUNC si4b vSonyVerify(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -167,9 +167,9 @@ GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
+GLOBALFUNC si4b vSonyFormat(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -183,7 +183,7 @@ GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
+GLOBALFUNC blnr vSonyInserted (ui4b Drive_No)
 {
 	if (Drive_No >= NumDrives) {
 		return falseblnr;
@@ -192,9 +192,9 @@ GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
 	}
 }
 
-LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
+LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (Drives[i] == NotAfileRef) {
@@ -207,7 +207,7 @@ LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
 
 GLOBALFUNC blnr AnyDiskInserted(void)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (Drives[i] != NotAfileRef) {
@@ -233,7 +233,7 @@ LOCALFUNC blnr AllocateMacRAM (void)
 	return falseblnr;
 }
 
-GLOBALFUNC ULONG GetMacDateInSecond(void)
+GLOBALFUNC ui5b GetMacDateInSecond(void)
 {
 	return 0;
 }

@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,7 +30,7 @@
 
 #include "SCRNEMDV.h"
 
-LOCALVAR UBYTE vPage2 = 1;
+LOCALVAR ui3b vPage2 = 1;
 
 LOCALFUNC blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 					long L, long *j)
@@ -71,6 +71,12 @@ LOCALFUNC blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 	return falseblnr;
 }
 
+#define UpdateScreenInterval 1
+
+#if UpdateScreenInterval != 1
+static unsigned long ScreenTimer = UpdateScreenInterval;
+#endif
+
 // Draw the screen
 GLOBALPROC Screen_Draw(void)
 {
@@ -81,10 +87,17 @@ GLOBALPROC Screen_Draw(void)
 	long copyoffset;
 	long copyrows;
 
+#if UpdateScreenInterval != 1
+	if (--ScreenTimer != 0) {
+		return;
+	}
+	ScreenTimer = UpdateScreenInterval;
+#endif
+
 	if (vPage2 == 1) {
-		screencurrentbuff = (char *) /* get_real_address */ ( ((UBYTE *) RAM) + kMain_Buffer);
+		screencurrentbuff = (char *) /* get_real_address */ (((ui3b *) RAM) + kMain_Buffer);
 	} else {
-		screencurrentbuff = (char *) /* get_real_address */ ( ((UBYTE *) RAM) + kAlternate_Buffer);
+		screencurrentbuff = (char *) /* get_real_address */ (((ui3b *) RAM) + kAlternate_Buffer);
 	}
 
 	if (FindFirstChangeInLVecs((long *)screencurrentbuff,
@@ -108,7 +121,7 @@ GLOBALPROC Screen_Draw(void)
 
 // VIA Interface Functions
 
-GLOBALFUNC UBYTE VIA_GORA6(void) // Main/Alternate Screen Buffer
+GLOBALFUNC ui3b VIA_GORA6(void) // Main/Alternate Screen Buffer
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA6 attempts to be an input\n");
@@ -116,17 +129,17 @@ GLOBALFUNC UBYTE VIA_GORA6(void) // Main/Alternate Screen Buffer
 	return 0;
 }
 
-GLOBALPROC VIA_PORA6(UBYTE Data)
+GLOBALPROC VIA_PORA6(ui3b Data)
 {
 	vPage2 = Data;
 }
 
-GLOBALFUNC UBYTE VIA_GORB6(void) // Video Beam in Display
+GLOBALFUNC ui3b VIA_GORB6(void) // Video Beam in Display
 {
 	return 0; // Assume it is
 }
 
-GLOBALPROC VIA_PORB6(UBYTE Data)
+GLOBALPROC VIA_PORB6(ui3b Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug

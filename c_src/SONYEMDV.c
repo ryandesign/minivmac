@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -54,14 +54,14 @@
 #define kDSKCmdFormat 4
 #define kDSKCmdGetSize 5
 
-LOCALVAR UWORD kDSK_Var[kDSK_numvars];
+LOCALVAR ui4b kDSK_Var[kDSK_numvars];
 
 #define MinTicksBetweenInsert 60
 	/* if call PostEvent too frequently, insert events seem to get lost */
 
-LOCALVAR UWORD DelayUntilNextInsert;
+LOCALVAR ui4b DelayUntilNextInsert;
 
-LOCALVAR ULONG ImageOffset[NumDrives]; /* size of any header in disk image file */
+LOCALVAR ui5b ImageOffset[NumDrives]; /* size of any header in disk image file */
 
 #define checkheadersize 84
 
@@ -72,23 +72,23 @@ GLOBALPROC Sony_Update (void)
 		--DelayUntilNextInsert;
 	} else {
 		if (MountPending != 0) {
-			CPTR CallBack = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_CallBack_Hi]);
+			CPTR CallBack = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_CallBack_Hi]);
 
 			if (CallBack != 0) {
 				int i;
-				ULONG data;
-				ULONG Sony_Count;
-				UBYTE Temp[checkheadersize];
-				WORD result;
+				ui5b data;
+				ui5b Sony_Count;
+				ui3b Temp[checkheadersize];
+				si4b result;
 
 				for (i = 0; i < NumDrives; ++i) {
-					if ((MountPending & ((ULONG)1 << i)) != 0) {
-						MountPending &= ~((ULONG)1 << i);
+					if ((MountPending & ((ui5b)1 << i)) != 0) {
+						MountPending &= ~((ui5b)1 << i);
 						Sony_Count = checkheadersize;
 						result = vSonyRead((void *)&Temp, i, 0, &Sony_Count);
 						if (result == 0) {
-							if ( /* (Temp[81]== 34 or is that 2) && */
-									(Temp[82]==1) && (Temp[83]==0) &&
+							if ( /* (Temp[81] == 34 or is that 2) && */
+									(Temp[82] == 1) && (Temp[83] == 0) &&
 									(Temp[0] < 63) && (Temp[63] == 0))
 							{
 								/* have old style disk image header */
@@ -100,7 +100,7 @@ GLOBALPROC Sony_Update (void)
 							DelayUntilNextInsert = MinTicksBetweenInsert;
 							data = i;
 							if (vSonyDiskLocked(i)) {
-								data |= (ULONG)0x00FF << 16;
+								data |= (ui5b)0x00FF << 16;
 							}
 							DiskInsertedPsuedoException(CallBack, data);
 							return; /* only one disk at a time */
@@ -121,28 +121,28 @@ GLOBALPROC Sony_Access(CPTR addr)
 					do_put_mem_word(&kDSK_Var[addr >> 1], DataBus);
 					if (addr == kDSK_Command) {
 						/* this is a command */
-						WORD result;
-						UWORD Drive_No = do_get_mem_word(&kDSK_Var[kDSK_Drive_No]);
+						si4b result;
+						ui4b Drive_No = do_get_mem_word(&kDSK_Var[kDSK_Drive_No]);
 
 						switch (DataBus) {
 							case kDSKCmdRead:
 								{
-									ULONG Sony_Start = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Start_Hi]);
-									ULONG Sony_Count = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi]);
-									CPTR Buffera = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Buffer_Hi]);
+									ui5b Sony_Start = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_Start_Hi]);
+									ui5b Sony_Count = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_Count_Hi]);
+									CPTR Buffera = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_Buffer_Hi]);
 									void *Buffer = (void*)get_real_address(Buffera);
 									result = vSonyRead(Buffer, Drive_No, ImageOffset[Drive_No] + Sony_Start, &Sony_Count);
-									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
+									do_put_mem_long((ui5b *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
 								}
 								break;
 							case kDSKCmdWrite:
 								{
-									ULONG Sony_Start = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Start_Hi]);
-									ULONG Sony_Count = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi]);
-									CPTR Buffera = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Buffer_Hi]);
+									ui5b Sony_Start = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_Start_Hi]);
+									ui5b Sony_Count = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_Count_Hi]);
+									CPTR Buffera = do_get_mem_long((ui5b *)&kDSK_Var[kDSK_Buffer_Hi]);
 									void *Buffer = (void*)get_real_address(Buffera);
 									result = vSonyWrite(Buffer, Drive_No, ImageOffset[Drive_No] + Sony_Start, &Sony_Count);
-									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
+									do_put_mem_long((ui5b *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
 								}
 								break;
 							case kDSKCmdEject:
@@ -161,9 +161,9 @@ GLOBALPROC Sony_Access(CPTR addr)
 								break;
 							case kDSKCmdGetSize:
 								{
-									ULONG Sony_Count;
+									ui5b Sony_Count;
 									result = vSonyGetSize(Drive_No, &Sony_Count);
-									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count - ImageOffset[Drive_No]);
+									do_put_mem_long((ui5b *)&kDSK_Var[kDSK_Count_Hi], Sony_Count - ImageOffset[Drive_No]);
 								}
 								break;
 							default:
@@ -171,7 +171,7 @@ GLOBALPROC Sony_Access(CPTR addr)
 								result = -1;
 								break;
 						}
-						do_put_mem_word((UWORD *)&kDSK_Var[kDSK_Err], result);
+						do_put_mem_word((ui4b *)&kDSK_Var[kDSK_Err], result);
 					}
 				} else {
 					DataBus = do_get_mem_word(&kDSK_Var[addr >> 1]);

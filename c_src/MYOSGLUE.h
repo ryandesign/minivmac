@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,13 +36,13 @@ EXPORTPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal);
 
 EXPORTFUNC blnr OkCancelAlert(char *briefMsg, char *longMsg);
 
-EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount);
+EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 
-EXPORTVAR(ULONG, kRAM_Size);
+EXPORTVAR(ui5b, kRAM_Size)
 	/* chosen by MYOSGLUE. Must be a power of two */
 
 #define RAMSafetyMarginFudge 4
-EXPORTVAR(UWORD, *RAM);
+EXPORTVAR(ui4b, *RAM)
 	/*
 		allocated by MYOSGLUE to be at least kRAM_Size + RAMSafetyMarginFudge
 		bytes. Because of shortcuts taken in ADDRSPAC.c, it is in theory
@@ -51,22 +51,22 @@ EXPORTVAR(UWORD, *RAM);
 
 #define kROM_Size 0x020000 // ROM size is 128 KB
 
-EXPORTVAR(UWORD, *ROM);
+EXPORTVAR(ui4b, *ROM)
 
 #define NumDrives 3
-EXPORTVAR(ULONG, MountPending);
+EXPORTVAR(ui5b, MountPending)
 
-EXPORTFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
-EXPORTFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
-EXPORTFUNC WORD vSonyEject(UWORD Drive_No);
-EXPORTFUNC WORD vSonyVerify(UWORD Drive_No);
-EXPORTFUNC WORD vSonyFormat(UWORD Drive_No);
-EXPORTFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count);
-EXPORTFUNC blnr vSonyInserted (UWORD Drive_No);
-EXPORTFUNC blnr vSonyDiskLocked(UWORD Drive_No);
+EXPORTFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count);
+EXPORTFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count);
+EXPORTFUNC si4b vSonyEject(ui4b Drive_No);
+EXPORTFUNC si4b vSonyVerify(ui4b Drive_No);
+EXPORTFUNC si4b vSonyFormat(ui4b Drive_No);
+EXPORTFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count);
+EXPORTFUNC blnr vSonyInserted (ui4b Drive_No);
+EXPORTFUNC blnr vSonyDiskLocked(ui4b Drive_No);
 EXPORTFUNC blnr AnyDiskInserted(void);
 
-EXPORTFUNC ULONG GetMacDateInSecond(void);
+EXPORTFUNC ui5b GetMacDateInSecond(void);
 
 #define vMacScreenHeight 342
 #define vMacScreenWidth 512
@@ -74,18 +74,18 @@ EXPORTFUNC ULONG GetMacDateInSecond(void);
 #define vMacScreenNumBytes (vMacScreenNumBits / 8)
 #define vMacScreenByteWidth (vMacScreenWidth / 8)
 
-EXPORTVAR(char, *screencomparebuff);
+EXPORTVAR(char, *screencomparebuff)
 
-EXPORTPROC HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right);
+EXPORTPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right);
 
-EXPORTVAR(UWORD, CurMouseV);
-EXPORTVAR(UWORD, CurMouseH);
-EXPORTVAR(UBYTE, CurMouseButton);
+EXPORTVAR(ui4b, CurMouseV)
+EXPORTVAR(ui4b, CurMouseH)
+EXPORTVAR(ui3b, CurMouseButton)
 
-EXPORTVAR(ULONG, theKeys[4]);
+EXPORTVAR(ui5b, theKeys[4])
 
-EXPORTVAR(blnr, RequestMacOff);
-EXPORTVAR(blnr, RequestMacInterrupt);
-EXPORTVAR(blnr, RequestMacReset);
+EXPORTVAR(blnr, RequestMacOff)
+EXPORTVAR(blnr, RequestMacInterrupt)
+EXPORTVAR(blnr, RequestMacReset)
 
 EXPORTFUNC blnr CheckIntSixtieth(blnr overdue);

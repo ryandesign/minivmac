@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,18 +26,6 @@
 	The main entry point 'main' is at the end of this file.
 */
 
-#ifndef HaveOSTarget
-#error "HaveOSTarget undefined"
-#endif
-
-#ifndef UseCarbonLib
-#define UseCarbonLib 0
-#endif
-
-#if UseCarbonLib
-#define TARGET_API_MAC_CARBON 1
-#endif
-
 #ifndef NavigationAvail
 #define NavigationAvail 0
 #endif
@@ -51,52 +39,6 @@
 #endif
 
 #include "RESIDMAC.h"
-
-#include <Types.h>
-#include <MixedMode.h>
-#include <Gestalt.h>
-#include <Errors.h>
-#include <Memory.h>
-#include <OSUtils.h>
-#include <QuickdrawText.h>
-#include <QuickDraw.h>
-#include <SegLoad.h>
-#include <IntlResources.h>
-#include <Events.h>
-#include <Script.h>
-#include <Files.h>
-#include <Resources.h>
-#include <Fonts.h>
-#include <TextUtils.h>
-#include <FixMath.h>
-#include <ToolUtils.h>
-#include <Menus.h>
-#include <Scrap.h>
-#include <Controls.h>
-#include <AppleEvents.h>
-#include <Processes.h>
-#include <EPPC.h>
-#include <Windows.h>
-#include <TextEdit.h>
-#include <Dialogs.h>
-#include <Devices.h>
-#include <Palettes.h>
-#include <StandardFile.h>
-#include <Aliases.h>
-#include <Folders.h>
-#include <Balloons.h>
-#include <DiskInit.h>
-#include <LowMem.h>
-#include <sound.h>
-#if AppearanceAvail
-#include <Appearance.h>
-#endif
-#if NavigationAvail
-#include <Navigation.h>
-#endif
-#if CPUfamilyMC68K
-#include <Traps.h>
-#endif
 
 #ifndef CALL_NOT_IN_CARBON
 #define CALL_NOT_IN_CARBON 1
@@ -119,7 +61,7 @@ LOCALFUNC blnr InitMacManagers(void)
 	{
 		int i;
 
-		for (i = 7; --i >=0; ) {
+		for (i = 7; --i >= 0; ) {
 			MoreMasters();
 		}
 	}
@@ -141,23 +83,23 @@ LOCALFUNC blnr InitMacManagers(void)
 #define PowOf2(p) ((unsigned long)1 << (p))
 #define TestBit(i, p) (((unsigned long)(i) & PowOf2(p)) != 0)
 
-GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
+GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 {
 	BlockMove((Ptr)srcPtr, (Ptr)destPtr, byteCount);
 }
 
 /* don't want to include c libraries, so: */
-LOCALFUNC LONG CStrLen(char *src)
+LOCALFUNC si5b CStrLen(char *src)
 {
 	char *p = src;
 	while (*p++ != 0) {
 	}
-	return ((LONG)p) - ((LONG)src) - 1;
+	return ((si5b)p) - ((si5b)src) - 1;
 }
 
 LOCALPROC CopyC2PStr(ps3p dst, /*CONST*/ char *src)
 {
-	LONG L;
+	si5b L;
 
 	L = CStrLen(src);
 	if (L > 255) {
@@ -205,7 +147,7 @@ LOCALFUNC blnr InitCheckMyEnvrn(void)
 
 	// Navigation
 #if NavigationAvail
-	gNavServicesExists=NavServicesAvailable();
+	gNavServicesExists = NavServicesAvailable();
 #endif
 
 #if DragMgrAvail
@@ -378,6 +320,11 @@ GLOBALPROC DumpANote(char *s)
 
 LOCALVAR WindowPtr gMyMainWindow = NULL;
 
+#define MyWindowScale 1
+
+#define MyWindowHeight (MyWindowScale * vMacScreenHeight)
+#define MyWindowWidth (MyWindowScale * vMacScreenWidth)
+
 LOCALFUNC blnr CreateMainWindow(void)
 {
 	Rect Bounds;
@@ -395,14 +342,14 @@ LOCALFUNC blnr CreateMainWindow(void)
 #endif
 
 	// Create window rectangle and centre it on the screen
-	leftPos=((rp->right - rp->left) - vMacScreenWidth) / 2;
-	topPos=((rp->bottom - rp->top) - vMacScreenHeight) / 2;
-	SetRect(&Bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+	leftPos = ((rp->right - rp->left) - MyWindowWidth) / 2;
+	topPos = ((rp->bottom - rp->top) - MyWindowHeight) / 2;
+	SetRect(&Bounds, 0, 0, MyWindowWidth, MyWindowHeight);
 	OffsetRect(&Bounds, leftPos, topPos);
 
 	/* SetEventMask(-1); want keyUp events */
 
-	gMyMainWindow = NewWindow(0L,&Bounds,"\pMini vMac",true, noGrowDocProc ,(WindowPtr) -1,true,0);
+	gMyMainWindow = NewWindow(0L, &Bounds, "\pMini vMac", true, noGrowDocProc, (WindowPtr) -1, true, 0);
 	if (gMyMainWindow != NULL) {
 		IsOk = trueblnr;
 	}
@@ -434,11 +381,11 @@ LOCALPROC Update_Screen(void)
 
 	src.baseAddr = screencomparebuff;
 	src.rowBytes = vMacScreenByteWidth;
-	SetRect(&src.bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+	SetRect(&src.bounds, 0, 0, vMacScreenWidth, vMacScreenHeight);
 	GetPort(&savePort);
 	SetPortFromWindow(gMyMainWindow);
 #if CALL_NOT_IN_CARBON
-	CopyBits(&src, &gMyMainWindow->portBits, &src.bounds, &gMyMainWindow->portRect, srcCopy,NULL);
+	CopyBits(&src, &gMyMainWindow->portBits, &src.bounds, &gMyMainWindow->portRect, srcCopy, NULL);
 #else
 	{
 		Rect pr;
@@ -446,26 +393,38 @@ LOCALPROC Update_Screen(void)
 		GetPortBounds(wp, &pr);
 		CopyBits(&src,
 			GetPortBitMapForCopyBits(wp),
-			&src.bounds, &pr, srcCopy,NULL);
+			&src.bounds, &pr, srcCopy, NULL);
 	}
 #endif
 	SetPort(savePort);
 }
 
-GLOBALPROC HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
+GLOBALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 {
 	GrafPtr savePort;
 	BitMap src;
 	Rect SrcRect;
+#if MyWindowScale == 1
+#define DstRect SrcRect
+#else
+	Rect DstRect;
+#endif
 
 	SrcRect.left = left;
 	SrcRect.right = right;
 	SrcRect.top = top;
 	SrcRect.bottom = bottom;
 
+#if MyWindowScale != 1
+	DstRect.left = MyWindowScale * left;
+	DstRect.right = MyWindowScale * right;
+	DstRect.top = MyWindowScale * top;
+	DstRect.bottom = MyWindowScale * bottom;
+#endif
+
 	src.baseAddr = screencomparebuff;
 	src.rowBytes = vMacScreenByteWidth;
-	SetRect(&src.bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+	SetRect(&src.bounds, 0, 0, vMacScreenWidth, vMacScreenHeight);
 	GetPort(&savePort);
 	SetPortFromWindow(gMyMainWindow);
 	CopyBits(&src,
@@ -474,7 +433,7 @@ GLOBALPROC HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
 #else
 		GetPortBitMapForCopyBits(GetWindowPort(gMyMainWindow)),
 #endif
-		&SrcRect,&SrcRect,srcCopy,NULL);
+		&SrcRect, &DstRect, srcCopy, NULL);
 	/* FrameRect(&SrcRect); for testing */
 	SetPort(savePort);
 }
@@ -484,7 +443,7 @@ LOCALVAR blnr CurTrueMouseButton = falseblnr;
 LOCALPROC CheckMouseState (void)
 {
 	blnr ShouldHaveCursorHidden;
-	UBYTE NewMouseButton;
+	ui3b NewMouseButton;
 	Point NewMousePos;
 	GrafPtr oldPort;
 
@@ -492,6 +451,10 @@ LOCALPROC CheckMouseState (void)
 	SetPortFromWindow(gMyMainWindow);
 	GetMouse(&NewMousePos);
 	NewMouseButton = Button();
+#if MyWindowScale != 1
+	NewMousePos.h /= MyWindowScale;
+	NewMousePos.v /= MyWindowScale;
+#endif
 	SetPort(oldPort);
 
 	ShouldHaveCursorHidden = trueblnr;
@@ -546,16 +509,16 @@ LOCALVAR short Drives[NumDrives]; /* open disk image files */
 
 LOCALPROC InitDrives(void)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
 	}
 }
 
-GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -572,9 +535,9 @@ GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG 
 	return result;
 }
 
-GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -598,15 +561,15 @@ GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG
 	return result;
 }
 
-GLOBALFUNC blnr vSonyDiskLocked(UWORD Drive_No)
+GLOBALFUNC blnr vSonyDiskLocked(ui4b Drive_No)
 {
 	UnusedParam(Drive_No);
 	return falseblnr;
 }
 
-GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -620,9 +583,9 @@ GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
+GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 	short vRefNum;
 
 	if (Drive_No < NumDrives) {
@@ -642,9 +605,9 @@ GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
+GLOBALFUNC si4b vSonyVerify(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -658,9 +621,9 @@ GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
+GLOBALFUNC si4b vSonyFormat(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -674,7 +637,7 @@ GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
+GLOBALFUNC blnr vSonyInserted (ui4b Drive_No)
 {
 	if (Drive_No >= NumDrives) {
 		return falseblnr;
@@ -683,9 +646,9 @@ GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
 	}
 }
 
-LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
+LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (Drives[i] == NotAfileRef) {
@@ -698,7 +661,7 @@ LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
 
 GLOBALFUNC blnr AnyDiskInserted(void)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (Drives[i] != NotAfileRef) {
@@ -710,7 +673,7 @@ GLOBALFUNC blnr AnyDiskInserted(void)
 
 LOCALFUNC blnr Sony_Insert0(short refnum)
 {
-	UWORD Drive_No;
+	ui4b Drive_No;
 
 	if (! FirstFreeDisk(&Drive_No)) {
 		(void) FSClose(refnum);
@@ -718,7 +681,7 @@ LOCALFUNC blnr Sony_Insert0(short refnum)
 		return falseblnr;
 	} else {
 		Drives[Drive_No] = refnum;
-		MountPending |= ((ULONG)1 << Drive_No);
+		MountPending |= ((ui5b)1 << Drive_No);
 		return trueblnr;
 	}
 }
@@ -757,8 +720,52 @@ LOCALFUNC blnr InsertADiskFromNameEtc(short vRefNum, long dirID, ConstStr255Para
 	return falseblnr;
 }
 
+#ifndef MyAppIsBundle
+#define MyAppIsBundle 0
+#endif
+
+LOCALFUNC blnr GetMyApplDir(short *vRefNum, long *dirID)
+{
+#if MyAppIsBundle
+	ProcessSerialNumber currentProcess;
+	FSRef fsRef;
+	FSSpec fsSpec;
+
+	currentProcess.highLongOfPSN = 0;
+	currentProcess.lowLongOfPSN = kCurrentProcess;
+	if (0 == GetProcessBundleLocation(&currentProcess,
+		&fsRef))
+	if (0 == FSGetCatalogInfo(&fsRef, kFSCatInfoNone,
+		NULL, NULL, &fsSpec, NULL))
+	{
+		*vRefNum = fsSpec.vRefNum;
+		*dirID = fsSpec.parID;
+		return trueblnr;
+	}
+	return falseblnr;
+#else
+	FCBPBRec pb;
+	Str255 fileName;
+
+	pb.ioCompletion = NULL;
+	pb.ioNamePtr = fileName;
+	pb.ioVRefNum = 0;
+	pb.ioRefNum = CurResFile();
+	pb.ioFCBIndx = 0;
+	if (0 != PBGetFCBInfoSync(&pb)) {
+		return falseblnr;
+	} else {
+		*vRefNum = pb.ioFCBVRefNum;
+		*dirID = pb.ioFCBParID;
+		return trueblnr;
+	}
+#endif
+}
+
 LOCALFUNC blnr LoadInitialImages(void)
 {
+#if ! MyAppIsBundle
+	/* MrC generates smaller code from the original version. odd. */
 	FCBPBRec pb;
 	Str255 fileName;
 
@@ -775,20 +782,33 @@ LOCALFUNC blnr LoadInitialImages(void)
 		}
 	}
 	return trueblnr;
+#else
+	short vRefNum;
+	long dirID;
+
+	if (GetMyApplDir(&vRefNum, &dirID)) {
+		/* stop on first error (including file not found) */
+		if (InsertADiskFromNameEtc(vRefNum, dirID, "\pdisk1.dsk"))
+		if (InsertADiskFromNameEtc(vRefNum, dirID, "\pdisk2.dsk"))
+		if (InsertADiskFromNameEtc(vRefNum, dirID, "\pdisk3.dsk"))
+		{
+		}
+	}
+	return trueblnr;
+#endif
 }
 
 #if NavigationAvail
 pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBackUserData, NavFilterModes theNavFilterModes);
 pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBackUserData, NavFilterModes theNavFilterModes)
 {
-	OSErr theErr = noErr;
 	Boolean display = true;
 	NavFileOrFolderInfo* theInfo = (NavFileOrFolderInfo*)info;
 	UnusedParam(theNavFilterModes);
 	UnusedParam(NavCallBackUserData);
 
-	if ( theItem->descriptorType == typeFSS )
-		if ( !theInfo->isFolder )
+	if (theItem->descriptorType == typeFSS)
+		if (! theInfo->isFolder)
 			{
 			// use:
 			// 'theInfo->fileAndFolder.fileInfo.finderInfo.fdType'
@@ -848,13 +868,12 @@ LOCALPROC InsertADisk(void)
 		NavDialogOptions dialogOptions;
 		OSErr theErr = noErr;
 		NavTypeListHandle openList = NULL;
-		long count = 0;
 		NavObjectFilterUPP filterUPP = MyNewNavObjectFilterUPP(/* (NavObjectFilterProcPtr) */NavigationFilterProc);
 		NavEventUPP eventUPP = MyNewNavEventUPP(/* (NavEventProcPtr) */NavigationEventProc);
 
 		theErr = NavGetDefaultDialogOptions(&dialogOptions);
 
-		/* GetIndString((unsigned char*)&dialogOptions.clientName,130,1); */
+		/* GetIndString((unsigned char*)&dialogOptions.clientName, 130, 1); */
 
 		dialogOptions.dialogOptionFlags += kNavDontAutoTranslate;
 		/* dialogOptions.dialogOptionFlags -= kNavAllowMultipleFiles; */
@@ -915,7 +934,7 @@ LOCALPROC InsertADisk(void)
 
 LOCALFUNC blnr AllocateMacROM(void)
 {
-	ROM = (UWORD *)NewPtr(kROM_Size);
+	ROM = (ui4b *)NewPtr(kROM_Size);
 	if (ROM == NULL) {
 		MacMsg("Not enough Memory.", "Unable to allocate ROM.", trueblnr);
 		return falseblnr;
@@ -926,6 +945,8 @@ LOCALFUNC blnr AllocateMacROM(void)
 
 LOCALFUNC blnr LoadMacRom(void)
 {
+#if ! MyAppIsBundle
+	/* MrC generates smaller code from the original version. odd. */
 	FCBPBRec pb;
 	Str255 fileName;
 	OSErr err;
@@ -955,6 +976,35 @@ LOCALFUNC blnr LoadMacRom(void)
 		}
 	}
 	return (err == 0);
+#else
+	short vRefNum;
+	long dirID;
+	OSErr err;
+	FSSpec spec;
+	short refnum;
+	Boolean isFolder;
+	Boolean isAlias;
+	long count = kROM_Size;
+
+
+	if (! GetMyApplDir(&vRefNum, &dirID)) {
+		return falseblnr;
+	} else {
+		err = FSMakeFSSpec(vRefNum, dirID, "\pvMac.ROM", &spec);
+		if (err == fnfErr) {
+			MacMsg("Unable to locate ROM image.", "The file vMac.ROM could not be found. Please read the manual for instructions on where to get this file.", trueblnr);
+		} else if (err == 0) {
+			if (0 == ResolveAliasFile(&spec, trueblnr, &isFolder, &isAlias)) {
+				err = FSpOpenDF(&spec, fsRdPerm, &refnum);
+				if (err == 0) {
+					err = FSRead(refnum, &count, ROM);
+					(void) FSClose(refnum);
+				}
+			}
+		}
+		return (err == 0);
+	}
+#endif
 }
 
 LOCALFUNC blnr AllocateMacRAM (void)
@@ -980,12 +1030,12 @@ LOCALFUNC blnr AllocateMacRAM (void)
 		return falseblnr;
 	}
 
-	RAM = (UWORD *)NewPtr(kRAM_Size + RAMSafetyMarginFudge);
+	RAM = (ui4b *)NewPtr(kRAM_Size + RAMSafetyMarginFudge);
 
 	return (RAM != NULL);
 }
 
-GLOBALFUNC ULONG GetMacDateInSecond(void)
+GLOBALFUNC ui5b GetMacDateInSecond(void)
 {
 	unsigned long secs;
 
@@ -1044,11 +1094,11 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 	UnusedParam(reply);
 	UnusedParam(aRefCon);
 	/*put the direct parameter (a list of descriptors) into docList*/
-	if (0 ==(AEGetParamDesc(theAppleEvent, keyDirectObject, typeAEList, &docList))) {
+	if (0 == (AEGetParamDesc(theAppleEvent, keyDirectObject, typeAEList, &docList))) {
 		if (GotRequiredParams0(theAppleEvent)) { /*Check for missing required parameters*/
-			if (0 ==(AECountItems(&docList, &itemsInList))) {
+			if (0 == (AECountItems(&docList, &itemsInList))) {
 				for (index = 1; index <= itemsInList; ++index) { /*Get each descriptor from the list, get the alias record, open the file, maybe print it.*/
-					if (0 ==(AEGetNthPtr(&docList, index, typeFSS, &keywd, &typeCode,
+					if (0 == (AEGetNthPtr(&docList, index, typeFSS, &keywd, &typeCode,
 										(Ptr)&myFSS, sizeof(FSSpec), &actualSize))) {
 						/* printIt = (aRefCon == openPrint) */
 						/* DoGetAliasFileRef(&myFSS); */
@@ -1116,7 +1166,7 @@ static pascal OSErr GlobalTrackingHandler(short message, WindowRef pWindow, void
 	UnusedParam(handlerRefCon);
 	switch(message) {
 		case kDragTrackingEnterWindow:
-			SetRect(&Bounds,0,0,vMacScreenWidth,vMacScreenHeight);
+			SetRect(&Bounds, 0, 0, MyWindowWidth, MyWindowHeight);
 			hilightRgn = NewRgn();
 			if (hilightRgn != NULL) {
 				RectRgn(hilightRgn, &Bounds);
@@ -1355,7 +1405,7 @@ LOCALPROC HandleMacEvent(EventRecord *theEvent)
 
 		case updateEvt:
 			GetPort(&savePort);
-			BeginUpdate( (WindowPtr) theEvent->message );
+			BeginUpdate((WindowPtr) theEvent->message);
 
 			if ((WindowPtr)theEvent->message == gMyMainWindow) {
 				Update_Screen();
@@ -1631,11 +1681,24 @@ LOCALPROC UnInitOSGLU(void)
 */
 }
 
-void main(void)
+#ifndef MainReturnsInt
+#define MainReturnsInt 0
+#endif
+
+#if MainReturnsInt
+int
+#else
+void
+#endif
+main(void)
 {
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
 		ProgramMain();
 	}
 	UnInitOSGLU();
+
+#if MainReturnsInt
+	return 0;
+#endif
 }

@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -60,17 +60,17 @@
 #define kq6  0x40
 #define kq7  0x80
 
-LOCALVAR UBYTE vSel; // Selection Line from VIA
+LOCALVAR ui3b vSel; // Selection Line from VIA
 
 typedef struct
 {
-	UBYTE DataIn;    // Read Data Register
-	UBYTE Handshake; // Read Handshake Register
-	UBYTE Status;    // Read Status Register
-	UBYTE Mode;      // Drive Off : Write Mode Register
+	ui3b DataIn;    // Read Data Register
+	ui3b Handshake; // Read Handshake Register
+	ui3b Status;    // Read Status Register
+	ui3b Mode;      // Drive Off : Write Mode Register
 	                 // Drive On  : Write Data Register
-	UBYTE DataOut;   // Write Data Register
-	UBYTE Lines;     // Used to Access Disk Drive Registers
+	ui3b DataOut;   // Write Data Register
+	ui3b Lines;     // Used to Access Disk Drive Registers
 } IWM_Ty;
 
 IWM_Ty IWM;
@@ -82,7 +82,7 @@ GLOBALPROC IWM_Reset(void)
 
 typedef enum {On, Off} Mode_Ty;
 
-LOCALPROC IWM_Set_Lines(UBYTE line, Mode_Ty the_mode)
+LOCALPROC IWM_Set_Lines(ui3b line, Mode_Ty the_mode)
 {
 	if (the_mode == Off) {
 		IWM.Lines &= (0xFF - line);
@@ -91,8 +91,8 @@ LOCALPROC IWM_Set_Lines(UBYTE line, Mode_Ty the_mode)
 	}
 }
 
-FORWARDFUNC UBYTE IWM_Read_Reg(void);
-FORWARDPROC IWM_Write_Reg(UBYTE in);
+FORWARDFUNC ui3b IWM_Read_Reg(void);
+FORWARDPROC IWM_Write_Reg(ui3b in);
 
 GLOBALPROC IWM_Access(CPTR addr)
 {
@@ -161,7 +161,7 @@ GLOBALPROC IWM_Access(CPTR addr)
 	}
 }
 
-LOCALFUNC UBYTE IWM_Read_Reg(void)
+LOCALFUNC ui3b IWM_Read_Reg(void)
 {
 	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
 		case 0 :
@@ -189,7 +189,7 @@ LOCALFUNC UBYTE IWM_Read_Reg(void)
 	}
 }
 
-LOCALPROC IWM_Write_Reg(UBYTE in)
+LOCALPROC IWM_Write_Reg(ui3b in)
 {
 	if (((IWM.Lines & kmtr) >> 4) == 0) {
 #ifdef _IWM_Debug
@@ -202,7 +202,7 @@ LOCALPROC IWM_Write_Reg(UBYTE in)
 
 // VIA Interface Headers
 
-GLOBALFUNC UBYTE VIA_GORA5(void) // Floppy Disk Line SEL
+GLOBALFUNC ui3b VIA_GORA5(void) // Floppy Disk Line SEL
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA5 attempts to be an input\n");
@@ -210,7 +210,7 @@ GLOBALFUNC UBYTE VIA_GORA5(void) // Floppy Disk Line SEL
 	return 0;
 }
 
-GLOBALPROC VIA_PORA5(UBYTE Data)
+GLOBALPROC VIA_PORA5(ui3b Data)
 {
 	vSel = Data;
 }

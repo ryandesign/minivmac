@@ -7,7 +7,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -53,7 +53,7 @@
 
 /*--- some simple utilities ---*/
 
-GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
+GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 {
 	(void) memcpy((char *)destPtr, (char *)srcPtr, byteCount);
 }
@@ -82,16 +82,16 @@ LOCALVAR FILE *Drives[NumDrives]; /* open disk image files */
 
 LOCALPROC InitDrives(void)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
 	}
 }
 
-GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -107,9 +107,9 @@ GLOBALFUNC WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG 
 	return result;
 }
 
-GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -125,15 +125,15 @@ GLOBALFUNC WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG
 	return result;
 }
 
-GLOBALFUNC blnr vSonyDiskLocked(UWORD Drive_No)
+GLOBALFUNC blnr vSonyDiskLocked(ui4b Drive_No)
 {
 	UnusedParam(Drive_No);
 	return falseblnr;
 }
 
-GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
+GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
 {
-	WORD result;
+	si4b result;
 
 	UnusedParam(Sony_Count);
 	if (Drive_No < NumDrives) {
@@ -148,9 +148,9 @@ GLOBALFUNC WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
+GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -164,9 +164,9 @@ GLOBALFUNC WORD vSonyEject(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
+GLOBALFUNC si4b vSonyVerify(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -180,9 +180,9 @@ GLOBALFUNC WORD vSonyVerify(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
+GLOBALFUNC si4b vSonyFormat(ui4b Drive_No)
 {
-	WORD result;
+	si4b result;
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
@@ -196,7 +196,7 @@ GLOBALFUNC WORD vSonyFormat(UWORD Drive_No)
 	return result;
 }
 
-GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
+GLOBALFUNC blnr vSonyInserted (ui4b Drive_No)
 {
 	if (Drive_No >= NumDrives) {
 		return falseblnr;
@@ -205,9 +205,9 @@ GLOBALFUNC blnr vSonyInserted (UWORD Drive_No)
 	}
 }
 
-LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
+LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (Drives[i] == NotAfileRef) {
@@ -220,7 +220,7 @@ LOCALFUNC blnr FirstFreeDisk(UWORD *Drive_No)
 
 GLOBALFUNC blnr AnyDiskInserted(void)
 {
-	WORD i;
+	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (Drives[i] != NotAfileRef) {
@@ -232,14 +232,14 @@ GLOBALFUNC blnr AnyDiskInserted(void)
 
 LOCALPROC Sony_Insert0(FILE *refnum)
 {
-	UWORD Drive_No;
+	ui4b Drive_No;
 
 	if (! FirstFreeDisk(&Drive_No)) {
 		fclose(refnum);
 		MacMsg(kStrTooManyImagesTitle, kStrTooManyImagesMessage, falseblnr);
 	} else {
 		Drives[Drive_No] = refnum;
-		MountPending |= ((ULONG)1 << Drive_No);
+		MountPending |= ((ui5b)1 << Drive_No);
 	}
 }
 
@@ -265,7 +265,7 @@ LOCALFUNC blnr LoadInitialImages(void)
 
 LOCALFUNC blnr AllocateMacROM(void)
 {
-	ROM = (UWORD *)malloc(kROM_Size);
+	ROM = (ui4b *)malloc(kROM_Size);
 	if (ROM == NULL) {
 		MacMsg("Not enough Memory.", "Unable to allocate ROM.", trueblnr);
 		return falseblnr;
@@ -299,13 +299,13 @@ LOCALFUNC blnr LoadMacRom(void)
 LOCALFUNC blnr AllocateMacRAM (void)
 {
 	kRAM_Size = 0x00400000; // Try 4 MB
-	RAM = (UWORD *)malloc(kRAM_Size + RAMSafetyMarginFudge);
+	RAM = (ui4b *)malloc(kRAM_Size + RAMSafetyMarginFudge);
 	if (RAM == NULL) {
 		kRAM_Size = 0x00200000; // Try 2 MB
-		RAM = (UWORD *)malloc(kRAM_Size + RAMSafetyMarginFudge);
+		RAM = (ui4b *)malloc(kRAM_Size + RAMSafetyMarginFudge);
 		if (RAM == NULL) {
 			kRAM_Size = 0x00100000; // Try 1 MB
-			RAM = (UWORD *)malloc(kRAM_Size + RAMSafetyMarginFudge);
+			RAM = (ui4b *)malloc(kRAM_Size + RAMSafetyMarginFudge);
 			if (RAM == NULL) {
 				MacMsg("Not enough Memory.", "Unable to allocate ROM.", trueblnr);
 				return falseblnr;
@@ -317,7 +317,7 @@ LOCALFUNC blnr AllocateMacRAM (void)
 
 #include "DATE2SEC.h"
 
-GLOBALFUNC ULONG GetMacDateInSecond(void)
+GLOBALFUNC ui5b GetMacDateInSecond(void)
 {
 	time_t Current_Time;
 	struct tm *s;
@@ -328,7 +328,7 @@ GLOBALFUNC ULONG GetMacDateInSecond(void)
 		s->tm_mday, s->tm_mon, s->tm_year);
 }
 
-#define TickType ULONG
+#define TickType ui5b
 #define TicksPerSecond 1000000
 
 LOCALFUNC TickType GetCurrentTicks(void)
@@ -336,7 +336,7 @@ LOCALFUNC TickType GetCurrentTicks(void)
 	struct timeval t;
 
 	gettimeofday(&t, NULL);
-	return (ULONG)t.tv_sec * 1000000 + t.tv_usec;
+	return (ui5b)t.tv_sec * 1000000 + t.tv_usec;
 }
 
 LOCALVAR blnr SpeedLimit = falseblnr;
@@ -379,7 +379,7 @@ LOCALFUNC blnr ScanCommandLine(void)
 					rom_path = my_argv[i];
 				}
 			} else {
-				printf("%s %s, Copyright %s.\n", kStrAppName, kStrVersion, kStrCopyrightYear);
+				printf("%s, Copyright %s.\n", kAppVariationStr, kStrCopyrightYear);
 				printf("Including or based upon code by Bernd Schmidt,\n");
 				printf("Philip Cummins, Michael Hanni, Richard F.\n");
 				printf("Bannister, Weston Pawlowski, Paul Pratt,\n");
@@ -447,6 +447,7 @@ LOCALFUNC blnr Screen_Init(void)
 
 	XSelectInput(x_display, my_main_wind,
 		ExposureMask | KeyPressMask | KeyReleaseMask |
+		ButtonPressMask | ButtonReleaseMask |
 		FocusChangeMask);
 
 	XStoreName(x_display, my_main_wind, "Mini vMac");
@@ -496,7 +497,7 @@ LOCALFUNC blnr Screen_Init(void)
 	blankCursor = XCreatePixmapCursor(x_display, XCreatePixmap(x_display, rootwin, 1, 1, 1),
 					XCreatePixmap(x_display, rootwin, 1, 1, 1),
 					&black, &white, 0, 0);
-	if (blankCursor == None ) {
+	if (blankCursor == None) {
 		fprintf(stderr, "XCreatePixmapCursor failed.\n");
 		return falseblnr;
 	}
@@ -534,7 +535,7 @@ LOCALFUNC blnr Screen_Init(void)
 	return trueblnr;
 }
 
-GLOBALPROC HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
+GLOBALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 {
 	XPutImage(x_display, my_main_wind, my_gc, my_image, left, top, left, top,
 				right - left, bottom - top);
@@ -559,7 +560,7 @@ LOCALVAR blnr CurTrueMouseButton = falseblnr;
 LOCALPROC CheckMouseState (void)
 {
 	blnr ShouldHaveCursorHidden;
-	UBYTE NewMouseButton;
+	ui3b NewMouseButton;
 	int NewMousePosh;
 	int NewMousePosv;
 	int root_x_return;
@@ -583,7 +584,7 @@ LOCALPROC CheckMouseState (void)
 		XQueryKeymap(x_display, key_vector);
 		for (i = 0; i < 256; i++) {
 			if ((key_vector[i / 8] & (1 << (i % 8))) != 0) {
-				fprintf(stderr, "key %d\n",i);
+				fprintf(stderr, "key %d\n", i);
 			}
 		}
 	}
@@ -848,7 +849,7 @@ LOCALPROC DoOnEachSixtieth(void)
 				}
 				break;
 			case ClientMessage:
-				if (event.xclient.data.l[0]==delete_win) {
+				if (event.xclient.data.l[0] == delete_win) {
 					RequestMacOff = trueblnr;
 				}
 				break;
@@ -868,7 +869,7 @@ LOCALPROC DoOnEachSixtieth(void)
 }
 
 LOCALVAR TickType LastTime;
-LOCALVAR ULONG TimeCounter = 0;
+LOCALVAR ui5b TimeCounter = 0;
 
 LOCALFUNC blnr Init60thCheck(void)
 {
@@ -883,7 +884,7 @@ GLOBALFUNC blnr CheckIntSixtieth(blnr overdue)
 	do {
 		LatestTime = GetCurrentTicks();
 		if (LatestTime != LastTime) {
-			TimeCounter += 60 * (ULONG)(LatestTime - LastTime);
+			TimeCounter += 60 * (ui5b)(LatestTime - LastTime);
 			LastTime = LatestTime;
 			if (TimeCounter > TicksPerSecond) {
 				TimeCounter %= TicksPerSecond;
@@ -921,7 +922,7 @@ LOCALFUNC blnr InitOSGLU(void)
 LOCALPROC UnInitOSGLU(void)
 {
 	ForceShowCursor();
-	if (blankCursor != None ) {
+	if (blankCursor != None) {
 		XFreeCursor(x_display, blankCursor);
 	}
 	if (my_image != NULL) {

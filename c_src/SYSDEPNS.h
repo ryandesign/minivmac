@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,22 +35,22 @@
 #endif
 
 /* If char has more then 8 bits, good night. */
-typedef unsigned char UBYTE;
-typedef signed char BYTE;
+typedef unsigned char ui3b;
+typedef signed char si3b;
 
-/* UWORD should be two byte unsigned integer */
-typedef unsigned short UWORD;
+/* ui4b should be two byte unsigned integer */
+typedef unsigned short ui4b;
 
-/* WORD should be two byte signed integer */
-typedef short WORD;
+/* si4b should be two byte signed integer */
+typedef short si4b;
 
-/* ULONG should be four byte unsigned integer */
-typedef unsigned long ULONG;
+/* ui5b should be four byte unsigned integer */
+typedef unsigned long ui5b;
 
-/* LONG should be four byte signed integer */
-typedef long LONG;
+/* si5b should be four byte signed integer */
+typedef long si5b;
 
-typedef ULONG CPTR;
+typedef ui5b CPTR;
 
 #define blnr int
 #define trueblnr 1
@@ -58,7 +58,6 @@ typedef ULONG CPTR;
 
 #define nullpr ((void *) 0)
 
-typedef unsigned char ui3b;
 typedef ui3b *ui3p;
 #define anyp ui3p
 
@@ -71,7 +70,7 @@ typedef ui3b *ui3p;
 #define EXPORTVAR(t, v)
 #else
 #define GLOBALVAR
-#define EXPORTVAR(t, v) extern t v
+#define EXPORTVAR(t, v) extern t v;
 #endif
 
 #define LOCALFUNC static

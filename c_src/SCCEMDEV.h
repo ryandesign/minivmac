@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,7 +26,7 @@ EXPORTPROC SCC_Access(CPTR addr);
 
 // VIA Interface Headers
 
-EXPORTFUNC UBYTE VIA_GORA7(void);
-EXPORTPROC VIA_PORA7(UBYTE Data);
+EXPORTFUNC ui3b VIA_GORA7(void);
+EXPORTPROC VIA_PORA7(ui3b Data);
 
 EXPORTFUNC blnr Mouse_Enabled(void);

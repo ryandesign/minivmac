@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,9 +21,9 @@
 #endif
 
 typedef struct {
-	UBYTE Enable;
-	UBYTE Volume;
-	UBYTE Buffer;
+	ui3b Enable;
+	ui3b Volume;
+	ui3b Buffer;
 } Sound_Ty;
 
 #define kSnd_Main_Offset   0x0300
@@ -34,17 +34,17 @@ typedef struct {
 
 // VIA Interface Headers
 
-EXPORTFUNC UBYTE VIA_GORA3(void); // Main/Alternate Sound Buffer
-EXPORTPROC VIA_PORA3(UBYTE Data);
+EXPORTFUNC ui3b VIA_GORA3(void); // Main/Alternate Sound Buffer
+EXPORTPROC VIA_PORA3(ui3b Data);
 
-EXPORTFUNC UBYTE VIA_GORA2(void); // Sound Volume Bit 2
-EXPORTPROC VIA_PORA2(UBYTE Data);
+EXPORTFUNC ui3b VIA_GORA2(void); // Sound Volume Bit 2
+EXPORTPROC VIA_PORA2(ui3b Data);
 
-EXPORTFUNC UBYTE VIA_GORA1(void); // Sound Volume Bit 1
-EXPORTPROC VIA_PORA1(UBYTE Data);
+EXPORTFUNC ui3b VIA_GORA1(void); // Sound Volume Bit 1
+EXPORTPROC VIA_PORA1(ui3b Data);
 
-EXPORTFUNC UBYTE VIA_GORA0(void); // Sound Volume Bit 0
-EXPORTPROC VIA_PORA0(UBYTE Data);
+EXPORTFUNC ui3b VIA_GORA0(void); // Sound Volume Bit 0
+EXPORTPROC VIA_PORA0(ui3b Data);
 
-EXPORTFUNC UBYTE VIA_GORB7(void); // Sound Enable
-EXPORTPROC VIA_PORB7(UBYTE Data);
+EXPORTFUNC ui3b VIA_GORB7(void); // Sound Enable
+EXPORTPROC VIA_PORB7(ui3b Data);

@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,63 +31,63 @@
 
 #include "VIAEMDEV.h"
 
-IMPORTPROC Keyboard_Put(UBYTE in);
+IMPORTPROC Keyboard_Put(ui3b in);
 IMPORTPROC Keyboard_Get(void);
 
-IMPORTFUNC UBYTE VIA_GORA7(void);  // SCC
-IMPORTPROC VIA_PORA7(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA7(void);  // SCC
+IMPORTPROC VIA_PORA7(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA6(void); // Main/Alternate Screen Buffer
-IMPORTPROC VIA_PORA6(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA6(void); // Main/Alternate Screen Buffer
+IMPORTPROC VIA_PORA6(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA5(void); // Floppy Disk Line SEL
-IMPORTPROC VIA_PORA5(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA5(void); // Floppy Disk Line SEL
+IMPORTPROC VIA_PORA5(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA4(void); // Overlay/Normal Memory Mapping
-IMPORTPROC VIA_PORA4(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA4(void); // Overlay/Normal Memory Mapping
+IMPORTPROC VIA_PORA4(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA3(void); // Main/Alternate Sound Buffer
-IMPORTPROC VIA_PORA3(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA3(void); // Main/Alternate Sound Buffer
+IMPORTPROC VIA_PORA3(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA2(void); // Sound Volume Bit 2
-IMPORTPROC VIA_PORA2(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA2(void); // Sound Volume Bit 2
+IMPORTPROC VIA_PORA2(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA1(void); // Sound Volume Bit 1
-IMPORTPROC VIA_PORA1(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA1(void); // Sound Volume Bit 1
+IMPORTPROC VIA_PORA1(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORA0(void); // Sound Volume Bit 0
-IMPORTPROC VIA_PORA0(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORA0(void); // Sound Volume Bit 0
+IMPORTPROC VIA_PORA0(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB7(void); // Sound Enable
-IMPORTPROC VIA_PORB7(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB7(void); // Sound Enable
+IMPORTPROC VIA_PORB7(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB6(void); // Video Beam in Display
-IMPORTPROC VIA_PORB6(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB6(void); // Video Beam in Display
+IMPORTPROC VIA_PORB6(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB5(void); // Mouse Y2
-IMPORTPROC VIA_PORB5(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB5(void); // Mouse Y2
+IMPORTPROC VIA_PORB5(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB4(void); // Mouse X2
-IMPORTPROC VIA_PORB4(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB4(void); // Mouse X2
+IMPORTPROC VIA_PORB4(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB3(void); // Mouse Button
-IMPORTPROC VIA_PORB3(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB3(void); // Mouse Button
+IMPORTPROC VIA_PORB3(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB2(void); // RTC Enable
-IMPORTPROC VIA_PORB2(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB2(void); // RTC Enable
+IMPORTPROC VIA_PORB2(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB1(void); // RTC Data Clock
-IMPORTPROC VIA_PORB1(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB1(void); // RTC Data Clock
+IMPORTPROC VIA_PORB1(ui3b Data);
 
-IMPORTFUNC UBYTE VIA_GORB0(void); // RTC Data
-IMPORTPROC VIA_PORB0(UBYTE Data);
+IMPORTFUNC ui3b VIA_GORB0(void); // RTC Data
+IMPORTPROC VIA_PORB0(ui3b Data);
 
 // VIA_Get_ORA : VIA Get Port A Data
 // This function queries VIA Port A interfaced hardware about their status
 
-LOCALFUNC UBYTE VIA_Get_ORA(UBYTE Selection)
+LOCALFUNC ui3b VIA_Get_ORA(ui3b Selection)
 {
-	UBYTE Value = 0;
+	ui3b Value = 0;
 
 	if ((Selection & 0x80) == 0) { // SCC Wait/Request
 		Value |= (VIA_GORA7() << 7);
@@ -127,9 +127,9 @@ LOCALFUNC UBYTE VIA_Get_ORA(UBYTE Selection)
 // VIA_Get_ORB : VIA Get Port B Data
 // This function queries VIA Port B interfaced hardware about their status
 
-LOCALFUNC UBYTE VIA_Get_ORB(UBYTE Selection)
+LOCALFUNC ui3b VIA_Get_ORB(ui3b Selection)
 {
-	UBYTE Value = 0;
+	ui3b Value = 0;
 
 	if ((Selection & 0x80) == 0) { // Sound Enable
 		Value |= (VIA_GORB7() << 7);
@@ -166,7 +166,7 @@ LOCALFUNC UBYTE VIA_Get_ORB(UBYTE Selection)
 	return Value;
 }
 
-LOCALPROC VIA_Put_ORA(UBYTE Selection, UBYTE Data)
+LOCALPROC VIA_Put_ORA(ui3b Selection, ui3b Data)
 {
 	if ((Selection & 0x80) != 0) { // SCC Wait/Request
 		VIA_PORA7((Data & 0x80) >> 7);
@@ -201,7 +201,7 @@ LOCALPROC VIA_Put_ORA(UBYTE Selection, UBYTE Data)
 	}
 }
 
-LOCALPROC VIA_Put_ORB(UBYTE Selection, UBYTE Data)
+LOCALPROC VIA_Put_ORB(ui3b Selection, ui3b Data)
 {
 	if ((Selection & 0x80) != 0) { // Sound Enable
 		VIA_PORB7((Data & 0x80) >> 7);
@@ -238,22 +238,22 @@ LOCALPROC VIA_Put_ORB(UBYTE Selection, UBYTE Data)
 
 
 typedef struct {
-	UBYTE ORB;    // Buffer B
-	//UBYTE ORA_H;     Buffer A with Handshake
-	UBYTE DDR_B;  // Data Direction Register B
-	UBYTE DDR_A;  // Data Direction Register A
-	UBYTE T1C_L;  // Timer 1 Counter Low
-	UBYTE T1C_H;  // Timer 1 Counter High
-	UBYTE T1L_L;  // Timer 1 Latch Low
-	UBYTE T1L_H;  // Timer 1 Latch High
-	UBYTE T2_L;   // Timer 2 Low
-	UBYTE T2_H;   // Timer 2 High
-	UBYTE SR;     // Shift Register
-	UBYTE ACR;    // Auxiliary Control Register
-	UBYTE PCR;    // Peripheral Control Register
-	UBYTE IFR;    // Interrupt Flag Register
-	UBYTE IER;    // Interrupt Enable Register
-	UBYTE ORA;    // Buffer A
+	ui3b ORB;    // Buffer B
+	//ui3b ORA_H;     Buffer A with Handshake
+	ui3b DDR_B;  // Data Direction Register B
+	ui3b DDR_A;  // Data Direction Register A
+	ui3b T1C_L;  // Timer 1 Counter Low
+	ui3b T1C_H;  // Timer 1 Counter High
+	ui3b T1L_L;  // Timer 1 Latch Low
+	ui3b T1L_H;  // Timer 1 Latch High
+	ui3b T2_L;   // Timer 2 Low
+	ui3b T2_H;   // Timer 2 High
+	ui3b SR;     // Shift Register
+	ui3b ACR;    // Auxiliary Control Register
+	ui3b PCR;    // Peripheral Control Register
+	ui3b IFR;    // Interrupt Flag Register
+	ui3b IER;    // Interrupt Enable Register
+	ui3b ORA;    // Buffer A
 } VIA_Ty;
 
 LOCALVAR VIA_Ty VIA;
@@ -275,9 +275,9 @@ LOCALVAR VIA_Ty VIA;
 #define kIER    0x0E
 #define kORA    0x0F
 
-LOCALVAR UBYTE T1_Active = 0;
-LOCALVAR UBYTE T2_Active = 0;
-LOCALVAR UBYTE SR_Active = 0;
+LOCALVAR ui3b T1_Active = 0;
+LOCALVAR ui3b T2_Active = 0;
+LOCALVAR ui3b SR_Active = 0;
 
 GLOBALVAR blnr VIAInterruptRequest;
 
@@ -304,13 +304,13 @@ LOCALPROC CheckVIAInterruptFlag(void)
 	}
 }
 
-LOCALPROC SetVIAInterruptFLag(UBYTE VIA_Int)
+LOCALPROC SetVIAInterruptFLag(ui3b VIA_Int)
 {
-	VIA.IFR |= ((UBYTE)1 << VIA_Int);
+	VIA.IFR |= ((ui3b)1 << VIA_Int);
 	CheckVIAInterruptFlag();
 }
 
-GLOBALPROC GotKeyBoardData(UBYTE v)
+GLOBALPROC GotKeyBoardData(ui3b v)
 {
 	VIA.SR = v;
 	SetVIAInterruptFLag(2);
@@ -327,7 +327,7 @@ GLOBALPROC VIA_Access(CPTR addr)
 						CheckVIAInterruptFlag();
 					}
 					if (WriteMemAccess) {
-						VIA_Put_ORB(VIA.DDR_B,DataBus);
+						VIA_Put_ORB(VIA.DDR_B, DataBus);
 						VIA.ORB = DataBus;
 					} else {
 						VIA.ORB = (VIA.ORB & VIA.DDR_B) + VIA_Get_ORB(VIA.DDR_B);
@@ -503,7 +503,7 @@ GLOBALPROC VIA_Access(CPTR addr)
 
 GLOBALPROC VIA_Timer(void)
 {
-	UWORD Temp = 0;
+	ui4b Temp = 0;
 
 	if (T1_Active == 1) { // Timer 1 is Active
 		Temp = (VIA.T1C_H << 8) + VIA.T1C_L; // Get Timer 1 Counter

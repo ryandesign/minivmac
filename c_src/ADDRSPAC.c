@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -48,7 +48,7 @@ IMPORTPROC SetAutoVector(void);
 
 /* map of address space */
 
-LOCALVAR UBYTE vOverlay;
+LOCALVAR ui3b vOverlay;
 
 #define kROM_Overlay_Base 0x00000000 /* when overlay on */
 #define kROM_Overlay_Top  0x00100000
@@ -97,7 +97,7 @@ LOCALVAR UBYTE vOverlay;
 #define kIWM_Base 0xDFE1FF // IWM Memory Base
 
 GLOBALVAR CPTR AddressBus;
-GLOBALVAR ULONG DataBus;
+GLOBALVAR ui5b DataBus;
 GLOBALVAR blnr ByteSizeAccess;
 GLOBALVAR blnr WriteMemAccess;
 
@@ -158,8 +158,8 @@ LOCALPROC MM_Access(void)
 #define MemBanksMask (NumMemBanks - 1)
 #define MemBankAddrMask (BytesPerMemBank - 1)
 
-LOCALVAR UBYTE *BankReadAddr[NumMemBanks];
-LOCALVAR UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then BankWritAddr[i] == BankReadAddr[i] */
+LOCALVAR ui3b *BankReadAddr[NumMemBanks];
+LOCALVAR ui3b *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then BankWritAddr[i] == BankReadAddr[i] */
 
 #define bankindex(addr) ((((CPTR)(addr)) >> ln2BytesPerMemBank) & MemBanksMask)
 
@@ -179,7 +179,7 @@ LOCALVAR UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then Ba
 #define Overlay_ROMmem_mask ROMmem_mask
 #define ROMmem_mask (kROM_Size - 1)
 
-LOCALPROC SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPTR VirtualStart, ULONG vMask, blnr Writeable)
+LOCALPROC SetUpBankRange(ui5b StartBank, ui5b StopBank, ui3b * RealStart, CPTR VirtualStart, ui5b vMask, blnr Writeable)
 {
 	int i;
 
@@ -191,7 +191,7 @@ LOCALPROC SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPT
 	}
 }
 
-LOCALPROC SetPtrVecToNULL(UBYTE **x, ULONG n)
+LOCALPROC SetPtrVecToNULL(ui3b **x, ui5b n)
 {
 	int i;
 
@@ -202,18 +202,18 @@ LOCALPROC SetPtrVecToNULL(UBYTE **x, ULONG n)
 
 LOCALPROC SetUpMemBanks(void)
 {
-	ULONG RAMmem_mask = kRAM_Size - 1;
+	ui5b RAMmem_mask = kRAM_Size - 1;
 
 	SetPtrVecToNULL(BankReadAddr, NumMemBanks);
 	SetPtrVecToNULL(BankWritAddr, NumMemBanks);
 
-	SetUpBankRange(kROM_BaseBank, kROM_TopBank, (UBYTE *) ROM, kROM_Base, ROMmem_mask, falseblnr);
+	SetUpBankRange(kROM_BaseBank, kROM_TopBank, (ui3b *) ROM, kROM_Base, ROMmem_mask, falseblnr);
 
 	if (vOverlay) {
-		SetUpBankRange(kROM_Overlay_BaseBank, kROM_Overlay_TopBank, (UBYTE *)ROM, kROM_Overlay_Base, Overlay_ROMmem_mask, falseblnr);
-		SetUpBankRange(kRAM_Overlay_BaseBank, kRAM_Overlay_TopBank, (UBYTE *)RAM, kRAM_Overlay_Base, Overlay_RAMmem_mask, trueblnr);
+		SetUpBankRange(kROM_Overlay_BaseBank, kROM_Overlay_TopBank, (ui3b *)ROM, kROM_Overlay_Base, Overlay_ROMmem_mask, falseblnr);
+		SetUpBankRange(kRAM_Overlay_BaseBank, kRAM_Overlay_TopBank, (ui3b *)RAM, kRAM_Overlay_Base, Overlay_RAMmem_mask, trueblnr);
 	} else {
-		SetUpBankRange(kRAM_BaseBank, kRAM_TopBank, (UBYTE *)RAM, kRAM_Base, RAMmem_mask, trueblnr);
+		SetUpBankRange(kRAM_BaseBank, kRAM_TopBank, (ui3b *)RAM, kRAM_Base, RAMmem_mask, trueblnr);
 	}
 }
 
@@ -222,7 +222,7 @@ GLOBALPROC ZapNMemoryVars(void)
 	vOverlay = 2; /* MemBanks uninitialized */
 }
 
-GLOBALPROC VIA_PORA4(UBYTE Data)
+GLOBALPROC VIA_PORA4(ui3b Data)
 {
 	if (vOverlay != Data) {
 		vOverlay = Data;
@@ -230,7 +230,7 @@ GLOBALPROC VIA_PORA4(UBYTE Data)
 	}
 }
 
-GLOBALFUNC UBYTE VIA_GORA4(void) // Overlay/Normal Memory Mapping
+GLOBALFUNC ui3b VIA_GORA4(void) // Overlay/Normal Memory Mapping
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA4 attempts to be an input\n");
@@ -252,21 +252,21 @@ GLOBALPROC Memory_Reset(void)
 	and back out of the current instruction.
 */
 
-GLOBALFUNC ULONG get_long(CPTR addr)
+GLOBALFUNC ui5b get_long(CPTR addr)
 {
-	UBYTE *ba = BankReadAddr[bankindex(addr)];
+	ui3b *ba = BankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
+		ui5b *m = (ui5b *)((addr & MemBankAddrMask) + ba);
 		return do_get_mem_long(m);
 	} else {
 		if (addr != -1) {
 #ifdef MyCompilerMrC
 #pragma noinline_site get_word
 #endif
-			UWORD hi = get_word(addr);
-			UWORD lo = get_word(addr+2);
-			return (ULONG) (((ULONG)hi) << 16) | ((ULONG)lo);
+			ui4b hi = get_word(addr);
+			ui4b lo = get_word(addr+2);
+			return (ui5b) (((ui5b)hi) << 16) | ((ui5b)lo);
 		} else {
 			/* A work around for someone's bug. When booting
 			from system 6.0.8, address -1 is referenced once.
@@ -281,12 +281,12 @@ GLOBALFUNC ULONG get_long(CPTR addr)
 	}
 }
 
-GLOBALFUNC ULONG get_word(CPTR addr)
+GLOBALFUNC ui5b get_word(CPTR addr)
 {
-	UBYTE *ba = BankReadAddr[bankindex(addr)];
+	ui3b *ba = BankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
+		ui4b *m = (ui4b *)((addr & MemBankAddrMask) + ba);
 		return do_get_mem_word(m);
 	} else {
 		AddressBus = addr;
@@ -294,16 +294,16 @@ GLOBALFUNC ULONG get_word(CPTR addr)
 		ByteSizeAccess = falseblnr;
 		WriteMemAccess = falseblnr;
 		MM_Access();
-		return (UWORD) DataBus;
+		return (ui4b) DataBus;
 	}
 }
 
-GLOBALFUNC ULONG get_byte(CPTR addr)
+GLOBALFUNC ui5b get_byte(CPTR addr)
 {
-	UBYTE *ba = BankReadAddr[bankindex(addr)];
+	ui3b *ba = BankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
+		ui3b *m = (ui3b *)((addr & MemBankAddrMask) + ba);
 		return *m;
 	} else {
 		AddressBus = addr;
@@ -311,16 +311,16 @@ GLOBALFUNC ULONG get_byte(CPTR addr)
 		ByteSizeAccess = trueblnr;
 		WriteMemAccess = falseblnr;
 		MM_Access();
-		return (UBYTE) DataBus;
+		return (ui3b) DataBus;
 	}
 }
 
-GLOBALPROC put_long(CPTR addr, ULONG l)
+GLOBALPROC put_long(CPTR addr, ui5b l)
 {
-	UBYTE *ba = BankWritAddr[bankindex(addr)];
+	ui3b *ba = BankWritAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
+		ui5b *m = (ui5b *)((addr & MemBankAddrMask) + ba);
 		do_put_mem_long(m, l);
 	} else {
 #ifdef MyCompilerMrC
@@ -331,12 +331,12 @@ GLOBALPROC put_long(CPTR addr, ULONG l)
 	}
 }
 
-GLOBALPROC put_word(CPTR addr, ULONG w)
+GLOBALPROC put_word(CPTR addr, ui5b w)
 {
-	UBYTE *ba = BankWritAddr[bankindex(addr)];
+	ui3b *ba = BankWritAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
+		ui4b *m = (ui4b *)((addr & MemBankAddrMask) + ba);
 		do_put_mem_word(m, w);
 	} else {
 		AddressBus = addr;
@@ -347,12 +347,12 @@ GLOBALPROC put_word(CPTR addr, ULONG w)
 	}
 }
 
-GLOBALPROC put_byte(CPTR addr, ULONG b)
+GLOBALPROC put_byte(CPTR addr, ui5b b)
 {
-	UBYTE *ba = BankWritAddr[bankindex(addr)];
+	ui3b *ba = BankWritAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
+		ui3b *m = (ui3b *)((addr & MemBankAddrMask) + ba);
 		*m = b;
 	} else {
 		AddressBus = addr;
@@ -363,18 +363,18 @@ GLOBALPROC put_byte(CPTR addr, ULONG b)
 	}
 }
 
-LOCALFUNC UBYTE *default_xlate(CPTR a)
+LOCALFUNC ui3b *default_xlate(CPTR a)
 {
 	UnusedParam(a);
-	return (UBYTE *) RAM; /* So we don't crash. */
+	return (ui3b *) RAM; /* So we don't crash. */
 }
 
-GLOBALFUNC UBYTE *get_real_address(CPTR addr)
+GLOBALFUNC ui3b *get_real_address(CPTR addr)
 {
-	UBYTE *ba = BankReadAddr[bankindex(addr)];
+	ui3b *ba = BankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-		return (UBYTE *)((addr & MemBankAddrMask) + ba);
+		return (ui3b *)((addr & MemBankAddrMask) + ba);
 	} else {
 		return default_xlate(addr);
 	}

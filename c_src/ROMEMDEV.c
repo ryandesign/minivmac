@@ -6,7 +6,7 @@
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
 	the Free Software Foundation.  You should have received a copy
-	of the license along with with this file; see the file COPYING.
+	of the license along with this file; see the file COPYING.
 
 	This file is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,7 +31,7 @@
 
 #include "ROMEMDEV.h"
 
-LOCALVAR const UWORD sony_driver[] = { // Replacement for .Sony driver
+LOCALVAR const ui4b sony_driver[] = { // Replacement for .Sony driver
 	0x4F00, 0x0000, 0x0000, 0x0000,
 	0x0018, 0x002C, 0x0040, 0x005C,
 	0x0092, 0x052E, 0x536F, 0x6E79,
@@ -209,10 +209,10 @@ LOCALVAR const UWORD sony_driver[] = { // Replacement for .Sony driver
 LOCALPROC Sony_Install(void)
 {
 	int i;
-	UWORD *pto = (UWORD *)(0x17D30 + (ULONG)ROM);
-	UWORD *pfrom = (UWORD *)sony_driver;
+	ui4b *pto = (ui4b *)(0x17D30 + (ui5b)ROM);
+	ui4b *pfrom = (ui4b *)sony_driver;
 
-	for (i = sizeof(sony_driver) / 2; --i >=0; ) {
+	for (i = sizeof(sony_driver) / 2; --i >= 0; ) {
 		do_put_mem_word(pto, *pfrom);
 		pfrom++;
 		pto++;
@@ -235,15 +235,15 @@ GLOBALFUNC blnr ROM_Init(void)
 		//printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 3, 'Loud Harmonicas'.\n");
 	} else {
 		//printf("vMac: vMac.ROM loaded successfully, but we don't support this ROM yet.\n");
-		MacMsg("Unsupported ROM.","vMac.ROM loaded successfully, but we don't support this ROM yet.",trueblnr);
+		MacMsg("Unsupported ROM.", "vMac.ROM loaded successfully, but we don't support this ROM yet.", trueblnr);
 		return falseblnr;
 	}
-	do_put_mem_word(&ROM[3450/2],0x6022); /* skip the rom checksum */
+	do_put_mem_word(&ROM[3450/2], 0x6022); /* skip the rom checksum */
 #if 1
-	do_put_mem_word(&ROM[3752/2],0x4E71); /* shorten the ram check read */
-	do_put_mem_word(&ROM[3728/2],0x4E71); /* shorten the ram check write*/
+	do_put_mem_word(&ROM[3752/2], 0x4E71); /* shorten the ram check read */
+	do_put_mem_word(&ROM[3728/2], 0x4E71); /* shorten the ram check write*/
 #endif
-	/* do_put_mem_word(&ROM[862/2],0x4E71); */ /* shorten set memory*/
+	/* do_put_mem_word(&ROM[862/2], 0x4E71); */ /* shorten set memory*/
 	Sony_Install();
 	return trueblnr;
 }
