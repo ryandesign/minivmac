@@ -60,7 +60,7 @@ end tell
 if oksofar then
 	tell application "CodeWarrior IDE 2.1"
 		activate
-
+		
 		-- find the path to the CodeWarrior folder, so can later refer to libraries
 		set warrior_path to ((path to it) as text)
 		-- strip application name from end of path
@@ -69,50 +69,52 @@ if oksofar then
 		set AppleScript's text item delimiters to ":"
 		set warrior_path to ((text items 1 thru ((count of text items of warrior_path) - 1) of warrior_path) as string) & ":"
 		set AppleScript's text item delimiters to old_delimits
-
+		
 		Create Project (my_derived_d & my_project_name & ".µ")
-
+		
 		-- set various preferences for the project
-
-		set Preferences of panel "Target Settings" to {Linker:"MacOS PPC Linker"}
-
+		
+		Set Preferences of panel "Target Settings" to {Linker:"MacOS PPC Linker"}
+		
 		set theAccessPaths to Get Preferences from panel "access paths"
 		set User Paths of theAccessPaths to {}
 		set System Paths of theAccessPaths to {}
-		set Preferences of panel "access paths" to theAccessPaths
+		Set Preferences of panel "access paths" to theAccessPaths
 		set User Paths of theAccessPaths to {{name:"::c_src:", recursive:true, origin:project relative}, {name:"::platform:mac:", recursive:true, origin:project relative}}
 		set System Paths of theAccessPaths to {{name:":", recursive:true, origin:shell relative}}
-		set Preferences of panel "access paths" to theAccessPaths
-
-		set Preferences of panel "PPC Project" to {File Name:my_project_name}
-		set Preferences of panel "PPC Project" to {File Creator:"MnvM"}
-		set Preferences of panel "PPC Project" to {File Type:"APPL"}
-		set Preferences of panel "PPC Project" to {Min Heap Size:1500}
-		set Preferences of panel "PPC Project" to {Preferred Heap Size:5000}
-
-		set Preferences of panel "C/C++ Compiler" to {Prefix File:""}
-		set Preferences of panel "C/C++ Compiler" to {Require Function Prototypes:true}
-
-		set Preferences of panel "C/C++ Warnings" to {Illegal Pragmas:true}
-		set Preferences of panel "C/C++ Warnings" to {Empty Declarations:true}
-		set Preferences of panel "C/C++ Warnings" to {Possible Errors:true}
-		set Preferences of panel "C/C++ Warnings" to {Unused Variables:true}
-		set Preferences of panel "C/C++ Warnings" to {Unused Arguments:true}
-		set Preferences of panel "C/C++ Warnings" to {Extra Commas:true}
-		set Preferences of panel "C/C++ Warnings" to {Extended Error Checking:true}
-
-		set Preferences of panel "PPC CodeGen" to {Struct Alignment:PowerPC} (* can be: mc68k, mc68k4, or PowerPC *)
-		set Preferences of panel "PPC CodeGen" to {Instruction Scheduling:PowerPC603} (* can be: off, PowerPC601, 603 or 604 *)
-		set Preferences of panel "PPC CodeGen" to {Optimization Level:4} (* can be: 1, 2, 3 or 4 *)
-		set Preferences of panel "PPC CodeGen" to {Global Optimization:true}
-
+		Set Preferences of panel "access paths" to theAccessPaths
+		
+		Set Preferences of panel "PPC Project" to {File Name:my_project_name}
+		Set Preferences of panel "PPC Project" to {File Creator:"MnvM"}
+		Set Preferences of panel "PPC Project" to {File Type:"APPL"}
+		Set Preferences of panel "PPC Project" to {Min Heap Size:1500}
+		Set Preferences of panel "PPC Project" to {Preferred Heap Size:5000}
+		
+		Set Preferences of panel "C/C++ Compiler" to {Prefix File:""}
+		Set Preferences of panel "C/C++ Compiler" to {Require Function Prototypes:true}
+		
+		Set Preferences of panel "C/C++ Warnings" to {Illegal Pragmas:true}
+		Set Preferences of panel "C/C++ Warnings" to {Empty Declarations:true}
+		Set Preferences of panel "C/C++ Warnings" to {Possible Errors:true}
+		Set Preferences of panel "C/C++ Warnings" to {Unused Variables:true}
+		Set Preferences of panel "C/C++ Warnings" to {Unused Arguments:true}
+		Set Preferences of panel "C/C++ Warnings" to {Extra Commas:true}
+		Set Preferences of panel "C/C++ Warnings" to {Extended Error Checking:true}
+		
+		Set Preferences of panel "PPC CodeGen" to {Struct Alignment:PowerPC} (* can be: mc68k, mc68k4, or PowerPC *)
+		Set Preferences of panel "PPC CodeGen" to {Instruction Scheduling:PowerPC603} (* can be: off, PowerPC601, 603 or 604 *)
+		Set Preferences of panel "PPC CodeGen" to {Optimization Level:4} (* can be: 1, 2, 3 or 4 *)
+		Set Preferences of panel "PPC CodeGen" to {Global Optimization:true}
+		
 		open file (my_c_src_d & "CNFGGLOB.h")
 		select document 1
 		set selection of document 1 to ""
-
+		
 		set selection of document 1 to "/* make sure this is correct CNFGGLOB */" & return
+		set selection of document 1 to "#ifndef MyIsCompilingRez" & return
 		set selection of document 1 to "#ifndef __MWERKS__" & return
 		set selection of document 1 to "#error wrong CNFGGLOB.h" & return
+		set selection of document 1 to "#endif" & return
 		set selection of document 1 to "#endif" & return
 		set selection of document 1 to return
 		set selection of document 1 to "#define MyCompilerMetrowerks 1" & return
@@ -124,19 +126,19 @@ if oksofar then
 		set selection of document 1 to "#define MayInline __inline__" & return
 		set selection of document 1 to "#define NavigationAvail 1" & return
 		set selection of document 1 to "#define AppearanceAvail 1" & return
-
+		
 		save document 1
 		close document 1
-
+		
 		-- add the right libraries
 		Add Files (warrior_path & "MacOS Support:Libraries:Runtime:Runtime PPC:MSL RuntimePPC.LIB")
 		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:InterfaceLib")
 		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:AppearanceLib")
 		Add Files (warrior_path & "MacOS Support:Libraries:MacOS Common:NavigationLib")
-
+		
 		-- add the resource file
 		Add Files (my_project_d & "platform:mac:main.r")
-
+		
 		-- add all the C source files
 		open file (my_project_d & "lists:c_files")
 		set NumLines to count lines of document 1
@@ -150,11 +152,11 @@ if oksofar then
 			set CurLine to CurLine + 1
 		end repeat
 		close document 1
-
+		
 		-- project should be all set up, go ahead and build
 		Make Project
 	end tell
-
+	
 	-- show the user the appication we just built
 	tell application "Finder"
 		if exists alias (my_derived_d & my_project_name) then

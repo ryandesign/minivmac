@@ -22,6 +22,7 @@
 # environment scripts, which is why it is a seperate
 # file instead of included in the build script.
 
+Set UseCarbonLib 0 # for carbon
 
 Set my_lists_d "{my_project_d}lists:"
 Export my_lists_d
@@ -67,25 +68,30 @@ Export my_r_obj_d
 
 #----- check what's available in development environment
 
-Set NavigationAvail 0
-IF "`exists -q "{CIncludes}Navigation.h"`"
-	IF {my_target_env} == PowerPC
-		IF "`exists -q "{SharedLibraries}NavigationLib"`"
-			Set NavigationAvail 1
+IF {UseCarbonLib}
+	Set NavigationAvail 1
+	Set AppearanceAvail 1
+ELSE
+	Set NavigationAvail 0
+	IF "`exists -q "{CIncludes}Navigation.h"`"
+		IF {my_target_env} == PowerPC
+			IF "`exists -q "{SharedLibraries}NavigationLib"`"
+				Set NavigationAvail 1
+			END
+		END
+		IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+			IF "`exists -q "{Libraries}Navigation.o"`"
+				Set NavigationAvail 1
+			END
 		END
 	END
-	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
-		IF "`exists -q "{Libraries}Navigation.o"`"
-			Set NavigationAvail 1
-		END
-	END
-END
-
-Set AppearanceAvail 0
-IF "`exists -q "{CIncludes}Appearance.h"`"
-	IF {my_target_env} == PowerPC
-		IF "`exists -q "{SharedLibraries}AppearanceLib"`"
-			Set AppearanceAvail 1
+	
+	Set AppearanceAvail 0
+	IF "`exists -q "{CIncludes}Appearance.h"`"
+		IF {my_target_env} == PowerPC
+			IF "`exists -q "{SharedLibraries}AppearanceLib"`"
+				Set AppearanceAvail 1
+			END
 		END
 	END
 END
@@ -96,6 +102,7 @@ Set CnfgGlob "{my_c_src_d}CNFGGLOB.h"
 Echo -n > "{CnfgGlob}"
 
 Echo "/* make sure this is correct CNFGGLOB */" >> "{CnfgGlob}"
+Echo "#ifndef MyIsCompilingRez" >> "{CnfgGlob}"
 IF {my_compiler} == SC_MrC
 	IF {my_target_env} == PowerPC
 		Echo "#ifndef __MRC__" >> "{CnfgGlob}"
@@ -131,6 +138,7 @@ IF {my_compiler} == metrowerks
 	Echo "#error "wrong CNFGGLOB.h"" >> "{CnfgGlob}"
 	Echo "#endif" >> "{CnfgGlob}"
 END
+Echo "#endif" >> "{CnfgGlob}"
 
 Echo "" >> "{CnfgGlob}"
 
@@ -182,6 +190,9 @@ IF {NavigationAvail}
 END
 IF {AppearanceAvail}
 	Echo "#define AppearanceAvail 1" >> "{CnfgGlob}"
+END
+IF {UseCarbonLib}
+	Echo "#define UseCarbonLib 1" >> "{CnfgGlob}"
 END
 
 #----  CallR  ---
@@ -306,6 +317,10 @@ END
 
 # Set LinkLine "{LinkLine} -p"
 
+IF {UseCarbonLib}
+Set LinkLine "{LinkLine} -m main"
+END
+
 Set LinkLine "{LinkLine} -t 'APPL' -c 'MnvM'"
 
 #----  LinkLibs  ---
@@ -377,21 +392,13 @@ END
 IF {my_target_env} == PowerPC #---- For PowerPC ---
 
 IF ({my_compiler} == SC_MrC)
-IF 0 # for carbon
+IF {UseCarbonLib}
 Set LinkLibs "¶
-'{SharedLibraries}CarbonLib' ¶
-'{SharedLibraries}StdCLib' ¶
-'{PPCLibraries}StdCRuntime.o' ¶
-'{PPCLibraries}PPCToolLibs.o' ¶
-'{PPCLibraries}PPCCRuntime.o'"
+'{SharedLibraries}CarbonLib'"
 ELSE
 Set LinkLibs "¶
 '{SharedLibraries}MathLib' ¶
-'{SharedLibraries}InterfaceLib' ¶
-'{SharedLibraries}StdCLib' ¶
-'{PPCLibraries}StdCRuntime.o' ¶
-'{PPCLibraries}PPCToolLibs.o' ¶
-'{PPCLibraries}PPCCRuntime.o'"
+'{SharedLibraries}InterfaceLib'"
 # {PPCLibraries}x80.o
 IF {NavigationAvail}
 	Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}NavigationLib"¶'
@@ -399,7 +406,11 @@ END
 IF {AppearanceAvail}
 	Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}AppearanceLib"¶'
 END
+Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}StdCLib"¶'
+Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}StdCRuntime.o"¶'
 END
+Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}PPCToolLibs.o"¶'
+Set LinkLibs "{LinkLibs} "¶'"{PPCLibraries}PPCCRuntime.o"¶'
 END
 
 IF {my_compiler} == metrowerks

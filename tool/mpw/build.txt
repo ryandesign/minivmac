@@ -18,7 +18,7 @@
 # the Macintosh Programmers Workshop (MPW).  Open this file
 # with MPW, choose the 'Select All' command in the Edit menu,
 # and click on the box labeled 'MPW Shell' at the top left of
-# this files window.  You will be asked for the location
+# this file's window.  You will be asked for the location
 # of the minivmac folder.  When the script finishes executing,
 # the Mini vMac application should be found in the folder "drv"
 # that has been created within the Mini vMac folder.
@@ -97,7 +97,7 @@ IF {OkSoFar}
 		NewFolder "{my_derived_d}"
 	END
 
-	Execute "{my_project_d}mpw:set_up"
+	Execute "{my_project_d}tool:mpw:set_up"
 
 	# Delete old version of application if already exists.
 	# Do this now so that if application exists and is

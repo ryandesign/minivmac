@@ -1,6 +1,14 @@
 #include "Types.r"
 
+#define MyIsCompilingRez 1
+
+#include ":::c_src:CNFGGLOB.h"
 #include ":::c_src:RESIDMAC.h"
+#include ":::c_src:VERSINFO.h"
+
+#ifndef UseCarbonLib
+#define UseCarbonLib 0
+#endif
 
 #define kMyAppIcon 128
 #define kMyRomIcon 129
@@ -11,8 +19,11 @@
 #define kMyDskFREF 130
 #define kMyAnyFREF 131
 
-#define kStrAppName "Mini vMac"
-#define kStrVersion "0.1.2"
+#if UseCarbonLib
+data 'plst' (0) {
+	$"00"
+};
+#endif
 
 resource 'MBAR' (kMyMenuBar, preload) {
 	{	/* array MenuArray: 3 elements */
@@ -159,7 +170,7 @@ resource 'DITL' (kMyAboutAlert, purgeable) {
 		{10, 97, 38, 455},
 		StaticText {
 			disabled,
-			kStrAppName " " kStrVersion ", Copyright 2001."
+			kStrAppName " " kStrVersion ", Copyright " kStrCopyrightYear "."
 		},
 		/* [3] */
 		{47, 97, 100, 455},
@@ -197,7 +208,7 @@ resource 'DITL' (kMyAboutAlert, purgeable) {
 		{267, 21, 290, 339},
 		StaticText {
 			disabled,
-			"http://www.gryphel.com/c/minivmac"
+			kStrHomePage
 		}
 	}
 };
@@ -240,14 +251,14 @@ resource 'SIZE' (-1) {
 };
 
 resource 'vers' (1) {
-	0x0,
-	0x12,
+	kMajorVersion,
+	kMinorVersion * 16 + kMinorSubVersion,
 	release,
 	0x0,
 	0,
 	kStrVersion,
-	kStrVersion ", © 2001 Bernd Schmidt, Philip Cumm"
-	"ins, Richard F. Bannister, Paul Pratt."
+	kStrVersion ", © " kStrCopyrightYear " Bernd Schmidt, "
+	"Philip Cummins, Richard F. Bannister, Paul Pratt."
 };
 
 resource 'BNDL' (128) {

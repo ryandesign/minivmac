@@ -38,7 +38,11 @@
 #error "HaveOSTarget undefined"
 #endif
 
-#if 0 /* set 1 to experiment with carbon API */
+#ifndef UseCarbonLib
+#define UseCarbonLib 0
+#endif
+
+#if UseCarbonLib
 #define TARGET_API_MAC_CARBON 1
 #endif
 
@@ -373,7 +377,7 @@ static blnr CreateMainWindow(void)
 	leftPos=((rp->right - rp->left) - vMacScreenWidth) / 2;
 	topPos=((rp->bottom - rp->top) - vMacScreenHeight) / 2;
 	SetRect(&Bounds,0,0,vMacScreenWidth,vMacScreenHeight);
-	OffsetRect( &Bounds, leftPos, topPos);
+	OffsetRect(&Bounds, leftPos, topPos);
 
 	gMyMainWindow = NewWindow(0L,&Bounds,"\pMini vMac",true, noGrowDocProc ,(WindowPtr) -1,true,0);
 	if (gMyMainWindow != NULL) {
@@ -1155,7 +1159,6 @@ static void MacOS_HandleMenu (short menuID, short menuItem)
 	switch (menuID) {
 		case kAppleMenu:
 			if (menuItem == kAppleAboutItem) {
-				/* MacMsg(kStrAboutTitle, kStrAboutMessage, falseblnr); */
 				ShowAboutMessage();
 			} else {
 #if CALL_NOT_IN_CARBON
@@ -1189,7 +1192,7 @@ static void MacOS_HandleMenu (short menuID, short menuItem)
 #if CALL_NOT_IN_CARBON
 					HogCPU = ! HogCPU;
 #else
-					MacMsg("Not Implemented.", "Share Time cannot be turned off in the version of Mini vMac.", falseblnr);
+					MacMsg("Not Implemented.", "Share Time cannot be turned off in this version of Mini vMac.", falseblnr);
 #endif
 					break;
 				case kSpecialLimitSpeedItem:
@@ -1480,6 +1483,19 @@ static blnr InstallOurMenus(void)
 	SetMenuBar(menuBar);
 #if CALL_NOT_IN_CARBON
 	AppendResMenu(GetMenuHandle(kAppleMenu), 'DRVR');
+#else
+	{
+		MenuRef		menu;
+		long		response;
+
+		// see if we should modify quit in accordance with the Aqua HI guidelines
+		if ((Gestalt(gestaltMenuMgrAttr, &response) == noErr) && (response & gestaltMenuMgrAquaLayoutMask))
+		{
+			menu = GetMenuHandle(kFileMenu);
+			DeleteMenuItem(menu, kFileQuitItem);
+			DeleteMenuItem(menu, kFileQuitItem-1); /* seperator */
+		}
+	}
 #endif
 	DrawMenuBar();
 

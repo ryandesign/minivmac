@@ -1189,12 +1189,20 @@ static BOOL APIENTRY MyWinDlgProc(
 			return FALSE;
 		}
 	} else if (message == WM_INITDIALOG) {
-		SetDlgItemText(hDlg, ID_ABOUT_VERSION, "Mini vMac 0.1.2, Copyright 2001.");
+		char s[_MAX_PATH];
+		
+		strcpy(s, kStrAppName);
+		strcat(s, " ");
+		strcat(s, kStrVersion);
+		strcat(s, ", Copyright ");
+		strcat(s, kStrCopyrightYear);
+		strcat(s, ".");
+		SetDlgItemText(hDlg, ID_ABOUT_VERSION, s);
 		SetDlgItemText(hDlg, ID_ABOUT_AUTHORS, "Including or based upon code by Bernd Schmidt, Philip Cummins, Richard F. Bannister, Weston Pawlowski, Paul Pratt, and others.");
 		SetDlgItemText(hDlg, ID_ABOUT_LICENSE, "Mini vMac is distributed under the terms of the GNU Public License, version 2.");
 		SetDlgItemText(hDlg, ID_ABOUT_WARRNTY, "Mini vMac is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.");
 		SetDlgItemText(hDlg, ID_ABOUT_FORINFO, "For more information, see:");
-		SetDlgItemText(hDlg, ID_ABOUT_WEBPAGE, "http://www.gryphel.com/c/minivmac");
+		SetDlgItemText(hDlg, ID_ABOUT_WEBPAGE, kStrHomePage);
 		return TRUE;
 	} else {
 		return FALSE;
@@ -1202,7 +1210,7 @@ static BOOL APIENTRY MyWinDlgProc(
 	UNREFERENCED_PARAMETER(lParam);
 }
 
-static void ShowAboutAlert(void)
+static void ShowAboutMessage(void)
 {
 	(void) DialogBox(AppInstance,
 		MAKEINTRESOURCE(IDD_MYABOUTDIALOG),
@@ -1527,8 +1535,7 @@ LRESULT CALLBACK Win32WMProc(HWND MainWnd, UINT uMessage, WPARAM wparam, LPARAM 
 					RequestMacInterrupt = trueblnr;
 					break;
 				case ID_HELP_ABOUT:
-					ShowAboutAlert();
-					/* MacMsg(kStrAboutTitle, kStrAboutMessage, falseblnr); */
+					ShowAboutMessage();
 					break;
 			}
 			break;
