@@ -22,15 +22,15 @@ typedef long Size;
 
 #pragma parameter __D0 PostEvent(__A0, __D0)
 extern pascal OSErr PostEvent(MacOSEventKind eventNum, UInt32 eventMsg)
- ONEWORDINLINE(0xA02F);
+	ONEWORDINLINE(0xA02F);
 
 #pragma parameter __A0 NewPtrSysClear(__D0)
 extern pascal Ptr NewPtrSysClear(Size byteCount)
- ONEWORDINLINE(0xA71E);
+	ONEWORDINLINE(0xA71E);
 
 #pragma parameter AddDrive0(__A0, __D0)
 extern pascal void AddDrive0(UInt32 qEl, UInt32 arg2)
- ONEWORDINLINE(0xA04E);
+	ONEWORDINLINE(0xA04E);
 
 #define CPTR ULONG
 
@@ -166,10 +166,10 @@ static void Sony_Eject_Notify (UWORD Drive_No)
 
 	dvl = DriveVarsLocation(Drive_No);
 	if (dvl != (ULONG)NULL) {
-	    put_byte(dvl + kWriteProt, 0x00);   // Drive Writeable
-	    put_byte(dvl + kDiskInPlace, 0x00); // Drive No Disk
-	    put_byte(dvl + kTwoSideFmt, 0x00);  // Drive Single Format (Initially)
-    }
+		put_byte(dvl + kWriteProt, 0x00);   // Drive Writeable
+		put_byte(dvl + kDiskInPlace, 0x00); // Drive No Disk
+		put_byte(dvl + kTwoSideFmt, 0x00);  // Drive Single Format (Initially)
+	}
 }
 
 void Sony_Update (ULONG data)
@@ -209,14 +209,14 @@ WORD Sony_Open(CPTR ParamBlk, CPTR DeviceCtl)
 	CPTR dvl;
 	CPTR SonyVars;
 
-		
+
 	if (get_long((CPTR)(kDSK_Block_Base + 2 * kDSK_CallBack_Hi)) != 0) { // Don't Open Again
 		result = 0x0000; // No Error
 	} else {
 		SonyVars = (CPTR)NewPtrSysClear(0x00000310);  // Size of Sony Variables
 		if (SonyVars != (CPTR)NULL) {
 			put_long(SonyVarsPtr, SonyVars); // Save it to SonyVars
-	
+
 			for (i = 0; (dvl = DriveVarsLocation(i)) != (ULONG)NULL; ++i) {
 				put_word(dvl + kTrack, 0x0000);     // Drive i at Track 0
 				put_byte(dvl + kWriteProt, 0x00);   // Drive i Writeable
@@ -228,10 +228,10 @@ WORD Sony_Open(CPTR ParamBlk, CPTR DeviceCtl)
 				put_byte(dvl + kTwoSideFmt, 0x00);  // Drive i Single Format (Initially)
 				put_byte(dvl + kNewIntf, 0xFF);     // Drive i uses new interface
 				put_word(dvl + kDriveErrs, 0x0000); // Drive i has no errors
-	
+
 				AddDrive0(dvl + kQLink, ((ULONG)(i + 1) << 16) + 0xFFFB); // Drive i (Hi Word), Driver FFFB (Lo Word)
 			}
-	
+
 			put_long((CPTR)(kDSK_Block_Base + 2 * kDSK_CallBack_Hi), (ULONG)&DUpdate);
 		}
 
@@ -259,10 +259,10 @@ WORD Sony_Prime(CPTR ParamBlk, CPTR DeviceCtl)
 				put_byte(DiskInPlaceA, 0x02); // Clamp Drive
 			} else {
 				return 0xFFBF; // Say it's offline (-65)
-				/* 
+				/*
 					if don't check for this, will go right
 					ahead and boot off a disk that hasn't
-					been mounted yet by Sony_Update. 
+					been mounted yet by Sony_Update.
 					(disks other than the boot disk aren't
 					seen unless mounted by Sony_Update)
 				*/
@@ -271,10 +271,10 @@ WORD Sony_Prime(CPTR ParamBlk, CPTR DeviceCtl)
 	}
 
 	switch (get_word(ParamBlk + kioPosMode) & 0x0F) {
-		case kfsFromStart :
+		case kfsFromStart:
 			Sony_Start = get_long(ParamBlk + kioPosOffset);
 			break;
-		case kfsFromLEOF :
+		case kfsFromLEOF:
 			put_word(kDSK_Block_Base + 2 * kDSK_Drive_No, Drive_No);
 			put_word(kDSK_Block_Base, kDSKCmdGetSize);
 			Sony_Start = get_long(kDSK_Block_Base + 2 * kDSK_Count_Hi);
@@ -284,23 +284,23 @@ WORD Sony_Prime(CPTR ParamBlk, CPTR DeviceCtl)
 			}
 			Sony_Start -= get_long(ParamBlk + kioPosOffset);
 			break;
-		case kfsFromMark :
+		case kfsFromMark:
 			Sony_Start = get_long(ParamBlk + kioPosOffset) +
 				get_long(DeviceCtl + kdCtlPosition);
 			break;
-		case kfsAtMark :
+		case kfsAtMark:
 		default:
 			Sony_Start = get_long(DeviceCtl + kdCtlPosition);
 			break;
-	}  
-      
+	}
+
 	Sony_Count = get_long(ParamBlk + kioReqCount);
 
 	put_long((CPTR)(kDSK_Block_Base + 2 * kDSK_Start_Hi), Sony_Start);
 	put_long((CPTR)(kDSK_Block_Base + 2 * kDSK_Count_Hi), Sony_Count);
 	put_long((CPTR)(kDSK_Block_Base + 2 * kDSK_Buffer_Hi), get_long(ParamBlk + kioBuffer));
 	put_word(kDSK_Block_Base + 2 * kDSK_Drive_No, Drive_No);
-	
+
 	switch (get_word(ParamBlk + kioTrap) & 0xF0FF) {
 		case 0xA002: // Reading
 			put_word(kDSK_Block_Base, kDSKCmdRead);
@@ -322,7 +322,7 @@ WORD Sony_Prime(CPTR ParamBlk, CPTR DeviceCtl)
 
 	return result;
 }
-   
+
 // Sony_Control
 // Implements control csCodes for the Sony driver
 WORD Sony_Control (CPTR ParamBlk, CPTR DeviceCtl)
@@ -330,7 +330,7 @@ WORD Sony_Control (CPTR ParamBlk, CPTR DeviceCtl)
 #pragma unused(DeviceCtl)
 	WORD result;
 	ULONG OpCode = get_word(ParamBlk + kcsCode);
- 	UWORD Drive_No = get_word(ParamBlk + kioVRefNum) - 1;
+	UWORD Drive_No = get_word(ParamBlk + kioVRefNum) - 1;
 
 	switch (OpCode) {
 		case kKillIO :
@@ -394,7 +394,7 @@ WORD Sony_Status (CPTR ParamBlk, CPTR DeviceCtl)
 		if (Src != (ULONG)NULL) {
 			result = 0xFFC8; // No Such Drive (-56)
 		} else {
-			Dst = ParamBlk + kcsParam; 
+			Dst = ParamBlk + kcsParam;
 			for (Counter = 11; --Counter >=0; ) {
 				put_word(Dst, get_word(Src));
 				Src += 2; Dst += 2;
@@ -410,7 +410,7 @@ WORD Sony_Status (CPTR ParamBlk, CPTR DeviceCtl)
 // Sony_Close
 // Returns immediate error
 WORD Sony_Close(CPTR ParamBlk, CPTR DeviceCtl)
-{ 
+{
 #pragma unused(ParamBlk, DeviceCtl)
 	return 0xFFE8; // Can't Close Driver (-24)
 }

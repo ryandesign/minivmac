@@ -1,6 +1,6 @@
 /*
 	SCRNEMDV.c
-	
+
 	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,7 +16,7 @@
 
 /*
 	SCReeN EMulated DeVice
-	
+
 	Emulation of the screen in the Mac Plus.
 
 	This code descended from "Screen-MacOS.c" in Richard F. Bannister's
@@ -76,17 +76,17 @@ void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right);
 // Draw the screen
 void Screen_Draw (void)
 {
-	char *		screencurrentbuff;
-	long		j0;
-	long		j1;
-	long		copysize;
-	long		copyoffset;
-	long		copyrows;
+	char *screencurrentbuff;
+	long j0;
+	long j1;
+	long copysize;
+	long copyoffset;
+	long copyrows;
 
 	if (vPage2 == 1) {
-		screencurrentbuff = (char*) /* get_real_address */ ( ((UBYTE *) RAM) + kMain_Buffer);
+		screencurrentbuff = (char *) /* get_real_address */ ( ((UBYTE *) RAM) + kMain_Buffer);
 	} else {
-		screencurrentbuff = (char*) /* get_real_address */ ( ((UBYTE *) RAM) + kAlternate_Buffer);
+		screencurrentbuff = (char *) /* get_real_address */ ( ((UBYTE *) RAM) + kAlternate_Buffer);
 	}
 
 	if (FindFirstChangeInLVecs((long *)screencurrentbuff,
@@ -113,9 +113,9 @@ void Screen_Draw (void)
 UBYTE VIA_GORA6 (void) // Main/Alternate Screen Buffer
 {
 #ifdef _VIA_Interface_Debug
-  printf("VIA ORA6 attempts to be an input\n");
+	printf("VIA ORA6 attempts to be an input\n");
 #endif
-  return 0;
+	return 0;
 }
 
 void  VIA_PORA6 (UBYTE Data)
@@ -132,7 +132,6 @@ void  VIA_PORB6 (UBYTE Data)
 {
 	UnusedParam(Data);
 #ifdef _VIA_Interface_Debug
-  printf("VIA ORB6 attempts to be an output\n");
+	printf("VIA ORB6 attempts to be an output\n");
 #endif
 }
-

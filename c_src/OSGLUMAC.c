@@ -1,6 +1,6 @@
 /*
 	OSGLUMAC.c
-	
+
 	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,13 +16,13 @@
 
 /*
 	Operating System GLUe for MACintosh.
-	
+
 	All operating system dependent code for the
 	Macintosh platform should go here.
-	
+
 	This code is descended from Richard F. Bannister's Macintosh
 	port of vMac, by Philip Cummins.
-	
+
 	The main entry point 'main' is at the end of this file.
 */
 
@@ -53,8 +53,8 @@
 #include "OSGLUMAC.h"
 
 #include "OSGIMPRT.h"
+#include "RESIDMAC.h"
 
-/* #include <types.h> */
 #include <Types.h>
 #include <MixedMode.h>
 #include <Gestalt.h>
@@ -105,29 +105,6 @@
 #define CALL_NOT_IN_CARBON 1
 #endif /* !defined(CALL_NOT_IN_CARBON) */
 
-/*--- mac resource file ids ---*/
-
-// Menu Constants
-#define kAppleMenu		128
-#define kFileMenu		129
-#define kSpecialMenu	130
-
-// Apple
-#define kAppleAboutItem 1
-
-// File
-#define kFileOpenDiskImage 1
-/* -- seperator 2  */
-#define kFileQuitItem 3
-
-// Hardware
-
-#define kSpecialShareTimeItem 1
-#define kSpecialLimitSpeedItem 2
-/* -- seperator 3  */
-#define kSpecialResetItem 4
-#define kSpecialInterruptItem 5
-
 /*--- initial initialization ---*/
 
 #if CALL_NOT_IN_CARBON
@@ -142,14 +119,14 @@ static blnr InitMacManagers(void)
 	MaxApplZone();
 #endif
 
-	{	
+	{
 		int i;
-		
+
 		for (i = 7; --i >=0; ) {
 			MoreMasters();
 		}
 	}
-	
+
 #if CALL_NOT_IN_CARBON
 	InitGraf(&qd.thePort);
 	InitFonts();
@@ -222,7 +199,7 @@ static blnr InitCheckMyEnvrn(void)
 		gWeHaveAppearance = trueblnr;
 	}
 #endif
-	
+
 	// Navigation
 #if NavigationAvail
 	gNavServicesExists=NavServicesAvailable();
@@ -236,43 +213,56 @@ static blnr InitCheckMyEnvrn(void)
 	return trueblnr;
 }
 
+/* cursor hiding */
+
+static blnr HaveCursorHidden = falseblnr;
+
+static void ForceShowCursor(void)
+{
+	if (HaveCursorHidden) {
+		HaveCursorHidden = falseblnr;
+		ShowCursor();
+	}
+}
+
 /*--- basic dialogs ---*/
 
 void MacMsg(char *briefMsg, char *longMsg, blnr fatal)
 {
 	Str255 briefMsgp;
 	Str255 longMsgp;
-	
+
+	ForceShowCursor();
 	CopyC2PStr(briefMsgp, briefMsg);
 	CopyC2PStr(longMsgp, longMsg);
 #if AppearanceAvail
 	if (gWeHaveAppearance) {
-		AlertStdAlertParamRec	param;
-		short					itemHit;
-			
-		param.movable 		= 0;
-		param.filterProc 	= nil;
-		param.defaultText 	= "\pOK";
-		param.cancelText 	= nil;
-		param.otherText 	= nil;
-		param.helpButton 	= false;
+		AlertStdAlertParamRec param;
+		short itemHit;
+
+		param.movable = 0;
+		param.filterProc = nil;
+		param.defaultText = "\pOK";
+		param.cancelText = nil;
+		param.otherText = nil;
+		param.helpButton = false;
 		param.defaultButton = kAlertStdAlertOKButton;
-		param.cancelButton 	= 0;
-		param.position 		= kWindowDefaultPosition;
-		
+		param.cancelButton = 0;
+		param.position = kWindowDefaultPosition;
+
 		StandardAlert((fatal)? kAlertStopAlert : kAlertCautionAlert, briefMsgp, longMsgp, &param, &itemHit);
 	} else
 #endif
-	{	
+	{
 		ParamText(briefMsgp, longMsgp, "\p", "\p");
 		if (fatal) {
-			while (StopAlert(131, NULL) != 1) {
+			while (StopAlert(kMyStandardAlert, NULL) != 1) {
 			}
 		} else {
-			while (CautionAlert(131, NULL) != 1) {
+			while (CautionAlert(kMyStandardAlert, NULL) != 1) {
 			}
 		}
-		/* Alert (131, 0L); */
+		/* Alert (kMyStandardAlert, 0L); */
 	}
 }
 
@@ -280,37 +270,45 @@ blnr OkCancelAlert(char *briefMsg, char *longMsg)
 {
 	Str255 briefMsgp;
 	Str255 longMsgp;
-	
+
+	ForceShowCursor();
 	CopyC2PStr(briefMsgp, briefMsg);
 	CopyC2PStr(longMsgp, longMsg);
 #if AppearanceAvail
 	if (gWeHaveAppearance) {
 		short itemHit;
 		AlertStdAlertParamRec param;
-			
-		param.movable 		= 0;
-		param.filterProc 	= nil;
-		param.defaultText 	= "\pOK";
-		param.cancelText 	= "\pCancel";
-		param.otherText 	= nil;
-		param.helpButton 	= false;
+
+		param.movable = 0;
+		param.filterProc = nil;
+		param.defaultText = "\pOK";
+		param.cancelText = "\pCancel";
+		param.otherText = nil;
+		param.helpButton = false;
 		param.defaultButton = kAlertStdAlertCancelButton;
-		param.cancelButton 	= 0;
-		param.position 		= kWindowDefaultPosition;
-		
+		param.cancelButton = 0;
+		param.position = kWindowDefaultPosition;
+
 		StandardAlert(kAlertCautionAlert, briefMsgp, longMsgp, &param, &itemHit);
-		
+
 		return (itemHit == kAlertStdAlertOKButton);
 	} else
 #endif
-	{	
+	{
 		short itemHit;
 
 		ParamText(briefMsgp, longMsgp, "\p", "\p");
 		do {
-			itemHit = CautionAlert(132, NULL);
+			itemHit = CautionAlert(kMyOkCancelAlert, NULL);
 		} while ((itemHit != 1) && (itemHit != 2));
 		return (itemHit == 2);
+	}
+}
+
+static void ShowAboutMessage(void)
+{
+	ForceShowCursor();
+	while (NoteAlert(kMyAboutAlert, NULL) != 1) {
 	}
 }
 
@@ -319,6 +317,9 @@ blnr OkCancelAlert(char *briefMsg, char *longMsg)
 #define MakeDumpFile 0
 
 #if MakeDumpFile
+
+#include <stdio.h>
+
 FILE *DumpFile;
 
 static blnr StartDump(void)
@@ -345,7 +346,7 @@ extern void DumpANote(char *s);
 void DumpANote(char *s)
 {
 	fprintf(DumpFile, s);
-	fprintf(DumpFile, "at %d\n", m68k_getpc1() - 0x00400000);
+	/* fprintf(DumpFile, "at %d\n", m68k_getpc1() - 0x00400000); */
 }
 
 #endif
@@ -363,7 +364,7 @@ static blnr CreateMainWindow(void)
 	rp = &qd.screenBits.bounds;
 #else
 	BitMap screenBits;
-	
+
 	GetQDGlobalsScreenBits(&screenBits);
 	rp = &screenBits.bounds;
 #endif
@@ -378,7 +379,7 @@ static blnr CreateMainWindow(void)
 	if (gMyMainWindow != NULL) {
 		IsOk = trueblnr;
 	}
- 	
+
 	return IsOk;
 }
 
@@ -401,8 +402,8 @@ static blnr AllocateScreenCompare(void)
 
 static void Update_Screen(void)
 {
-	GrafPtr		savePort;
-	BitMap		src;
+	GrafPtr savePort;
+	BitMap src;
 
 	src.baseAddr = screencomparebuff;
 	src.rowBytes = vMacScreenByteWidth;
@@ -426,9 +427,9 @@ static void Update_Screen(void)
 
 void HaveChangedScreenBuff(WORD top, WORD left, WORD bottom, WORD right)
 {
-	GrafPtr		savePort;
-	BitMap		src;
-	Rect        SrcRect;
+	GrafPtr savePort;
+	BitMap src;
+	Rect SrcRect;
 
 	SrcRect.left = left;
 	SrcRect.right = right;
@@ -455,29 +456,19 @@ static blnr gBackgroundFlag = falseblnr;
 
 static blnr CurTrueMouseButton = falseblnr;
 
-static blnr HaveCursorHidden = falseblnr;
-
-static void ForceShowCursor(void)
-{
-	if (HaveCursorHidden) {
-		HaveCursorHidden = falseblnr;
-		ShowCursor();
-	}
-}
-
 static void CheckMouseState (void)
 {
 	blnr ShouldHaveCursorHidden;
 	UBYTE NewMouseButton;
 	Point NewMousePos;
- 	GrafPtr oldPort;
- 
+	GrafPtr oldPort;
+
 	GetPort(&oldPort);
 	SetPortFromWindow(gMyMainWindow);
 	GetMouse(&NewMousePos);
 	NewMouseButton = Button();
 	SetPort(oldPort);
- 
+
 	ShouldHaveCursorHidden = trueblnr;
 	if (gBackgroundFlag) {
 		ShouldHaveCursorHidden = falseblnr;
@@ -536,7 +527,7 @@ static void InitDrives(void)
 	WORD i;
 
 	for (i = 0; i < NumDrives; ++i) {
-		Drives[i] = NotAfileRef;;
+		Drives[i] = NotAfileRef;
 	}
 }
 
@@ -565,7 +556,7 @@ WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Coun
 
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
-#if 0	
+#if 0
 			if (Write Protected) {
 				result = 0xFFD4; // Write Protected (-44)
 			} else
@@ -620,12 +611,12 @@ WORD vSonyEject(UWORD Drive_No)
 			}
 			/* should report result if nonzero, but still close in any case */
 			result = FSClose(Drives[Drive_No]);
-		    Drives[Drive_No] = NotAfileRef;
-	    }
+			Drives[Drive_No] = NotAfileRef;
+		}
 		result = 0x0000;
 	} else {
 		result = 0xFFC8; // No Such Drive (-56)
-    }
+	}
 	return result;
 }
 
@@ -636,12 +627,12 @@ WORD vSonyVerify(UWORD Drive_No)
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
 			result = 0x0000; // No Error (0)
-	    } else {
+		} else {
 			result = 0xFFBF; // Say it's offline (-65)
 		}
 	} else {
 		result = 0xFFC8; // No Such Drive (-56)
-    }
+	}
 	return result;
 }
 
@@ -652,12 +643,12 @@ WORD vSonyFormat(UWORD Drive_No)
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
 			result = 0xFFD4; // Write Protected (-44)
-	    } else {
+		} else {
 			result = 0xFFBF; // Say it's offline (-65)
 		}
 	} else {
 		result = 0xFFC8; // No Such Drive (-56)
-    }
+	}
 	return result;
 }
 
@@ -698,7 +689,7 @@ blnr AnyDiskInserted(void)
 static blnr Sony_Insert0(short refnum)
 {
 	UWORD Drive_No;
-	
+
 	if (! FirstFreeDisk(&Drive_No)) {
 		(void) FSClose(refnum);
 		MacMsg(kStrTooManyImagesTitle, kStrTooManyImagesMessage, falseblnr);
@@ -725,15 +716,15 @@ static blnr InsertADiskFromFileRef(FSSpec *spec)
 }
 
 #if NavigationAvail
-pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBackUserData, void* NavFilterModes);
-pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBackUserData, void* NavFilterModes)
+pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBackUserData, NavFilterModes theNavFilterModes);
+pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBackUserData, NavFilterModes theNavFilterModes)
 {
 	OSErr theErr = noErr;
 	Boolean display = true;
 	NavFileOrFolderInfo* theInfo = (NavFileOrFolderInfo*)info;
-	UnusedParam(NavFilterModes);
+	UnusedParam(theNavFilterModes);
 	UnusedParam(NavCallBackUserData);
-	
+
 	if ( theItem->descriptorType == typeFSS )
 		if ( !theInfo->isFolder )
 			{
@@ -747,8 +738,8 @@ pascal Boolean NavigationFilterProc(AEDesc* theItem, void* info, void* NavCallBa
 
 
 #if NavigationAvail
-pascal void NavigationEventProc(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, void *NavCallBackUserData);
-pascal void NavigationEventProc(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, void *NavCallBackUserData)
+pascal void NavigationEventProc(NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, void *NavCallBackUserData);
+pascal void NavigationEventProc(NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, void *NavCallBackUserData)
 {
 	UnusedParam(NavCallBackUserData);
 
@@ -757,18 +748,18 @@ pascal void NavigationEventProc(const NavEventCallbackMessage callBackSelector, 
 			case updateEvt:
 				{
 					WindowPtr which = (WindowPtr)callBackParms->eventData./**/eventDataParms.event->message;
-					
+
 					BeginUpdate(which);
-						
+
 					if (which == gMyMainWindow) {
 						Update_Screen();
 					}
-					
+
 					EndUpdate(which);
 				}
 				break;
 		}
-	}		
+	}
 }
 #endif
 
@@ -791,44 +782,44 @@ static void InsertADisk(void)
 
 	if (gNavServicesExists)
 	{
-		NavReplyRecord		theReply;
-		NavDialogOptions	dialogOptions;
-		OSErr				theErr = noErr;
-		NavTypeListHandle	openList = NULL;
-		long				count = 0;
-		NavObjectFilterUPP	filterUPP = MyNewNavObjectFilterUPP((NavObjectFilterProcPtr)NavigationFilterProc);
-		NavEventUPP			eventUPP = MyNewNavEventUPP((NavEventProcPtr)NavigationEventProc);
+		NavReplyRecord theReply;
+		NavDialogOptions dialogOptions;
+		OSErr theErr = noErr;
+		NavTypeListHandle openList = NULL;
+		long count = 0;
+		NavObjectFilterUPP filterUPP = MyNewNavObjectFilterUPP(/* (NavObjectFilterProcPtr) */NavigationFilterProc);
+		NavEventUPP eventUPP = MyNewNavEventUPP(/* (NavEventProcPtr) */NavigationEventProc);
 
-		theErr = NavGetDefaultDialogOptions(&dialogOptions);	
-	
+		theErr = NavGetDefaultDialogOptions(&dialogOptions);
+
 		/* GetIndString((unsigned char*)&dialogOptions.clientName,130,1); */
-		
-		dialogOptions.dialogOptionFlags += kNavDontAutoTranslate;	
+
+		dialogOptions.dialogOptionFlags += kNavDontAutoTranslate;
 		/* dialogOptions.dialogOptionFlags -= kNavAllowMultipleFiles; */
-		dialogOptions.dialogOptionFlags -= kNavAllowPreviews; 
-	
+		dialogOptions.dialogOptionFlags -= kNavAllowPreviews;
+
 		theErr = NavGetFile(NULL,
 						&theReply,
 						&dialogOptions,
 						/* NULL */eventUPP,
-						NULL,	
+						NULL,
 						filterUPP,
 						(NavTypeListHandle)openList,
 						NULL);
 
 		MyDisposeNavObjectFilterUPP(filterUPP);
 		MyDisposeNavEventUPP(eventUPP);
-			
+
 		if (theErr == noErr)
 		{
 			// grab the target FSSpec from the AEDesc for opening:
-			if (theReply.validRecord) {	
+			if (theReply.validRecord) {
 				AEKeyword keyword;
 				DescType typeCode;
 				Size actualSize;
 				long index;
 				long itemsInList;
-				
+
 				theErr = AECountItems(&theReply.selection, &itemsInList);
 				if (theErr == noErr) {
 					for (index = 1; index <= itemsInList; ++index) { /*Get each descriptor from the list, get the alias record, open the file, maybe print it.*/
@@ -838,19 +829,19 @@ static void InsertADisk(void)
 							if (! InsertADiskFromFileRef(&spec)) {
 								break;
 							}
-						} 
+						}
 					}
 				}
 			}
 
 			NavDisposeReply(&theReply);
 		}
-		
+
 	} else
 #endif
 	{
 #if CALL_NOT_IN_CARBON
-		StandardFileReply	reply;
+		StandardFileReply reply;
 
 		StandardGetFile(0L, -1, 0L, &reply);
 		if (reply.sfGood) {
@@ -858,17 +849,6 @@ static void InsertADisk(void)
 		}
 #endif
 	}
-
-	/*
-		a stray key up at boot time will hang the emulate mac.
-		so this cludge makes sure that won't get extra key up
-		if the file dialog is closed with a key down rather than
-		a mouse click.
-	*/
-	do {
-		GetKeys(*(KeyMap *)theKeys);
-	} while ((theKeys[0] != 0) || (theKeys[1] != 0) || (theKeys[2] != 0) || (theKeys[3] != 0));
-	FlushEvents(keyDownMask | keyUpMask | autoKeyMask,0);
 }
 
 static blnr AllocateMacROM(void)
@@ -899,7 +879,7 @@ static blnr LoadMacRom(void)
 	if (err == 0) {
 		err = FSMakeFSSpec(pb.ioFCBVRefNum, pb.ioFCBParID, "\pvMac.ROM", &spec);
 		if (err == fnfErr) {
-    		MacMsg("Unable to locate ROM image.", "The file vMac.ROM could not be found. Please read the manual for instructions on where to get this file.", trueblnr);
+			MacMsg("Unable to locate ROM image.", "The file vMac.ROM could not be found. Please read the manual for instructions on where to get this file.", trueblnr);
 		} else if (err == 0) {
 			err = FSpOpenDF(&spec, fsRdPerm, &refnum);
 			if (err == 0) {
@@ -912,9 +892,9 @@ static blnr LoadMacRom(void)
 }
 
 static blnr AllocateMacRAM (void)
-{	
+{
 #define MemLeaveInMacHeap (128 * 1024L)
-	kRAM_Size = FreeMem() - MemLeaveInMacHeap;
+	kRAM_Size = FreeMem() - MemLeaveInMacHeap - RAMSafetyMarginFudge;
 	if (kRAM_Size < 0) {
 		kRAM_Size = 0;
 	} else {
@@ -934,7 +914,7 @@ static blnr AllocateMacRAM (void)
 		return falseblnr;
 	}
 
-	RAM = (UWORD *)NewPtr(kRAM_Size);
+	RAM = (UWORD *)NewPtr(kRAM_Size + RAMSafetyMarginFudge);
 
 	return (RAM != NULL);
 }
@@ -971,7 +951,7 @@ static blnr RTC_Load (void)
 		}
 	}
 
-	if (PARAMRAMloaded) {	
+	if (PARAMRAMloaded) {
 		HogCPU = PARAMRAM[20];
 		SpeedLimit = PARAMRAM[21];
 	}
@@ -988,7 +968,7 @@ static void RTC_Save0 (void)
 	short refnum;
 	long count = PARAMRAMSize;
 
-	if (PARAMRAMloaded) {	
+	if (PARAMRAMloaded) {
 		PARAMRAM[20] = HogCPU;
 		PARAMRAM[21] = SpeedLimit;
 
@@ -1000,7 +980,7 @@ static void RTC_Save0 (void)
 		if (err == 0) {
 			err = FSMakeFSSpec(pb.ioFCBVRefNum, pb.ioFCBParID, "\pvmac.PRAM", &spec);
 			if (err == fnfErr) {
-    			err = 0;
+				err = 0;
 			}
 			if (err == 0) {
 				err = FSpOpenDF(&spec, fsRdWrPerm, &refnum);
@@ -1160,7 +1140,7 @@ static blnr InstallOurEventHandlers(void)
 static void MacOS_UpdateMenus(void)
 {
 	MenuHandle hHardware;
-	
+
 	hHardware = GetMenuHandle(kSpecialMenu);
 #if CALL_NOT_IN_CARBON
 	CheckItem(hHardware, kSpecialShareTimeItem, ! HogCPU);
@@ -1171,38 +1151,39 @@ static void MacOS_UpdateMenus(void)
 }
 
 static void MacOS_HandleMenu (short menuID, short menuItem)
-{	
+{
 	switch (menuID) {
 		case kAppleMenu:
-	  		if (menuItem == kAppleAboutItem) {
-				MacMsg(kStrAboutTitle, kStrAboutMessage, falseblnr);
-	  		} else {
+			if (menuItem == kAppleAboutItem) {
+				/* MacMsg(kStrAboutTitle, kStrAboutMessage, falseblnr); */
+				ShowAboutMessage();
+			} else {
 #if CALL_NOT_IN_CARBON
-				Str32		name;
-				GrafPtr		savePort;
+				Str32 name;
+				GrafPtr savePort;
 
-	 			GetPort(&savePort);
-	 			GetMenuItemText(GetMenuHandle(kAppleMenu), menuItem, name);
+				GetPort(&savePort);
+				GetMenuItemText(GetMenuHandle(kAppleMenu), menuItem, name);
 				OpenDeskAcc(name);
 				SystemTask();
 				SetPort(savePort);
 #endif
 			}
 			break;
-	 	
-	 	case kFileMenu:
+
+		case kFileMenu:
 			switch (menuItem) {
 				case kFileOpenDiskImage:
 					InsertADisk();
 					break;
-				
+
 				case kFileQuitItem:
 					RequestMacOff = trueblnr;
 					break;
 			}
-	 		break;
-	 	
-	 	case kSpecialMenu:
+			break;
+
+		case kSpecialMenu:
 			switch (menuItem) {
 				case kSpecialShareTimeItem:
 #if CALL_NOT_IN_CARBON
@@ -1221,12 +1202,12 @@ static void MacOS_HandleMenu (short menuID, short menuItem)
 					RequestMacInterrupt = trueblnr;
 					break;
 			}
-	 		break;
+			break;
 
 		default:
 			/* if menuID == 0, then no command chosen from menu */
 			/* do nothing */
-	 		break;
+			break;
 	}
 }
 
@@ -1282,7 +1263,7 @@ static void MacOS_HandleEvent(void)
 			case mouseDown:
 				if ((FindWindow(theEvent.where, &whichWindow) == inContent) && (whichWindow == gMyMainWindow)) {
 					PrivateEvent = trueblnr;
-				}	
+				}
 				break;
 		}
 		if (PrivateEvent && HogCPU && ! gBackgroundFlag) {
@@ -1318,9 +1299,9 @@ static void MacOS_HandleEvent(void)
 	{
 	}
 #endif
-	
+
 	switch(theEvent.what) {
-		case mouseDown:	
+		case mouseDown:
 			switch (FindWindow(theEvent.where, &whichWindow)) {
 				case inSysWindow:
 #if CALL_NOT_IN_CARBON
@@ -1336,7 +1317,7 @@ static void MacOS_HandleEvent(void)
 					}
 					HiliteMenu(0);
 					break;
-		
+
 				case inDrag:
 					{
 						Rect *rp;
@@ -1344,13 +1325,13 @@ static void MacOS_HandleEvent(void)
 						rp = &qd.screenBits.bounds;
 #else
 						BitMap screenBits;
-						
+
 						GetQDGlobalsScreenBits(&screenBits);
 						rp = &screenBits.bounds;
 #endif
 
 						DragWindow(whichWindow, theEvent.where, rp);
-	
+
 						GetPort(&savePort);
 						SetPortFromWindow(whichWindow);
 						x.h=x.v=0;
@@ -1360,40 +1341,40 @@ static void MacOS_HandleEvent(void)
 						SetPort(savePort);
 					}
 					break;
-	
+
 				case inContent:
 					if (FrontWindow() != whichWindow) {
 						SelectWindow(whichWindow);
 					}
 					break;
-	
+
 				case inGoAway:
 					if (TrackGoAway(whichWindow, theEvent.where)) {
 						RequestMacOff = trueblnr;
 					}
 					break;
-				
+
 				case inZoomIn:
 				case inZoomOut:
 					// Zoom Boxes
 					break;
 			}
 			break;
-				
+
 		case updateEvt:
 			GetPort(&savePort);
-					
+
 			BeginUpdate( (WindowPtr) theEvent.message );
-			
+
 			if ((WindowPtr)theEvent.message == gMyMainWindow) {
 				Update_Screen();
 			}
-			
+
 			EndUpdate((WindowPtr) theEvent.message);
-					
+
 			SetPort(savePort);
 			break;
-	
+
 		case keyDown:
 			if (! gBackgroundFlag) {
 				Keyboard_Down((theEvent.modifiers << 16) + theEvent.message);
@@ -1412,7 +1393,7 @@ static void MacOS_HandleEvent(void)
 			break;
 		case osEvt:
 			if ((theEvent.message >> 24) & suspendResumeMessage) {
-				if (theEvent.message & 1) {	
+				if (theEvent.message & 1) {
 					gBackgroundFlag = falseblnr;
 
 #if CALL_NOT_IN_CARBON
@@ -1426,7 +1407,7 @@ static void MacOS_HandleEvent(void)
 					}
 #endif
 				} else {
-					ForceShowCursor(); 
+					ForceShowCursor();
 					gBackgroundFlag = trueblnr;
 				}
 			}
@@ -1464,8 +1445,8 @@ static void WaitForIntSixtieth(void)
 
 static blnr Init60thCheck(void)
 {
-  lastinterupttime = TickCount();
-  return trueblnr;
+	lastinterupttime = TickCount();
+	return trueblnr;
 }
 
 blnr CheckIntSixtieth(blnr overdue)
@@ -1495,7 +1476,7 @@ static blnr InstallOurMenus(void)
 {
 	Handle menuBar;
 
-	menuBar = GetNewMBar(128);
+	menuBar = GetNewMBar(kMyMenuBar);
 	SetMenuBar(menuBar);
 #if CALL_NOT_IN_CARBON
 	AppendResMenu(GetMenuHandle(kAppleMenu), 'DRVR');
@@ -1546,9 +1527,9 @@ static void UnInitOSGLU(void)
 	EndDump();
 #endif
 	RTC_Save0();
-	 
+
 	ForceShowCursor();
-	
+
 /*
 	we're relying on the operating
 	system to take care of disposing

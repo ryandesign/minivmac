@@ -1,6 +1,6 @@
 /*
 	PROGMAIN.c
-	
+
 	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,9 +16,10 @@
 
 /*
 	PROGram MAIN
-	
-	The main event loop for Mini vMac.
-	
+
+	Contains the platform independent main routine, "ProgramMain".
+	Called from platform dependent code in the OSGLUxxx.c files.
+
 	This code is a distant descendent of code in vMac by Philip Cummins.
 */
 

@@ -1,6 +1,6 @@
 /*
 	OSCOMVAR.h
-	
+
 	Copyright (C) 2001 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -28,9 +28,16 @@
 
 extern char *screencomparebuff;
 
-extern ULONG kRAM_Size; // To work with other headers
+extern ULONG kRAM_Size;
+	/* chosen by OSGLU. Must be a power of two */
 
+#define RAMSafetyMarginFudge 4
 extern UWORD *RAM;
+	/*
+		allocated by OSGLU to be at least kRAM_Size + RAMSafetyMarginFudge
+		bytes. Because of shortcuts taken in ADDRSPAC.c, it is in theory
+		possible for the emulator to write up to 3 bytes past kRAM_Size.
+	*/
 
 #define kROM_Size 0x020000 // ROM size is 128 KB
 

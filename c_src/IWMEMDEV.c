@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.c
-	
-	Copyright (C) 2001 Philip Cummins, Paul Pratt 
+
+	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 /*
 	Integrated Woz Macine EMulated DEVice
-	
+
 	Emulates the IWM found in the Mac Plus.
 
 	This code adapted from "IWM.c" in vMac by Philip Cummins.
@@ -60,13 +60,13 @@ UBYTE vSel; // Selection Line from VIA
 
 typedef struct
 {
-  UBYTE DataIn;    // Read Data Register
-  UBYTE Handshake; // Read Handshake Register
-  UBYTE Status;    // Read Status Register
-  UBYTE Mode;      // Drive Off : Write Mode Register
-                   // Drive On  : Write Data Register
-  UBYTE DataOut;   // Write Data Register
-  UBYTE Lines;     // Used to Access Disk Drive Registers
+	UBYTE DataIn;    // Read Data Register
+	UBYTE Handshake; // Read Handshake Register
+	UBYTE Status;    // Read Status Register
+	UBYTE Mode;      // Drive Off : Write Mode Register
+	                 // Drive On  : Write Data Register
+	UBYTE DataOut;   // Write Data Register
+	UBYTE Lines;     // Used to Access Disk Drive Registers
 } IWM_Ty;
 
 IWM_Ty IWM;
@@ -80,10 +80,11 @@ typedef enum {On, Off} Mode_Ty;
 
 static void IWM_Set_Lines (UBYTE line, Mode_Ty mode)
 {
-  if (mode == Off)
-    { IWM.Lines &= (0xFF - line); }
-  else
-    { IWM.Lines |= line; }
+	if (mode == Off) {
+		IWM.Lines &= (0xFF - line);
+	} else {
+		IWM.Lines |= line;
+	}
 }
 
 UBYTE IWM_Read_Reg  (void);
@@ -104,56 +105,56 @@ void IWM_Access(CPTR addr)
 				case kph0H :
 					IWM_Set_Lines(kph0, On);
 					break;
-			  	case kph1L :
+				case kph1L :
 					IWM_Set_Lines(kph1, Off);
 					break;
-			 	case kph1H :
-			    	IWM_Set_Lines(kph1, On);
-			    	break;
-			  	case kph2L :
-			    	IWM_Set_Lines(kph2, Off);
-			    	break;
+				case kph1H :
+					IWM_Set_Lines(kph1, On);
+					break;
+				case kph2L :
+					IWM_Set_Lines(kph2, Off);
+					break;
 				case kph2H :
 					IWM_Set_Lines(kph2, On);
 					break;
-			  	case kph3L :
-			    	IWM_Set_Lines(kph3, Off);
-			    	break;
-			  	case kph3H :
-			    	IWM_Set_Lines(kph3, On);
-			    	break;
-			  	case kmtrOff :
+				case kph3L :
+					IWM_Set_Lines(kph3, Off);
+					break;
+				case kph3H :
+					IWM_Set_Lines(kph3, On);
+					break;
+				case kmtrOff :
 					IWM.Status &= 0xDF;
-					IWM_Set_Lines(kmtr, Off); 
+					IWM_Set_Lines(kmtr, Off);
 					break;
 				case kmtrOn :
 					IWM.Status |= 0x20;
-					IWM_Set_Lines(kmtr, On);  
+					IWM_Set_Lines(kmtr, On);
 					break;
 				case kintDrive :
 					IWM_Set_Lines(kdrv, Off);
 					break;
-			  	case kextDrive :
+				case kextDrive :
 					IWM_Set_Lines(kdrv, On);
 					break;
 				case kq6L :
-			    	IWM_Set_Lines(kq6, Off);
-			    	break;
+					IWM_Set_Lines(kq6, Off);
+					break;
 				case kq6H :
 					IWM_Set_Lines(kq6, On);
 					break;
 				case kq7L :
 					if (! WriteMemAccess) {
-					    DataBus = IWM_Read_Reg();
+						DataBus = IWM_Read_Reg();
 					}
-					IWM_Set_Lines(kq7, Off);  
+					IWM_Set_Lines(kq7, Off);
 					break;
 				case kq7H :
 					if (WriteMemAccess) {
-					    IWM_Write_Reg(DataBus);
-				    }
-				    IWM_Set_Lines(kq7, On);
-				    break;
+						IWM_Write_Reg(DataBus);
+					}
+					IWM_Set_Lines(kq7, On);
+					break;
 			}
 			return;
 		}
@@ -162,58 +163,54 @@ void IWM_Access(CPTR addr)
 
 UBYTE IWM_Read_Reg (void)
 {
-  switch ((IWM.Lines & (kq6 + kq7)) >> 6)
-  {
-    case 0 :
-	  #ifdef _IWM_Debug
-      printf("IWM Data Read\n");
-	  #endif
-      return IWM.DataIn; break;
-    case 1 :
-	  #ifdef _IWM_Debug
-      printf("IWM Status Read\n");
-	  #endif
-      return IWM.Status; break;
-    case 2 : 
-	  #ifdef _IWM_Debug
-      printf("IWM Handshake Read\n");
-	  #endif
-      return IWM.Handshake; break;
-    case 3 :
-      return 0; break;
-  }
-
-//
-// bill huey --- to make the compiler GCC happy...
-// The "return" is useless because all cases are handled
-// the "switch" statement...
-//
-  return 0;
+	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
+		case 0 :
+#ifdef _IWM_Debug
+			printf("IWM Data Read\n");
+#endif
+			return IWM.DataIn;
+			break;
+		case 1 :
+#ifdef _IWM_Debug
+			printf("IWM Status Read\n");
+#endif
+			return IWM.Status;
+			break;
+		case 2 :
+#ifdef _IWM_Debug
+			printf("IWM Handshake Read\n");
+#endif
+			return IWM.Handshake;
+			break;
+		case 3 :
+		default : /* should alway be in 0-3, but compiler warnings don't know that */
+			return 0;
+			break;
+	}
 }
 
 void IWM_Write_Reg (UBYTE in)
 {
-  if (((IWM.Lines & kmtr) >> 4) == 0)
-  {
-    #ifdef _IWM_Debug
-    printf("IWM Mode Register Write\n");
-	#endif
-    IWM.Mode = in;
-    IWM.Status = ((IWM.Status & 0xE0) + (IWM.Mode & 0x1F));
-  }
+	if (((IWM.Lines & kmtr) >> 4) == 0) {
+#ifdef _IWM_Debug
+		printf("IWM Mode Register Write\n");
+#endif
+		IWM.Mode = in;
+		IWM.Status = ((IWM.Status & 0xE0) + (IWM.Mode & 0x1F));
+	}
 }
 
 // VIA Interface Headers
 
 UBYTE VIA_GORA5 (void) // Floppy Disk Line SEL
 {
-  #ifdef _VIA_Interface_Debug
-  printf("VIA ORA5 attempts to be an input\n");
-  #endif
-  return 0;
+#ifdef _VIA_Interface_Debug
+	printf("VIA ORA5 attempts to be an input\n");
+#endif
+	return 0;
 }
 
 void  VIA_PORA5 (UBYTE Data)
 {
-  vSel = Data;
+	vSel = Data;
 }

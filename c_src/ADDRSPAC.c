@@ -16,9 +16,9 @@
 
 /*
 	ADDRess SPACe
-	
+
 	Implements the address space of the Mac Plus.
-	
+
 	This code is descended from code in vMac by Philip Cummins, in
 	turn descended from code in the Un*x Amiga Emulator by
 	Bernd Schmidt.
@@ -109,42 +109,42 @@ static void MM_Access(void)
 
 	if (AddressBus < kIWM_Block_Base) {
 		if (AddressBus < kSCCRd_Block_Base) {
-	        if ((AddressBus >= kSCSI_Block_Base) && (AddressBus < kSCSI_Block_Top)) {
-	        	SCSI_Access(AddressBus - kSCSI_Block_Base);
-	        }
+			if ((AddressBus >= kSCSI_Block_Base) && (AddressBus < kSCSI_Block_Top)) {
+				SCSI_Access(AddressBus - kSCSI_Block_Base);
+			}
 		} else {
 			if (AddressBus >= kSCCWr_Block_Base) {
 				if (WriteMemAccess) {
-			   		/* if ((AddressBus >= kSCCWr_Block_Base) && (AddressBus < kSCCWr_Block_Top)) */  // Write Only Address
-			   		{
-			        	SCC_Access((AddressBus - kSCCWrBase) & kSCC_Mask);
-			        }
+					/* if ((AddressBus >= kSCCWr_Block_Base) && (AddressBus < kSCCWr_Block_Top)) */  // Write Only Address
+					{
+						SCC_Access((AddressBus - kSCCWrBase) & kSCC_Mask);
+					}
 				}
 			} else {
 				if (! WriteMemAccess) {
-			        /* if ((AddressBus >= kSCCRd_Block_Base) && (AddressBus < kSCCRd_Block_Top)) */ // Read Only Address
-			        {
-			        	SCC_Access((AddressBus - kSCCRdBase) & kSCC_Mask);
-			        }
+					/* if ((AddressBus >= kSCCRd_Block_Base) && (AddressBus < kSCCRd_Block_Top)) */ // Read Only Address
+					{
+						SCC_Access((AddressBus - kSCCRdBase) & kSCC_Mask);
+					}
 				}
 			}
 		}
 	} else {
 		if (AddressBus < kVIA_Block_Base) {
-	        if (/* (AddressBus >= kIWM_Block_Base) && */(AddressBus < kIWM_Block_Top)) {
-	        	IWM_Access((AddressBus - kIWM_Base) & kIWM_Mask);
-	        }
+			if (/* (AddressBus >= kIWM_Block_Base) && */(AddressBus < kIWM_Block_Top)) {
+				IWM_Access((AddressBus - kIWM_Base) & kIWM_Mask);
+			}
 		} else {
 			if (/* (AddressBus >= kVIA_Block_Base) && */(AddressBus < kVIA_Block_Top)) {
 				VIA_Access((AddressBus - kVIA_Base) % kVIA_Size);
 			} else {
-		        if ((AddressBus >= kDSK_Block_Base) && (AddressBus < kDSK_Block_Top)) { 
-		        	Sony_Access(AddressBus - kDSK_Block_Base);
-		        } else
-		        if ((AddressBus >= kAutoVector_Base) && (AddressBus < kAutoVector_Top)) {
-		        	SetAutoVector();
+				if ((AddressBus >= kDSK_Block_Base) && (AddressBus < kDSK_Block_Top)) {
+					Sony_Access(AddressBus - kDSK_Block_Base);
+				} else
+				if ((AddressBus >= kAutoVector_Base) && (AddressBus < kAutoVector_Top)) {
+					SetAutoVector();
 					/* Exception(regs.intmask+24, 0); */
-		        }
+				}
 			}
 		}
 	}
@@ -177,14 +177,14 @@ static UBYTE *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then Bank
 #define kRAM_BaseBank (kRAM_Base >> ln2BytesPerMemBank)
 #define kRAM_TopBank (kRAM_Top >> ln2BytesPerMemBank)
 
-#define Overlay_RAMmem_mask	(0x00010000 - 1)
+#define Overlay_RAMmem_mask (0x00010000 - 1)
 #define Overlay_ROMmem_mask ROMmem_mask
 #define ROMmem_mask (kROM_Size - 1)
 
 static void SetUpBankRange(ULONG StartBank, ULONG StopBank, UBYTE * RealStart, CPTR VirtualStart, ULONG vMask, blnr Writeable)
 {
 	int i;
-	
+
 	for (i = StartBank; i < StopBank; i++) {
 		BankReadAddr[i] = RealStart + (((i << ln2BytesPerMemBank) - VirtualStart) & vMask);
 		if (Writeable) {
@@ -204,7 +204,7 @@ static void SetPtrVecToNULL(UBYTE **x, ULONG n)
 
 static void SetUpMemBanks(void)
 {
-	ULONG RAMmem_mask		= kRAM_Size - 1;
+	ULONG RAMmem_mask = kRAM_Size - 1;
 
 	SetPtrVecToNULL(BankReadAddr, NumMemBanks);
 	SetPtrVecToNULL(BankWritAddr, NumMemBanks);
@@ -234,10 +234,10 @@ void  VIA_PORA4 (UBYTE Data)
 
 UBYTE VIA_GORA4 (void) // Overlay/Normal Memory Mapping
 {
-  #ifdef _VIA_Interface_Debug
-  printf("VIA ORA4 attempts to be an input\n");
-  #endif
-  return 0;
+#ifdef _VIA_Interface_Debug
+	printf("VIA ORA4 attempts to be an input\n");
+#endif
+	return 0;
 }
 
 void  Memory_Reset (void)
@@ -245,100 +245,64 @@ void  Memory_Reset (void)
 	VIA_PORA4(1);
 }
 
-#if 1
-#define check_addr(a) 1
-#else
-#define check_addr(a) (((a) & 1) == 0) /* ? causes startup crash in system 6 */
-#endif
 
-#define MakeDumpFile 0
-#define MakeDumpFile0 0
+/*
+	unlike in the real Mac Plus, Mini vMac
+	will allow misaligned memory access,
+	since it is easier to allow it than
+	it is to correctly simulate a bus error
+	and back out of the current instruction.
+*/
 
-#if MakeDumpFile
-extern void DumpANote(char *s);
-
-
-#endif
-
-ULONG get_long(CPTR addr) 
-{
-#if MakeDumpFile0
-	if (addr == (4096+(long)2*1024*1024)) {
-		DumpANote("long reference");
-	}
-#endif
-#if MakeDumpFile0
-	if (addr == (4094+(long)2*1024*1024)) {
-		DumpANote("long reference");
-	}
-#endif
-    if (! check_addr(addr)) {
-    	SetBusError(addr);
-	    return 0;
-	} else {
-		UBYTE *ba = BankReadAddr[bankindex(addr)];
-		
-		if (ba != nullpr) {
-		    ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
-		    return do_get_mem_long(m); 
-		} else {
-		    if (addr != -1) {
-				UWORD hi = get_word(addr);
-				UWORD lo = get_word(addr+2);
-				return (ULONG) (((ULONG)hi) << 16) | ((ULONG)lo);
-		    } else {
-		    	/* A work around for someone's bug. When booting
-		    	from system 6.0.8, address -1 is referenced once.
-		    	if don't check and use above code, then everything
-		    	seems to work fine, except have found one reproducible
-		    	bug: lode runner crashes when saving a new high
-		    	score */
-		    	
-		    	/* Debugger(); */
-#if MakeDumpFile
-				DumpANote("long ref to -1");
-#endif
-				return 0;
-		    }
-		}
-    }
-}
-
-ULONG get_word(CPTR addr) 
-{
-#if MakeDumpFile0
-	if (addr == (4096+(long)2*1024*1024)) {
-		DumpANote("word reference");
-	}
-#endif
-    if (! check_addr(addr)) {
-    	SetBusError(addr);
-	    return 0;
-	} else {
-		UBYTE *ba = BankReadAddr[bankindex(addr)];
-
-		if (ba != nullpr) {
-		    UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
-		    return do_get_mem_word(m); 
-		} else {
-			AddressBus = addr;
-			DataBus = 0;
-			ByteSizeAccess = falseblnr;
-			WriteMemAccess = falseblnr;
-			MM_Access();
-			return (UWORD) DataBus;
-		}
-    }
-}
-
-ULONG get_byte(CPTR addr) 
+ULONG get_long(CPTR addr)
 {
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
-#if MakeDumpFile0
-	if (addr == (4096+(long)2*1024*1024)) {
-		DumpANote("byte reference");
-	}
+
+	if (ba != nullpr) {
+		ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
+		return do_get_mem_long(m);
+	} else {
+		if (addr != -1) {
+#ifdef MyCompilerMrC
+#pragma noinline_site get_word
 #endif
+			UWORD hi = get_word(addr);
+			UWORD lo = get_word(addr+2);
+			return (ULONG) (((ULONG)hi) << 16) | ((ULONG)lo);
+		} else {
+			/* A work around for someone's bug. When booting
+			from system 6.0.8, address -1 is referenced once.
+			if don't check and use above code, then everything
+			seems to work fine, except have found one reproducible
+			bug: lode runner crashes when saving a new high
+			score */
+
+			/* Debugger(); */
+			return 0;
+		}
+	}
+}
+
+ULONG get_word(CPTR addr)
+{
+	UBYTE *ba = BankReadAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
+		return do_get_mem_word(m);
+	} else {
+		AddressBus = addr;
+		DataBus = 0;
+		ByteSizeAccess = falseblnr;
+		WriteMemAccess = falseblnr;
+		MM_Access();
+		return (UWORD) DataBus;
+	}
+}
+
+ULONG get_byte(CPTR addr)
+{
+	UBYTE *ba = BankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
 		UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
@@ -353,68 +317,45 @@ ULONG get_byte(CPTR addr)
 	}
 }
 
-void put_long(CPTR addr, ULONG l) 
+void put_long(CPTR addr, ULONG l)
 {
-    if (! check_addr(addr)) {
-    	SetBusError(addr);
-    } else {
-		UBYTE *ba = BankWritAddr[bankindex(addr)];
-#if MakeDumpFile0
-	if (addr == (4094+(long)2*1024*1024)) {
-		DumpANote("long set");
-	}
-	if (addr == (4096+(long)2*1024*1024)) {
-		DumpANote("long set");
-	}
-#endif
+	UBYTE *ba = BankWritAddr[bankindex(addr)];
 
-		if (ba != nullpr) {
-		    ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
-		    do_put_mem_long(m, l);
-		} else {
-			put_word(addr, (l >> 16) & (0x0000FFFF));
-			put_word(addr+2, l & (0x0000FFFF));
-		}
+	if (ba != nullpr) {
+		ULONG *m = (ULONG *)((addr & MemBankAddrMask) + ba);
+		do_put_mem_long(m, l);
+	} else {
+#ifdef MyCompilerMrC
+#pragma noinline_site put_word
+#endif
+		put_word(addr, (l >> 16) & (0x0000FFFF));
+		put_word(addr+2, l & (0x0000FFFF));
 	}
 }
 
 void put_word(CPTR addr, ULONG w)
 {
-    if (! check_addr(addr)) {
-    	SetBusError(addr);
-    } else {
-		UBYTE *ba = BankWritAddr[bankindex(addr)];
-#if MakeDumpFile0
-	if (addr == (4096+(long)2*1024*1024)) {
-		DumpANote("word set");
-	}
-#endif
-
-		if (ba != nullpr) {
-		    UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
-			do_put_mem_word(m, w);
-		} else {
-			AddressBus = addr;
-			DataBus = w;
-			ByteSizeAccess = falseblnr;
-			WriteMemAccess = trueblnr;
-			MM_Access();
-		}
-    }
-}
-
-void put_byte(CPTR addr, ULONG b) 
-{
 	UBYTE *ba = BankWritAddr[bankindex(addr)];
-#if MakeDumpFile0
-	if (addr == (4096+(long)2*1024*1024)) {
-		DumpANote("byte set");
-	}
-#endif
 
 	if (ba != nullpr) {
-	    UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
-	    *m = b;
+		UWORD *m = (UWORD *)((addr & MemBankAddrMask) + ba);
+		do_put_mem_word(m, w);
+	} else {
+		AddressBus = addr;
+		DataBus = w;
+		ByteSizeAccess = falseblnr;
+		WriteMemAccess = trueblnr;
+		MM_Access();
+	}
+}
+
+void put_byte(CPTR addr, ULONG b)
+{
+	UBYTE *ba = BankWritAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		UBYTE *m = (UBYTE *)((addr & MemBankAddrMask) + ba);
+		*m = b;
 	} else {
 		AddressBus = addr;
 		DataBus = b;
@@ -427,7 +368,7 @@ void put_byte(CPTR addr, ULONG b)
 static UBYTE *default_xlate(CPTR a)
 {
 	UnusedParam(a);
-    return (UBYTE *) RAM; /* So we don't crash. */
+	return (UBYTE *) RAM; /* So we don't crash. */
 }
 
 UBYTE *get_real_address(CPTR addr)
@@ -435,7 +376,7 @@ UBYTE *get_real_address(CPTR addr)
 	UBYTE *ba = BankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
-	    return (UBYTE *)((addr & MemBankAddrMask) + ba);
+		return (UBYTE *)((addr & MemBankAddrMask) + ba);
 	} else {
 		return default_xlate(addr);
 	}

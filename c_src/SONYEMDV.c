@@ -1,6 +1,6 @@
 /*
 	SONYEMDV.c
-	
+
 	Copyright (C) 2001 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,9 +16,9 @@
 
 /*
 	SONY floppy disk EMulated DeVice
-	
+
 	This is now misnamed. The only code remaining in this file
-	implements a fake memory map deviced that is used by
+	implements a fake memory mapped device that is used by
 	a replacement for the Sony disk driver. The Sony hardware
 	is not emulated.
 */
@@ -31,18 +31,7 @@
 #include "ADDRSPAC.h"
 #include "MINEM68K.h"
 #include "OSCOMVAR.h"
-
-extern WORD vSonyRead(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
-extern WORD vSonyWrite(void *Buffer, UWORD Drive_No, ULONG Sony_Start, ULONG *Sony_Count);
-extern WORD vSonyEject(UWORD Drive_No);
-extern blnr vSonyInserted (UWORD Drive_No);
-extern blnr AnyDiskInserted(void);
-extern WORD vSonyVerify(UWORD Drive_No);
-extern WORD vSonyFormat(UWORD Drive_No);
-extern WORD vSonyGetSize(UWORD Drive_No, ULONG *Sony_Count);
-extern blnr vSonyDiskLocked(UWORD Drive_No);
-
-#define kDSK_Block_Base 0x00F40000
+#include "OSGLUSTB.h"
 
 #define kDSK_Command 0
 #define kDSK_Err 1
@@ -65,13 +54,18 @@ extern blnr vSonyDiskLocked(UWORD Drive_No);
 #define kDSKCmdFormat 4
 #define kDSKCmdGetSize 5
 
+UWORD kDSK_Var[kDSK_numvars];
+
 #define MinTicksBetweenInsert 60
 	/* if call PostEvent too frequently, insert events seem to get lost */
 
-UWORD kDSK_Var[kDSK_numvars];
 UWORD DelayUntilNextInsert;
 
-// This checks every VBL to see if the disk has been read
+ULONG ImageOffset[NumDrives]; /* size of any header in disk image file */
+
+#define checkheadersize 84
+
+/* This checks to see if a disk (image) has been inserted */
 void Sony_Update (void)
 {
 	if (DelayUntilNextInsert != 0) {
@@ -83,21 +77,37 @@ void Sony_Update (void)
 			if (CallBack != 0) {
 				int i;
 				ULONG data;
-				
-				for (i = 0; i < kDSK_numvars; ++i) {
+				ULONG Sony_Count;
+				UBYTE Temp[checkheadersize];
+				WORD result;
+
+				for (i = 0; i < NumDrives; ++i) {
 					if ((MountPending & ((ULONG)1 << i)) != 0) {
 						MountPending &= ~((ULONG)1 << i);
-						DelayUntilNextInsert = MinTicksBetweenInsert;
-						data = i;
-						if (vSonyDiskLocked(i)) {
-							data |= (ULONG)0x00FF << 16;
+						Sony_Count = checkheadersize;
+						result = vSonyRead((void *)&Temp, i, 0, &Sony_Count);
+						if (result == 0) {
+							if ( /* (Temp[81]== 34 or is that 2) && */
+									(Temp[82]==1) && (Temp[83]==0) &&
+									(Temp[0] < 63) && (Temp[63] == 0))
+							{
+								/* have old style disk image header */
+								ImageOffset[i] = 84;
+							} else {
+								ImageOffset[i] = 0;
+							}
+
+							DelayUntilNextInsert = MinTicksBetweenInsert;
+							data = i;
+							if (vSonyDiskLocked(i)) {
+								data |= (ULONG)0x00FF << 16;
+							}
+							DiskInsertedPsuedoException(CallBack, data);
+							return; /* only one disk at a time */
 						}
-						DiskInsertedPsuedoException(CallBack, data);
-						return;
 					}
 				}
-
-			}    
+			}
 		}
 	}
 }
@@ -125,7 +135,7 @@ void Sony_Access(CPTR addr)
 									ULONG Sony_Count = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi]);
 									CPTR Buffera = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Buffer_Hi]);
 									void *Buffer = (void*)get_real_address(Buffera);
-									result = vSonyRead(Buffer, Drive_No, Sony_Start, &Sony_Count);
+									result = vSonyRead(Buffer, Drive_No, ImageOffset[Drive_No] + Sony_Start, &Sony_Count);
 									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
 								}
 								break;
@@ -135,7 +145,7 @@ void Sony_Access(CPTR addr)
 									ULONG Sony_Count = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi]);
 									CPTR Buffera = do_get_mem_long((ULONG *)&kDSK_Var[kDSK_Buffer_Hi]);
 									void *Buffer = (void*)get_real_address(Buffera);
-									result = vSonyWrite(Buffer, Drive_No, Sony_Start, &Sony_Count);
+									result = vSonyWrite(Buffer, Drive_No, ImageOffset[Drive_No] + Sony_Start, &Sony_Count);
 									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
 								}
 								break;
@@ -157,7 +167,7 @@ void Sony_Access(CPTR addr)
 								{
 									ULONG Sony_Count;
 									result = vSonyGetSize(Drive_No, &Sony_Count);
-									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count);
+									do_put_mem_long((ULONG *)&kDSK_Var[kDSK_Count_Hi], Sony_Count - ImageOffset[Drive_No]);
 								}
 								break;
 							default:
@@ -178,7 +188,7 @@ void Sony_Access(CPTR addr)
 void Sony_Reset (void)
 {
 	int i;
-	
+
 	for (i = 0; i < kDSK_numvars; ++i) {
 		kDSK_Var[i] = 0;
 	}

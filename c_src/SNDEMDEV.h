@@ -1,6 +1,6 @@
 /*
 	SNDEMDEV.h
-	
+
 	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -20,15 +20,14 @@
 #define SNDEMDEV_H
 #endif
 
-typedef struct
-{
-  UBYTE Enable;
-  UBYTE Volume;
-  UBYTE Buffer;
+typedef struct {
+	UBYTE Enable;
+	UBYTE Volume;
+	UBYTE Buffer;
 } Sound_Ty;
 
-#define kSnd_Main_Offset 	0x0300
-#define kSnd_Alt_Offset 	0x5F00
+#define kSnd_Main_Offset   0x0300
+#define kSnd_Alt_Offset    0x5F00
 
 #define kSnd_Main_Buffer (kRAM_Size - kSnd_Main_Offset)
 #define kSnd_Alt_Buffer (kRAM_Size - kSnd_Alt_Offset)

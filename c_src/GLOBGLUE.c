@@ -16,7 +16,7 @@
 
 /*
 	GLOBal GLUE (or GLOB of GLUE)
-	
+
 	Holds the program together.
 
 	Some code here adapted from "custom.c" in vMac by Philip Cummins,
@@ -74,11 +74,11 @@ void customreset(void)
 void SixtiethSecondNotify(void)
 {
 	VIA_Timer();
-    Screen_Draw();
-    Mouse_Update2();
-    KeyBoard_Update();
+	Screen_Draw();
+	Mouse_Update2();
+	KeyBoard_Update();
 
-    VIA_Int_Vertical_Blanking();
+	VIA_Int_Vertical_Blanking();
 	Sony_Update();
 }
 

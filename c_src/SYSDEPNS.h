@@ -1,6 +1,6 @@
 /*
 	SYSDEPNS.h
-	
+
 	Copyright (C) 2001 Bernd Schmidt, Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms

@@ -1,6 +1,6 @@
 /*
 	ROMEMDEV.c
-	
+
 	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,7 +16,7 @@
 
 /*
 	Read Only Memory EMulated DEVice
-	
+
 	Checks the header of the loaded ROM image, and then patches
 	the ROM image.
 
@@ -31,7 +31,7 @@
 #include "OSGLUSTB.h"
 #include "OSCOMVAR.h"
 
-static const UWORD sony_driver[] = {	// Replacement for .Sony driver
+static const UWORD sony_driver[] = { // Replacement for .Sony driver
 	0x4F00, 0x0000, 0x0000, 0x0000,
 	0x0018, 0x002C, 0x0040, 0x005C,
 	0x0092, 0x052E, 0x536F, 0x6E79,
@@ -221,29 +221,29 @@ static void Sony_Install (void)
 
 blnr ROM_Init(void)
 {
-  if ((do_get_mem_word(&ROM[0]) == 0x4D1E)
+	if ((do_get_mem_word(&ROM[0]) == 0x4D1E)
 		&& (do_get_mem_word(&ROM[1]) == 0xEEE1))
-  {
-    //printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 1, 'Lonely Hearts'.\n");
-  } else if ((do_get_mem_word(&ROM[0]) == 0x4D1E)
+	{
+		//printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 1, 'Lonely Hearts'.\n");
+	} else if ((do_get_mem_word(&ROM[0]) == 0x4D1E)
 		&& (do_get_mem_word(&ROM[1]) == 0xEAE1))
-  {
-    //printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 2, 'Lonely Heifers'.\n");
-  } else if ((do_get_mem_word(&ROM[0]) == 0x4D1F)
+	{
+		//printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 2, 'Lonely Heifers'.\n");
+	} else if ((do_get_mem_word(&ROM[0]) == 0x4D1F)
 		&& (do_get_mem_word(&ROM[1]) == 0x8172))
-  {
-    //printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 3, 'Loud Harmonicas'.\n");
-  } else {
-	//printf("vMac: vMac.ROM loaded successfully, but we don't support this ROM yet.\n");
-	  MacMsg("Unsupported ROM.","vMac.ROM loaded successfully, but we don't support this ROM yet.",trueblnr);
-	  return falseblnr;
-  }
-  do_put_mem_word(&ROM[3450/2],0x6022); /* skip the rom checksum */
+	{
+		//printf("vMac: vMac.ROM loaded successfully, Mac Plus ROM v 3, 'Loud Harmonicas'.\n");
+	} else {
+		//printf("vMac: vMac.ROM loaded successfully, but we don't support this ROM yet.\n");
+		MacMsg("Unsupported ROM.","vMac.ROM loaded successfully, but we don't support this ROM yet.",trueblnr);
+		return falseblnr;
+	}
+	do_put_mem_word(&ROM[3450/2],0x6022); /* skip the rom checksum */
 #if 1
-  do_put_mem_word(&ROM[3752/2],0x4E71); /* shorten the ram check read */
-  do_put_mem_word(&ROM[3728/2],0x4E71); /* shorten the ram check write*/
+	do_put_mem_word(&ROM[3752/2],0x4E71); /* shorten the ram check read */
+	do_put_mem_word(&ROM[3728/2],0x4E71); /* shorten the ram check write*/
 #endif
-  /* do_put_mem_word(&ROM[862/2],0x4E71); */ /* shorten set memory*/
-  Sony_Install();
-  return trueblnr;
+	/* do_put_mem_word(&ROM[862/2],0x4E71); */ /* shorten set memory*/
+	Sony_Install();
+	return trueblnr;
 }

@@ -22,7 +22,7 @@
 	it ran on to do some of the work. This descendent fills
 	in those holes with code from the Un*x Amiga Emulator
 	by Bernd Schmidt, as found being used in vMac.
-	
+
 	This emulator is about 10 times smaller than the UAE,
 	at the cost of being 2 to 3 times slower. It also only
 	emulates the 68000, not including the emulation of later
@@ -38,135 +38,118 @@
 
 #include "MINEM68K.h"
 
-typedef char flagtype;
+typedef unsigned char flagtype;
 
-static struct regstruct 
+static struct regstruct
 {
-    ULONG regs[16];
-    CPTR  usp,isp;
-    UWORD sr;
-    flagtype t1;
-    flagtype s;
-    flagtype m;
-    flagtype stopped;
-    int intmask;
-    ULONG pc;
- 
-    ULONG spcflags;
+	ULONG regs[16];
+	CPTR usp;
+	CPTR isp;
+	ULONG pc;
+	int intmask;
+	flagtype t1;
+	flagtype s;
+	flagtype m;
+	flagtype AutoVectorPending;
+	flagtype TracePending;
 } regs;
 
-#define m68k_dreg(r,num) ((r).regs[(num)])
-#define m68k_areg(r,num) ((r).regs[(num)+8])
+#define m68k_dreg(num) (regs.regs[(num)])
+#define m68k_areg(num) (regs.regs[(num)+8])
 
-struct flag_struct {
-    unsigned char c;
-    unsigned char z;
-    unsigned char n;
-    unsigned char v;
-    unsigned char x;
-};
+static flagtype regflags_c;
+static flagtype regflags_z;
+static flagtype regflags_n;
+static flagtype regflags_v;
+static flagtype regflags_x;
 
-static struct flag_struct regflags;
-
-#define ZFLG (regflags.z)
-#define NFLG (regflags.n)
-#define CFLG (regflags.c)
-#define VFLG (regflags.v)
-#define XFLG (regflags.x)
+#define ZFLG (regflags_z)
+#define NFLG (regflags_n)
+#define CFLG (regflags_c)
+#define VFLG (regflags_v)
+#define XFLG (regflags_x)
 
 #define LOCALPROCUSEDONCE static MayInline void
 
 static MayInline int cctrue(const int cc)
 {
-    switch(cc){
-     case 0: return 1;                       /* T */
-     case 1: return 0;                       /* F */
-     case 2: return !CFLG && !ZFLG;          /* HI */
-     case 3: return CFLG || ZFLG;            /* LS */
-     case 4: return !CFLG;                   /* CC */
-     case 5: return CFLG;                    /* CS */
-     case 6: return !ZFLG;                   /* NE */
-     case 7: return ZFLG;                    /* EQ */
-     case 8: return !VFLG;                   /* VC */
-     case 9: return VFLG;                    /* VS */
-     case 10:return !NFLG;                   /* PL */
-     case 11:return NFLG;                    /* MI */
-     case 12:return NFLG == VFLG;            /* GE */
-     case 13:return NFLG != VFLG;            /* LT */
-     case 14:return !ZFLG && (NFLG == VFLG); /* GT */
-     case 15:return ZFLG || (NFLG != VFLG);  /* LE */
-    }
-    /* abort(); */
-    return 0;
+	switch(cc){
+		case 0:  return 1;                       /* T */
+		case 1:  return 0;                       /* F */
+		case 2:  return !CFLG && !ZFLG;          /* HI */
+		case 3:  return CFLG || ZFLG;            /* LS */
+		case 4:  return !CFLG;                   /* CC */
+		case 5:  return CFLG;                    /* CS */
+		case 6:  return !ZFLG;                   /* NE */
+		case 7:  return ZFLG;                    /* EQ */
+		case 8:  return !VFLG;                   /* VC */
+		case 9:  return VFLG;                    /* VS */
+		case 10: return !NFLG;                   /* PL */
+		case 11: return NFLG;                    /* MI */
+		case 12: return NFLG == VFLG;            /* GE */
+		case 13: return NFLG != VFLG;            /* LT */
+		case 14: return !ZFLG && (NFLG == VFLG); /* GT */
+		case 15: return ZFLG || (NFLG != VFLG);  /* LE */
+		default: return 0; /* shouldn't get here */
+	}
 }
 
-static void MakeSR(void)
+static UWORD m68k_getSR(void)
 {
-#if 0
-    assert((regs.t1 & 1) == regs.t1);
-    assert((regs.s & 1) == regs.s);
-    assert((regs.m & 1) == regs.m);
-    assert((XFLG & 1) == XFLG);
-    assert((NFLG & 1) == NFLG);
-    assert((ZFLG & 1) == ZFLG);
-    assert((VFLG & 1) == VFLG);
-    assert((CFLG & 1) == CFLG);
-#endif
-    regs.sr = ((regs.t1 << 15)
-	       | (regs.s << 13) | (regs.m << 12) | (regs.intmask << 8)
-	       | (XFLG << 4) | (NFLG << 3) | (ZFLG << 2) | (VFLG << 1) 
-	       |  CFLG);
+	return (regs.t1 << 15)
+			| (regs.s << 13) | (regs.m << 12) | (regs.intmask << 8)
+			| (XFLG << 4) | (NFLG << 3) | (ZFLG << 2) | (VFLG << 1)
+			|  CFLG;
 }
-
-#define SPCFLAG_STOP 2
-#define SPCFLAG_BUSERR 32
-#define SPCFLAG_AUTOVECTOR 64
-#define SPCFLAG_DOTRACE 128
 
 void NeedToGetOut(void);
 
-static void MakeFromSR(void)
+static MayInline void m68k_setCR(UWORD newcr)
 {
-    int oldm = regs.m;
-    int olds = regs.s;
+	XFLG = (newcr >> 4) & 1;
+	NFLG = (newcr >> 3) & 1;
+	ZFLG = (newcr >> 2) & 1;
+	VFLG = (newcr >> 1) & 1;
+	CFLG = newcr & 1;
+}
 
-    regs.t1 = (regs.sr >> 15) & 1;
-    regs.s = (regs.sr >> 13) & 1;
-    regs.m = (regs.sr >> 12) & 1;
-    regs.intmask = (regs.sr >> 8) & 7;
-    XFLG = (regs.sr >> 4) & 1;
-    NFLG = (regs.sr >> 3) & 1;
-    ZFLG = (regs.sr >> 2) & 1;
-    VFLG = (regs.sr >> 1) & 1;
-    CFLG = regs.sr & 1;
+static void m68k_setSR(UWORD newsr)
+{
+	int olds = regs.s;
+
+	m68k_setCR(newsr);
+	regs.t1 = (newsr >> 15) & 1;
+	regs.s = (newsr >> 13) & 1;
+	regs.m = (newsr >> 12) & 1;
+	regs.intmask = (newsr >> 8) & 7;
 	if (olds != regs.s) {
- 	    if (olds) {
- 			regs.isp = m68k_areg(regs, 7);
- 	        m68k_areg(regs, 7) = regs.usp;
- 	    } else {
- 	        regs.usp = m68k_areg(regs, 7);
- 	        m68k_areg(regs, 7) = regs.isp;
- 	    }
- 	}
-    
-    if (regs.t1) {
-    	NeedToGetOut();
+		if (olds) {
+			regs.isp = m68k_areg(7);
+			m68k_areg(7) = regs.usp;
+		} else {
+			regs.usp = m68k_areg(7);
+			m68k_areg(7) = regs.isp;
+		}
+	}
+
+	if (regs.t1) {
+		NeedToGetOut();
 	} else {
-    	regs.spcflags &= ~(SPCFLAG_DOTRACE);
-    }
+		regs.TracePending = falseblnr;
+	}
 }
 
 /*
- * This variable was introduced because a program could do a Bcc from
- * whithin chip memory to a location whitin expansion memory. With a
- * pointer variable the program counter would point to the wrong location.
- * With this variable unset the program counter is always correct, but
- * programs will run slower (about 4%).
- * Usually, you'll want to have this defined.
- *
- * vMac REQUIRES this. It allows for fun things like Restart.
- *
- */
+	This variable was introduced because a program could do a Bcc from
+	whithin chip memory to a location whitin expansion memory. With a
+	pointer variable the program counter would point to the wrong location.
+	With this variable unset the program counter is always correct, but
+	programs will run slower (about 4%).
+	Usually, you'll want to have this defined.
+
+	vMac REQUIRES this. It allows for fun things like Restart.
+*/
+
 #define USE_POINTER
 
 #ifdef USE_POINTER
@@ -187,7 +170,7 @@ static void MakeFromSR(void)
 // copying 8 bits of data instead of 16...
 //
 // I must make a cast to a 16 entity, so that upon
-// dereferencing, it will copy a 16 bits instead of 8. 
+// dereferencing, it will copy a 16 bits instead of 8.
 //
 // All auto increment operations must also be changed
 // to explicit specified human defined constants, because
@@ -202,56 +185,56 @@ static void MakeFromSR(void)
 static MayInline ULONG nextibyte(void)
 {
 //    ULONG r = do_get_mem_byte(pc_p+1);
-    ULONG r;
+	ULONG r;
 
 //debugout(trueblnr, "nextibyte = %02x\n", (UBYTE) pc_p);
-    r = do_get_mem_byte(pc_p+1);
-    pc_p += 2;
-    return r;
+	r = do_get_mem_byte(pc_p+1);
+	pc_p += 2;
+	return r;
 }
 
 static MayInline ULONG nextiword(void)
 {
 //    ULONG r = do_get_mem_word((UWORD *)pc_p);
-    ULONG r;
+	ULONG r;
 
 //debugout(trueblnr, "nextiword = %04hx\n", (UWORD) pc_p);
-    r = do_get_mem_word((UWORD *)pc_p);
-    pc_p += 2;
-    return r;
+	r = do_get_mem_word((UWORD *)pc_p);
+	pc_p += 2;
+	return r;
 }
 
 static MayInline ULONG nextilong(void)
 {
 //    ULONG r = do_get_mem_long((ULONG *)pc_p);
-    ULONG r;
+	ULONG r;
 //debugout(trueblnr, "nextilong = %08lx\n", (ULONG) pc_p);
-    r = do_get_mem_long((ULONG *)pc_p);
-    pc_p += 4;
-    return r;
+	r = do_get_mem_long((ULONG *)pc_p);
+	pc_p += 4;
+	return r;
 }
 
 #else
 
 static MayInline ULONG nextibyte(void)
 {
-    ULONG r = get_byte(regs.pc+1);
-    regs.pc += 2;
-    return r;
+	ULONG r = get_byte(regs.pc+1);
+	regs.pc += 2;
+	return r;
 }
 
 static MayInline ULONG nextiword(void)
 {
-    ULONG r = get_word(regs.pc);
-    regs.pc += 2;
-    return r;
+	ULONG r = get_word(regs.pc);
+	regs.pc += 2;
+	return r;
 }
 
 static MayInline ULONG nextilong(void)
 {
-    ULONG r = get_long(regs.pc);
-    regs.pc += 4;
-    return r;
+	ULONG r = get_long(regs.pc);
+	regs.pc += 4;
+	return r;
 }
 
 #endif
@@ -299,13 +282,13 @@ static MayInline void m68k_setpc(CPTR newpc)
 		Debugger();
 	}
 #endif
-    pc_p = pc_oldp = (UBYTE *) get_real_address(newpc);
-    regs.pc = newpc;
+	pc_p = pc_oldp = (UBYTE *) get_real_address(newpc);
+	regs.pc = newpc;
 }
 
 static MayInline CPTR m68k_getpc(void)
 {
-    return regs.pc + ((char *)pc_p - (char *)pc_oldp);
+	return regs.pc + ((char *)pc_p - (char *)pc_oldp);
 }
 
 #else
@@ -314,12 +297,12 @@ static MayInline void m68k_setpc(CPTR newpc)
 {
 //    regs.pc = newpc;
 // bill mod
-    regs.pc = newpc & 0x00ffFFFF;
+	regs.pc = newpc & 0x00ffFFFF;
 }
 
 static MayInline CPTR m68k_getpc(void)
 {
-    return regs.pc;
+	return regs.pc;
 }
 #endif
 
@@ -330,107 +313,34 @@ static CPTR last_addr_for_exception_3;
 /* Address that generated the exception */
 static CPTR last_fault_for_exception_3;
 
+static void ExceptionTo(CPTR newpc)
+{
+	UWORD saveSR = m68k_getSR();
+
+	if (! regs.s) {
+		regs.usp = m68k_areg(7);
+		m68k_areg(7) = regs.isp;
+		regs.s = 1;
+	}
+	m68k_areg(7) -= 4;
+	put_long (m68k_areg(7), m68k_getpc ());
+	m68k_areg(7) -= 2;
+	put_word (m68k_areg(7), saveSR);
+	m68k_setpc(newpc);
+	regs.t1 = regs.m = 0;
+	regs.TracePending = falseblnr;
+}
+
 static void Exception(int nr)
 {
-if(nr != 10)
-
-    MakeSR();
-    if (!regs.s) {
-		regs.usp = m68k_areg(regs, 7);
-		m68k_areg(regs, 7) = regs.isp;
-		regs.s = 1;
-    }
-#if 0
-    if (/* CPU_LEVEL > 0 */1) {
-// bill comment ---
-//
-// (2)  is for a BUS error...
-// (3)  is for an ADDRESS error...
-//~(4)  is for an Illegal instruction error, but not action is defined in
-//	this function...
-//
-	if (nr == 2 || nr == 3) {
-	    int i;
-	    /* @@@ this is probably wrong (?) */
-	    for (i = 0 ; i < 12 ; i++) {
-		m68k_areg(regs, 7) -= 2;
-		put_word (m68k_areg(regs, 7), 0);
-	    }
-	    m68k_areg(regs, 7) -= 2;
-	    put_word (m68k_areg(regs, 7), 0xa000 + nr * 4);
-	} else if (nr ==5 || nr == 6 || nr == 7 || nr == 9) {
-//
-// (5)  is for a Zero-divide exception...
-// (6)  is for a CHK/CHK2 exception...
-// (7)  is for cpTRAPcc, TRAPcc, TRAPV exceptions...
-//~(8)  is for a Privilege violation exception, but no action is defined in
-//	this function.
-// (9)  is for a Trace exception...
-//~(10) is for an A-line trap exception... 
-//~(11) is for an F-line trap exception...
-//
- 	    m68k_areg(regs, 7) -= 4;
- 	    put_long (m68k_areg(regs, 7), oldpc);
- 	    m68k_areg(regs, 7) -= 2;
- 	    put_word (m68k_areg(regs, 7), 0x2000 + nr * 4);
- 	} else if (regs.m && nr >= 24 && nr < 32) {
- 	    m68k_areg(regs, 7) -= 2;
- 	    put_word (m68k_areg(regs, 7), nr * 4);
- 	    m68k_areg(regs, 7) -= 4;
- 	    put_long (m68k_areg(regs, 7), m68k_getpc ());
- 	    m68k_areg(regs, 7) -= 2;
- 	    put_word (m68k_areg(regs, 7), regs.sr);
- 	    regs.sr |= (1 << 13);
- 	    m68k_areg(regs, 7) = regs.isp;
- 	    m68k_areg(regs, 7) -= 2;
- 	    put_word (m68k_areg(regs, 7), 0x1000 + nr * 4);
- 	} else {
- 	    m68k_areg(regs, 7) -= 2;
- 	    put_word (m68k_areg(regs, 7), nr * 4);
- 	}
-    } else {
-	if (nr == 2 || nr == 3) {
-	    m68k_areg(regs, 7) -= 12;
-	    /* ??????? */
-	    if (nr == 3) {
-		put_long (m68k_areg(regs, 7), last_fault_for_exception_3);
-		put_word (m68k_areg(regs, 7)+4, last_op_for_exception_3);
-		put_long (m68k_areg(regs, 7)+8, last_addr_for_exception_3);
-	    }
-#ifdef _MINEM68K_Debug
-	    printf("Exception!\n");
-#endif
-	    goto kludge_me_do;
-	}
-    }
-#endif
-    m68k_areg(regs, 7) -= 4;
-    put_long (m68k_areg(regs, 7), m68k_getpc ());
-/* kludge_me_do: */
-    m68k_areg(regs, 7) -= 2;
-    put_word (m68k_areg(regs, 7), regs.sr);
-    m68k_setpc(get_long(4*nr));
-    regs.t1 = regs.m = 0;
-    regs.spcflags &= ~(SPCFLAG_DOTRACE);
+	ExceptionTo(get_long(4 * nr));
 }
 
 void DiskInsertedPsuedoException(CPTR newpc, ULONG data)
 {
-    MakeSR();
-    if (!regs.s) {
-		regs.usp = m68k_areg(regs, 7);
-		m68k_areg(regs, 7) = regs.isp;
-		regs.s = 1;
-    }
-    m68k_areg(regs, 7) -= 4;
-    put_long (m68k_areg(regs, 7), m68k_getpc ());
-    m68k_areg(regs, 7) -= 2;
-    put_word (m68k_areg(regs, 7), regs.sr);
-    m68k_areg(regs, 7) -= 4;
-    put_long (m68k_areg(regs, 7), data);
-    m68k_setpc(newpc);
-    regs.t1 = regs.m = 0;
-    regs.spcflags &= ~(SPCFLAG_DOTRACE);
+	ExceptionTo(newpc);
+	m68k_areg(7) -= 4;
+	put_long (m68k_areg(7), data);
 }
 
 blnr ViaException(void)
@@ -446,51 +356,41 @@ blnr ViaException(void)
 void m68k_reset(void)
 {
 
-    customreset();
+	customreset();
 
 // Sets the MC68000 reset jump vector...
-    m68k_setpc(get_long(0x00000004));
+	m68k_setpc(get_long(0x00000004));
 
 // Sets the initial stack vector...
-    m68k_areg(regs, 7) = get_long(0x00000000);
+	m68k_areg(7) = get_long(0x00000000);
 
-    regs.s = 1;
-    regs.m = 0;
-    regs.stopped = 0;
-    regs.t1 = 0;
-    ZFLG = CFLG = NFLG = VFLG = 0;
-    regs.spcflags = 0;
-    regs.intmask = 7;
+	regs.s = 1;
+	regs.m = 0;
+	regs.t1 = 0;
+	ZFLG = CFLG = NFLG = VFLG = 0;
+	regs.AutoVectorPending = falseblnr;
+	regs.TracePending = falseblnr;
+	regs.intmask = 7;
 }
 
 void MacInterrupt (void)
-{	   
-//specialflags |= SPCFLAG_DOINT;
-//InterruptNo = 4;
-//  if (regs.intmask <= 4)
-//
-// bill comment ---
-//
-// This statement below could be problematic
-// because I took a educated guess for the
-// value of the second parameter...
-//
-    Exception(28);
+{
+	Exception(28);
 }
 
 static MayInline ULONG get_disp_ea (ULONG base)
 {
-    UWORD dp = nextiword();
-    int reg = (dp >> 12) & 15;
-    LONG regd = regs.regs[reg];
-    if ((dp & 0x800) == 0)
+	UWORD dp = nextiword();
+	int reg = (dp >> 12) & 15;
+	LONG regd = regs.regs[reg];
+	if ((dp & 0x800) == 0)
 	regd = (LONG)(WORD)regd;
-    return base + (BYTE)(dp) + regd;
+	return base + (BYTE)(dp) + regd;
 }
 
 static ULONG opsize;
 
-void op_illg(ULONG);
+static void op_illg(void);
 
 #define AKMemory 0
 #define AKAddrReg 1
@@ -505,84 +405,84 @@ static ULONG ArgAddr;
 static void DecodeModeRegister(ULONG themode, ULONG thereg)
 {
 	switch (themode) {
-   		case 0 :
+		case 0 :
 			ArgKind = AKDataReg;
 			ArgAddr = thereg;
 			break;
-   		case 1 :
+		case 1 :
 			ArgKind = AKAddrReg;
 			ArgAddr = thereg;
 			break;
-   		case 2 :
+		case 2 :
 			ArgKind = AKMemory;
-			ArgAddr = m68k_areg(regs, thereg);
+			ArgAddr = m68k_areg(thereg);
 			break;
-   		case 3 :
+		case 3 :
 			ArgKind = AKMemory;
-			ArgAddr = m68k_areg(regs, thereg);
+			ArgAddr = m68k_areg(thereg);
 			if ((thereg == 7) && (opsize == 1)) {
-				m68k_areg(regs, thereg) += 2;
+				m68k_areg(thereg) += 2;
 			} else {
-				m68k_areg(regs, thereg) += opsize;
+				m68k_areg(thereg) += opsize;
 			}
 			break;
-   		case 4 :
+		case 4 :
 			ArgKind = AKMemory;
 			if ((thereg == 7) && (opsize == 1)) {
-				m68k_areg(regs, thereg) -= 2;
+				m68k_areg(thereg) -= 2;
 			} else {
-				m68k_areg(regs, thereg) -= opsize;
+				m68k_areg(thereg) -= opsize;
 			}
-			ArgAddr = m68k_areg(regs, thereg);
+			ArgAddr = m68k_areg(thereg);
 			break;
-   		case 5 :
+		case 5 :
 			ArgKind = AKMemory;
-   			ArgAddr = m68k_areg(regs, thereg) + (LONG)(WORD)nextiword();
+			ArgAddr = m68k_areg(thereg) + (LONG)(WORD)nextiword();
 			break;
-   		case 6 :
+		case 6 :
 			ArgKind = AKMemory;
-   			ArgAddr = get_disp_ea(m68k_areg(regs, thereg));
+			ArgAddr = get_disp_ea(m68k_areg(thereg));
 			break;
-   		case 7 :
- 			switch (thereg) {
-		   		case 0 :
+		case 7 :
+			switch (thereg) {
+				case 0 :
 					ArgKind = AKMemory;
-		   			ArgAddr = (LONG)(WORD)nextiword();
+					ArgAddr = (LONG)(WORD)nextiword();
 					break;
-		   		case 1 :
+				case 1 :
 					ArgKind = AKMemory;
-		   			ArgAddr = nextilong();
+					ArgAddr = nextilong();
 					break;
-		   		case 2 :
+				case 2 :
 					ArgKind = AKMemory;
-		   			ArgAddr = m68k_getpc();
+					ArgAddr = m68k_getpc();
 					ArgAddr += (LONG)(WORD)nextiword();
 					break;
-		   		case 3 :
+				case 3 :
 					ArgKind = AKMemory;
-		   			ArgAddr = get_disp_ea(m68k_getpc());
+					ArgAddr = get_disp_ea(m68k_getpc());
 					break;
-		   		case 4 :
+				case 4 :
 					ArgKind = AKConstant;
-		  			switch (opsize) {
-		 		  		case 1:
+					switch (opsize) {
+						case 1:
 							ArgAddr = (LONG)(BYTE)nextibyte();
 							break;
-		 		  		case 2:
+						case 2:
 							ArgAddr = (LONG)(WORD)nextiword();
 							break;
-				  		case 4:
+						case 4:
 							ArgAddr = nextilong();
 							break;
-		 			}
+					}
 					break;
- 			}
+			}
 			break;
-   		case 8 :
+		case 8 :
 			ArgKind = AKConstant;
-   			ArgAddr = thereg;
+			ArgAddr = thereg;
 			break;
-   		case 10 :
+		case 10 :
 			ArgKind = AKCCR;
 			break;
 		case 11:
@@ -596,45 +496,54 @@ static LONG GetArgValue(void)
 	LONG v;
 
 	switch (ArgKind) {
-   		case AKMemory:
-  			switch (opsize) {
- 		  		case 1:
+		case AKMemory:
+			switch (opsize) {
+				case 1:
 					v = (LONG)(BYTE)get_byte(ArgAddr);
 					break;
- 		  		case 2:
+				case 2:
 					v = (LONG)(WORD)get_word(ArgAddr);
 					break;
-		  		case 4:
+				case 4:
 					v = get_long(ArgAddr);
 					break;
- 			}
+			}
 			break;
-   		case AKAddrReg:
-			v = m68k_areg(regs, ArgAddr);
+		case AKAddrReg:
+			v = m68k_areg(ArgAddr);
 			break;
-   		case AKDataReg:
-			v = m68k_dreg(regs, ArgAddr);
-  			switch (opsize) {
- 		  		case 1:
+		case AKDataReg:
+			v = m68k_dreg(ArgAddr);
+			switch (opsize) {
+				case 1:
 					v = (LONG)(BYTE)v;
 					break;
- 		  		case 2:
+				case 2:
 					v = (LONG)(WORD)v;
 					break;
-		  		case 4:
+				case 4:
 					break;
- 			}
+			}
 			break;
 		case AKConstant:
 			v = ArgAddr;
 			break;
 		case AKCCR:
-			MakeSR();
-			v = regs.sr & 0xFF ;
+			{
+#ifdef MyCompilerMrC
+#pragma noinline_site m68k_getSR
+#endif
+				v = m68k_getSR() & 0xFF;
+			}
 			break;
 		case AKSR:
-			MakeSR();
-			v = regs.sr;
+			{
+#ifdef MyCompilerMrC
+#pragma noinline_site m68k_getSR
+#endif
+
+				v = m68k_getSR();
+			}
 			break;
 	}
 	return v;
@@ -643,51 +552,50 @@ static LONG GetArgValue(void)
 static void SetArgValue(LONG v)
 {
 	switch (ArgKind) {
-   		case AKMemory:
+		case AKMemory:
 			switch (opsize) {
-		  		case 1:
+				case 1:
 					put_byte(ArgAddr, v);
 					break;
-		  		case 2:
+				case 2:
 					put_word(ArgAddr, v);
 					break;
-		  		case 4:
+				case 4:
 					put_long(ArgAddr, v);
 					break;
 			}
 			break;
-  		case AKDataReg:
-  			switch (opsize) {
- 		  		case 1:
-					m68k_dreg(regs, ArgAddr) = (m68k_dreg(regs, ArgAddr) & ~0xff) | ((v) & 0xff);
+		case AKDataReg:
+			switch (opsize) {
+				case 1:
+					m68k_dreg(ArgAddr) = (m68k_dreg(ArgAddr) & ~0xff) | ((v) & 0xff);
 					break;
- 		  		case 2:
-					m68k_dreg(regs, ArgAddr) = (m68k_dreg(regs, ArgAddr) & ~0xffff) | ((v) & 0xffff);
+				case 2:
+					m68k_dreg(ArgAddr) = (m68k_dreg(ArgAddr) & ~0xffff) | ((v) & 0xffff);
 					break;
-		  		case 4:
-					m68k_dreg(regs, ArgAddr) = v;
+				case 4:
+					m68k_dreg(ArgAddr) = v;
 					break;
- 			}
+			}
 			break;
-    	case AKAddrReg:
-    		/* stricly speaking, illegal if opsize == 1 */
-			m68k_areg(regs, ArgAddr) =  v;
+		case AKAddrReg:
+			/* stricly speaking, illegal if opsize == 1 */
+			m68k_areg(ArgAddr) =  v;
 			break;
 		case AKCCR:
-			regs.sr = (regs.sr & ~0xff) | ((v) & 0xff);
-			MakeFromSR();
+#ifdef MyCompilerMrC
+#pragma noinline_site m68k_setCR
+#endif
+			m68k_setCR(v);
 			break;
 		case AKSR:
-			regs.sr = v;
-			MakeFromSR();
+			m68k_setSR(v);
 			break;
 		default:
-			op_illg (/* opcode */0);
+			op_illg();
 			break;
 	}
 }
-
-static ULONG opcode;
 
 static void DoMove(ULONG m1, ULONG r1, ULONG m2,ULONG r2) /* MOVE */
 {
@@ -749,7 +657,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 		} else if (binop == BinOpSub) {
 			dstvalue -= srcvalue;
 		} else {
-			op_illg(opcode);
+			op_illg();
 			return;
 		}
 	} else {
@@ -858,7 +766,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 					ULONG cnt = ((ULONG)srcvalue) & 63;
 					NFLG = (dstvalue < 0);
 					VFLG = 0;
-					if (! cnt) { 
+					if (! cnt) {
 						CFLG = 0;
 					} else {
 						if (NFLG) {
@@ -905,7 +813,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 			case BinOpLSR:
 				{
 					ULONG cnt = ((ULONG)srcvalue) & 63;
-					if (! cnt) { 
+					if (! cnt) {
 						CFLG = 0;
 					} else {
 						unextendopsizedstvalue();
@@ -925,7 +833,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 			case BinOpROL:
 				{
 					ULONG cnt = ((ULONG)srcvalue) & 63;
-					if (! cnt) { 
+					if (! cnt) {
 						CFLG = 0;
 					} else {
 						for (;cnt;--cnt) {
@@ -945,7 +853,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 			case BinOpRXL:
 				{
 					ULONG cnt = ((ULONG)srcvalue) & 63;
-					if (! cnt) { 
+					if (! cnt) {
 						CFLG = XFLG;
 					} else {
 						for (;cnt;--cnt) {
@@ -967,7 +875,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 				{
 					ULONG cnt = ((ULONG)srcvalue) & 63;
 					ULONG cmask = (ULONG)1 << (opsize * 8 - 1);
-					if (! cnt) { 
+					if (! cnt) {
 						CFLG = 0;
 					} else {
 						unextendopsizedstvalue();
@@ -989,7 +897,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 				{
 					ULONG cnt = ((ULONG)srcvalue) & 63;
 					ULONG cmask = (ULONG)1 << (opsize * 8 - 1);
-					if (! cnt) { 
+					if (! cnt) {
 						CFLG = XFLG;
 					} else {
 						unextendopsizedstvalue();
@@ -1016,8 +924,8 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 					UWORD newv_lo = (srcvalue & 0xF) + (dstvalue & 0xF) + (XFLG ? 1 : 0);
 					UWORD newv_hi = (srcvalue & 0xF0) + (dstvalue & 0xF0);
 					UWORD newv;
-					
-					if (newv_lo > 9) { 
+
+					if (newv_lo > 9) {
 						newv_lo +=6;
 					}
 					newv = newv_hi + newv_lo;
@@ -1041,8 +949,8 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 					UWORD newv_lo = (dstvalue & 0xF) - (srcvalue & 0xF) - (XFLG ? 1 : 0);
 					UWORD newv_hi = (dstvalue & 0xF0) - (srcvalue & 0xF0);
 					UWORD newv;
-					
-					if (newv_lo > 9) { 
+
+					if (newv_lo > 9) {
 						newv_lo -= 6;
 						newv_hi -= 0x10;
 					}
@@ -1061,7 +969,7 @@ static void DoBinOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 				}
 				break;
 			default:
-				op_illg(opcode);
+				op_illg();
 				return;
 				break;
 		}
@@ -1101,17 +1009,17 @@ static void DoCompareA(ULONG m1, ULONG r1, ULONG m2,ULONG r2)
 	srcvalue = GetArgValue();
 	if (m1 == 1) {
 		switch (opsize) {
-	  		case 1:
+			case 1:
 				srcvalue = (BYTE)srcvalue;
 				break;
-	  		case 2:
+			case 2:
 				srcvalue = (WORD)srcvalue;
 				break;
-	  		case 4:
+			case 4:
 				break;
 		}
 	} /* if m1 != 1 then GetArgValue already has signed extended to 32 bits */
-	
+
 	DecodeModeRegister(m2, r2);
 	dstvalue = GetArgValue();
 	{
@@ -1163,7 +1071,7 @@ static void DoBinBitOp1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 					dstvalue |= (1 << srcvalue);
 					break;
 				default:
-					op_illg(opcode);
+					op_illg();
 					return;
 					break;
 			}
@@ -1187,7 +1095,7 @@ static void DoUniOp1(ULONG m2, ULONG r2, ULONG uniop)
 		WritelnDebug('**** Operation not allowed on Address Registers');
 		emuerror;
 		*/
-		op_illg(opcode);
+		op_illg();
 	} else {
 		DecodeModeRegister(m2, r2);
 		dstvalue = GetArgValue();
@@ -1231,8 +1139,8 @@ static void DoUniOp1(ULONG m2, ULONG r2, ULONG uniop)
 					UWORD newv_lo = - (dstvalue & 0xF) - (XFLG ? 1 : 0);
 					UWORD newv_hi = - (dstvalue & 0xF0);
 					UWORD newv;
-					
-					if (newv_lo > 9) { 
+
+					if (newv_lo > 9) {
 						newv_lo -= 6;
 						newv_hi -= 0x10;
 					}
@@ -1241,7 +1149,7 @@ static void DoUniOp1(ULONG m2, ULONG r2, ULONG uniop)
 					if (CFLG) {
 						newv -= 0x60;
 					}
-						
+
 					dstvalue = newv;
 					extendopsizedstvalue();
 					NFLG = (dstvalue < 0);
@@ -1276,7 +1184,7 @@ static void DoBinOpMul1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 	DecodeModeRegister(m2, r2);
 	dstvalue = GetArgValue();
 	if (m2 == 1) {
-		op_illg(opcode);
+		op_illg();
 		return;
 	} else {
 		switch (binop) {
@@ -1293,7 +1201,7 @@ static void DoBinOpMul1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 				NFLG = (dstvalue < 0);
 				break;
 			default:
-				op_illg(opcode);
+				op_illg();
 				return;
 				break;
 		}
@@ -1314,7 +1222,7 @@ static void DoBinOpDiv1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 	DecodeModeRegister(m2, r2);
 	dstvalue = GetArgValue();
 	if (m2 == 1) {
-		op_illg(opcode);
+		op_illg();
 		return;
 	} else if (srcvalue == 0) {
 		Exception(5);
@@ -1353,13 +1261,15 @@ static void DoBinOpDiv1(ULONG m1, ULONG r1, ULONG m2,ULONG r2, ULONG binop)
 				}
 				break;
 			default:
-				op_illg(opcode);
+				op_illg();
 				return;
 				break;
 		}
 	}
 	SetArgValue(dstvalue);
 }
+
+static ULONG opcode;
 
 #define b76 ((opcode >> 6) & 3)
 #define b8 ((opcode >> 8) & 1)
@@ -1431,33 +1341,33 @@ LOCALPROCUSEDONCE DoCode0(void)
 		if (mode == 1) {
 			/* MoveP 0000ddd1mm001aaa */
 
-						
+
 			switch (b76) {
 				case 0:
 					{
 						ULONG srcreg = reg;
 						ULONG dstreg = rg9;
-						CPTR memp = m68k_areg(regs, srcreg) + nextiword();
+						CPTR memp = m68k_areg(srcreg) + nextiword();
 						UWORD val = (get_byte(memp) << 8) + get_byte(memp + 2);
-						m68k_dreg(regs, dstreg) = (m68k_dreg(regs, dstreg) & ~0xffff) | ((val) & 0xffff);
+						m68k_dreg(dstreg) = (m68k_dreg(dstreg) & ~0xffff) | ((val) & 0xffff);
 					}
 					break;
 				case 1:
 					{
 						ULONG srcreg = reg;
 						ULONG dstreg = rg9;
-						CPTR memp = m68k_areg(regs, srcreg) + nextiword();
+						CPTR memp = m68k_areg(srcreg) + nextiword();
 						ULONG val = (get_byte(memp) << 24) + (get_byte(memp + 2) << 16)
-					              + (get_byte(memp + 4) << 8) + get_byte(memp + 6);
-						m68k_dreg(regs, dstreg) = (val);
+								+ (get_byte(memp + 4) << 8) + get_byte(memp + 6);
+						m68k_dreg(dstreg) = (val);
 					}
 					break;
 				case 2:
 					{
 						ULONG srcreg = rg9;
 						ULONG dstreg = reg;
-						WORD src = m68k_dreg(regs, srcreg);
-						CPTR memp = m68k_areg(regs, dstreg) + nextiword();
+						WORD src = m68k_dreg(srcreg);
+						CPTR memp = m68k_areg(dstreg) + nextiword();
 						put_byte(memp, src >> 8); put_byte(memp + 2, src);
 					}
 					break;
@@ -1465,26 +1375,14 @@ LOCALPROCUSEDONCE DoCode0(void)
 					{
 						ULONG srcreg = rg9;
 						ULONG dstreg = reg;
-						LONG src = m68k_dreg(regs, srcreg);
-						CPTR memp = m68k_areg(regs, dstreg) + nextiword();
+						LONG src = m68k_dreg(srcreg);
+						CPTR memp = m68k_areg(dstreg) + nextiword();
 						put_byte(memp, src >> 24); put_byte(memp + 2, src >> 16);
 						put_byte(memp + 4, src >> 8); put_byte(memp + 6, src);
 					}
 					break;
 			}
 
-		/*
-			opsize := BAND(b76, 1) * 2 + 2;
-			argn := 2;
-			IF b76 < 2 THEN BEGIN
-				adec(1, 5, reg, data);
-				adec(2, 0, reg, alter);
-			END ELSE BEGIN
-				adec(1, 0, reg, data);
-				adec(2, 5, reg, alter);
-			END;
-		*/
-			/* notimplemented; */
 		} else {
 			/* dynamic bit, Opcode = 0000ddd1ttmmmrrr */
 			DoBinBitOp1(0, rg9, mode, reg, bitop());
@@ -1500,7 +1398,7 @@ LOCALPROCUSEDONCE DoCode0(void)
 			/* Debugger(); */
 			/* MoveS */
 
-			if (!regs.s) {
+			if (! regs.s) {
 				BackupPC();
 				Exception(8);
 			} else {
@@ -1508,15 +1406,15 @@ LOCALPROCUSEDONCE DoCode0(void)
 				WORD extra = nextiword();
 				if (extra & 0x800) {
 					ULONG src = regs.regs[(extra >> 12) & 15];
-					CPTR dsta = m68k_areg(regs, dstreg);
+					CPTR dsta = m68k_areg(dstreg);
 					put_byte(dsta,src);
 				}else{
-					CPTR srca = m68k_areg(regs, dstreg);
+					CPTR srca = m68k_areg(dstreg);
 					BYTE src = get_byte(srca);
 					if (extra & 0x8000) {
-						m68k_areg(regs, (extra >> 12) & 7) = (LONG)(BYTE)src;
+						m68k_areg((extra >> 12) & 7) = (LONG)(BYTE)src;
 					} else {
-						m68k_dreg(regs, (extra >> 12) & 7) = (m68k_dreg(regs, (extra >> 12) & 7) & ~0xff) | ((src) & 0xff);
+						m68k_dreg((extra >> 12) & 7) = (m68k_dreg((extra >> 12) & 7) & ~0xff) | ((src) & 0xff);
 					}
 				}
 			}
@@ -1543,10 +1441,10 @@ LOCALPROCUSEDONCE DoCode0(void)
 					break;
 			}
 			if (((opcode & 0x0400) == 0) && (mode == 7) && (reg == 4)) {
-				if (b76 == 0) {					
+				if (b76 == 0) {
 					DoBinOp1(7, 4, 10, reg, BinOp);
 				} else {
-					if (!regs.s) {
+					if (! regs.s) {
 						BackupPC();
 						Exception(8);
 					} else {
@@ -1602,7 +1500,7 @@ LOCALPROCUSEDONCE DoLea(ULONG m1, ULONG r1, ULONG r2)
 
 	DecodeModeRegister(m1, r1);
 	if (GetEffectiveAddress(&srcvalue)) {
-		m68k_areg(regs, r2) = srcvalue;
+		m68k_areg(r2) = srcvalue;
 	}
 }
 
@@ -1628,7 +1526,7 @@ static void reglist (WORD direction, ULONG m1, ULONG r1)
 	switch (m1) {
 		case 3:
 			if (direction == 1) {
-				p = m68k_areg(regs, r1);
+				p = m68k_areg(r1);
 				if (opsize == 2) {
 					for (z = 0; z < 16; ++z) {
 						if ((regmask & (1 << (z))) != 0) {
@@ -1636,7 +1534,7 @@ static void reglist (WORD direction, ULONG m1, ULONG r1)
 							p += 2;
 						}
 					}
-					m68k_areg(regs, r1) = (LONG)p;
+					m68k_areg(r1) = (LONG)p;
 				} else {
 					for (z = 0; z < 16; ++z) {
 						if ((regmask & (1 << (z))) != 0) {
@@ -1645,12 +1543,12 @@ static void reglist (WORD direction, ULONG m1, ULONG r1)
 						}
 					}
 				}
-				m68k_areg(regs, r1) = p;
+				m68k_areg(r1) = p;
 			}
 			break;
 		case 4:
 			if (direction == 0) {
-				p = m68k_areg(regs, r1);
+				p = m68k_areg(r1);
 				if (opsize == 2) {
 					for (z = 16; --z >=0; ) {
 						if ((regmask & (1 << (15-z))) != 0) {
@@ -1666,7 +1564,7 @@ static void reglist (WORD direction, ULONG m1, ULONG r1)
 						}
 					}
 				}
-				m68k_areg(regs, r1) = p;
+				m68k_areg(r1) = p;
 			}
 			break;
 		default:
@@ -1723,7 +1621,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 				DoCheck(mode, reg, 0, rg9);
 				break;
 			case 1 :
-				op_illg(opcode);
+				op_illg();
 				break;
 			case 3 :
 				/* Lea 0100aaa111mmmrrr */
@@ -1787,20 +1685,20 @@ LOCALPROCUSEDONCE DoCode4(void)
 						if (mode == 0) {
 							/* Swap 0100100001000rrr */
 							ULONG srcreg = reg;
-							ULONG src = (ULONG)m68k_dreg(regs, srcreg);
+							ULONG src = (ULONG)m68k_dreg(srcreg);
 							LONG dst = (LONG)(((src >> 16)&0xFFFF) | ((src&0xFFFF)<<16));
 							VFLG = CFLG = 0;
 							ZFLG = (dst == 0);
 							NFLG = (dst < 0);
-							m68k_dreg(regs, srcreg) = dst;
+							m68k_dreg(srcreg) = dst;
 						} else {
 							LONG srcvalue;
 
 							opsize = 4;
 							DecodeModeRegister(mode, reg);
 							if (GetEffectiveAddress(&srcvalue)) {
-								m68k_areg(regs, 7) -= 4;
-								put_long(m68k_areg(regs, 7), srcvalue);
+								m68k_areg(7) -= 4;
+								put_long(m68k_areg(7), srcvalue);
 							}
 						}
 						break;
@@ -1810,21 +1708,21 @@ LOCALPROCUSEDONCE DoCode4(void)
 							if (b76 == 2) {
 								/* EXT.W */
 								ULONG srcreg = reg;
-								LONG src = m68k_dreg(regs, srcreg);
+								LONG src = m68k_dreg(srcreg);
 								UWORD dst = (WORD)(BYTE)src;
 								VFLG = CFLG = 0;
 								ZFLG = ((WORD)(dst)) == 0;
 								NFLG = ((WORD)(dst)) < 0;
-								m68k_dreg(regs, srcreg) = (m68k_dreg(regs, srcreg) & ~0xffff) | ((dst) & 0xffff);
+								m68k_dreg(srcreg) = (m68k_dreg(srcreg) & ~0xffff) | ((dst) & 0xffff);
 							} else {
 								/* EXT.L */
 								ULONG srcreg = reg;
-								LONG src = m68k_dreg(regs, srcreg);
+								LONG src = m68k_dreg(srcreg);
 								ULONG dst = (LONG)(WORD)src;
 								VFLG = CFLG = 0;
 								ZFLG = ((LONG)(dst)) == 0;
 								NFLG = ((LONG)(dst)) < 0;
-								m68k_dreg(regs, srcreg) = (dst);
+								m68k_dreg(srcreg) = (dst);
 							}
 						} else {
 							opsize = 2 * b76 - 2;
@@ -1840,7 +1738,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 					DoTest1(mode, reg);
 				} else {
 					if ((mode == 7) && (reg)) {
-						op_illg(opcode); /* the ILLEGAL instruction */
+						op_illg(); /* the ILLEGAL instruction */
 					} else {
 						/* Tas 0100101011mmmrrr */
 						opsize = 1;
@@ -1854,13 +1752,13 @@ LOCALPROCUSEDONCE DoCode4(void)
 					reglist (1,mode,reg);
 				} else {
 					/* MULS/MULU/DIVS/DIVU long operations for MC68020 */
-					op_illg(opcode);
+					op_illg();
 				}
 				break;
 			case 7 :
 				switch (b76) {
 					case 0 :
-						op_illg(opcode);
+						op_illg();
 						break;
 					case 1 :
 						switch (mode) {
@@ -1873,12 +1771,12 @@ LOCALPROCUSEDONCE DoCode4(void)
 								/* Link */
 								{
 									ULONG srcreg = reg;
-									CPTR stackp = m68k_areg(regs, 7);
+									CPTR stackp = m68k_areg(7);
 									stackp -= 4;
-									m68k_areg(regs, 7) = stackp; /* only matters if srcreg == 7 */
-									put_long(stackp, m68k_areg(regs, srcreg));
-									m68k_areg(regs, srcreg) = stackp;
-									m68k_areg(regs, 7) += (LONG)(WORD)nextiword();
+									m68k_areg(7) = stackp; /* only matters if srcreg == 7 */
+									put_long(stackp, m68k_areg(srcreg));
+									m68k_areg(srcreg) = stackp;
+									m68k_areg(7) += (LONG)(WORD)nextiword();
 								}
 								break;
 							case 3 :
@@ -1886,12 +1784,12 @@ LOCALPROCUSEDONCE DoCode4(void)
 								{
 									ULONG srcreg = reg;
 									if (srcreg != 7) {
-										LONG src = m68k_areg(regs, srcreg);
-										m68k_areg(regs, srcreg) = get_long(src);
-										m68k_areg(regs, 7) =  src + 4;
+										LONG src = m68k_areg(srcreg);
+										m68k_areg(srcreg) = get_long(src);
+										m68k_areg(7) =  src + 4;
 									} else {
 										/* wouldn't expect this to happen */
-										m68k_areg(regs, 7) = get_long(m68k_areg(regs, 7)) + 4;
+										m68k_areg(7) = get_long(m68k_areg(7)) + 4;
 									}
 								}
 								break;
@@ -1901,7 +1799,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 									BackupPC();
 									Exception(8);
 								} else {
-									regs.usp = m68k_areg(regs, reg);
+									regs.usp = m68k_areg(reg);
 								}
 								break;
 							case 5 :
@@ -1910,7 +1808,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 									BackupPC();
 									Exception(8);
 								} else {
-									m68k_areg(regs, reg) = regs.usp;
+									m68k_areg(reg) = regs.usp;
 								}
 								break;
 							case 6 :
@@ -1930,65 +1828,36 @@ LOCALPROCUSEDONCE DoCode4(void)
 										break;
 									case 2 :
 										/* Stop 0100111001110010 */
-										if (!regs.s) {
+										if (! regs.s) {
 											BackupPC();
 											Exception(8);
 										} else {
-											regs.sr = (WORD)nextiword();
-											MakeFromSR();
+											m68k_setSR((WORD)nextiword());
 											m68k_setstopped();
 										}
 										break;
 									case 3 :
 										/* Rte 0100111001110011 */
-										if (! regs.s) { 
+										if (! regs.s) {
 											BackupPC();
 											Exception(8);
 										} else {
-											CPTR stackp = m68k_areg(regs, 7);
-											regs.sr = get_word(stackp);
-											MakeFromSR();
+											CPTR stackp = m68k_areg(7);
+											m68k_setSR(get_word(stackp));
 											stackp += 2;
 											m68k_setpc(get_long(stackp));
 											stackp += 4;
-											m68k_areg(regs, 7) = stackp;
-											#if 0
-											WORD format;
-											
-											for (;;) {
-												CPTR stackp = m68k_areg(regs, 7);
-												
-												regs.sr = get_word(stackp);
-												MakeFromSR();
-												stackp += 2;
-												m68k_setpc(get_long(stackp));
-												stackp += 4;
-												format = get_word(stackp);
-												stackp += 2;
-												m68k_areg(regs, 7) = stackp;
-												if ((format & 0xF000) == 0x0000) { 
-													break;
-												} else if ((format & 0xF000) == 0x1000) { 
-												} else if ((format & 0xF000) == 0x2000) {
-													m68k_areg(regs, 7) += 4;
-													break;
-												} else {
-													Exception(14);
-													break;
-												}
-											
-											}
-											#endif
+											m68k_areg(7) = stackp;
 										}
 										break;
 									case 4 :
 										/* Rtd 0100111001110100 */
-										op_illg(opcode);;
+										op_illg();
 										break;
 									case 5 :
 										/* Rts 0100111001110101 */
-									    m68k_setpc(get_long(m68k_areg(regs, 7)));
-									    m68k_areg(regs, 7) += 4;
+										m68k_setpc(get_long(m68k_areg(7)));
+										m68k_areg(7) += 4;
 										break;
 									case 6 :
 										/* TrapV 0100111001110110 */
@@ -1999,23 +1868,22 @@ LOCALPROCUSEDONCE DoCode4(void)
 									case 7 :
 										/* Rtr 0100111001110111 */
 										{
-											WORD sr;
-											
-											CPTR stackp = m68k_areg(regs, 7);
-											MakeSR();
-											sr = get_word(stackp);
-											regs.sr = (regs.sr & 0xFF00) | (sr & 0xFF);
-											MakeFromSR();
+#ifdef MyCompilerMrC
+#pragma noinline_site m68k_setCR
+#endif
+											CPTR stackp = m68k_areg(7);
+
+											m68k_setCR(get_word(stackp));
 											stackp += 2;
 											m68k_setpc(get_long(stackp));
 											stackp += 4;
-											m68k_areg(regs, 7) = stackp;
+											m68k_areg(7) = stackp;
 										}
 										break;
 								}
 								break;
 							case 7 :
-								op_illg(opcode);
+								op_illg();
 								break;
 						}
 						break;
@@ -2027,8 +1895,8 @@ LOCALPROCUSEDONCE DoCode4(void)
 							opsize = 0;
 							DecodeModeRegister(mode, reg);
 							if (GetEffectiveAddress(&srcvalue)) {
-								m68k_areg(regs, 7) -= 4;
-								put_long(m68k_areg(regs, 7), m68k_getpc());
+								m68k_areg(7) -= 4;
+								put_long(m68k_areg(7), m68k_getpc());
 								m68k_setpc(srcvalue);
 							}
 						}
@@ -2055,7 +1923,7 @@ LOCALPROCUSEDONCE DoCode5(void)
 {
 	if (b76 == 3) {
 		ULONG cond = (opcode >> 8) & 15;
-		
+
 		if (mode == 1) {
 			/* DBcc 0101cccc11001ddd */
 			LONG srcvalue;
@@ -2096,8 +1964,8 @@ LOCALPROCUSEDONCE DoCode6(void)
 {
 	ULONG cond = (opcode >> 8) & 15;
 	ULONG src = ((ULONG)opcode) & 255;
- 	ULONG s = m68k_getpc();
- 	
+	ULONG s = m68k_getpc();
+
 	if (src == 0) {
 		s += (LONG)(WORD)nextiword();
 	} else if (src == 255) {
@@ -2107,9 +1975,9 @@ LOCALPROCUSEDONCE DoCode6(void)
 	}
 	if (cond == 1) {
 		/* Bsr 01100001nnnnnnnn */
-	    m68k_areg(regs, 7) -= 4;
-	    put_long(m68k_areg(regs, 7), m68k_getpc());
-	  	m68k_setpc(s);
+		m68k_areg(7) -= 4;
+		put_long(m68k_areg(7), m68k_getpc());
+		m68k_setpc(s);
 	} else {
 		/* Bra/Bcc 0110ccccnnnnnnnn */
 		if (cctrue(cond)) {
@@ -2126,7 +1994,7 @@ LOCALPROCUSEDONCE DoCode7(void)
 	VFLG = CFLG = 0;
 	ZFLG = ((LONG)(src)) == 0;
 	NFLG = ((LONG)(src)) < 0;
-	m68k_dreg(regs, dstreg) = (src);
+	m68k_dreg(dstreg) = (src);
 }
 
 LOCALPROCUSEDONCE DoCode8(void)
@@ -2219,7 +2087,7 @@ LOCALPROCUSEDONCE DoCodeC(void)
 		DoBinOpMul1(mode, reg,0,rg9, BinOp);
 	} else if ((mode < 2) && (b8 == 1)) {
 		switch (b76) {
-    		case 0 :
+			case 0 :
 				/* ABCD 1100ddd10000mrrr */
 				/* does anyone use this? */
 				opsize = 1;
@@ -2229,33 +2097,33 @@ LOCALPROCUSEDONCE DoCodeC(void)
 					DoBinOp1(4,reg,4,rg9,BinOpAddBCD);
 				}
 				break;
-    		case 1 :
+			case 1 :
 				/* Exg 1100ddd10100trrr, opsize = 4 */
 				if (mode == 0) {
 					ULONG srcreg = rg9;
 					ULONG dstreg = reg;
-					LONG src = m68k_dreg(regs, srcreg);
-					LONG dst = m68k_dreg(regs, dstreg);
-					m68k_dreg(regs, srcreg) = dst;
-					m68k_dreg(regs, dstreg) = src;
+					LONG src = m68k_dreg(srcreg);
+					LONG dst = m68k_dreg(dstreg);
+					m68k_dreg(srcreg) = dst;
+					m68k_dreg(dstreg) = src;
 				} else {
 					ULONG srcreg = rg9;
 					ULONG dstreg = reg;
-					LONG src = m68k_areg(regs, srcreg);
-					LONG dst = m68k_areg(regs, dstreg);
-					m68k_areg(regs, srcreg) = dst;
-					m68k_areg(regs, dstreg) = src;
+					LONG src = m68k_areg(srcreg);
+					LONG dst = m68k_areg(dstreg);
+					m68k_areg(srcreg) = dst;
+					m68k_areg(dstreg) = src;
 				}
 				break;
-    		case 2 :
-    			{
+			case 2 :
+				{
 					/* Exg 1100ddd110001rrr, opsize = 4 */
 					ULONG srcreg = rg9;
 					ULONG dstreg = reg;
-					LONG src = m68k_dreg(regs, srcreg);
-					LONG dst = m68k_areg(regs, dstreg);
-					m68k_dreg(regs, srcreg) = dst;
-					m68k_areg(regs, dstreg) = src;
+					LONG src = m68k_dreg(srcreg);
+					LONG dst = m68k_areg(dstreg);
+					m68k_dreg(srcreg) = dst;
+					m68k_areg(dstreg) = src;
 				}
 				break;
 		}
@@ -2333,14 +2201,13 @@ LOCALPROCUSEDONCE DoCodeE(void)
 
 LOCALPROCUSEDONCE DoCodeF(void)
 {
-	op_illg(opcode);
+	op_illg();
 }
 
-void op_illg(ULONG opcode)
+static void op_illg(void)
 {
-	UnusedParam(opcode);
 	BackupPC();
- 	Exception(4);
+	Exception(4);
 }
 
 static ULONG MaxInstructionsToGo;
@@ -2352,26 +2219,26 @@ static void m68k_go_MaxInstructions(void)
 		opcode = nextiword();
 
 		switch (opcode >> 12) {
-	   		case 0x0 :
-	   			DoCode0();
+			case 0x0 :
+				DoCode0();
 				break;
-	   		case 0x1 :
-	 			DoCode1();
+			case 0x1 :
+				DoCode1();
 				break;
-	   		case 0x2 :
+			case 0x2 :
 				DoCode2();
 				break;
-	   		case 0x3 :
+			case 0x3 :
 				DoCode3();
 				break;
-	   		case 0x4 :
-	   			DoCode4();
+			case 0x4 :
+				DoCode4();
 				break;
-	   		case 0x5 :
-	   			DoCode5();
+			case 0x5 :
+				DoCode5();
 				break;
-	   		case 0x6 :
-	   			DoCode6();
+			case 0x6 :
+				DoCode6();
 				break;
 			case 0x7:
 				DoCode7();
@@ -2382,27 +2249,27 @@ static void m68k_go_MaxInstructions(void)
 			case 0x9:
 				DoCode9();
 				break;
-	   		case 0xA :
-	   			DoCodeA();
+			case 0xA :
+				DoCodeA();
 				break;
-	   		case 0xB :
-	   			DoCodeB();
+			case 0xB :
+				DoCodeB();
 				break;
-	   		case 0xC :
-	   			DoCodeC();
+			case 0xC :
+				DoCodeC();
 				break;
 			case 0xD:
 				DoCodeD();
 				break;
-	   		case 0xE :
-	   			DoCodeE();
+			case 0xE :
+				DoCodeE();
 				break;
-	   		case 0xF :
-	   			DoCodeF();
+			case 0xF :
+				DoCodeF();
 				break;
 		}
 
-    } while (--MaxInstructionsToGo != 0);
+	} while (--MaxInstructionsToGo != 0);
 }
 
 static ULONG MoreInstructionsToGo;
@@ -2424,30 +2291,20 @@ void NeedToGetOut(void)
 
 static void do_trace(void)
 {
-    regs.spcflags |= SPCFLAG_DOTRACE;
-    NeedToGetOut();
-}
-
-void SetBusError(CPTR addr)
-{
-    regs.spcflags |= SPCFLAG_BUSERR;
-	last_fault_for_exception_3 = addr;
-	last_addr_for_exception_3 = m68k_getpc();
+	regs.TracePending = trueblnr;
 	NeedToGetOut();
 }
 
 void SetAutoVector(void)
 {
-    regs.spcflags |= SPCFLAG_AUTOVECTOR;
+	regs.AutoVectorPending = trueblnr;
 	NeedToGetOut();
 }
 
 void m68k_setstopped(void)
 {
-    regs.stopped = 1;
-	regs.spcflags |= SPCFLAG_STOP;
-	NeedToGetOut();
-	MoreInstructionsToGo = 0;
+	/* not implemented. doesn't seemed to be used on Mac Plus */
+	Exception(4); /* fake an illegal instruction */
 }
 
 void m68k_go_nInstructions(ULONG n)
@@ -2459,22 +2316,12 @@ void m68k_go_nInstructions(ULONG n)
 			do_trace();
 		}
 		m68k_go_MaxInstructions();
-		if (regs.spcflags) {
-			if (regs.spcflags & SPCFLAG_BUSERR) {
-			    last_op_for_exception_3 = opcode;
-			    Exception(3);
-			    regs.spcflags &= ~SPCFLAG_BUSERR;
-			}
-			if (regs.spcflags & SPCFLAG_AUTOVECTOR) {
-				Exception(regs.intmask+24);
-			    regs.spcflags &= ~SPCFLAG_AUTOVECTOR;
-			}
-
-		    if (regs.spcflags & SPCFLAG_DOTRACE) {
-				Exception(9);
-		    }
-		    while (regs.spcflags & SPCFLAG_STOP) {
-		    }
+		if (regs.AutoVectorPending) {
+			Exception(regs.intmask+24);
+			regs.AutoVectorPending = falseblnr;
+		}
+		if (regs.TracePending) {
+			Exception(9);
 		}
 		MaxInstructionsToGo = MoreInstructionsToGo;
 	} while (MaxInstructionsToGo != 0);

@@ -8,7 +8,7 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
-
+#include "..\..\c_src\RESIDWIN.h"
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -46,7 +46,7 @@ END
 2 TEXTINCLUDE DISCARDABLE 
 BEGIN
     "#include ""afxres.h""\r\n"
-    "\0"
+    "#include ""..\\c_src\\RESIDWIN.h""\0"
 END
 
 3 TEXTINCLUDE DISCARDABLE 
@@ -83,7 +83,7 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "www.gryphel.com\0"
             VALUE "FileDescription", "Mini vMac for Win32\0"
-            VALUE "FileVersion", "0.1.1\0"
+            VALUE "FileVersion", "0.1.2\0"
             VALUE "InternalName", "\0"
             VALUE "LegalCopyright", "Copyright © 2001 by Bernd Schmidt, Philip Cummins, Weston Pawlowski, Paul Pratt, and others\0"
             VALUE "OriginalFilename", "minivmac.exe\0"
@@ -126,6 +126,46 @@ BEGIN
         MENUITEM "About",                       ID_HELP_ABOUT
     END
 END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_MYABOUTDIALOG DIALOG DISCARDABLE  0, 0, 256, 154
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDCANCEL,191,124,50,14
+    LTEXT           "",ID_ABOUT_VERSION,88,7,161,14
+    LTEXT           "",ID_ABOUT_AUTHORS,88,26,161,30
+    LTEXT           "",ID_ABOUT_LICENSE,88,60,161,22
+    LTEXT           "",ID_ABOUT_WARRNTY,7,85,242,30
+    LTEXT           "",ID_ABOUT_FORINFO,7,116,94,11
+    LTEXT           "",ID_ABOUT_WEBPAGE,22,132,134,15
+    ICON            IDI_VMAC,IDC_STATIC,34,34,18,20
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_MYABOUTDIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 249
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+END
+#endif    // APSTUDIO_INVOKED
 
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////

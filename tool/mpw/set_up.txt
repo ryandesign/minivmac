@@ -35,12 +35,6 @@ END
 Set my_built_program "{my_derived_d}{my_project_name}"
 Export my_built_program
 
-Set my_res_d "{my_project_d}mac_res:"
-Export my_res_d
-
-Set my_main_res_file "{my_res_d}main.r"
-Export my_main_res_file
-
 #----- file lists
 
 Set my_c_files "`Catenate "{my_lists_d}c_files"`"
@@ -49,10 +43,16 @@ Export my_c_files
 Set my_h_files "`Catenate "{my_lists_d}h_files"`"
 Export my_h_files
 
+Set my_r_files "main"
+Export my_r_files
+
 #----- Source directories
 
 Set my_c_src_d "{my_project_d}c_src:"
 Export my_c_src_d
+
+Set my_r_src_d "{my_project_d}platform:mac:"
+Export my_r_src_d
 
 #----- Object directories
 
@@ -60,6 +60,34 @@ Set my_c_obj_d "{my_derived_d}c_obj:"
 Export my_c_obj_d
 IF not "`exists -q "{my_c_obj_d}"`"
 	NewFolder "{my_c_obj_d}"
+END
+
+Set my_r_obj_d "{my_derived_d}"
+Export my_r_obj_d
+
+#----- check what's available in development environment
+
+Set NavigationAvail 0
+IF "`exists -q "{CIncludes}Navigation.h"`"
+	IF {my_target_env} == PowerPC
+		IF "`exists -q "{SharedLibraries}NavigationLib"`"
+			Set NavigationAvail 1
+		END
+	END
+	IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
+		IF "`exists -q "{Libraries}Navigation.o"`"
+			Set NavigationAvail 1
+		END
+	END
+END
+
+Set AppearanceAvail 0
+IF "`exists -q "{CIncludes}Appearance.h"`"
+	IF {my_target_env} == PowerPC
+		IF "`exists -q "{SharedLibraries}AppearanceLib"`"
+			Set AppearanceAvail 1
+		END
+	END
 END
 
 #----- C Configuration file
@@ -149,12 +177,16 @@ IF {my_compiler} == metrowerks
 	Echo "#define MayInline __inline__" >> "{CnfgGlob}"
 END
 
-IF "`exists -q {CIncludes}Navigation.h`"
+IF {NavigationAvail}
 	Echo "#define NavigationAvail 1" >> "{CnfgGlob}"
 END
-IF "`exists -q {CIncludes}Appearance.h`"
+IF {AppearanceAvail}
 	Echo "#define AppearanceAvail 1" >> "{CnfgGlob}"
 END
+
+#----  CallR  ---
+
+Set CallR "rez -t rsrc -c RSED"
 
 #----  CallC / CallCFast  ---
 
@@ -200,7 +232,8 @@ IF {my_target_env} == PowerPC #---- For PowerPC ---
 
 	IF {my_compiler} == SC_MrC
 		# Set CallC "MrC -proto strict -w 17"
-# use the c++ compiler to allow inlines
+
+		# use the c++ compiler to allow inlines
 		Set CallC "MrCpp -w 17"
 	END
 	IF {my_compiler} == metrowerks
@@ -209,19 +242,19 @@ IF {my_target_env} == PowerPC #---- For PowerPC ---
 	IF {my_compiler} == C_PPCC
 		Set callc "PPCC -appleext on"
 	END
-	
+
 	Set CallC "{CallC} -align mac68k"
-	
+
 	IF ({my_debug_level} != NoDebug) && ({my_compiler} != C_PPCC)
 		Set CallC "{CallC} -traceback"
 	END
 	Set CallCFast "{CallC}"
-	
+
 	IF ({my_debug_level} == NoDebug) || ({my_debug_level} == Debug)
 		IF {my_compiler} == SC_MrC
 			Set CallC "{CallCFast} -opt speed"
-#			Set CallC "{CallC} -opt size"
-# -opt size doesn't seem to be reliable
+			# Set CallC "{CallC} -opt size"
+			# -opt size doesn't seem to be reliable
 			Set CallCFast "{CallCFast} -opt speed"
 		END
 		IF {my_compiler} == metrowerks
@@ -239,7 +272,7 @@ END
 #----  LinkLine  ---
 
 IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
-	
+
 	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
 		Set LinkLine "Link"
 	END
@@ -261,7 +294,7 @@ IF ({my_target_env} == SANE) || ({my_target_env} == FPU)
 END
 
 IF {my_target_env} == PowerPC #---- For PowerPC ---
-	
+
 	IF ({my_compiler} == SC_MrC) || ({my_compiler} == C_PPCC)
 		Set LinkLine "PPCLink"
 	END
@@ -284,6 +317,9 @@ Set LinkLibs "¶
 {Libraries}Interface.o ¶
 {Libraries}MacRuntime.o ¶
 {Libraries}MathLib.o"
+IF {NavigationAvail}
+	Set LinkLibs "{LinkLibs} "¶'"{Libraries}Navigation.o"¶'
+END
 END
 
 IF {my_compiler} == metrowerks
@@ -353,12 +389,16 @@ Set LinkLibs "¶
 '{SharedLibraries}MathLib' ¶
 '{SharedLibraries}InterfaceLib' ¶
 '{SharedLibraries}StdCLib' ¶
-'{SharedLibraries}NavigationLib' ¶
-'{SharedLibraries}AppearanceLib' ¶
 '{PPCLibraries}StdCRuntime.o' ¶
 '{PPCLibraries}PPCToolLibs.o' ¶
 '{PPCLibraries}PPCCRuntime.o'"
 # {PPCLibraries}x80.o
+IF {NavigationAvail}
+	Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}NavigationLib"¶'
+END
+IF {AppearanceAvail}
+	Set LinkLibs "{LinkLibs} "¶'"{SharedLibraries}AppearanceLib"¶'
+END
 END
 END
 

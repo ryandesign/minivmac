@@ -1,7 +1,7 @@
 /*
 	KBRDEMDV.h
-	
-	Copyright (C) 2001 Philip Cummins, Paul Pratt 
+
+	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by

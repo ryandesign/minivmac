@@ -1,6 +1,6 @@
 /*
 	SONYEMDV.h
-	
+
 	Copyright (C) 2001 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -25,4 +25,3 @@ extern void Sony_Reset(void);
 extern void Sony_Access(CPTR addr);
 
 void Sony_Update (void);
-

@@ -16,9 +16,9 @@
 
 /*
 	ENDIAN ACcess
-	
+
 	Deals with endian issues in memory access.
-	
+
 	This code is adapted from code in the Un*x Amiga Emulator by
 	Bernd Schmidt, as found in vMac by Philip Cummins.
 */
@@ -40,9 +40,9 @@
 #else
 static MayInline UWORD do_get_mem_word(UWORD *a)
 {
-    UBYTE *b = (UBYTE *)a;
-    
-    return (*b << 8) | (*(b+1));
+	UBYTE *b = (UBYTE *)a;
+
+	return (*b << 8) | (*(b+1));
 }
 #endif
 
@@ -51,9 +51,9 @@ static MayInline UWORD do_get_mem_word(UWORD *a)
 #else
 static MayInline ULONG do_get_mem_long(ULONG *a)
 {
-    UBYTE *b = (UBYTE *)a;
-    
-    return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
+	UBYTE *b = (UBYTE *)a;
+
+	return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
 }
 #endif
 
@@ -64,10 +64,10 @@ static MayInline ULONG do_get_mem_long(ULONG *a)
 #else
 static MayInline void do_put_mem_word(UWORD *a, UWORD v)
 {
-    UBYTE *b = (UBYTE *)a;
-    
-    *b = v >> 8;
-    *(b+1) = v;
+	UBYTE *b = (UBYTE *)a;
+
+	*b = v >> 8;
+	*(b+1) = v;
 }
 #endif
 
@@ -76,11 +76,11 @@ static MayInline void do_put_mem_word(UWORD *a, UWORD v)
 #else
 static MayInline void do_put_mem_long(ULONG *a, ULONG v)
 {
-    UBYTE *b = (UBYTE *)a;
-    
-    *b = v >> 24;
-    *(b+1) = v >> 16;    
-    *(b+2) = v >> 8;
-    *(b+3) = v;
+	UBYTE *b = (UBYTE *)a;
+
+	*b = v >> 24;
+	*(b+1) = v >> 16;
+	*(b+2) = v >> 8;
+	*(b+3) = v;
 }
 #endif

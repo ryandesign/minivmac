@@ -7,7 +7,7 @@ The mydriver folder contains source code
 for a fake sony driver that is patched into
 the emulated rom.
 
-The compiled driver is already in ROMEMDEV.c 
+The compiled driver is already in ROMEMDEV.c
 (the initialization of sony_driver variable),
 so this source code is not needed for building
 Mini vMac. It is only needed if you want

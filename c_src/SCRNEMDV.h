@@ -1,6 +1,6 @@
 /*
 	SCRNEMDV.h
-	
+
 	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms

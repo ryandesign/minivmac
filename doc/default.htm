@@ -8,7 +8,7 @@ Mini vMac
 <A NAME="top"> </A>
 <I> <A href="http://www.gryphel.com">www.gryphel.com</A>/c/minivmac </I>
 <BR>
-copyright (c) 2001 Paul C. Pratt - last update 3/14/01
+copyright (c) 2001 Paul C. Pratt - last update 3/27/01
 <BR>
 <HR>
 
@@ -19,7 +19,7 @@ copyright (c) 2001 Paul C. Pratt - last update 3/14/01
 	a miniature Macintosh emulator
 </H4>
 <H4 align=center>
-	version 0.1.1
+	version 0.1.2
 </H4>
 
 <BR>
@@ -27,7 +27,7 @@ copyright (c) 2001 Paul C. Pratt - last update 3/14/01
 
 Available documentation:
 
-<BLOCKQUOTE>			
+<BLOCKQUOTE>
 
 <A HREF="about.html">ABOUT</A> -
 	What is Mini vMac?
@@ -72,9 +72,31 @@ Available documentation:
 <A HREF="http://www.gryphel.com/c/contact.html">CONTACT</A> -
 	How to reach Paul C. Pratt
 
-</BLOCKQUOTE> 
+</BLOCKQUOTE>
 
 Latest News:
+
+<P>
+
+<B> March 27, 2001 </B> version 0.1.2 released. Fixes problem
+where emulated machine would hang if key pressed at startup
+before any disk was inserted. The same fix (checking the event
+mask before posting keyboard events) also improves compatibility
+with some programs.
+
+<P>
+
+Mini vMac can now read old style disk image files (which
+have an 84 bytes header), by using some code from the
+Windows version of vMac.  It also uses some code from
+Windows vMac for an emulation of SCSI (with no SCSI
+devices attached), so that system software will think
+its running on a Mac Plus, instead of a 512ke.
+
+<P>
+
+Also new is a bigger and more informative 'about' box,
+and numerous source code cleanups.
 
 <P>
 
@@ -89,7 +111,7 @@ public release of Mini vMac.
 
 <HR>
 
-www.gryphel.com/c/minivmac - 
+www.gryphel.com/c/minivmac -
 <A HREF="#top">Top</A>
 
 </BODY> </HTML>

@@ -1,6 +1,6 @@
 /*
 	OSCOMVAR.c
-	
+
 	Copyright (C) 2001 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,7 +16,7 @@
 
 /*
 	Operating System COMmunication VARiables
-	
+
 	A place for communication between the
 	operating system specific code and the
 	rest of the program.
@@ -30,7 +30,7 @@ char *screencomparebuff;
 
 UWORD *RAM = nullpr;
 
-ULONG kRAM_Size = 0; 
+ULONG kRAM_Size = 0;
 
 UWORD *ROM;
 

@@ -22,7 +22,6 @@
 
 extern blnr ViaException(void);
 extern void DiskInsertedPsuedoException(CPTR newpc, ULONG data);
-extern void SetBusError(CPTR addr);
 extern void SetAutoVector(void);
 extern void MacInterrupt (void);
 extern void m68k_reset(void);

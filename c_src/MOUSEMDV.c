@@ -1,6 +1,6 @@
 /*
 	MOUSEMDV.c
-	
+
 	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,7 +16,7 @@
 
 /*
 	MOUSe EMulated DeVice
-	
+
 	Emulation of the mouse in the Mac Plus.
 
 	This code descended from "Mouse-MacOS.c" in Richard F. Bannister's
@@ -38,9 +38,9 @@ UBYTE Y2 = 0;
 void Mouse_Update2 (void)
 {
 	ULONG NewMouse;
-  
+
 	if (Mouse_Enabled()) { // SCC activated yet
- 		NewMouse = (CurMouseV << 16) | CurMouseH;
+		NewMouse = (CurMouseV << 16) | CurMouseH;
 
 		if (get_long(0x0828) != NewMouse) {
 			put_long(0x0828, NewMouse); // Set Mouse Position
@@ -55,39 +55,39 @@ void Mouse_Update2 (void)
 
 UBYTE VIA_GORB5 (void) // Mouse Y2
 {
-  return Y2;
+	return Y2;
 }
 
 UBYTE VIA_GORB4 (void) // Mouse X2
 {
-  return X2;
+	return X2;
 }
 
 UBYTE VIA_GORB3 (void) // Mouse Button
 {
-  return !CurMouseButton;
+	return !CurMouseButton;
 }
 
 void  VIA_PORB5 (UBYTE Data)
 {
 	UnusedParam(Data);
-#	ifdef _VIA_Interface_Debug
-  	printf("VIA ORB5 attempts to be an output\n");
-#	endif
+#ifdef _VIA_Interface_Debug
+	printf("VIA ORB5 attempts to be an output\n");
+#endif
 }
 
 void  VIA_PORB4 (UBYTE Data)
 {
 	UnusedParam(Data);
-#	ifdef _VIA_Interface_Debug
-  	printf("VIA ORB4 attempts to be an output\n");
-#	endif
+#ifdef _VIA_Interface_Debug
+	printf("VIA ORB4 attempts to be an output\n");
+#endif
 }
 
 void  VIA_PORB3 (UBYTE Data)
 {
 	UnusedParam(Data);
-#	ifdef _VIA_Interface_Debug
-  	printf("VIA ORB3 attempts to be an output\n");
-#	endif
+#ifdef _VIA_Interface_Debug
+	printf("VIA ORB3 attempts to be an output\n");
+#endif
 }

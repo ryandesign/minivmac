@@ -1,6 +1,6 @@
 /*
 	OSGLUWIN.h
-	
+
 	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,7 +16,7 @@
 
 /*
 	Operating System GLUe for WINdows.
-	
+
 	This file exists only to follow the convention of
 	a header file for every c file.
 */

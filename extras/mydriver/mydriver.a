@@ -1,0 +1,126 @@
+FakeSonyDriver MAIN EXPORT
+		BLANKS  ON
+		STRING  ASIS
+
+kqLink        EQU  0
+kqType        EQU  4
+kioTrap       EQU  6
+kioCmdAddr    EQU  8
+kioCompletion EQU 12
+kioResult     EQU 16
+kioNamePtr    EQU 18
+kioVRefNum    EQU 22
+kioRefNum     EQU 24
+kcsCode       EQU 26
+kcsParam      EQU 28
+kioBuffer     EQU 32 ; Buffer to store data into
+kioReqCount   EQU 36 ; Requested Number of Bytes
+kioActCount   EQU 40 ; Actual Number of Bytes obtained
+kioPosMode    EQU 44 ; Positioning Mode
+kioPosOffset  EQU 46 ; Position Offset
+
+killCode   EQU 1 ; KillIO requested
+noQueueBit EQU 9 ; trap word modifier
+JIODone    EQU $08FC
+
+		IMPORT Sony_Open : CODE
+		IMPORT Sony_Prime : CODE
+		IMPORT Sony_Control : CODE
+		IMPORT Sony_Status : CODE
+		IMPORT Sony_Close : CODE
+		IMPORT Sony_Update : CODE
+
+		EXPORT DUpdate
+
+DHeader
+DFlags   DC.W  $4F00              ; need lock, responds to all requests
+DDelay   DC.W  0                  ; none
+DEMask   DC.W  0                  ; DA event mask
+DMenu    DC.W  0                  ; no menu
+         DC.W  DOpen - DHeader    ; offset to Open
+         DC.W  DPrime - DHeader   ; offset to Prime
+         DC.W  DControl - DHeader ; offset to Control
+         DC.W  DStatus - DHeader  ; offset to Status
+         DC.W  DClose - DHeader   ; offset to Close
+Name     DC.B  5 ; length of name
+         DC.B  '.Sony'
+         ALIGN 2                  ; word alignment
+
+DOpen
+	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
+	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	BSR      Sony_Open      ; call linked C function
+	ADDQ     #8,SP          ; clean up the stack
+	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	RTS                     ; open is always immediate, must return via RTS
+
+DPrime
+	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
+	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	BSR      Sony_Prime     ; call linked C function
+	ADDQ     #8,SP          ; clean up the stack
+	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	BRA.B    IOReturn
+
+DControl
+	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
+	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	BSR      Sony_Control   ; call linked C function
+	ADDQ     #8,SP          ; clean up the stack
+	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	CMPI.W   #killCode,kcsCode(A0) ; test for KillIO call (special case)
+	BNE.B    IOReturn
+	RTS                     ; KillIO must always return via RTS
+
+DStatus
+	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
+	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	BSR      Sony_Status    ; call linked C function
+	ADDQ     #8,SP          ; clean up the stack
+	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
+
+IOReturn
+	MOVE.W   kioTrap(A0),D1
+	BTST     #noQueueBit,D1 ; immediate calls are not queued, and must RTS
+	BEQ.B    @Queued        ; branch if queued
+
+@NotQueued
+	TST.W    D0             ; test asynchronous return result
+	BLE.B    @ImmedRTS      ; result must be 3Ú40
+	CLR.W    D0             ; "in progress" result (> 0) not passed back
+
+@ImmedRTS
+	MOVE.W   D0,kioResult(A0)   ; for immediate calls you must explicitly
+	                            ; place the result in the ioResult field
+	RTS
+
+@Queued
+	TST.W    D0             ; test asynchronous return result
+	BLE.B    @MyIODone      ; I/O is complete if result 3Ú4 0
+	CLR.W    D0             ; "in progress" result (> 0) not passed back
+	RTS
+
+@MyIODone
+	MOVE.L   JIODone,-(SP)  ; push IODone jump vector onto stack
+	RTS
+
+DClose
+	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
+	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	BSR      Sony_Close     ; call linked C function
+	ADDQ     #8,SP          ; clean up the stack
+	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	RTS                     ; close is always immediate, must return via RTS
+
+DUpdate
+	MOVEM.L  D0-D2/A0-A1,-(SP)
+	MOVE.L   20(A7),-(A7)   ; push what was on top of stack before 5 registers pushed
+	BSR      Sony_Update
+	ADDQ     #4,A7
+	MOVEM.L  (SP)+,D0-D2/A0-A1
+	ADDA.W   #4,A7          ; remove arguments from stack
+	RTE
+
+		ENDMAIN
+
+		END

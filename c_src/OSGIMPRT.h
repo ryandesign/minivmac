@@ -35,7 +35,7 @@ extern void Keyboard_Auto (ULONG Key);
 
 extern void ProgramMain(void);
 
-#define kStrAboutTitle "Mini vMac 0.1.1, Copyright 2001."
+#define kStrAboutTitle "Mini vMac 0.1.2, Copyright 2001."
 /*
 	version string also in Mac 'vers' resource
 	and windows info resource

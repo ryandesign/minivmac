@@ -17,20 +17,24 @@
 # This is a script to build the Mini vMac application using
 # the Macintosh Programmers Workshop (MPW).  Open this file
 # with MPW, choose the 'Select All' command in the Edit menu,
-# and click on the box labeled 'MPW Shell' at the top of
+# and click on the box labeled 'MPW Shell' at the top left of
 # this files window.  You will be asked for the location
 # of the minivmac folder.  When the script finishes executing,
 # the Mini vMac application should be found in the folder "drv"
 # that has been created within the Mini vMac folder.
 
+# ########### ########### ########### ########### ###########
+
 
 Set my_project_name minivmac
 Export my_project_name
 
+# Ask where the project directory is
+
 Set OkSoFar 0
 Set my_project_d ""
 Set my_project_d "`GetFileName -d -s -q -m 'Please find the '{my_project_name}' folder'`"
-IF {my_project_d} == ''
+IF "{my_project_d}" == ''
 	# cancel button was pressed
 	# calling exit doesn't work nicely in this context
 ELSE
@@ -43,10 +47,12 @@ END
 
 IF {OkSoFar}
 	Export my_project_d
-	
+
 	Set my_debug_level NoDebug
 	Export my_debug_level
-	
+
+	# See what kind of machine this is
+
 	Set x `Gestalt sysa`
 	Set x `Evaluate {x}` # force to decimal representation
 		# since different versions of Gestalt give different representations
@@ -62,7 +68,9 @@ IF {OkSoFar}
 		END
 	END
 	Export my_target_env
-	
+
+	# See what compiler tool is available
+
 	IF {my_target_env} == PowerPC
 		IF "`exists -q "{MPW}Tools:MrC"`"
 			Set my_compiler SC_MrC
@@ -82,15 +90,19 @@ IF {OkSoFar}
 		END
 	END
 	Export my_compiler
-	
+
 	Set my_derived_d "{my_project_d}drv:"
 	Export my_derived_d
 	IF not "`exists -q "{my_derived_d}"`"
 		NewFolder "{my_derived_d}"
 	END
-	
+
 	Execute "{my_project_d}mpw:set_up"
-	
+
+	# Delete old version of application if already exists.
+	# Do this now so that if application exists and is
+	# running, can abort now rather than failing much later.
+
 	IF "`exists -q "{my_built_program}"`"
 		Set exit 0
 		Delete "{my_built_program}" ·· Dev:Null
@@ -101,11 +113,15 @@ IF {OkSoFar}
 			exit
 		END
 	END
-	
+
+	# could generate a make script at this point
+	# but it's easier to just directly call commands
+	# to compile and link.
+
 	IF {my_compiler} == metrowerks
 		directory "{my_c_src_d}"
 	END
-	
+
 	Set LinkFiles "{LinkLibs}"
 	Open "{my_progress_log}"
 	Echo "Compiling" >> "{my_progress_log}"
@@ -116,8 +132,10 @@ IF {OkSoFar}
 		Set LinkFiles "{LinkFiles} "¶'"{my_c_obj_d}{x}.c.o"¶'
 	END
 	Date >> "{my_progress_log}"
+	Echo "Compiling resources" >> "{my_progress_log}"
+	{CallR} "{my_r_src_d}{my_r_files}.r" -o "{my_r_obj_d}{my_r_files}.rsrc" -i "{RIncludes}" ·· "{my_progress_log}"
 	Echo "Linking" >> "{my_progress_log}"
-	Duplicate -y "{my_main_res_file}" "{my_built_program}" ·· "{my_progress_log}"
+	Duplicate -y "{my_r_obj_d}{my_r_files}.rsrc" "{my_built_program}" ·· "{my_progress_log}"
 	{LinkLine} -o "{my_built_program}" {LinkFiles} ·· "{my_progress_log}"
 	SetFile -d . -m . -a B "{my_built_program}"
 	Echo "Done" >> "{my_progress_log}"

@@ -1,6 +1,6 @@
 /*
 	OSGLUSTB.c
-	
+
 	Copyright (C) 2001 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -20,7 +20,7 @@
 	If the target operating system hasn't been specified,
 	this file is used. It can be used at the starting
 	point for a port to a different operating system.
-	
+
 	The main entry point 'main' is at the end of this file.
 */
 
@@ -39,7 +39,7 @@ void MyMoveBytes(anyp srcPtr, anyp destPtr, LONG byteCount)
 	LONG i;
 	UBYTE *s = (UBYTE *)srcPtr;
 	UBYTE *d = (UBYTE *)destPtr;
-	
+
 	for (i = byteCount; --i >=0; ) {
 		*d++ = *s++;
 	}
@@ -78,7 +78,7 @@ static void InitDrives(void)
 	WORD i;
 
 	for (i = 0; i < NumDrives; ++i) {
-		Drives[i] = NotAfileRef;;
+		Drives[i] = NotAfileRef;
 	}
 }
 
@@ -150,12 +150,12 @@ WORD vSonyEject(UWORD Drive_No)
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
 			result = -1; /*& figure out what really to return &*/
-		    Drives[Drive_No] = NotAfileRef;
-	    }
+			Drives[Drive_No] = NotAfileRef;
+		}
 		result = 0x0000;
 	} else {
 		result = 0xFFC8; // No Such Drive (-56)
-    }
+	}
 	return result;
 }
 
@@ -166,12 +166,12 @@ WORD vSonyVerify(UWORD Drive_No)
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
 			result = 0x0000; // No Error (0)
-	    } else {
+		} else {
 			result = 0xFFBF; // Say it's offline (-65)
 		}
 	} else {
 		result = 0xFFC8; // No Such Drive (-56)
-    }
+	}
 	return result;
 }
 
@@ -182,12 +182,12 @@ WORD vSonyFormat(UWORD Drive_No)
 	if (Drive_No < NumDrives) {
 		if (Drives[Drive_No] != NotAfileRef) {
 			result = 0xFFD4; // Write Protected (-44)
-	    } else {
+		} else {
 			result = 0xFFBF; // Say it's offline (-65)
 		}
 	} else {
 		result = 0xFFC8; // No Such Drive (-56)
-    }
+	}
 	return result;
 }
 
@@ -236,7 +236,7 @@ static blnr LoadMacRom(void)
 }
 
 static blnr AllocateMacRAM (void)
-{	
+{
 	kRAM_Size = 0x00400000;
 	return falseblnr;
 }
@@ -278,13 +278,14 @@ static void UnInitOSGLU(void)
 {
 }
 
-void main(void)
+int main(void)
 {
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
 		ProgramMain();
 	}
 	UnInitOSGLU();
+	return 0;
 }
 
 #endif /* HaveOSTarget not defined */

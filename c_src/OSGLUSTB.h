@@ -1,7 +1,7 @@
 /*
 	OSGLUSTB.c
-	
-	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt 
+
+	Copyright (C) 2001 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -16,10 +16,10 @@
 
 /*
 	Operating System GLUe Stub.
-	
+
 	header file for operating system dependent code.
 	the same header is used for all platforms.
-	
+
 	This code is descended from Richard F. Bannister's Macintosh
 	port of vMac, by Philip Cummins.
 */

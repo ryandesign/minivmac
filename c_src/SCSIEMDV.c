@@ -1,6 +1,6 @@
 /*
 	SCSIEMDV.c
-	
+
 	Copyright (C) 2001 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -16,92 +16,108 @@
 
 /*
 	Small Computer System Interface EMulated DeVice
-	
+
 	Emulates the SCSI found in the Mac Plus.
 
 	This code adapted from "SCSI.c" in vMac by Philip Cummins.
 */
 
+// NCR5380 chip emulation by Yoav Shadmi, 1998
+
 #include "SYSDEPNS.h"
 #include "SCSIEMDV.h"
+#include "ENDIANAC.h"
+#include "ADDRSPAC.h"
 
-// Lot's of additions by Michael Hanni (mhanni@sprintmail.com)
-   
-// PC - SCSI Memory Handlers
+#define scsiRd           0x00
+#define scsiWr           0x01
 
-// SCSI Transfer Instruction Block
+#define sCDR             0x00       // current scsi data register  (r/o)
+#define sODR             0x00       // output data register        (w/o)
+#define sICR             0x02       // initiator command register  (r/w)
+#define sMR              0x04       // mode register               (r/w)
+#define sTCR             0x06       // target command register     (r/w)
+#define sCSR             0x08       // current SCSI bus status     (r/o)
+#define sSER             0x08       // select enable register      (w/o)
+#define sBSR             0x0A       // bus and status register     (r/o)
+#define sDMAtx           0x0A       // start DMA send              (w/o)
+#define sIDR             0x0C       // input data register         (r/o)
+#define sTDMArx          0x0C       // start DMA target receive    (w/o)
+#define sRESET           0x0E       // reset parity/interrupt      (r/o)
+#define sIDMArx          0x0E       // start DMA initiator receive (w/o)
 
-#define kScOpcode 0  // word    operation code
-#define kScParam1 2  // long    first parameter
-#define kScParam2 6  // long    second parameter
+#define kSCSI_Size 0x00010
 
-// SCSI Driver Descriptor Record
-
-#define kSbSig 		0   // word    device signature
-#define kSbBlkSize 	2   // word    block size of the device
-#define kSbBlkCount 	4   // long    number of blocks on the device
-#define kSbDevType 	8   // word    reserved
-#define kSbDevId 	10  // word    reserved
-#define kSbData 	12  // long    reserved
-#define kSbDrvrCount 	16  // word    number of driver descriptor entries
-#define kDdBlock 	18  // long    first driver's starting block
-#define kDdSize 	22  // word    driver's size, in 512-byte blocks
-#define kDdType 	24  // word    operating system type (MacOS = 1)
-#define kDdPad 		26  // 486 bytes    additional drivers, if any
-
-// SCSI Partition Map Entry Record
-
-#define kPmSig 		0   //   word    partition signature
-#define kPmSigPad 	2   //   word    reserved
-#define kPmMapBlkCnt 	4   //   long    number of blocks in partition map
-#define kPmPyPartStart 	8   //   long    first physical block of partition
-#define kPmPartBlkCnt 	12  //   long    number of blocks in partition
-#define kPmPartName 	16  //   32 bytes    partition name
-#define kPmParType 	48  //   32 bytes    partition type
-#define kPmLgDataStart 	80  //   long    first logical block of data area
-#define kPmDataCnt 	84  //   long    number of blocks in data area
-#define kPmPartStatus 	88  //   long    partition status information
-#define kPmLgBootStart 	92  //   long    first logical block of boot code
-#define kPmBootSize 	96  //   long    size of boot code, in bytes
-#define kPmBootAddr 	100 //   long    boot code load address
-#define kPmBootAddr2 	104 //   long    reserved
-#define kPmBootEntry 	108 //   long    boot code entry point
-#define kPmBootEntry2 	112 //   long    reserved
-#define kPmBootCksum 	116 //   long    boot code checksum
-#define kPmProcessor 	120 //   16 bytes    processor type
-#define kPmPad 		136 //   376 bytes    reserved
-
-// SCSI Errors.
-
-#define kNoErr 		  0   //  No error
-#define kScCommErr   	  2   //  Communications error, operation timeout
-#define kScArbNBErr    	  3   //  Bus busy, arbitration timeout
-#define kScBadParmsErr    4   //  Bad parameter or unrecognized TIB instruction
-#define kScPhaseErr    	  5   //  Phase error on the SCSI bus
-#define kScCompareErr     6   //  Comparison error from scComp instruction
-#define kScMgrBusyErr     7   //  SCSI Manager busy
-#define kScSequenceErr    8   //  Attempted operation is out of sequence
-#define kScBusTOErr    	  9   //  Bus timeout during blind transfer
-#define kScComplPhaseErr  10  //  SCSI bus was not in status phase on entry to SCSIComplete
-
-// SCSI constants.
-
-#define kScInc   	1     // transfer data, increment buffer pointer
-#define kScNoInc    	2     // transfer data, don't increment pointer
-#define kScAdd    	3     // add long to address
-#define kScMove		4     // move long to address
-#define kScLoop    	5     // decrement counter and loop if > 0
-#define kScNop    	6     // no operation
-#define kScStop    	7     // stop TIB execution
-#define kScComp    	8     // compare SCSI data with memory
-
-// SCSI signature values.
-
-#define kSbSIGWord    	$4552  // driver descriptor map signature
-#define kpMapSIG    	$504D  // partition map signature
+static UBYTE SCSI [kSCSI_Size];
 
 void  SCSI_Reset (void)
 {
+	int i;
+
+	for (i = 0; i < kSCSI_Size; i++) {
+		SCSI[i] = 0;
+	}
+}
+
+static void SCSI_BusReset (void)
+{
+	SCSI[scsiRd+sCDR] = 0;
+	SCSI[scsiWr+sODR] = 0;
+	SCSI[scsiRd+sICR] = 0x80;
+	SCSI[scsiWr+sICR] &= 0x80;
+	SCSI[scsiRd+sMR] &= 0x40;
+	SCSI[scsiWr+sMR] &= 0x40;
+	SCSI[scsiRd+sTCR] = 0;
+	SCSI[scsiWr+sTCR] = 0;
+	SCSI[scsiRd+sCSR] = 0x80;
+	SCSI[scsiWr+sSER] = 0;
+	SCSI[scsiRd+sBSR] = 0x10;
+	SCSI[scsiWr+sDMAtx] = 0;
+	SCSI[scsiRd+sIDR] = 0;
+	SCSI[scsiWr+sTDMArx] = 0;
+	SCSI[scsiRd+sRESET] = 0;
+	SCSI[scsiWr+sIDMArx] = 0;
+#if 0
+	SCSI[scsiRd+sODR+dackWr] = 0;
+	SCSI[scsiWr+sIDR+dackRd] = 0;
+#endif
+
+	// The missing piece of the puzzle.. :)
+	put_word(0xb22, get_word(0xb22) | 0x8000);
+}
+
+static void SCSI_Check (void)
+{
+	// The arbitration select/reselect scenario [stub.. doesn't really work...]
+	if ((SCSI[scsiWr+sODR] >> 7) == 1) {  // Check if the Mac tries to be an initiator
+		if ((SCSI[scsiWr+sMR] & 1) == 1) { // the Mac set arbitration in progress
+			// stub! tell the mac that there is arbitration in progress...
+			SCSI[scsiRd+sICR] |= 0x40;
+			// ... that we didn't lose arbitration ...
+			SCSI[scsiRd+sICR] &= ~0x20;
+			// ... and that there isn't a higher priority ID present...
+			SCSI[scsiRd+sCDR] = 0x00;
+
+			// ... the arbitration and selection/reselection is complete.
+			// the initiator tries to connect to the SCSI device, fails
+			// and returns after timeout.
+		}
+	}
+
+	// check the chip registers, AS SET BY THE CPU
+	if ((SCSI[scsiWr+sICR] >> 7) == 1) {  // Check Assert RST
+		SCSI_BusReset();
+	} else {
+		SCSI[scsiRd+sICR] &= ~0x80;
+		SCSI[scsiRd+sCSR] &= ~0x80;
+	}
+
+	if ((SCSI[scsiWr+sICR] >> 2) == 1) { // Check Assert SEL
+		SCSI[scsiRd+sCSR] |= 0x02;
+		SCSI[scsiRd+sBSR] = 0x10;
+	} else {
+		SCSI[scsiRd+sCSR] &= ~0x02;
+	}
 }
 
 extern ULONG DataBus;
@@ -110,32 +126,17 @@ extern blnr WriteMemAccess;
 
 void SCSI_Access(CPTR addr)
 {
-	UnusedParam(addr);
-
-	if (WriteMemAccess) {
-		if (ByteSizeAccess) {
-			#ifdef _SCSI_Debug
-			printf("SCSI PB %4lx %2x\n", addr, in);
-			#endif
-			// if (!(addr & 1))
-			// {
-			//   RAM [addr >> 1] = (RAM [addr >> 1] & 0xff) | (((UWORD) in) << 8);
-			// }
-			// else
-			// {
-			//   RAM [addr >> 1] = (RAM [addr >> 1] & 0xff00) | in;
-			// }
-		} else {
-			// RAM [addr >> 1] = in;
-		}
-	} else {
-		if (ByteSizeAccess) {
-			#ifdef _SCSI_Debug
-			printf("SCSI GB %4lx\n", addr);
-			#endif
-			// return RAM [addr >> 1] >> (addr & 1 ? 0 : 8);
-		} else {
-			// return RAM [addr >> 1];
+	if ((addr & 0xE) == 0) {
+		addr = (addr >> 3) | (addr & 1);
+		if (addr < kSCSI_Size) {
+			if (ByteSizeAccess) {
+				if (WriteMemAccess) {
+					SCSI[addr] = DataBus;
+					SCSI_Check();
+				} else {
+					DataBus = SCSI[addr];
+				}
+			}
 		}
 	}
 }
