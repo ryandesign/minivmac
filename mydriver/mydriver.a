@@ -1,3 +1,19 @@
+;	mydriver.a
+;
+;	Copyright (C) 2004 Paul Pratt
+;
+;	You can redistribute this file and/or modify it under the terms
+;	of version 2 of the GNU General Public License as published by
+;	the Free Software Foundation.  You should have received a copy
+;	of the license along with this file; see the file COPYING.
+;
+;	This file is distributed in the hope that it will be useful,
+;	but WITHOUT ANY WARRANTY; without even the implied warranty of
+;	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;	license for more details.
+
+; most of this is adapted from sample source code from Apple.
+
 FakeSonyDriver MAIN EXPORT
 		BLANKS  ON
 		STRING  ASIS
@@ -31,6 +47,7 @@ JIODone    EQU $08FC
 		IMPORT Sony_Update : CODE
 
 		EXPORT DUpdate
+		EXPORT my_drive_icon
 
 DHeader
 DFlags   DC.W  $4F00              ; need lock, responds to all requests
@@ -121,6 +138,91 @@ DUpdate
 	ADDA.W   #4,A7          ; remove arguments from stack
 	RTE
 
+my_drive_icon
+; icon
+	DC.L  $7FFFFFF0
+	DC.L  $81000108
+	DC.L  $81007104
+	DC.L  $81008902
+	DC.L  $81008901
+	DC.L  $81008901
+	DC.L  $81008901
+	DC.L  $81008901
+	DC.L  $81008901
+	DC.L  $81007101
+	DC.L  $81000101
+	DC.L  $80FFFE01
+	DC.L  $80000001
+	DC.L  $80000001
+	DC.L  $80000001
+	DC.L  $80000001
+	DC.L  $83FFFFC1
+	DC.L  $84000021
+	DC.L  $84000021
+	DC.L  $84000021
+	DC.L  $84000021
+	DC.L  $84000021
+	DC.L  $84063021
+	DC.L  $84066021
+	DC.L  $8406C021
+	DC.L  $84078021
+	DC.L  $84070021
+	DC.L  $84060021
+	DC.L  $84000021
+	DC.L  $84000021
+	DC.L  $84000021
+	DC.L  $7FFFFFFE
+; mask
+	DC.L  $3FFFFFF0
+	DC.L  $7FFFFFF0
+	DC.L  $FFFFFFFC
+	DC.L  $FFFFFFFC
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $FFFFFFFF
+	DC.L  $7FFFFFFC
+	DC.L  $3FFFFFFC
+; empty pascal string
+	DC.W  $0000
+
 		ENDMAIN
+
+MyAddDrive64k PROC	EXPORT
+
+; This is only needed for the 64k ROM.
+; should be eliminated by the linker
+; otherwise.
+
+DrvQHdr EQU 776
+RomBase EQU $00400000
+
+	Move.L    D0,6(A0)
+	Lea.L     (DrvQHdr),A1
+	Jmp       (RomBase + 2848)
+
+		ENDPROC
 
 		END

@@ -1,7 +1,7 @@
 /*
 	SNDEMDEV.c
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -24,17 +24,26 @@
 
 #ifndef AllFiles
 #include "SYSDEPNS.h"
+
+#include "MYOSGLUE.h"
+#include "PROGMAIN.h"
 #endif
 
 #include "SNDEMDEV.h"
 
-// Local Variables
+LOCALVAR ui3b SoundDisable = 0;
+LOCALVAR ui3b SoundVolume = 0; /* 0 - 7 */
+LOCALVAR ui3b SoundBuffer = 0; /* 0 = Main, 1 = Alternate */
 
-LOCALVAR Sound_Ty theSound;
+#define kSnd_Main_Offset   0x0300
+#define kSnd_Alt_Offset    0x5F00
 
-// VIA Interface Functions
+#define kSnd_Main_Buffer (kRAM_Size - kSnd_Main_Offset)
+#define kSnd_Alt_Buffer (kRAM_Size - kSnd_Alt_Offset)
 
-GLOBALFUNC ui3b VIA_GORA3 (void) // Main/Alternate Sound Buffer
+/* VIA Interface Functions */
+
+GLOBALFUNC ui3b VIA_GORA3 (void) /* Main/Alternate Sound Buffer */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA3 attempts to be an input\n");
@@ -44,10 +53,10 @@ GLOBALFUNC ui3b VIA_GORA3 (void) // Main/Alternate Sound Buffer
 
 GLOBALPROC VIA_PORA3(ui3b Data)
 {
-	theSound.Buffer = Data; // 1 = Main, 0 = Alternate
+	SoundBuffer = ! Data;
 }
 
-GLOBALFUNC ui3b VIA_GORA2(void) // Sound Volume Bit 2
+GLOBALFUNC ui3b VIA_GORA2(void) /* Sound Volume Bit 2 */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA2 attempts to be an input\n");
@@ -58,13 +67,13 @@ GLOBALFUNC ui3b VIA_GORA2(void) // Sound Volume Bit 2
 GLOBALPROC VIA_PORA2(ui3b Data)
 {
 	if (Data == 0) {
-		theSound.Volume &= 0x03;
+		SoundVolume &= 0x03;
 	} else {
-		theSound.Volume |= 0x04;
+		SoundVolume |= 0x04;
 	}
 }
 
-GLOBALFUNC ui3b VIA_GORA1(void) // Sound Volume Bit 1
+GLOBALFUNC ui3b VIA_GORA1(void) /* Sound Volume Bit 1 */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA1 attempts to be an input\n");
@@ -75,23 +84,23 @@ GLOBALFUNC ui3b VIA_GORA1(void) // Sound Volume Bit 1
 GLOBALPROC VIA_PORA1(ui3b Data)
 {
 	if (Data == 0) {
-		theSound.Volume &= 0x05;
+		SoundVolume &= 0x05;
 	} else {
-		theSound.Volume |= 0x02;
+		SoundVolume |= 0x02;
 	}
 }
 
-GLOBALFUNC ui3b VIA_GORA0(void) // Sound Volume Bit 0
+GLOBALFUNC ui3b VIA_GORA0(void) /* Sound Volume Bit 0 */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA0 attempts to be an input\n");
 #endif
-//
-// bill huey ---
-// I'm basically trying to take a guess as to what
-// would be neutral return value for the "return"
-// statement that I just added to satisfy GCC's
-// complaints...
+/*  */
+/* bill huey --- */
+/* I'm basically trying to take a guess as to what */
+/* would be neutral return value for the "return" */
+/* statement that I just added to satisfy GCC's */
+/* complaints... */
 
 	return 0;
 }
@@ -99,13 +108,13 @@ GLOBALFUNC ui3b VIA_GORA0(void) // Sound Volume Bit 0
 GLOBALPROC VIA_PORA0(ui3b Data)
 {
 	if (Data == 0) {
-		theSound.Volume &= 0x06;
+		SoundVolume &= 0x06;
 	} else {
-		theSound.Volume |= 0x01;
+		SoundVolume |= 0x01;
 	}
 }
 
-GLOBALFUNC ui3b VIA_GORB7(void) // Sound Enable
+GLOBALFUNC ui3b VIA_GORB7(void) /* Sound Disable */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORB7 attempts to be an input\n");
@@ -115,5 +124,131 @@ GLOBALFUNC ui3b VIA_GORB7(void) // Sound Enable
 
 GLOBALPROC VIA_PORB7(ui3b Data)
 {
-	theSound.Enable = Data; // 0 = Enabled, 1 = Disabled
+	SoundDisable = Data;
 }
+
+
+#if MySoundEnabled
+
+LOCALVAR const ui4b vol_mult[] = {
+	8192, 9362, 10922, 13107, 16384, 21845, 32768
+};
+
+LOCALVAR const ui3b vol_offset[] = {
+	112, 110, 107, 103, 96, 86, 64, 0
+};
+
+/*
+	approximate volume levels of vMac, so:
+
+	x * vol_mult[SoundVolume] >> 16
+		+ vol_offset[SoundVolume]
+	= {approx} (x - 128) / (8 - SoundVolume) + 128;
+*/
+
+LOCALVAR const ui4b SubTick_offset[kNumSubTicks + 1] = {
+	0,    23,  46,  69,  92, 115, 138, 161,
+	185, 208, 231, 254, 277, 300, 323, 346,
+	370
+};
+
+LOCALVAR ui3p TheCurSoundBuff = nullpr;
+
+LOCALVAR ui5b SoundInvertPhase = 0;
+LOCALVAR ui4b SoundInvertState = 0;
+
+IMPORTFUNC ui4b GetSoundInvertTime(void);
+
+GLOBALPROC MacSound_SubTick(int SubTick)
+{
+	if (SubTick == 0) {
+		TheCurSoundBuff = GetCurSoundOutBuff();
+	}
+
+	if (TheCurSoundBuff != nullpr) {
+		int i;
+		ui4b SoundInvertTime = GetSoundInvertTime();
+		ui5b StartOffset = SubTick_offset[SubTick];
+		ui5b n = SubTick_offset[SubTick+1] - StartOffset;
+		unsigned long addy = (SoundBuffer != 0) ?
+			kSnd_Alt_Buffer : kSnd_Main_Buffer;
+		ui3p addr = addy + (2 * StartOffset) +(ui3p)RAM;
+		ui3p p = StartOffset + TheCurSoundBuff;
+
+		if (SoundDisable && (SoundInvertTime == 0)) {
+			for (i = 0; i < n; i++) {
+#if 1
+				*p++ = 0x80;
+#else
+				*p++ = 0x00;
+#endif
+				/*
+					0x00 would be more acurate, but 0x80 works
+					nicer, so can pause emulation without click.
+				*/
+			}
+		} else {
+			ui3b offset = vol_offset[SoundVolume];
+
+			if (SoundVolume >= 7) {
+				/* Volume is full, so we can do it the fast way */
+
+				for (i = 0; i < n; i++) {
+					/* Copy the buffer over */
+					*p++ = *addr;
+
+					/* Move the address on */
+					addr += 2;
+				}
+			} else {
+				ui5b mult = (ui5b)vol_mult[SoundVolume];
+
+				for (i = 0; i < n; i++) {
+					/* Copy the buffer over */
+					*p++ = (ui3b)((ui5b)(*addr) * mult >> 16);
+
+					/* Move the address on */
+					addr += 2;
+				}
+			}
+			if (SoundInvertTime != 0) {
+				ui5b PhaseIncr = (ui5b)SoundInvertTime * (ui5b)20;
+				p -= n;
+
+				for (i = 0; i < n; i++) {
+					if (SoundInvertPhase < 704) {
+						ui5b OnPortion = 0;
+						ui5b LastPhase = 0;
+						do {
+							if (! SoundInvertState) {
+								OnPortion += (SoundInvertPhase - LastPhase);
+							}
+							SoundInvertState = ! SoundInvertState;
+							LastPhase = SoundInvertPhase;
+							SoundInvertPhase += PhaseIncr;
+						} while (SoundInvertPhase < 704);
+						if (! SoundInvertState) {
+							OnPortion += 704 - LastPhase;
+						}
+						*p = (*p * OnPortion) / 704;
+					} else {
+						if (SoundInvertState) {
+							*p = 0;
+						}
+					}
+					SoundInvertPhase -= 704;
+					p++;
+				}
+			}
+#if 1
+			if (offset != 0) {
+				p -= n;
+				for (i = 0; i < n; i++) {
+					*p++ += offset;
+				}
+			}
+#endif
+		}
+	}
+}
+#endif

@@ -1,7 +1,7 @@
 /*
 	RTCEMDEV.h
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,13 +23,13 @@
 EXPORTFUNC blnr RTC_Init(void);
 EXPORTPROC RTC_Interrupt(void);
 
-// VIA Interface Functions
+/* VIA Interface Functions */
 
-EXPORTFUNC ui3b VIA_GORB2 (void); // RTC Enable
+EXPORTFUNC ui3b VIA_GORB2 (void); /* RTC Enable */
 EXPORTPROC VIA_PORB2(ui3b Data);
 
-EXPORTFUNC ui3b VIA_GORB1 (void); // RTC Data Clock
+EXPORTFUNC ui3b VIA_GORB1 (void); /* RTC Data Clock */
 EXPORTPROC VIA_PORB1(ui3b Data);
 
-EXPORTFUNC ui3b VIA_GORB0 (void); // RTC Data
+EXPORTFUNC ui3b VIA_GORB0 (void); /* RTC Data */
 EXPORTPROC VIA_PORB0(ui3b Data);

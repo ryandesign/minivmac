@@ -1,7 +1,7 @@
 /*
 	PROGMAIN.c
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -32,84 +32,94 @@
 
 #include "PROGMAIN.h"
 
+IMPORTPROC Memory_Reset(void);
+
 LOCALPROC vSonyEjectAllDisks(void)
 {
 	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
-		if (vSonyInserted(i)) {
+		if (vSonyIsInserted(i)) {
 			(void) vSonyEject(i);
 		}
 	}
+	vSonyWritableMask = 0;
+	vSonyInsertedMask = 0;
+	vSonyMountedMask = 0;
 }
 
-LOCALVAR int TicksLeftInSecond = 60;
-LOCALVAR blnr ProgramDone = falseblnr;
-
-LOCALPROC DoEach60th(void)
+GLOBALPROC DoMacReset(void)
 {
-	if (RequestMacOff) {
-		RequestMacOff = falseblnr;
-		if ((! AnyDiskInserted()) ||
-			OkCancelAlert("Are you sure you want to Quit?",
-				"You should shut down the emulated machine before quiting Mini vMac to prevent data corruption."))
-		{
-			ProgramDone = trueblnr;
-		}
-	}
-	if (RequestMacInterrupt) {
-		RequestMacInterrupt = falseblnr;
-		if (OkCancelAlert("Are you sure you want to Interrupt?",
-				"This will invoke any installed debugger."))
-		{
-			MacInterrupt();
-		}
-	}
-	if (RequestMacReset) {
-		RequestMacReset = falseblnr;
-		if ((! AnyDiskInserted()) ||
-			OkCancelAlert("Are you sure you want to Reset?",
-				"Unsaved changes will be lost, and there is a risk of data corruption."))
-		{
-			vSonyEjectAllDisks();
-			m68k_reset();
-		}
-	}
-	SixtiethSecondNotify();
-	if (--TicksLeftInSecond <= 0) {
-		OneSecondNotify();
-		TicksLeftInSecond = 60;
-	}
+	vSonyEjectAllDisks();
+	Memory_Reset();
+	m68k_reset();
 }
+
+#define InstructionsPerTick 12250
+	/*
+		This a bit too fast on average, but
+		if this was much lower, Concertware wouldn't
+		work properly with speed limit on. If this was
+		much higher, the initial sounds in Dark Castle
+		would have static.
+		This can only be an approximation, since on
+		a real machine the number of instructions
+		executed per time can vary by almost a factor
+		of two, because different instructions take
+		different times.
+	*/
+
+#define InstructionsPerSubTick (InstructionsPerTick / kNumSubTicks)
 
 LOCALPROC MainEventLoop(void)
 {
 	long KiloInstructionsCounter = 0;
+	blnr OverDue;
 
 	do {
-		m68k_go_nInstructions(1024);
-		++KiloInstructionsCounter;
+		if (KiloInstructionsCounter < kNumSubTicks) {
+			m68k_go_nInstructions(InstructionsPerSubTick);
+			SubTickNotify(KiloInstructionsCounter);
+			++KiloInstructionsCounter;
+		} else if (! SpeedLimit) {
+			m68k_go_nInstructions(2048);
+		}
 
-		if (CheckIntSixtieth(KiloInstructionsCounter >= 12)) {
-			if (KiloInstructionsCounter < 6) {
-				/*
-					if haven't executed enough instructions
-					yet, skip this interupt, even though
-					this will mess up emulated clock.
-				*/
+		OverDue = (KiloInstructionsCounter >= kNumSubTicks);
+		CheckIntSixtieth(SpeedLimit && OverDue && (0 == TimeAdjust));
+
+		if (TimeAdjust > 0) {
+			blnr WantNextSixtieth;
+
+			if (TimeAdjust <= 6) {
+				WantNextSixtieth = OverDue;
 			} else {
+				/* emulation lagging, try to catch up */
+				WantNextSixtieth = (KiloInstructionsCounter
+					>= (kNumSubTicks / 2));
+				if (TimeAdjust > 8) {
+					/* emulation not fast enough */
+					TimeAdjust = 8;
+				}
+			}
+
+			if (WantNextSixtieth) {
+				while (KiloInstructionsCounter < kNumSubTicks) {
+					SubTickNotify(KiloInstructionsCounter);
+					++KiloInstructionsCounter;
+				}
 				KiloInstructionsCounter = 0;
-				DoEach60th();
+				SixtiethSecondNotify();
+				--TimeAdjust;
 			}
 		}
-	} while (! ProgramDone);
+	} while (! RequestMacOff);
 }
 
 GLOBALPROC ProgramMain(void)
 {
 	ZapProgramVars();
 	if (InitProgram()) {
-		m68k_reset();
 		MainEventLoop();
 	}
 	UnInitProgram();

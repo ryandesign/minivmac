@@ -1,7 +1,7 @@
 /*
 	SCSIEMDV.c
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,12 +22,14 @@
 	This code adapted from "SCSI.c" in vMac by Philip Cummins.
 */
 
-// NCR5380 chip emulation by Yoav Shadmi, 1998
+/* NCR5380 chip emulation by Yoav Shadmi, 1998 */
 
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 
 #include "ENDIANAC.h"
+#include "MYOSGLUE.h"
+#include "MINEM68K.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -36,19 +38,19 @@
 #define scsiRd           0x00
 #define scsiWr           0x01
 
-#define sCDR             0x00       // current scsi data register  (r/o)
-#define sODR             0x00       // output data register        (w/o)
-#define sICR             0x02       // initiator command register  (r/w)
-#define sMR              0x04       // mode register               (r/w)
-#define sTCR             0x06       // target command register     (r/w)
-#define sCSR             0x08       // current SCSI bus status     (r/o)
-#define sSER             0x08       // select enable register      (w/o)
-#define sBSR             0x0A       // bus and status register     (r/o)
-#define sDMAtx           0x0A       // start DMA send              (w/o)
-#define sIDR             0x0C       // input data register         (r/o)
-#define sTDMArx          0x0C       // start DMA target receive    (w/o)
-#define sRESET           0x0E       // reset parity/interrupt      (r/o)
-#define sIDMArx          0x0E       // start DMA initiator receive (w/o)
+#define sCDR             0x00       /* current scsi data register  (r/o) */
+#define sODR             0x00       /* output data register        (w/o) */
+#define sICR             0x02       /* initiator command register  (r/w) */
+#define sMR              0x04       /* mode register               (r/w) */
+#define sTCR             0x06       /* target command register     (r/w) */
+#define sCSR             0x08       /* current SCSI bus status     (r/o) */
+#define sSER             0x08       /* select enable register      (w/o) */
+#define sBSR             0x0A       /* bus and status register     (r/o) */
+#define sDMAtx           0x0A       /* start DMA send              (w/o) */
+#define sIDR             0x0C       /* input data register         (r/o) */
+#define sTDMArx          0x0C       /* start DMA target receive    (w/o) */
+#define sRESET           0x0E       /* reset parity/interrupt      (r/o) */
+#define sIDMArx          0x0E       /* start DMA initiator receive (w/o) */
 
 #define kSCSI_Size 0x00010
 
@@ -86,37 +88,37 @@ LOCALPROC SCSI_BusReset(void)
 	SCSI[scsiWr+sIDR+dackRd] = 0;
 #endif
 
-	// The missing piece of the puzzle.. :)
-	put_word(0xb22, get_word(0xb22) | 0x8000);
+	/* The missing piece of the puzzle.. :) */
+	put_ram_word(0xb22, get_ram_word(0xb22) | 0x8000);
 }
 
 LOCALPROC SCSI_Check(void)
 {
-	// The arbitration select/reselect scenario [stub.. doesn't really work...]
-	if ((SCSI[scsiWr+sODR] >> 7) == 1) {  // Check if the Mac tries to be an initiator
-		if ((SCSI[scsiWr+sMR] & 1) == 1) { // the Mac set arbitration in progress
-			// stub! tell the mac that there is arbitration in progress...
+	/* The arbitration select/reselect scenario [stub.. doesn't really work...] */
+	if ((SCSI[scsiWr+sODR] >> 7) == 1) {  /* Check if the Mac tries to be an initiator */
+		if ((SCSI[scsiWr+sMR] & 1) == 1) { /* the Mac set arbitration in progress */
+			/* stub! tell the mac that there is arbitration in progress... */
 			SCSI[scsiRd+sICR] |= 0x40;
-			// ... that we didn't lose arbitration ...
+			/* ... that we didn't lose arbitration ... */
 			SCSI[scsiRd+sICR] &= ~0x20;
-			// ... and that there isn't a higher priority ID present...
+			/* ... and that there isn't a higher priority ID present... */
 			SCSI[scsiRd+sCDR] = 0x00;
 
-			// ... the arbitration and selection/reselection is complete.
-			// the initiator tries to connect to the SCSI device, fails
-			// and returns after timeout.
+			/* ... the arbitration and selection/reselection is complete. */
+			/* the initiator tries to connect to the SCSI device, fails */
+			/* and returns after timeout. */
 		}
 	}
 
-	// check the chip registers, AS SET BY THE CPU
-	if ((SCSI[scsiWr+sICR] >> 7) == 1) {  // Check Assert RST
+	/* check the chip registers, AS SET BY THE CPU */
+	if ((SCSI[scsiWr+sICR] >> 7) == 1) {  /* Check Assert RST */
 		SCSI_BusReset();
 	} else {
 		SCSI[scsiRd+sICR] &= ~0x80;
 		SCSI[scsiRd+sCSR] &= ~0x80;
 	}
 
-	if ((SCSI[scsiWr+sICR] >> 2) == 1) { // Check Assert SEL
+	if ((SCSI[scsiWr+sICR] >> 2) == 1) { /* Check Assert SEL */
 		SCSI[scsiRd+sCSR] |= 0x02;
 		SCSI[scsiRd+sBSR] = 0x10;
 	} else {
@@ -124,19 +126,16 @@ LOCALPROC SCSI_Check(void)
 	}
 }
 
-GLOBALPROC SCSI_Access(CPTR addr)
+GLOBALFUNC ui5b SCSI_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
-	if ((addr & 0xE) == 0) {
-		addr = (addr >> 3) | (addr & 1);
-		if (addr < kSCSI_Size) {
-			if (ByteSizeAccess) {
-				if (WriteMemAccess) {
-					SCSI[addr] = DataBus;
-					SCSI_Check();
-				} else {
-					DataBus = SCSI[addr];
-				}
-			}
+	addr *= 2;
+	if (addr < kSCSI_Size) {
+		if (WriteMem) {
+			SCSI[addr + 1] = Data;
+			SCSI_Check();
+		} else {
+			Data = SCSI[addr];
 		}
 	}
+	return Data;
 }

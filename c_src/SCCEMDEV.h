@@ -1,7 +1,7 @@
 /*
 	SCCEMDEV.h
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,9 +22,11 @@
 
 EXPORTPROC SCC_Reset(void);
 
-EXPORTPROC SCC_Access(CPTR addr);
+EXPORTFUNC ui5b SCC_Access(ui5b Data, blnr WriteMem, CPTR addr);
 
-// VIA Interface Headers
+EXPORTVAR(blnr, SCCInterruptRequest)
+
+/* VIA Interface Headers */
 
 EXPORTFUNC ui3b VIA_GORA7(void);
 EXPORTPROC VIA_PORA7(ui3b Data);

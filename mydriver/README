@@ -4,8 +4,8 @@ www.gryphel.com
 February 23, 2002
 
 The mydriver folder contains source code
-for a fake sony driver that is patched into
-the emulated rom.
+for a replacement disk driver that is patched
+into the emulated rom.
 
 The compiled driver is already in ROMEMDEV.c
 (the initialization of sony_driver variable),

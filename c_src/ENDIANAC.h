@@ -1,7 +1,7 @@
 /*
-	ENDIANAC.c
+	ENDIANAC.h
 
-	Copyright (C) 2002 Bernd Schmidt, Paul Pratt
+	Copyright (C) 2003 Bernd Schmidt, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -40,9 +40,9 @@
 #if BigEndianUnaligned
 #define do_get_mem_word(a) (*((ui4b *)(a)))
 #else
-static MayInline ui4b do_get_mem_word(ui4b *a)
+static MayInline ui4b do_get_mem_word(ui3p a)
 {
-	ui3b *b = (ui3b *)a;
+	ui3b *b = a;
 
 	return (*b << 8) | (*(b+1));
 }
@@ -51,9 +51,9 @@ static MayInline ui4b do_get_mem_word(ui4b *a)
 #if BigEndianUnaligned
 #define do_get_mem_long(a) (*((ui5b *)(a)))
 #else
-static MayInline ui5b do_get_mem_long(ui5b *a)
+static MayInline ui5b do_get_mem_long(ui3p a)
 {
-	ui3b *b = (ui3b *)a;
+	ui3b *b = a;
 
 	return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
 }
@@ -64,9 +64,9 @@ static MayInline ui5b do_get_mem_long(ui5b *a)
 #if BigEndianUnaligned
 #define do_put_mem_word(a, v) ((*((ui4b *)(a))) = (v))
 #else
-static MayInline void do_put_mem_word(ui4b *a, ui4b v)
+static MayInline void do_put_mem_word(ui3p a, ui4b v)
 {
-	ui3b *b = (ui3b *)a;
+	ui3b *b = a;
 
 	*b = v >> 8;
 	*(b+1) = v;
@@ -76,9 +76,9 @@ static MayInline void do_put_mem_word(ui4b *a, ui4b v)
 #if BigEndianUnaligned
 #define do_put_mem_long(a, v) ((*((ui5b *)(a))) = (v))
 #else
-static MayInline void do_put_mem_long(ui5b *a, ui5b v)
+static MayInline void do_put_mem_long(ui3p a, ui5b v)
 {
-	ui3b *b = (ui3b *)a;
+	ui3b *b = a;
 
 	*b = v >> 24;
 	*(b+1) = v >> 16;

@@ -1,5 +1,5 @@
 /*
-	MOUSEMDV.h
+	CONTROLM.h
 
 	Copyright (C) 2003 Philip Cummins, Paul Pratt
 
@@ -14,21 +14,16 @@
 	license for more details.
 */
 
-#ifdef MOUSEMDV_H
+#ifdef CONTROLM_H
 #error "header already included"
 #else
-#define MOUSEMDV_H
+#define CONTROLM_H
 #endif
 
-EXPORTPROC Mouse_Update(void);
+EXPORTVAR(int, CurControlMode)
 
-/* VIA Interface Headers */
+EXPORTPROC DoEnterControlMode(void);
+EXPORTPROC DoLeaveControlMode(void);
+EXPORTPROC DoControlModeKey(int key);
 
-EXPORTFUNC ui3b VIA_GORB5(void); /* Mouse Y2 */
-EXPORTPROC VIA_PORB5(ui3b Data);
-
-EXPORTFUNC ui3b VIA_GORB4(void); /* Mouse X2 */
-EXPORTPROC VIA_PORB4(ui3b Data);
-
-EXPORTFUNC ui3b VIA_GORB3(void); /* Mouse Button */
-EXPORTPROC VIA_PORB3(ui3b Data);
+EXPORTPROC DrawControlMode(void);

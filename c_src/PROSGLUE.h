@@ -1,7 +1,7 @@
 /*
-	PROSGLUE.c
+	PROSGLUE.h
 
-	Copyright (C) 2002 Paul Pratt
+	Copyright (C) 2004 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -46,13 +46,6 @@ GLOBALPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal)
 	UnusedParam(fatal);
 }
 
-GLOBALFUNC blnr OkCancelAlert(char *briefMsg, char *longMsg)
-{
-	UnusedParam(briefMsg);
-	UnusedParam(longMsg);
-	return falseblnr;
-}
-
 GLOBALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 {
 	UnusedParam(top);
@@ -76,145 +69,33 @@ LOCALPROC InitDrives(void)
 
 GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	si4b result;
-
 	UnusedParam(Buffer);
+	UnusedParam(Drive_No);
 	UnusedParam(Sony_Start);
 	UnusedParam(Sony_Count);
-	if (Drive_No < NumDrives) {
-		if (Drives[Drive_No] != NotAfileRef) {
-			result = -1; /*& figure out what really to return &*/
-		} else {
-			result = 0xFFBF; // Say it's offline (-65)
-		}
-	} else {
-		result = 0xFFC8; // No Such Drive (-56)
-	}
-	return result;
+	return -1; /*& figure out what really to return &*/
 }
 
 GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
 {
-	si4b result;
-
 	UnusedParam(Buffer);
+	UnusedParam(Drive_No);
 	UnusedParam(Sony_Start);
 	UnusedParam(Sony_Count);
-	if (Drive_No < NumDrives) {
-		if (Drives[Drive_No] != NotAfileRef) {
-			result = -1; /*& figure out what really to return &*/
-		} else {
-			result = 0xFFBF; // Say it's offline (-65)
-		}
-	} else {
-		result = 0xFFC8; // No Such Drive (-56)
-	}
-	return result;
-}
-
-GLOBALFUNC blnr vSonyDiskLocked(ui4b Drive_No)
-{
-	UnusedParam(Drive_No);
-	return falseblnr;
+	return -1; /*& figure out what really to return &*/
 }
 
 GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
 {
-	si4b result;
-
+	UnusedParam(Drive_No);
 	UnusedParam(Sony_Count);
-	if (Drive_No < NumDrives) {
-		if (Drives[Drive_No] != NotAfileRef) {
-			result = -1; /*& figure out what really to return &*/
-		} else {
-			result = 0xFFBF; // Say it's offline (-65)
-		}
-	} else {
-		result = 0xFFC8; // No Such Drive (-56)
-	}
-	return result;
+	return -1; /*& figure out what really to return &*/
 }
 
 GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
 {
-	si4b result;
-
-	if (Drive_No < NumDrives) {
-		if (Drives[Drive_No] != NotAfileRef) {
-			result = -1; /*& figure out what really to return &*/
-			Drives[Drive_No] = NotAfileRef;
-		}
-		result = 0x0000;
-	} else {
-		result = 0xFFC8; // No Such Drive (-56)
-	}
-	return result;
-}
-
-GLOBALFUNC si4b vSonyVerify(ui4b Drive_No)
-{
-	si4b result;
-
-	if (Drive_No < NumDrives) {
-		if (Drives[Drive_No] != NotAfileRef) {
-			result = 0x0000; // No Error (0)
-		} else {
-			result = 0xFFBF; // Say it's offline (-65)
-		}
-	} else {
-		result = 0xFFC8; // No Such Drive (-56)
-	}
-	return result;
-}
-
-GLOBALFUNC si4b vSonyFormat(ui4b Drive_No)
-{
-	si4b result;
-
-	if (Drive_No < NumDrives) {
-		if (Drives[Drive_No] != NotAfileRef) {
-			result = 0xFFD4; // Write Protected (-44)
-		} else {
-			result = 0xFFBF; // Say it's offline (-65)
-		}
-	} else {
-		result = 0xFFC8; // No Such Drive (-56)
-	}
-	return result;
-}
-
-GLOBALFUNC blnr vSonyInserted (ui4b Drive_No)
-{
-	if (Drive_No >= NumDrives) {
-		return falseblnr;
-	} else {
-		return (Drives[Drive_No] != NotAfileRef);
-	}
-}
-
-LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
-{
-	si4b i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		if (Drives[i] == NotAfileRef) {
-			*Drive_No = i;
-			return trueblnr;
-		}
-	}
-	return falseblnr;
-}
-
-GLOBALFUNC blnr AnyDiskInserted(void)
-{
-	si4b i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		if (Drives[i] != NotAfileRef) {
-			return trueblnr;
-		}
-	}
-	return falseblnr;
+	Drives[Drive_No] = NotAfileRef;
+	return 0x0000;
 }
 
 LOCALFUNC blnr AllocateMacROM(void)
@@ -229,20 +110,14 @@ LOCALFUNC blnr LoadMacRom(void)
 
 LOCALFUNC blnr AllocateMacRAM (void)
 {
-	kRAM_Size = 0x00400000;
 	return falseblnr;
 }
 
-GLOBALFUNC ui5b GetMacDateInSecond(void)
+GLOBALFUNC blnr CheckIntSixtieth(blnr OverDue, blnr NotTooSoon)
 {
-	return 0;
-}
-
-GLOBALFUNC blnr CheckIntSixtieth(blnr overdue)
-{
-	UnusedParam(overdue);
+	UnusedParam(WaitForIt);
 	RequestMacOff = trueblnr;
-	return trueblnr;
+	return NotTooSoon;
 }
 
 LOCALPROC ZapOSGLUVars(void)

@@ -1,7 +1,7 @@
 /*
 	SCRNEMDV.c
 
-	Copyright (C) 2002 Philip Cummins, Richard F. Bannister, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,12 +20,18 @@
 	Emulation of the screen in the Mac Plus.
 
 	This code descended from "Screen-MacOS.c" in Richard F. Bannister's
-	macintosh port of vMac, by Philip Cummins.
+	Macintosh port of vMac, by Philip Cummins.
 */
 
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
+#if UseControlKeys
+#include "CONTROLM.h"
+#endif
+#include "ENDIANAC.h"
+#include "MINEM68K.h"
+#include "ADDRSPAC.h"
 #endif
 
 #include "SCRNEMDV.h"
@@ -71,13 +77,9 @@ LOCALFUNC blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 	return falseblnr;
 }
 
-#define UpdateScreenInterval 1
+LOCALVAR unsigned long NextDrawRow = 0;
 
-#if UpdateScreenInterval != 1
-static unsigned long ScreenTimer = UpdateScreenInterval;
-#endif
-
-// Draw the screen
+/* Draw the screen */
 GLOBALPROC Screen_Draw(void)
 {
 	char *screencurrentbuff;
@@ -86,28 +88,52 @@ GLOBALPROC Screen_Draw(void)
 	long copysize;
 	long copyoffset;
 	long copyrows;
+	unsigned long LimitDrawRow;
+	unsigned long MaxRowsDrawnPerTick;
 
-#if UpdateScreenInterval != 1
-	if (--ScreenTimer != 0) {
-		return;
+	if (TimeAdjust <= 2) {
+		MaxRowsDrawnPerTick = vMacScreenHeight;
+	} else if (TimeAdjust <= 4) {
+		MaxRowsDrawnPerTick = vMacScreenHeight / 2;
+	} else {
+		MaxRowsDrawnPerTick = vMacScreenHeight / 4;
 	}
-	ScreenTimer = UpdateScreenInterval;
-#endif
 
 	if (vPage2 == 1) {
-		screencurrentbuff = (char *) /* get_real_address */ (((ui3b *) RAM) + kMain_Buffer);
+		screencurrentbuff = (char *) get_ram_address(kMain_Buffer);
 	} else {
-		screencurrentbuff = (char *) /* get_real_address */ (((ui3b *) RAM) + kAlternate_Buffer);
+		screencurrentbuff = (char *) get_ram_address(kAlternate_Buffer);
 	}
 
-	if (FindFirstChangeInLVecs((long *)screencurrentbuff,
-			(long *)screencomparebuff,
-			vMacScreenNumBits / 32, &j0))
+#if UseControlKeys
+	if (CurControlMode != 0) {
+		MyMoveBytes((anyp)screencurrentbuff, (anyp)CntrlDisplayBuff, vMacScreenNumBytes);
+		screencurrentbuff = CntrlDisplayBuff;
+
+		DrawControlMode();
+	}
+#endif
+
+	if (! FindFirstChangeInLVecs((long *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
+			(long *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),
+			((long)(vMacScreenHeight - NextDrawRow) * (long)vMacScreenWidth) / 32, &j0))
+	{
+		NextDrawRow = 0;
+		return;
+	}
+	j0 /= (vMacScreenWidth / 32);
+	j0 += NextDrawRow;
+	LimitDrawRow = j0 + MaxRowsDrawnPerTick;
+	if (LimitDrawRow >= vMacScreenHeight) {
+		LimitDrawRow = vMacScreenHeight;
+		NextDrawRow = 0;
+	} else {
+		NextDrawRow = LimitDrawRow;
+	}
 	if (FindLastChangeInLVecs((long *)screencurrentbuff,
 		(long *)screencomparebuff,
-		vMacScreenNumBits / 32, &j1))
+		((long)LimitDrawRow * (long)vMacScreenWidth) / 32, &j1))
 	{
-		j0 /= (vMacScreenWidth / 32);
 		j1 /= (vMacScreenWidth / 32); j1++;
 
 		copyrows = j1 - j0;
@@ -119,9 +145,9 @@ GLOBALPROC Screen_Draw(void)
 	}
 }
 
-// VIA Interface Functions
+/* VIA Interface Functions */
 
-GLOBALFUNC ui3b VIA_GORA6(void) // Main/Alternate Screen Buffer
+GLOBALFUNC ui3b VIA_GORA6(void) /* Main/Alternate Screen Buffer */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA6 attempts to be an input\n");
@@ -134,9 +160,9 @@ GLOBALPROC VIA_PORA6(ui3b Data)
 	vPage2 = Data;
 }
 
-GLOBALFUNC ui3b VIA_GORB6(void) // Video Beam in Display
+GLOBALFUNC ui3b VIA_GORB6(void) /* Video Beam in Display */
 {
-	return 0; // Assume it is
+	return 0; /* Assume it is */
 }
 
 GLOBALPROC VIA_PORB6(ui3b Data)

@@ -1,6 +1,6 @@
 /*
 	setup.c
-	Copyright (C) 2003 Paul Pratt
+	Copyright (C) 2004 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,25 +22,31 @@
 
 #define kStrAppName "Mini vMac"
 #define kStrAppAbbrev "minivmac" /* [a-z0-9_]{1,8} */
-#define kMajorVersion "1"
-#define kMinorVersion "0"
+#define kMajorVersion "2"
+#define kMinorVersion "5"
 #define kMinorSubVersion "0"
-#define kStrCopyrightYear "2003"
+#define kStrCopyrightYear "2004"
 #define kMaintainerName "Paul C. Pratt"
-#define kStrHomePage "http://www.gryphel.com/c/minivmac"
+#define kStrHomePage "http://minivmac.sourceforge.net"
 #define kMacCreatorSig "MnvM"
 #define kBundleIdentifier "com.gryphel.minivmac"
 #define kShortDescription "miniature Macintosh emulator"
 
 /* --- list of source files --- */
 
+#ifndef UsePragmaSegment
+#define UsePragmaSegment 0
+#endif
+
+#if UsePragmaSegment
+#pragma segment Seg1
+#endif
+
 typedef void (*tDoOneExtraHeader)(char *s);
 
 static void DoAllExtraHeaders(tDoOneExtraHeader p)
 {
 	p("SYSDEPNS.h");
-	p("RESIDMAC.h");
-	p("RESIDWIN.h");
 	p("DATE2SEC.h");
 	p("POSTKEYS.h");
 	p("ENDIANAC.h");
@@ -64,26 +70,27 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 
 typedef void (*tDoDependsForC)(tDoOneDepends p);
 
-typedef void (*tDoOneCFile)(char *s, blnr fast, tDoDependsForC depends);
+typedef void (*tDoOneCFile)(char *s, blnr AsmAvail, tDoDependsForC depends);
 
 static void DoAllSrcFiles(tDoOneCFile p)
 {
-	p("MYOSGLUE", trueblnr, DoMYOSGLUEdepends);
-	p("GLOBGLUE", trueblnr, nullpr);
-	p("ADDRSPAC", trueblnr, nullpr);
+	p("MYOSGLUE", falseblnr, DoMYOSGLUEdepends);
 	p("MINEM68K", trueblnr, nullpr);
-	p("PROGMAIN", trueblnr, nullpr);
-	p("VIAEMDEV", trueblnr, nullpr);
-	p("IWMEMDEV", trueblnr, nullpr);
-	p("SCCEMDEV", trueblnr, nullpr);
-	p("RTCEMDEV", trueblnr, nullpr);
-	p("ROMEMDEV", trueblnr, nullpr);
-	p("SCSIEMDV", trueblnr, nullpr);
-	p("SONYEMDV", trueblnr, nullpr);
-	p("SNDEMDEV", trueblnr, nullpr);
-	p("SCRNEMDV", trueblnr, nullpr);
-	p("KBRDEMDV", trueblnr, nullpr);
-	p("MOUSEMDV", trueblnr, nullpr);
+	p("GLOBGLUE", falseblnr, nullpr);
+	p("ADDRSPAC", falseblnr, nullpr);
+	p("PROGMAIN", falseblnr, nullpr);
+	p("CONTROLM", falseblnr, nullpr);
+	p("VIAEMDEV", falseblnr, nullpr);
+	p("IWMEMDEV", falseblnr, nullpr);
+	p("SCCEMDEV", falseblnr, nullpr);
+	p("RTCEMDEV", falseblnr, nullpr);
+	p("ROMEMDEV", falseblnr, nullpr);
+	p("SCSIEMDV", falseblnr, nullpr);
+	p("SONYEMDV", falseblnr, nullpr);
+	p("SNDEMDEV", falseblnr, nullpr);
+	p("SCRNEMDV", falseblnr, nullpr);
+	p("KBRDEMDV", falseblnr, nullpr);
+	p("MOUSEMDV", falseblnr, nullpr);
 }
 
 /* --- list of document types --- */
@@ -201,6 +208,12 @@ static int CurUseAbsolute = TheUseAbsolute;
 #endif
 
 static int CurPrintCFiles = ThePrintCFiles;
+
+#ifndef AllowAsm
+#define AllowAsm 1
+#endif
+
+static blnr HaveAsm = falseblnr;
 
 /* --- end of definition of options --- */
 
@@ -378,6 +391,24 @@ static blnr FindNamedOption(char *s, int n, tGetName p, int *r)
 	return falseblnr;
 }
 
+static blnr IsVersionQuerry(int argc, char *argv[])
+{
+	if (1 < argc) {
+		if (strcmp(argv[1], "-v") == 0) {
+			WriteCStrToOutput(kStrAppAbbrev);
+			WriteCStrToOutput("-");
+			WriteCStrToOutput(kMajorVersion);
+			WriteCStrToOutput(".");
+			WriteCStrToOutput(kMinorVersion);
+			WriteCStrToOutput(".");
+			WriteCStrToOutput(kMinorSubVersion);
+			WriteEolToOutput();
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
+
 static blnr ProcessCommandLineArguments(int argc, char *argv[])
 {
 	char *s;
@@ -426,17 +457,6 @@ static blnr ProcessCommandLineArguments(int argc, char *argv[])
 		} else
 		if (strcmp(s, "-l") == 0) {
 			CurPrintCFiles = trueblnr;
-		} else
-		if (strcmp(s, "-v") == 0) {
-			WriteCStrToOutput(kStrAppAbbrev);
-			WriteCStrToOutput("-");
-			WriteCStrToOutput(kMajorVersion);
-			WriteCStrToOutput(".");
-			WriteCStrToOutput(kMinorVersion);
-			WriteCStrToOutput(".");
-			WriteCStrToOutput(kMinorSubVersion);
-			WriteEolToOutput();
-			return falseblnr;
 		} else
 		{
 			fprintf(stderr, "unknown switch\n");
@@ -515,12 +535,24 @@ static void AutoChooseSettings(void)
 	}
 
 	ChooseCPUFam();
+
+	if (AllowAsm) {
+		if (TheCPUFam == kCPUFamPPC) {
+			if (! ((CurTarget == kTargMacho) && (CurIde == kIdeMW8))) {
+				HaveAsm = trueblnr;
+			}
+		}
+	}
 }
 
 /* --- end of choosing options --- */
 
 
 /* --- code specific to Scripting Language --- */
+
+#if UsePragmaSegment
+#pragma segment Seg3
+#endif
 
 static void WriteScriptLangExtension(void)
 {
@@ -573,6 +605,10 @@ static void WriteSectionCommentDestFile(char * Description)
 	WriteEolToOutput();
 }
 
+#ifndef MPWOneEchoPerFile
+#define MPWOneEchoPerFile 1
+#endif
+
 static void WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt, char * Description)
 {
 	WriteSectionCommentDestFile(Description);
@@ -580,6 +616,15 @@ static void WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt, char 
 	WriteEolToOutput();
 	switch (CurScriptLang) {
 		case kScriptMPW:
+#if MPWOneEchoPerFile
+			WriteCStrToOutput("Echo -n > \"{");
+			WriteCStrToOutput(DirVar);
+			WriteCStrToOutput("}");
+			WriteCStrToOutput(FileName);
+			WriteCStrToOutput(FileExt);
+			WriteCStrToOutput("\" \266");
+			WriteEolToOutput();
+#else
 			WriteCStrToOutput("Set DestFile \"{");
 			WriteCStrToOutput(DirVar);
 			WriteCStrToOutput("}");
@@ -588,6 +633,8 @@ static void WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt, char 
 			WriteCStrToOutput("\"");
 			WriteEolToOutput();
 			WriteLnCStrToOutput("Echo -n > \"{DestFile}\"");
+			WriteEolToOutput();
+#endif
 			break;
 		case kScriptAppleScript:
 			WriteCStrToOutput("\tset DestFile to open for access file (");
@@ -596,6 +643,7 @@ static void WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt, char 
 			WriteCStrToOutput(FileName);
 			WriteCStrToOutput(FileExt);
 			WriteCStrToOutput("\") with write permission");
+			WriteEolToOutput();
 			WriteEolToOutput();
 			WriteLnCStrToOutput("\tset eof DestFile to 0");
 			break;
@@ -608,6 +656,7 @@ static void WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt, char 
 			WriteCStrToOutput("\"");
 			WriteEolToOutput();
 			WriteLnCStrToOutput("echo -n > \"${DestFile}\"");
+			WriteEolToOutput();
 			break;
 		case kScriptVBScript:
 			WriteCStrToOutput("Set f = fso.CreateTextFile(");
@@ -617,15 +666,18 @@ static void WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt, char 
 			WriteCStrToOutput(FileExt);
 			WriteCStrToOutput("\", True)");
 			WriteEolToOutput();
+			WriteEolToOutput();
 			break;
 	}
-	WriteEolToOutput();
 }
 
 static void WriteCloseDestFile(void)
 {
 	switch (CurScriptLang) {
 		case kScriptMPW:
+#if MPWOneEchoPerFile
+			WriteLnCStrToOutput("''");
+#endif
 			break;
 		case kScriptAppleScript:
 			WriteEolToOutput();
@@ -644,7 +696,11 @@ static void WriteBlankLineToDestFile(void)
 {
 	switch (CurScriptLang) {
 		case kScriptMPW:
+#if MPWOneEchoPerFile
+			WriteLnCStrToOutput("''\266n\266");
+#else
 			WriteLnCStrToOutput("Echo '' >> \"{DestFile}\"");
+#endif
 			break;
 		case kScriptAppleScript:
 			WriteLnCStrToOutput("\twrite \"\" & return to DestFile");
@@ -666,7 +722,11 @@ static void WriteBgnDestFileLn(void)
 
 	switch (CurScriptLang) {
 		case kScriptMPW:
+#if MPWOneEchoPerFile
+			WriteCStrToOutput("'");
+#else
 			WriteCStrToOutput("Echo '");
+#endif
 			break;
 		case kScriptAppleScript:
 			WriteCStrToOutput("\twrite \"");
@@ -687,7 +747,11 @@ static void WriteEndDestFileLn(void)
 {
 	switch (CurScriptLang) {
 		case kScriptMPW:
+#if MPWOneEchoPerFile
+			WriteCStrToOutput("'\266n\266");
+#else
 			WriteCStrToOutput("' >> \"{DestFile}\"");
+#endif
 			break;
 		case kScriptAppleScript:
 			WriteCStrToOutput("\" & return to DestFile");
@@ -1080,7 +1144,13 @@ static void WriteStartScript(void)
 
 			/* make sure we have an absolute path */
 			WriteEolToOutput();
+#if 0
 			WriteLnCStrToOutput("Set my_output_d \"`ResolveAlias \"{1}\"`\"");
+#endif
+			WriteLnCStrToOutput("Set save_pwd \"`Directory -q`\"");
+			WriteLnCStrToOutput("Directory \"{1}\"");
+			WriteLnCStrToOutput("Set my_output_d \"`Directory`\"");
+			WriteLnCStrToOutput("Directory \"{save_pwd}\"");
 
 			WriteEolToOutput();
 			if (CurUseAbsolute) {
@@ -1089,7 +1159,13 @@ static void WriteStartScript(void)
 				WriteLnCStrToOutput("\tEcho \"{my_source_d} is not an existing directory\"");
 				WriteLnCStrToOutput("\tExit 1");
 				WriteLnCStrToOutput("END");
+#if 0
 				WriteLnCStrToOutput("Set my_source_d \"`ResolveAlias \"{my_source_d}\"`\"");
+#endif
+				WriteLnCStrToOutput("Set save_pwd \"`Directory -q`\"");
+				WriteLnCStrToOutput("Directory \"{my_source_d}\"");
+				WriteLnCStrToOutput("Set my_source_d \"`Directory`\"");
+				WriteLnCStrToOutput("Directory \"{save_pwd}\"");
 			}
 			break;
 		case kScriptAppleScript:
@@ -1239,6 +1315,10 @@ static void WriteEndScript(void)
 /* --- end of code specific to Scripting Language --- */
 
 
+#if UsePragmaSegment
+#pragma segment Seg4
+#endif
+
 static void WriteVersionStr(void)
 {
 	WriteCStrToOutput(kMajorVersion);
@@ -1297,6 +1377,9 @@ static void WriteFindSourceDirectories(void)
 	WriteSectionCommentDestFile("find source directories");
 
 	FindSubDirectory("my_c_src_d", "my_source_d", "c_src");
+	if (HaveAsm) {
+		FindSubDirectory("my_a_src_d", "my_source_d", "a_src");
+	}
 	FindSubDirectory("my_platform_d", "my_source_d", "platform");
 	if (CurTarget == kTargWinx86) {
 		FindSubDirectory("my_rz_src_d", "my_platform_d", "win");
@@ -1317,6 +1400,11 @@ static void WriteMakeOutputDirectories(void)
 		MakeSubDirectory("my_proj_d", "my_output_d", kStrAppAbbrev, ".pbproj");
 	} else if (CurIde != kIdeMW8) {
 		MakeSubDirectory("my_obj_d", "my_output_d", "obj", "");
+
+		WriteOpenDestFile("my_obj_d", "dummy", "", "Dummy");
+		WriteDestFileLn("This file is here because some archive extraction");
+		WriteDestFileLn("software will not create an empty directory.");
+		WriteCloseDestFile();
 	}
 }
 
@@ -1490,13 +1578,12 @@ static void WriteCommonCNFGGLOB(void)
 			WriteDestFileLn("#define BigEndianUnaligned 1");
 			break;
 	}
+	if (kCPUFam68K == TheCPUFam) {
+		WriteDestFileLn("#define HaveCPUfamM68K 1");
+	}
 
 	if (CurIde == kIdeMW8) {
 		WriteDestFileLn("#define MayInline __inline__");
-	} else if (CurIde == kIdeMPW3_6_a1) {
-		if (TheCPUFam == kCPUFamPPC) {
-			WriteDestFileLn("#define MayInline inline");
-		}
 	} else if (CurIde == kIdeMSVC) {
 		WriteDestFileLn("#define MayInline __forceinline");
 	}
@@ -1532,6 +1619,17 @@ static void WriteCommonCNFGGLOB(void)
 		case kTargMacX11:
 		case kTargLinuxx86:
 			WriteDestFileLn("#define XWnTarget 1");
+			break;
+	}
+
+	switch (CurTarget) {
+		case kTargMac68K:
+		case kTargMac68KFPU:
+		case kTargClassicPPC:
+		case kTargCarbon:
+		case kTargMacho:
+		case kTargWinx86:
+			WriteDestFileLn("#define MySoundEnabled 1");
 			break;
 	}
 
@@ -1592,6 +1690,10 @@ static void WriteCommonCNFGGLOB(void)
 			WriteDestFileLn("#endif");
 		}
 	}
+	
+	if (kCPUFam68K == TheCPUFam) {
+		WriteDestFileLn("#define CurEmu kEmuPlus2M");
+	}
 
 	WriteBlankLineToDestFile();
 
@@ -1620,10 +1722,11 @@ static void WriteCommonCNFGRAPI(void)
 		WriteDestFileLn("#include <time.h>");
 		WriteDestFileLn("#include <sys/time.h>");
 		WriteDestFileLn("#include <sys/times.h>");
-		WriteDestFileLn("#include </usr/X11R6/include/X11/Xlib.h>");
-		WriteDestFileLn("#include </usr/X11R6/include/X11/Xutil.h>");
-		WriteDestFileLn("#include </usr/X11R6/include/X11/keysym.h>");
-		WriteDestFileLn("#include </usr/X11R6/include/X11/keysymdef.h>");
+		WriteDestFileLn("#include <X11/Xlib.h>");
+		WriteDestFileLn("#include <X11/Xutil.h>");
+		WriteDestFileLn("#include <X11/keysym.h>");
+		WriteDestFileLn("#include <X11/keysymdef.h>");
+		WriteDestFileLn("#include <X11/Xatom.h>");
 	} else if (CurTarget == kTargCarbon) {
 		/* kIdeMW8 or kIdeMPW3_6_a1 */
 		if (CurIde == kIdeMW8) {
@@ -1638,10 +1741,15 @@ static void WriteCommonCNFGRAPI(void)
 		} else {
 			WriteDestFileLn("#include <windows.h>");
 			WriteDestFileLn("#include <time.h>");
+			if (CurIde == kIdeLccW32) {
+				WriteDestFileLn("#include <shellapi.h>");
+				WriteDestFileLn("#include <mmsystem.h>");
+			}
 		}
 	} else {
 		if (CurIde == kIdeMW8) {
 			WriteDestFileLn("#include <MacHeaders.h>");
+			WriteDestFileLn("#include <CursorDevices.h>");
 			WriteDestFileLn("#define ShouldDefineQDGlobals 0");
 		} else if (CurIde == kIdeMPW3_6_a1) {
 			WriteDestFileLn("#include <MacTypes.h>");
@@ -1686,9 +1794,9 @@ static void WriteCommonCNFGRAPI(void)
 			WriteDestFileLn("#include <LowMem.h>");
 			WriteDestFileLn("#include <Appearance.h>");
 			WriteDestFileLn("#include <Navigation.h>");
-			if (TheCPUFam == kCPUFam68K) {
-				WriteDestFileLn("#include <Traps.h>");
-			}
+			WriteDestFileLn("#include <Sound.h>");
+			WriteDestFileLn("#include <CursorDevices.h>");
+			WriteDestFileLn("#include <Traps.h>");
 		}
 	}
 	if (CurIde == kIdeMSVC) {
@@ -1701,19 +1809,8 @@ static void WriteCommonCNFGRAPI(void)
 		if (CurIde == kIdeMPW3_6_a1) {
 			WriteBlankLineToDestFile();
 			WriteDestFileLn("#define ShouldUnloadDataInit 1");
+			WriteDestFileLn("#define Windows85APIAvail 0");
 		}
-	}
-
-	switch (CurTarget) {
-		case kTargMac68K:
-		case kTargMac68KFPU:
-		case kTargClassicPPC:
-		case kTargCarbon:
-		case kTargMacho:
-			WriteDestFileLn("#define NavigationAvail 1");
-			WriteDestFileLn("#define AppearanceAvail 1");
-			WriteDestFileLn("#define DragMgrAvail 1");
-			break;
 	}
 
 	if (CurTarget == kTargMacho) {
@@ -2049,7 +2146,7 @@ static void WriteCommonCNFGRSRC(void)
 				WriteDestFileLn("ignoreChildDiedEvents,");
 				WriteDestFileLn("is32BitCompatible,");
 
-				/* follow 4 should be "reserved" if api not available */
+				/* following 4 should be "reserved" if api not available */
 				WriteDestFileLn("isHighLevelEventAware,");
 				WriteDestFileLn("localAndRemoteHLEvents,");
 				WriteDestFileLn("isStationeryAware,");
@@ -2116,10 +2213,6 @@ static void WriteCommonCNFGRSRC(void)
 		WriteBlankLineToDestFile();
 		WriteQuotedInclude("AppIcon.r");
 		DoAllDocTypes(WriteDocTypeIncludeIconFile);
-	}
-
-	if ((CurTarget == kTargCarbon) || (CurTarget == kTargMacho)) {
-		WriteDestFileLn("#define UseCarbonLib 1");
 	}
 
 	WriteCloseDestFile();
@@ -2392,7 +2485,6 @@ static void WriteConfigFiles(void)
 		case kTargMac68KFPU:
 		case kTargClassicPPC:
 		case kTargCarbon:
-		case kTargMacho:
 			WriteCommonCNFGRSRC();
 			break;
 	}
@@ -2437,19 +2529,19 @@ static void Write_source_d_ToDestFile(void)
 		switch (CurIde) {
 			case kIdeMW8:
 			case kIdeMPW3_6_a1:
-				WriteCStrToOutput("::source:");
+				WriteCStrToOutput(":::source:");
 				break;
 			case kIdeBashGcc:
 			case kIdeAPB:
 			case kIdeRH7:
-				WriteCStrToOutput("../source/");
+				WriteCStrToOutput("../../source/");
 				break;
 			case kIdeMSVC:
 			case kIdeDevC:
-				WriteCStrToOutput("..\\source");
+				WriteCStrToOutput("..\\..\\source");
 				break;
 			case kIdeLccW32:
-				WriteCStrToOutput("c:\\output\\..\\source");
+				WriteCStrToOutput("c:\\output\\..\\..\\source");
 				break;
 		}
 	} else {
@@ -2513,6 +2605,29 @@ static void Write_c_src_d_ToDestFile(void)
 	}
 }
 
+static void Write_a0_src_d_ToDestFile(void)
+{
+	if (! CurUseAbsolute) {
+		WriteSubDirToDestFile(Write_source_d_ToDestFile, "a_src");
+	} else {
+		WriteScriptVarToDestFile("my_a_src_d");
+	}
+}
+
+static void Write_a1_src_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_a0_src_d_ToDestFile, "ppc");
+}
+
+static void Write_a_src_d_ToDestFile(void)
+{
+	if (CurTarget == kTargMacho) {
+		WriteSubDirToDestFile(Write_a1_src_d_ToDestFile, "as");
+	} else {
+		WriteSubDirToDestFile(Write_a1_src_d_ToDestFile, "ppcasm");
+	}
+}
+
 static void Write_platform_d_ToDestFile(void)
 {
 	if (! CurUseAbsolute) {
@@ -2555,10 +2670,10 @@ static void Write_obj_d_ToDestFile(void)
 
 static unsigned int FileCounter;
 
-static void DoSrcFileIncrFileCounter(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileIncrFileCounter(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
 	UnusedParam(s);
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	++FileCounter;
 }
@@ -2585,9 +2700,9 @@ static void DoSrcDependsAddToList(char *s)
 	WriteFileToCFilesList(Write_c_src_d_ToDestFile, s, "");
 }
 
-static void DoSrcFileAddToList(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileAddToList(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	WriteFileToCFilesList(Write_c_src_d_ToDestFile, s, ".h");
 	WriteFileToCFilesList(Write_c_src_d_ToDestFile, s, ".c");
 
@@ -2634,7 +2749,7 @@ static void WriteCommonCOptions(blnr fast)
 			}
 			WriteCStrToOutput(" -model farCode");
 		} else if (TheCPUFam == kCPUFamPPC) {
-			WriteCStrToOutput(" -w 17");
+			WriteCStrToOutput(" -proto strict -w 17");
 			if (CurDbgLvl != kDbgLvlShip) {
 				WriteCStrToOutput(" -traceback");
 			}
@@ -2683,6 +2798,19 @@ static void WriteCommonCOptions(blnr fast)
 	}
 }
 
+static void WriteSrcSuffix(blnr AsmAvail)
+{
+	if (AsmAvail && HaveAsm) {
+		WriteCStrToOutput(".s");
+	} else {
+		WriteCStrToOutput(".c");
+	}
+}
+
+#if UsePragmaSegment
+#pragma segment Seg6
+#endif
+
 static void DoSrcDependsMPWMakeCompile(char *s)
 {
 	WriteCStrToOutput(" ");
@@ -2692,19 +2820,23 @@ static void DoSrcDependsMPWMakeCompile(char *s)
 	WriteQuoteToDestFile();
 }
 
-static void DoSrcFileMPWMakeCompile(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileMPWMakeCompile(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
 	WriteBgnDestFileLn();
 	WriteQuoteToDestFile();
 	WriteCStrToOutput("{mk_obj_d}");
 	WriteCStrToOutput(s);
-	WriteCStrToOutput(".c.o");
+	WriteCStrToOutput(".o");
 	WriteQuoteToDestFile();
 	WriteCStrToOutput(" \304 ");
 	WriteQuoteToDestFile();
-	WriteCStrToOutput("{mk_c_src_d}");
+	if (AsmAvail && HaveAsm) {
+		WriteCStrToOutput("{mk_a_src_d}");
+	} else {
+		WriteCStrToOutput("{mk_c_src_d}");
+	}
 	WriteCStrToOutput(s);
-	WriteCStrToOutput(".c");
+	WriteSrcSuffix(AsmAvail);
 	WriteQuoteToDestFile();
 	if (depends != nullpr) {
 		depends(DoSrcDependsMPWMakeCompile);
@@ -2713,36 +2845,42 @@ static void DoSrcFileMPWMakeCompile(char *s, blnr fast, tDoDependsForC depends)
 
 	++DestFileIndent;
 		WriteBgnDestFileLn();
-		WriteCStrToOutput("{mk_CallC} ");
+		if (AsmAvail && HaveAsm) {
+			WriteCStrToOutput("{mk_CallA} ");
+		} else {
+			WriteCStrToOutput("{mk_CallC} ");
+		}
 		WriteQuoteToDestFile();
-		WriteCStrToOutput("{mk_c_src_d}");
+		if (AsmAvail && HaveAsm) {
+			WriteCStrToOutput("{mk_a_src_d}");
+		} else {
+			WriteCStrToOutput("{mk_c_src_d}");
+		}
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c");
+		WriteSrcSuffix(AsmAvail);
 		WriteQuoteToDestFile();
 		WriteCStrToOutput(" -o ");
 		WriteQuoteToDestFile();
 		WriteCStrToOutput("{mk_obj_d}");
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c.o");
+		WriteCStrToOutput(".o");
 		WriteQuoteToDestFile();
-		if (fast) {
-			WriteCStrToOutput(" {mk_CFastOptions}");
-		} else {
+		if (! (AsmAvail && HaveAsm)) {
 			WriteCStrToOutput(" {mk_COptions}");
 		}
 		WriteEndDestFileLn();
 	--DestFileIndent;
 }
 
-static void DoSrcFileMPWMakeObjects(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileMPWMakeObjects(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBgnDestFileLn();
 	WriteQuoteToDestFile();
 	WriteCStrToOutput("{mk_obj_d}");
 	WriteCStrToOutput(s);
-	WriteCStrToOutput(".c.o");
+	WriteCStrToOutput(".o");
 	WriteQuoteToDestFile();
 	WriteCStrToOutput(" \266");
 	WriteEndDestFileLn();
@@ -2784,12 +2922,15 @@ static void WriteMPWSpecificFiles(void)
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("mk_c_src_d = {mk_source_d}c_src:");
+	if (HaveAsm) {
+		WriteDestFileLn("mk_a_src_d = {mk_source_d}a_src:ppc:ppcasm:");
+	}
 	WriteDestFileLn("mk_rz_src_d = {mk_source_d}platform:mac:");
 	WriteBlankLineToDestFile();
 	if (TheCPUFam == kCPUFam68K) {
 		WriteDestFileLn("mk_CallC = SC");
 	} else if (TheCPUFam == kCPUFamPPC) {
-		WriteDestFileLn("mk_CallC = MrCpp");
+		WriteDestFileLn("mk_CallC = MrC");
 	}
 
 	WriteBgnDestFileLn();
@@ -2797,13 +2938,11 @@ static void WriteMPWSpecificFiles(void)
 	WriteCommonCOptions(falseblnr);
 	WriteEndDestFileLn();
 
-	WriteBgnDestFileLn();
-	WriteCStrToOutput("mk_CFastOptions =");
-	WriteCommonCOptions(trueblnr);
-	WriteEndDestFileLn();
+	if (HaveAsm) {
+		WriteDestFileLn("mk_CallA = PPCAsm");
+	}
 
 	WriteBlankLineToDestFile();
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("LibFiles = \266");
 	++DestFileIndent;
@@ -2827,30 +2966,26 @@ static void WriteMPWSpecificFiles(void)
 		} else if (CurTarget == kTargMac68K) {
 			WriteDestFileLn("\"{Libraries}Interface.o\" \266");
 			WriteDestFileLn("\"{Libraries}MacRuntime.o\" \266");
-			WriteDestFileLn("\"{Libraries}MathLib.o\" \266");
+			/* WriteDestFileLn("\"{Libraries}MathLib.o\" \266"); */
 			WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 		} else if (CurTarget == kTargMac68KFPU) {
 			WriteDestFileLn("\"{Libraries}Interface.o\" \266");
 			WriteDestFileLn("\"{Libraries}MacRuntime.o\" \266");
-			WriteDestFileLn("\"{Libraries}MathLib881.o\" \266");
+			/* WriteDestFileLn("\"{Libraries}MathLib881.o\" \266"); */
 			WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 		}
 	--DestFileIndent;
 	WriteBlankLineToDestFile();
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("TheApplication \304 \"{mk_built_program}\"");
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	DoAllSrcFiles(DoSrcFileMPWMakeCompile);
 	WriteBlankLineToDestFile();
-	WriteEolToOutput();
 	WriteDestFileLn("ObjFiles = \266");
 	++DestFileIndent;
 		DoAllSrcFiles(DoSrcFileMPWMakeObjects);
 	--DestFileIndent;
 	WriteBlankLineToDestFile();
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("\"{mk_obj_d}main.rsrc\" \304 \"{mk_rz_src_d}main.r\"");
 	++DestFileIndent;
@@ -2891,6 +3026,10 @@ static void WriteMPWSpecificFiles(void)
 	WriteCloseDestFile();
 
 }
+
+#if UsePragmaSegment
+#pragma segment Seg7
+#endif
 
 static void WriteXMLtagSettingNameProcVal(char *n, MyProc v)
 {
@@ -2940,6 +3079,8 @@ static void WriteMWLibs(tWriteMWLib p)
 		p("gdi32.lib");
 		p("kernel32.lib");
 		p("user32.lib");
+		p("shell32.lib");
+		p("winmm.lib");
 		p("MSL_All_x86.lib");
 	} else if (CurTarget == kTargMacho) {
 		p("crt1.o");
@@ -3136,9 +3277,9 @@ static void WriteDocTypeMWGroupList(
 	WriteMWSource_icnsGroupList(ShortName);
 }
 
-static void DoSrcFileMW8AddFile(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileMW8AddFile(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBeginXMLtagLine("FILE");
 		WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
@@ -3146,7 +3287,7 @@ static void DoSrcFileMW8AddFile(char *s, blnr fast, tDoDependsForC depends)
 		WriteBgnDestFileLn();
 		WriteXMLtagBegin("PATH");
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c");
+		WriteSrcSuffix(AsmAvail);
 		WriteXMLtagEnd("PATH");
 		WriteEndDestFileLn();
 
@@ -3160,9 +3301,9 @@ static void DoSrcFileMW8AddFile(char *s, blnr fast, tDoDependsForC depends)
 	WriteEndXMLtagLine("FILE");
 }
 
-static void DoSrcFileMW8sMakeObjects(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileMW8sMakeObjects(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBeginXMLtagLine("FILEREF");
 		WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
@@ -3170,7 +3311,7 @@ static void DoSrcFileMW8sMakeObjects(char *s, blnr fast, tDoDependsForC depends)
 		WriteBgnDestFileLn();
 		WriteXMLtagBegin("PATH");
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c");
+		WriteSrcSuffix(AsmAvail);
 		WriteXMLtagEnd("PATH");
 		WriteEndDestFileLn();
 
@@ -3178,9 +3319,9 @@ static void DoSrcFileMW8sMakeObjects(char *s, blnr fast, tDoDependsForC depends)
 	WriteEndXMLtagLine("FILEREF");
 }
 
-static void DoSrcFileMW8GroupList(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileMW8GroupList(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBeginXMLtagLine("FILEREF");
 		WriteAllMWTargetName();
@@ -3189,7 +3330,7 @@ static void DoSrcFileMW8GroupList(char *s, blnr fast, tDoDependsForC depends)
 		WriteBgnDestFileLn();
 		WriteXMLtagBegin("PATH");
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c");
+		WriteSrcSuffix(AsmAvail);
 		WriteXMLtagEnd("PATH");
 		WriteEndDestFileLn();
 
@@ -3243,6 +3384,9 @@ static void WriteMetrowerksSpecificFiles(void)
 			WriteBeginNamedSettingXMLtagLine("UserSearchPaths");
 				WriteMWDrvRelSearchPath(":config:");
 				WriteMWProjRelSearchPath(Write_c_src_d_ToDestFile);
+				if (HaveAsm) {
+					WriteMWProjRelSearchPath(Write_a_src_d_ToDestFile);
+				}
 				WriteMWProjRelSearchPath(Write_rz_src_ToDestFile);
 				if (CurTarget == kTargMacho) {
 					/* seems to be wanted by propertly list compiler */
@@ -3527,6 +3671,16 @@ static void WriteMetrowerksSpecificFiles(void)
 					WriteXMLtagBeginValEndLine("FILEKIND", "Text");
 					WriteXMLtagBeginValEndLine("FILEFLAGS", "");
 				WriteEndXMLtagLine("FILE");
+			} else if (CurTarget == kTargMacho) {
+				WriteBeginXMLtagLine("FILE");
+					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
+					WriteXMLtagBeginValEndLine("PATH", "main.plc");
+					WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
+					WriteXMLtagBeginValEndLine("FILEKIND", "Text");
+					WriteXMLtagBeginValEndLine("FILEFLAGS", "Debug");
+				WriteEndXMLtagLine("FILE");
+				WriteMWSource_icnsAddFile("App");
+				DoAllDocTypes(WriteDocTypeMWAddFile);
 			} else {
 				WriteBeginXMLtagLine("FILE");
 					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
@@ -3535,17 +3689,6 @@ static void WriteMetrowerksSpecificFiles(void)
 					WriteXMLtagBeginValEndLine("FILEKIND", "Text");
 					WriteXMLtagBeginValEndLine("FILEFLAGS", "");
 				WriteEndXMLtagLine("FILE");
-				if (CurTarget == kTargMacho) {
-					WriteBeginXMLtagLine("FILE");
-						WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
-						WriteXMLtagBeginValEndLine("PATH", "main.plc");
-						WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
-						WriteXMLtagBeginValEndLine("FILEKIND", "Text");
-						WriteXMLtagBeginValEndLine("FILEFLAGS", "Debug");
-					WriteEndXMLtagLine("FILE");
-					WriteMWSource_icnsAddFile("App");
-					DoAllDocTypes(WriteDocTypeMWAddFile);
-				}
 			}
 			DoAllSrcFiles(DoSrcFileMW8AddFile);
 		WriteEndXMLtagLine("FILELIST");
@@ -3558,21 +3701,20 @@ static void WriteMetrowerksSpecificFiles(void)
 					WriteXMLtagBeginValEndLine("PATH", "main.RC");
 					WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
 				WriteEndXMLtagLine("FILEREF");
+			} else if (CurTarget == kTargMacho) {
+				WriteBeginXMLtagLine("FILEREF");
+					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
+					WriteXMLtagBeginValEndLine("PATH", "main.plc");
+					WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
+				WriteEndXMLtagLine("FILEREF");
+				WriteMWSource_icnsMakeObjects("App");
+				DoAllDocTypes(WriteDocTypeMWMakeObjects);
 			} else {
 				WriteBeginXMLtagLine("FILEREF");
 					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 					WriteXMLtagBeginValEndLine("PATH", "main.r");
 					WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
 				WriteEndXMLtagLine("FILEREF");
-				if (CurTarget == kTargMacho) {
-					WriteBeginXMLtagLine("FILEREF");
-						WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
-						WriteXMLtagBeginValEndLine("PATH", "main.plc");
-						WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
-					WriteEndXMLtagLine("FILEREF");
-					WriteMWSource_icnsMakeObjects("App");
-					DoAllDocTypes(WriteDocTypeMWMakeObjects);
-				}
 			}
 			DoAllSrcFiles(DoSrcFileMW8sMakeObjects);
 		WriteEndXMLtagLine("LINKORDER");
@@ -3623,18 +3765,14 @@ static void WriteMetrowerksSpecificFiles(void)
 				WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 				if (CurTarget == kTargWinx86) {
 					WriteXMLtagBeginValEndLine("PATH", "main.RC");
+				} else if (CurTarget == kTargMacho) {
+					WriteXMLtagBeginValEndLine("PATH", "main.plc");
 				} else {
 					WriteXMLtagBeginValEndLine("PATH", "main.r");
 				}
 				WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
 			WriteEndXMLtagLine("FILEREF");
 			if (CurTarget == kTargMacho) {
-				WriteBeginXMLtagLine("FILEREF");
-					WriteAllMWTargetName();
-					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
-					WriteXMLtagBeginValEndLine("PATH", "main.plc");
-					WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
-				WriteEndXMLtagLine("FILEREF");
 				WriteMWSource_icnsGroupList("App");
 				DoAllDocTypes(WriteDocTypeMWGroupList);
 			}
@@ -3648,20 +3786,34 @@ static void WriteMetrowerksSpecificFiles(void)
 	WriteCloseDestFile();
 }
 
+#if UsePragmaSegment
+#pragma segment Seg8
+#endif
+
 static void DoSrcDependsBgcMakeCompile(char *s)
 {
 	WriteCStrToOutput(" $(mk_c_src_d)");
 	WriteCStrToOutput(s);
 }
 
-static void DoSrcFileBgcMakeCompile(char *s, blnr fast, tDoDependsForC depends)
+static void WriteBgcmkAorCd(blnr AsmAvail)
+{
+	if (AsmAvail && HaveAsm) {
+		WriteCStrToOutput("$(mk_a_src_d)");
+	} else {
+		WriteCStrToOutput("$(mk_c_src_d)");
+	}
+}
+
+static void DoSrcFileBgcMakeCompile(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("$(mk_obj_d)");
 	WriteCStrToOutput(s);
-	WriteCStrToOutput(".c.o : $(mk_c_src_d)");
+	WriteCStrToOutput(".o : ");
+	WriteBgcmkAorCd(AsmAvail);
 	WriteCStrToOutput(s);
-	WriteCStrToOutput(".c");
+	WriteSrcSuffix(AsmAvail);
 	if (depends != nullpr) {
 		depends(DoSrcDependsBgcMakeCompile);
 	}
@@ -3669,20 +3821,24 @@ static void DoSrcFileBgcMakeCompile(char *s, blnr fast, tDoDependsForC depends)
 
 	++DestFileIndent;
 		WriteBgnDestFileLn();
-		WriteCStrToOutput("$(mk_CallC) ");
+		if (AsmAvail && HaveAsm) {
+			WriteCStrToOutput("$(mk_CallA) ");
+		} else {
+			WriteCStrToOutput("$(mk_CallC) ");
+		}
 		WriteQuoteToDestFile();
-		WriteCStrToOutput("$(mk_c_src_d)");
+		WriteBgcmkAorCd(AsmAvail);
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c");
+		WriteSrcSuffix(AsmAvail);
 		WriteQuoteToDestFile();
 		WriteCStrToOutput(" -o ");
 		WriteQuoteToDestFile();
 		WriteCStrToOutput("$(mk_obj_d)");
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c.o");
+		WriteCStrToOutput(".o");
 		WriteQuoteToDestFile();
-		if (fast) {
-			WriteCStrToOutput(" $(mk_CFastOptions)");
+		if (AsmAvail && HaveAsm) {
+			WriteCStrToOutput(" $(mk_AOptions)");
 		} else {
 			WriteCStrToOutput(" $(mk_COptions)");
 		}
@@ -3690,14 +3846,14 @@ static void DoSrcFileBgcMakeCompile(char *s, blnr fast, tDoDependsForC depends)
 	--DestFileIndent;
 }
 
-static void DoSrcFileBgcMakeObjects(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileBgcMakeObjects(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("$(mk_obj_d)");
 	WriteCStrToOutput(s);
-	WriteCStrToOutput(".c.o ");
+	WriteCStrToOutput(".o ");
 	WriteBackSlashToDestFile();
 	WriteEndDestFileLn();
 }
@@ -3756,13 +3912,16 @@ static void WriteBashGccSpecificFiles(void)
 		WriteCStrToOutput(kStrAppAbbrev);
 		WriteEndDestFileLn();
 
+#if 0
 		WriteBgnDestFileLn();
 		WriteCStrToOutput("mk_built_rsrc = $(mk_resources_d)");
 		WriteCStrToOutput(kStrAppAbbrev);
 		WriteCStrToOutput(".rsrc");
 		WriteEndDestFileLn();
+#endif
 	}
 	WriteBlankLineToDestFile();
+	WriteDestFileLn("mk_a_src_d = $(mk_source_d)a_src/ppc/as/");
 	WriteDestFileLn("mk_c_src_d = $(mk_source_d)c_src/");
 	WriteDestFileLn("mk_platform_d = $(mk_source_d)platform/");
 	if (CurTarget != kTargMacX11) {
@@ -3770,26 +3929,26 @@ static void WriteBashGccSpecificFiles(void)
 		WriteDestFileLn("mk_osxrz_d = $(mk_rz_src_d)osx/");
 	}
 	WriteBlankLineToDestFile();
+	if (HaveAsm) {
+		WriteDestFileLn("mk_CallA = gcc");
+		WriteDestFileLn("mk_AOptions = -c");
+	}
 	WriteDestFileLn("mk_CallC = gcc");
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("mk_COptions =");
 	WriteCommonCOptions(falseblnr);
 	WriteEndDestFileLn();
-	WriteBgnDestFileLn();
-	WriteCStrToOutput("mk_CFastOptions =");
-	WriteCommonCOptions(trueblnr);
-	WriteEndDestFileLn();
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	if (CurTarget != kTargMacX11) {
+#if 0
 		WriteDestFileLn("TheApplication : $(mk_built_exec) $(mk_built_rsrc)");
+#endif
+		WriteDestFileLn("TheApplication : $(mk_built_exec)");
 	} else {
 		WriteDestFileLn("TheApplication : $(mk_built_program)");
 	}
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	DoAllSrcFiles(DoSrcFileBgcMakeCompile);
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("ObjFiles = ");
@@ -3799,7 +3958,6 @@ static void WriteBashGccSpecificFiles(void)
 		DoAllSrcFiles(DoSrcFileBgcMakeObjects);
 		WriteBlankLineToDestFile();
 	--DestFileIndent;
-	WriteEolToOutput();
 	if (CurTarget != kTargMacX11) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("mk_tbuilt_program = AppTemp/");
@@ -3847,6 +4005,7 @@ static void WriteBashGccSpecificFiles(void)
 			}
 		}
 	--DestFileIndent;
+#if 0
 	if (CurTarget != kTargMacX11) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("$(mk_built_rsrc) : $(mk_rz_src_d)main.r $(mk_resources_d)AppIcon.icns");
@@ -3861,6 +4020,7 @@ static void WriteBashGccSpecificFiles(void)
 			--DestFileIndent;
 		--DestFileIndent;
 	}
+#endif
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("clean :");
 	++DestFileIndent;
@@ -3904,17 +4064,10 @@ static void WriteRH7SpecificFiles(void)
 	WriteCStrToOutput("mk_COptions =");
 	WriteCommonCOptions(falseblnr);
 	WriteEndDestFileLn();
-	WriteBgnDestFileLn();
-	WriteCStrToOutput("mk_CFastOptions =");
-	WriteCommonCOptions(trueblnr);
-	WriteEndDestFileLn();
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("TheApplication : $(mk_built_program)");
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	DoAllSrcFiles(DoSrcFileBgcMakeCompile);
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("ObjFiles = ");
@@ -3924,7 +4077,6 @@ static void WriteRH7SpecificFiles(void)
 		DoAllSrcFiles(DoSrcFileBgcMakeObjects);
 		WriteBlankLineToDestFile();
 	--DestFileIndent;
-	WriteEolToOutput();
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("$(mk_built_program) : $(ObjFiles)");
 	++DestFileIndent;
@@ -4033,8 +4185,9 @@ static void WriteMSVCQuotedProp(char *p, char *s)
 	WriteEndDestFileLn();
 }
 
-static void DoSrcFileMSVCAddFile(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileMSVCAddFile(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteDestFileLn("# Begin Source File");
 	WriteBlankLineToDestFile();
@@ -4042,11 +4195,13 @@ static void DoSrcFileMSVCAddFile(char *s, blnr fast, tDoDependsForC depends)
 	WriteCStrToOutput("SOURCE=");
 	WriteFileInDirToDestFile(Write_c_src_d_ToDestFile, s, ".c");
 	WriteEndDestFileLn();
+#if 0
 	if (CurDbgLvl != kDbgLvlQuick) {
 		if (fast) {
 			WriteDestFileLn("# ADD CPP /O2 /Ob2");
 		}
 	}
+#endif
 	WriteDestFileLn("# End Source File");
 }
 
@@ -4278,7 +4433,7 @@ static void WriteMSVCSpecificFiles(void)
 	WriteDestFileLn("# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept");
 
 	WriteBgnDestFileLn();
-	WriteCStrToOutput("# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib /nologo /subsystem:windows");
+	WriteCStrToOutput("# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib winmm.lib ole32.lib oleaut32.lib uuid.lib /nologo /subsystem:windows");
 	if (CurDbgLvl == kDbgLvlQuick) {
 		WriteCStrToOutput(" /debug");
 	} else {
@@ -4325,9 +4480,9 @@ static void WriteMSVCSpecificFiles(void)
 	WriteCloseDestFile();
 }
 
-static void DoSrcFileLccAddFile(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileLccAddFile(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("File");
@@ -4429,6 +4584,8 @@ static void WriteLccW32SpecificFiles(void)
 			break;
 	}
 
+	WriteDestFileLn("Libraries=shell32.lib winmm.lib");
+
 	WriteBgnDestFileLn();
 	WriteCStrToOutput("ErrorFile=");
 	WriteFileInDirToDestFile(Write_obj_d_ToDestFile, kStrAppAbbrev, ".err");
@@ -4452,9 +4609,9 @@ static void WriteLccW32SpecificFiles(void)
 	WriteCloseDestFile();
 }
 
-static void DoSrcFileDvcAddFile(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileDvcAddFile(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
@@ -4539,6 +4696,7 @@ static void WriteDevCSpecificFiles(void)
 		WriteDestFileLn("CompilerSettings=000000000000000000");
 		WriteDestFileLn("Compiler= -Wall -Wstrict-prototypes -Wno-uninitialized -Os_@@_");
 	}
+	WriteDestFileLn("Linker=-lwinmm_@@_");
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("[VersionInfo]");
 	WriteDestFileLn("Major=0");
@@ -4665,8 +4823,10 @@ enum {
 };
 
 enum {
+#if 0
 	APBgenoMainRsrcRf,
 	APBgenoMnRsrcBld,
+#endif
 	APBgenoProductRef,
 	APBgenoBuildStyle,
 	APBgenoSources,
@@ -4678,7 +4838,9 @@ enum {
 	APBgenoBunRsrcs,
 	APBgenoPhaseSrcs,
 	APBgenoPhaseLibs,
+#if 0
 	APBgenoPhaseRsrc,
+#endif
 	APBgenoTarget,
 	APBgenoRoot,
 	kNumAPBgeno
@@ -4692,9 +4854,8 @@ enum {
 	kNumAPBlibo
 };
 
-static void DoSrcFileAPBadd(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileAPBadd(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
-	UnusedParam(fast);
 	UnusedParam(depends);
 	WriteAPBBeginObject(APBoclsSrc, 2 * FileCounter);
 		WriteDestFileLn("fileEncoding = 30;");
@@ -4702,13 +4863,18 @@ static void DoSrcFileAPBadd(char *s, blnr fast, tDoDependsForC depends)
 		WriteBgnDestFileLn();
 		WriteCStrToOutput("name = ");
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c;");
+		WriteSrcSuffix(AsmAvail);
+		WriteCStrToOutput(";");
 		WriteEndDestFileLn();
 		WriteBgnDestFileLn();
 		WriteCStrToOutput("path = ");
-		WriteCStrToOutput("../source/c_src/");
+		if (AsmAvail && HaveAsm) {
+			Write_a_src_d_ToDestFile();
+		} else {
+			Write_c_src_d_ToDestFile();
+		}
 		WriteCStrToOutput(s);
-		WriteCStrToOutput(".c");
+		WriteSrcSuffix(AsmAvail);
 		WriteCStrToOutput(";");
 		WriteEndDestFileLn();
 		WriteDestFileLn("refType = 2;");
@@ -4722,19 +4888,19 @@ static void DoSrcFileAPBadd(char *s, blnr fast, tDoDependsForC depends)
 	++FileCounter;
 }
 
-static void DoSrcFileAPBaddRef(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileAPBaddRef(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
 	UnusedParam(s);
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteAPBobjlistelm(APBoclsSrc, 2 * FileCounter);
 	++FileCounter;
 }
 
-static void DoSrcFileAPBaddBld(char *s, blnr fast, tDoDependsForC depends)
+static void DoSrcFileAPBaddBld(char *s, blnr AsmAvail, tDoDependsForC depends)
 {
 	UnusedParam(s);
-	UnusedParam(fast);
+	UnusedParam(AsmAvail);
 	UnusedParam(depends);
 	WriteAPBobjlistelm(APBoclsSrc, 2 * FileCounter + 1);
 	++FileCounter;
@@ -4806,7 +4972,9 @@ static void WriteDocTypeAPBadd(
 		WriteEndDestFileLn();
 
 		WriteBgnDestFileLn();
-		WriteCStrToOutput("path = ../source/platform/mac/osx/");
+		WriteCStrToOutput("path = ");
+		Write_source_d_ToDestFile();
+		WriteCStrToOutput("platform/mac/osx/");
 		WriteCStrToOutput(ShortName);
 		WriteCStrToOutput("Icon.icns;");
 		WriteEndDestFileLn();
@@ -4870,7 +5038,11 @@ static void WriteAPBSpecificFiles(void)
 			WriteAPBBeginObject(APBoclsIcns, 0);
 				WriteDestFileLn("isa = PBXFileReference;");
 				WriteDestFileLn("name = AppIcon.icns;");
-				WriteDestFileLn("path = ../source/platform/mac/osx/AppIcon.icns;");
+				WriteBgnDestFileLn();
+				WriteCStrToOutput("path = ");
+				Write_source_d_ToDestFile();
+				WriteCStrToOutput("platform/mac/osx/AppIcon.icns;");
+				WriteEndDestFileLn();
 				WriteDestFileLn("refType = 2;");
 			WriteAPBEndObject();
 			WriteAPBBeginObject(APBoclsIcns, 1);
@@ -4906,11 +5078,16 @@ static void WriteAPBSpecificFiles(void)
 				WriteDestFileLn("settings = {");
 				WriteDestFileLn("};");
 			WriteAPBEndObject();
+#if 0
 			WriteAPBBeginObject(APBoclsGen, APBgenoMainRsrcRf);
 				WriteDestFileLn("fileEncoding = 30;");
 				WriteDestFileLn("isa = PBXFileReference;");
 				WriteDestFileLn("name = main.r;");
-				WriteDestFileLn("path = ../source/platform/mac/main.r;");
+				WriteBgnDestFileLn();
+				WriteCStrToOutput("path = ");
+				Write_source_d_ToDestFile();
+				WriteCStrToOutput("platform/mac/main.r;");
+				WriteEndDestFileLn();
 				WriteDestFileLn("refType = 2;");
 			WriteAPBEndObject();
 			WriteAPBBeginObject(APBoclsGen, APBgenoMnRsrcBld);
@@ -4919,6 +5096,7 @@ static void WriteAPBSpecificFiles(void)
 				WriteDestFileLn("settings = {");
 				WriteDestFileLn("};");
 			WriteAPBEndObject();
+#endif
 			WriteAPBBeginObject(APBoclsGen, APBgenoProductRef);
 				WriteDestFileLn("isa = PBXApplicationReference;");
 				WriteBgnDestFileLn();
@@ -4966,7 +5144,9 @@ static void WriteAPBSpecificFiles(void)
 			WriteAPBEndObject();
 			WriteAPBBeginObject(APBoclsGen, APBgenoResources);
 				WriteAPBBgnObjList("children");
+#if 0
 					WriteAPBobjlistelm(APBoclsGen, APBgenoMainRsrcRf);
+#endif
 					WriteAPBobjlistelm(APBoclsIcns, 0);
 					DocTypeCounter = 0;
 					DoAllDocTypes(WriteDocTypeAPBaddRef);
@@ -5049,6 +5229,7 @@ static void WriteAPBSpecificFiles(void)
 				WriteDestFileLn("isa = PBXFrameworksBuildPhase;");
 				WriteDestFileLn("runOnlyForDeploymentPostprocessing = 0;");
 			WriteAPBEndObject();
+#if 0
 			WriteAPBBeginObject(APBoclsGen, APBgenoPhaseRsrc);
 				WriteDestFileLn("buildActionMask = 2147483647;");
 				WriteAPBBgnObjList("files");
@@ -5057,13 +5238,16 @@ static void WriteAPBSpecificFiles(void)
 				WriteDestFileLn("isa = PBXRezBuildPhase;");
 				WriteDestFileLn("runOnlyForDeploymentPostprocessing = 0;");
 			WriteAPBEndObject();
+#endif
 			WriteAPBBeginObject(APBoclsGen, APBgenoTarget);
 				WriteAPBBgnObjList("buildPhases");
 					WriteAPBobjlistelm(APBoclsGen, APBgenoHeaders);
 					WriteAPBobjlistelm(APBoclsGen, APBgenoBunRsrcs);
 					WriteAPBobjlistelm(APBoclsGen, APBgenoPhaseSrcs);
 					WriteAPBobjlistelm(APBoclsGen, APBgenoPhaseLibs);
+#if 0
 					WriteAPBobjlistelm(APBoclsGen, APBgenoPhaseRsrc);
+#endif
 				WriteAPBEndObjList();
 				WriteDestFileLn("buildSettings = {");
 				++DestFileIndent;
@@ -5173,6 +5357,9 @@ static void WriteIdeSpecificFiles(void)
 
 int main(int argc, char *argv[])
 {
+	if (IsVersionQuerry(argc, argv)) {
+		return 0;
+	}
 	if (! ProcessCommandLineArguments(argc, argv)) {
 		return 1;
 	}

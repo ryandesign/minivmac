@@ -1,7 +1,7 @@
 /*
 	KBRDEMDV.c
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -27,24 +27,30 @@
 #include "MYOSGLUE.h"
 #include "GLOBGLUE.h"
 #include "ENDIANAC.h"
+#include "MINEM68K.h"
 #include "ADDRSPAC.h"
+#if UseControlKeys
+#include "CONTROLM.h"
+#endif
 #include "VIAEMDEV.h"
 #endif
 
 #include "KBRDEMDV.h"
 
-LOCALVAR ui3b CommandPending = 0;
-
-GLOBALPROC Keyboard_Put(ui3b in)
-{
-	CommandPending = in;
-}
+#if UseControlKeys
+LOCALVAR ui5b theEmKeys[4];
+#else
+#define theEmKeys theKeys
+#endif
+	/*
+		What the emulated keyboard thinks is the
+		state of the keyboard.
+	*/
 
 LOCALVAR ui5b theKeyCopys[4];
 	/*
 		What the emulated keyboard thinks the mac thinks is the
-		state of the keyboard. This is compared to theKeys,
-		which is the actual state of the real keyboard.
+		state of the keyboard. This is compared to theEmKeys.
 	*/
 
 LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
@@ -53,7 +59,7 @@ LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
 	int b;
 
 	for (j = 0; j < 16; ++j) {
-		ui3b k1 = ((ui3b *)theKeys)[j];
+		ui3b k1 = ((ui3b *)theEmKeys)[j];
 		ui3b k2 = ((ui3b *)theKeyCopys)[j];
 
 		if (k1 != k2) {
@@ -115,21 +121,22 @@ LOCALFUNC blnr AttemptToFinishInquiry(void)
 
 LOCALVAR int InquiryCommandTimer = 0;
 
-GLOBALPROC Keyboard_Get(void)
+GLOBALPROC Keyboard_Put(ui3b in)
 {
 	if (InquiryCommandTimer != 0) {
 		InquiryCommandTimer = 0; /* abort Inquiry */
 	}
-	switch (CommandPending) {
-		case 0x10 : // Inquiry Command
+	switch (in) {
+		case 0x10 : /* Inquiry Command */
 			if (! AttemptToFinishInquiry()) {
 				InquiryCommandTimer = MaxKeyboardWait;
 			}
 			break;
-		case 0x14 : // Instant Command
+		case 0x14 : /* Instant Command */
 			GotKeyBoardData(InstantCommandData);
+			InstantCommandData = 0x7B;
 			break;
-		case 0x16 : // Model Command
+		case 0x16 : /* Model Command */
 			{
 				int i;
 
@@ -138,10 +145,10 @@ GLOBALPROC Keyboard_Get(void)
 				}
 			}
 
-			GotKeyBoardData(0x0b /*0x01*/); // Test value, means Model 0, no extra devices
-			//Fixed by Hoshi Takanori - it uses the proper keyboard type now
+			GotKeyBoardData(0x0b /*0x01*/); /* Test value, means Model 0, no extra devices */
+			/* Fixed by Hoshi Takanori - it uses the proper keyboard type now */
 			break;
-		case 0x36 : // Test Command
+		case 0x36 : /* Test Command */
 			GotKeyBoardData(0x7D);
 			break;
 		case 0x00:
@@ -154,8 +161,60 @@ GLOBALPROC Keyboard_Get(void)
 	}
 }
 
+#if UseControlKeys
+LOCALVAR ui5b LastKeys[4];
+LOCALVAR blnr LastControlKey = falseblnr;
+#endif
+
 GLOBALPROC KeyBoard_Update(void)
 {
+#if UseControlKeys
+	int i;
+	int j;
+
+	SetInterruptButton(falseblnr);
+		/*
+			in case has been set. so only stays set
+			for 60th of a second.
+		*/
+
+	if ((((ui3b *)theKeys)[7] & (1 << 3)) == 0) {
+		if (LastControlKey) {
+			LastControlKey = falseblnr;
+			DoLeaveControlMode();
+		}
+		for (i = 0; i < 4; ++i) {
+			theEmKeys[i] = theKeys[i];
+		}
+		if (ControlKeyPressed) {
+			((ui3b *)theEmKeys)[7] |=  (1 << 3);
+		}
+	} else {
+		if (! LastControlKey) {
+			LastControlKey = trueblnr;
+			DoEnterControlMode();
+		} else {
+			for (j = 0; j < 16; ++j) {
+				ui3b k1 = ((ui3b *)theKeys)[j];
+				ui3b k2 = ((ui3b *)LastKeys)[j];
+				ui3b k3 = k1 & (~ k2);
+
+				if (k3 != 0) {
+					for (i = 0; i < 8; ++i) {
+						if ((k3 & (1 << i)) != 0) {
+							DoControlModeKey(j * 8 + i);
+						}
+					}
+				}
+			}
+		}
+
+		for (i = 0; i < 4; ++i) {
+			LastKeys[i] = theKeys[i];
+		}
+	}
+#endif
+
 	if (InquiryCommandTimer != 0) {
 		if (AttemptToFinishInquiry()) {
 			InquiryCommandTimer = 0;

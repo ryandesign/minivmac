@@ -1,7 +1,7 @@
 /*
 	SCRNEMDV.h
 
-	Copyright (C) 2002 Philip Cummins, Richard F. Bannister, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Richard F. Bannister, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -27,10 +27,10 @@
 
 EXPORTPROC Screen_Draw(void);
 
-// VIA Interface Headers
+/* VIA Interface Headers */
 
-EXPORTFUNC ui3b VIA_GORA6 (void); // Main/Alternate Screen Buffer
+EXPORTFUNC ui3b VIA_GORA6 (void); /* Main/Alternate Screen Buffer */
 EXPORTPROC VIA_PORA6(ui3b Data);
 
-EXPORTFUNC ui3b VIA_GORB6 (void); // Video Beam in Display
+EXPORTFUNC ui3b VIA_GORB6 (void); /* Video Beam in Display */
 EXPORTPROC VIA_PORB6(ui3b Data);

@@ -1,7 +1,7 @@
 /*
 	ADDRSPAC.c
 
-	Copyright (C) 2002 Bernd Schmidt, Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Bernd Schmidt, Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -27,23 +27,50 @@
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
-#include "GLOBGLUE.h"
-#endif
 #include "ENDIANAC.h"
+#include "MINEM68K.h"
+#endif
 
 #include "ADDRSPAC.h"
 
-IMPORTPROC SCSI_Access(CPTR addr);
-IMPORTPROC SCC_Access(CPTR addr);
-IMPORTPROC IWM_Access(CPTR addr);
-IMPORTPROC VIA_Access(CPTR addr);
-IMPORTPROC Sony_Access(CPTR addr);
-IMPORTPROC SetAutoVector(void);
+IMPORTFUNC ui5b SCSI_Access(ui5b Data, blnr WriteMem, CPTR addr);
+IMPORTFUNC ui5b SCC_Access(ui5b Data, blnr WriteMem, CPTR addr);
+IMPORTFUNC ui5b IWM_Access(ui5b Data, blnr WriteMem, CPTR addr);
+IMPORTFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr);
+IMPORTPROC Sony_Access(ui5b Data, CPTR addr);
+
+LOCALVAR blnr GotOneAbormal = falseblnr;
+
+#ifndef ReportAbnormalInterrupt
+#define ReportAbnormalInterrupt 0
+#endif
+
+#if DetailedAbormalReport
+GLOBALPROC DoReportAbnormal(char *s)
+#else
+GLOBALPROC DoReportAbnormal(void)
+#endif
+{
+	if (! GotOneAbormal) {
+		MacMsg("Abnormal Situation",
+#if DetailedAbormalReport
+			s,
+#else
+			"The emulated machine is attempting an operation that wasn't expected to happen in normal use.",
+#endif
+			falseblnr);
+#if ReportAbnormalInterrupt
+		SetInterruptButton(trueblnr);
+#endif
+		GotOneAbormal = trueblnr;
+	}
+}
+
+IMPORTPROC SCC_Reset(void);
 
 /* top 8 bits out of 32 are ignored, so total size of address space is 2 ** 24 bytes */
 
-#define ln2TotAddrBytes 24
-#define TotAddrBytes (1 << ln2TotAddrBytes)
+#define TotAddrBytes (1UL << ln2TotAddrBytes)
 #define kAddrMask (TotAddrBytes - 1)
 
 /* map of address space */
@@ -63,7 +90,7 @@ LOCALVAR ui3b vOverlay;
 #define kSCSI_Block_Top  0x00600000
 
 #define kRAM_Overlay_Base 0x00600000 /* when overlay on */
-#define kRAM_Overlay_Top  0x00700000
+#define kRAM_Overlay_Top  0x00800000
 
 #define kSCCRd_Block_Base 0x00800000
 #define kSCCRd_Block_Top  0x00A00000
@@ -88,105 +115,149 @@ LOCALVAR ui3b vOverlay;
 #define kSCCRdBase 0x9FFFF8
 #define kSCCWrBase 0xBFFFF9
 
-#define kSCC_Mask 0x07
+#define kSCC_Mask 0x03
 
-#define kVIA_Size 0x2000
+#define kVIA_Mask 0x00000F
 #define kVIA_Base 0xEFE1FE
 
-#define kIWM_Mask 0x001FFF // Allocated Memory Bandwidth for IWM
-#define kIWM_Base 0xDFE1FF // IWM Memory Base
+#define kIWM_Mask 0x00000F /* Allocated Memory Bandwidth for IWM */
+#define kIWM_Base 0xDFE1FF /* IWM Memory Base */
 
-GLOBALVAR CPTR AddressBus;
-GLOBALVAR ui5b DataBus;
-GLOBALVAR blnr ByteSizeAccess;
-GLOBALVAR blnr WriteMemAccess;
-
-LOCALPROC MM_Access(void)
+GLOBALFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 {
-	AddressBus &= kAddrMask;
+	CPTR mAddressBus = addr & kAddrMask;
 
-	if (AddressBus < kIWM_Block_Base) {
-		if (AddressBus < kSCCRd_Block_Base) {
-			if ((AddressBus >= kSCSI_Block_Base) && (AddressBus < kSCSI_Block_Top)) {
-				SCSI_Access(AddressBus - kSCSI_Block_Base);
+	if (mAddressBus < kIWM_Block_Base) {
+		if (mAddressBus < kSCCRd_Block_Base) {
+#if CurEmu >= kEmuPlus1M
+			if ((mAddressBus >= kSCSI_Block_Base) && (mAddressBus < kSCSI_Block_Top)) {
+				if (! ByteSize) {
+					ReportAbnormal("access SCSI word");
+				} else if (WriteMem != ((mAddressBus & 1) != 0)) {
+					ReportAbnormal("access SCSI even/odd");
+				} else {
+					Data = SCSI_Access(Data, WriteMem, (mAddressBus >> 4) & 0x07);
+				}
 			}
+#endif
 		} else {
-			if (AddressBus >= kSCCWr_Block_Base) {
-				if (WriteMemAccess) {
-					/* if ((AddressBus >= kSCCWr_Block_Base) && (AddressBus < kSCCWr_Block_Top)) */  // Write Only Address
-					{
-						SCC_Access((AddressBus - kSCCWrBase) & kSCC_Mask);
-					}
+			if (! ByteSize) {
+				ReportAbnormal("Attemped Phase Adjust");
+			} else if (WriteMem != ((mAddressBus & 1) != 0)) {
+				if (WriteMem) {
+					ReportAbnormal("access SCC even/odd");
+				} else {
+					SCC_Reset();
 				}
+			} else if (WriteMem != (mAddressBus >= kSCCWr_Block_Base)) {
+				ReportAbnormal("access SCC wr/rd base wrong");
 			} else {
-				if (! WriteMemAccess) {
-					/* if ((AddressBus >= kSCCRd_Block_Base) && (AddressBus < kSCCRd_Block_Top)) */ // Read Only Address
-					{
-						SCC_Access((AddressBus - kSCCRdBase) & kSCC_Mask);
-					}
+				if ((mAddressBus & 0x001FFFF8) != 0x001FFFF8) {
+					ReportAbnormal("access SCC nonstandard address");
 				}
+				Data = SCC_Access(Data, WriteMem, (mAddressBus >> 1) & kSCC_Mask);
 			}
 		}
 	} else {
-		if (AddressBus < kVIA_Block_Base) {
-			if (/* (AddressBus >= kIWM_Block_Base) && */(AddressBus < kIWM_Block_Top)) {
-				IWM_Access((AddressBus - kIWM_Base) & kIWM_Mask);
+		if (mAddressBus < kVIA_Block_Base) {
+			if (/* (mAddressBus >= kIWM_Block_Base) && */(mAddressBus < kIWM_Block_Top)) {
+				if (! ByteSize) {
+#if ExtraAbormalReports
+					ReportAbnormal("access IWM word");
+					/*
+						This happens when quitting 'Glider 3.1.2'.
+						perhaps a bad handle is being disposed of.
+					*/
+#endif
+				} else if ((mAddressBus & 1) == 0) {
+					ReportAbnormal("access IWM even");
+				} else {
+					if ((mAddressBus & 0x001FE1FF) != 0x001FE1FF) {
+						ReportAbnormal("access IWM nonstandard address");
+					}
+					Data = IWM_Access(Data, WriteMem, (mAddressBus >> 9) & kIWM_Mask);
+				}
 			}
 		} else {
-			if (/* (AddressBus >= kVIA_Block_Base) && */(AddressBus < kVIA_Block_Top)) {
-				VIA_Access((AddressBus - kVIA_Base) % kVIA_Size);
+			if (/* (mAddressBus >= kVIA_Block_Base) && */(mAddressBus < kVIA_Block_Top)) {
+				if (! ByteSize) {
+					ReportAbnormal("access VIA word");
+				} else if ((mAddressBus & 1) != 0) {
+					ReportAbnormal("access VIA odd");
+				} else {
+					if ((mAddressBus & 0x000FE1FE) != 0x000FE1FE) {
+						ReportAbnormal("access VIA nonstandard address");
+					}
+					Data = VIA_Access(Data, WriteMem, (mAddressBus >> 9) & kVIA_Mask);
+				}
 			} else {
-				if ((AddressBus >= kDSK_Block_Base) && (AddressBus < kDSK_Block_Top)) {
-					Sony_Access(AddressBus - kDSK_Block_Base);
+				if ((mAddressBus >= kDSK_Block_Base) && (mAddressBus < kDSK_Block_Top)) {
+					if (ByteSize) {
+						ReportAbnormal("access Sony byte");
+					} else if ((mAddressBus & 1) != 0) {
+						ReportAbnormal("access Sony odd");
+					} else if (! WriteMem) {
+						ReportAbnormal("access Sony read");
+					} else {
+						Sony_Access(Data, (mAddressBus >> 1) & 0x0F);
+					}
 				} else
-				if ((AddressBus >= kAutoVector_Base) && (AddressBus < kAutoVector_Top)) {
-					SetAutoVector();
+				if ((mAddressBus >= kAutoVector_Base) && (mAddressBus < kAutoVector_Top)) {
+					/* SetAutoVector(); */
 					/* Exception(regs.intmask+24, 0); */
 				}
 			}
 		}
 	}
+	return Data;
 }
 
 /* devide address space into banks, some of which are mapped to real memory */
 
-#define ln2BytesPerMemBank 17
-#define ln2NumMemBanks (ln2TotAddrBytes - ln2BytesPerMemBank)
+GLOBALVAR ui3b *BankReadAddr[NumMemBanks];
+GLOBALVAR ui3b *BankWritAddr[NumMemBanks];
 
-#define NumMemBanks (1 << ln2NumMemBanks)
-#define BytesPerMemBank  (1 << ln2BytesPerMemBank)
-#define MemBanksMask (NumMemBanks - 1)
-#define MemBankAddrMask (BytesPerMemBank - 1)
-
-LOCALVAR ui3b *BankReadAddr[NumMemBanks];
-LOCALVAR ui3b *BankWritAddr[NumMemBanks]; /* if BankWritAddr[i] != NULL then BankWritAddr[i] == BankReadAddr[i] */
-
-#define bankindex(addr) ((((CPTR)(addr)) >> ln2BytesPerMemBank) & MemBanksMask)
-
-#define kROM_BaseBank (kROM_Base >> ln2BytesPerMemBank)
-#define kROM_TopBank (kROM_Top >> ln2BytesPerMemBank)
-
-#define kROM_Overlay_BaseBank (kROM_Overlay_Base >> ln2BytesPerMemBank)
-#define kROM_Overlay_TopBank (kROM_Overlay_Top >> ln2BytesPerMemBank)
-
-#define kRAM_Overlay_BaseBank (kRAM_Overlay_Base >> ln2BytesPerMemBank)
-#define kRAM_Overlay_TopBank (kRAM_Overlay_Top >> ln2BytesPerMemBank)
-
-#define kRAM_BaseBank (kRAM_Base >> ln2BytesPerMemBank)
-#define kRAM_TopBank (kRAM_Top >> ln2BytesPerMemBank)
-
-#define Overlay_RAMmem_mask (0x00010000 - 1)
-#define Overlay_ROMmem_mask ROMmem_mask
 #define ROMmem_mask (kROM_Size - 1)
+#if CurEmu >= kEmuPlus1M
+#define ROM_CmpZeroMask 0x00020000
+#else
+#define ROM_CmpZeroMask 0
+#endif
 
-LOCALPROC SetUpBankRange(ui5b StartBank, ui5b StopBank, ui3b * RealStart, CPTR VirtualStart, ui5b vMask, blnr Writeable)
+#define Overlay_ROMmem_mask ROMmem_mask
+#if CurEmu >= kEmuPlus1M
+#define Overlay_ROM_CmpZeroMask 0x00020000
+#else
+#define Overlay_ROM_CmpZeroMask 0x00100000
+#endif
+
+#define RAMmem_mask (kRAM_Size - 1)
+#if kRAM_Size >= 0x00200000
+#define Overlay_RAMmem_offset 0x00200000
+#if kRAM_Size == 0x00280000
+#define Overlay_RAMmem_mask (0x00080000 - 1)
+#else
+#define Overlay_RAMmem_mask (0x00200000 - 1)
+#endif
+#else
+#define Overlay_RAMmem_offset 0
+#define Overlay_RAMmem_mask RAMmem_mask
+#endif
+
+LOCALPROC SetUpBankRange(ui5b StartAddr, ui5b StopAddr, ui3b * RealStart, ui5b vMask, ui5b CmpZeroMask, blnr Writeable)
 {
-	int i;
+	ui5b i;
+	ui5b iAddr;
+	ui5b StartBank = StartAddr >> ln2BytesPerMemBank;
+	ui5b StopBank = StopAddr >> ln2BytesPerMemBank;
 
 	for (i = StartBank; i < StopBank; i++) {
-		BankReadAddr[i] = RealStart + (((i << ln2BytesPerMemBank) - VirtualStart) & vMask);
-		if (Writeable) {
-			BankWritAddr[i] = BankReadAddr[i];
+		iAddr = i << ln2BytesPerMemBank;
+		if ((iAddr & CmpZeroMask) == 0) {
+			BankReadAddr[i] = RealStart + (iAddr & vMask);
+			if (Writeable) {
+				BankWritAddr[i] = BankReadAddr[i];
+			}
 		}
 	}
 }
@@ -202,18 +273,24 @@ LOCALPROC SetPtrVecToNULL(ui3b **x, ui5b n)
 
 LOCALPROC SetUpMemBanks(void)
 {
-	ui5b RAMmem_mask = kRAM_Size - 1;
-
 	SetPtrVecToNULL(BankReadAddr, NumMemBanks);
 	SetPtrVecToNULL(BankWritAddr, NumMemBanks);
 
-	SetUpBankRange(kROM_BaseBank, kROM_TopBank, (ui3b *) ROM, kROM_Base, ROMmem_mask, falseblnr);
+	SetUpBankRange(kROM_Base, kROM_Top, (ui3b *) ROM, ROMmem_mask, ROM_CmpZeroMask, falseblnr);
 
 	if (vOverlay) {
-		SetUpBankRange(kROM_Overlay_BaseBank, kROM_Overlay_TopBank, (ui3b *)ROM, kROM_Overlay_Base, Overlay_ROMmem_mask, falseblnr);
-		SetUpBankRange(kRAM_Overlay_BaseBank, kRAM_Overlay_TopBank, (ui3b *)RAM, kRAM_Overlay_Base, Overlay_RAMmem_mask, trueblnr);
+		SetUpBankRange(kROM_Overlay_Base, kROM_Overlay_Top, (ui3b *)ROM, Overlay_ROMmem_mask,
+			Overlay_ROM_CmpZeroMask, falseblnr);
+		SetUpBankRange(kRAM_Overlay_Base, kRAM_Overlay_Top,
+			Overlay_RAMmem_offset + (ui3b *)RAM, Overlay_RAMmem_mask,
+			0, trueblnr);
 	} else {
-		SetUpBankRange(kRAM_BaseBank, kRAM_TopBank, (ui3b *)RAM, kRAM_Base, RAMmem_mask, trueblnr);
+#if kRAM_Size == 0x00280000
+		SetUpBankRange(kRAM_Base, 0x00200000, (ui3b *)RAM, 0x00200000 - 1, 0, trueblnr);
+		SetUpBankRange(0x00200000, kRAM_Top, 0x00200000 + (ui3b *)RAM, 0x00080000 - 1, 0, trueblnr);
+#else
+		SetUpBankRange(kRAM_Base, kRAM_Top, (ui3b *)RAM, RAMmem_mask, 0, trueblnr);
+#endif
 	}
 }
 
@@ -230,7 +307,7 @@ GLOBALPROC VIA_PORA4(ui3b Data)
 	}
 }
 
-GLOBALFUNC ui3b VIA_GORA4(void) // Overlay/Normal Memory Mapping
+GLOBALFUNC ui3b VIA_GORA4(void) /* Overlay/Normal Memory Mapping */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA4 attempts to be an input\n");
@@ -252,130 +329,71 @@ GLOBALPROC Memory_Reset(void)
 	and back out of the current instruction.
 */
 
-GLOBALFUNC ui5b get_long(CPTR addr)
+GLOBALFUNC ui3b *get_real_address(ui5b L, blnr WritableMem, CPTR addr)
 {
-	ui3b *ba = BankReadAddr[bankindex(addr)];
+	ui3b **CurBanks = WritableMem ? BankWritAddr : BankReadAddr;
+	ui5b bi = bankindex(addr);
+	ui3b *ba = CurBanks[bi];
 
-	if (ba != nullpr) {
-		ui5b *m = (ui5b *)((addr & MemBankAddrMask) + ba);
-		return do_get_mem_long(m);
+	if (ba == nullpr) {
+		ReportAbnormal("get_real_address fails");
+		return nullpr;
 	} else {
-		if (addr != -1) {
-#ifdef MyCompilerMrC
-#pragma noinline_site get_word
-#endif
-			ui4b hi = get_word(addr);
-			ui4b lo = get_word(addr+2);
-			return (ui5b) (((ui5b)hi) << 16) | ((ui5b)lo);
+		ui5b bankoffset = addr & MemBankAddrMask;
+		ui3b *p = (ui3b *)(bankoffset + ba);
+		ui5b bankleft = BytesPerMemBank - bankoffset;
+label_1:
+		if (bankleft >= L) {
+			return p; /* ok */
 		} else {
-			/* A work around for someone's bug. When booting
-			from system 6.0.8, address -1 is referenced once.
-			if don't check and use above code, then everything
-			seems to work fine, except have found one reproducible
-			bug: lode runner crashes when saving a new high
-			score */
+			ui3b *bankend = (ui3b *)(BytesPerMemBank + ba);
 
-			/* Debugger(); */
-			return 0;
+			bi = (bi + 1) & MemBanksMask;
+			ba = CurBanks[bi];
+			if (ba != bankend) {
+				ReportAbnormal("get_real_address falls off");
+				return nullpr;
+			} else {
+				L -= bankleft;
+				bankleft = BytesPerMemBank;
+				goto label_1;
+			}
 		}
 	}
 }
 
-GLOBALFUNC ui5b get_word(CPTR addr)
-{
-	ui3b *ba = BankReadAddr[bankindex(addr)];
+GLOBALVAR blnr InterruptButton = falseblnr;
 
-	if (ba != nullpr) {
-		ui4b *m = (ui4b *)((addr & MemBankAddrMask) + ba);
-		return do_get_mem_word(m);
-	} else {
-		AddressBus = addr;
-		DataBus = 0;
-		ByteSizeAccess = falseblnr;
-		WriteMemAccess = falseblnr;
-		MM_Access();
-		return (ui4b) DataBus;
+GLOBALPROC SetInterruptButton(blnr v)
+{
+	if (InterruptButton != v) {
+		InterruptButton = v;
+		VIAorSCCinterruptChngNtfy();
 	}
 }
 
-GLOBALFUNC ui5b get_byte(CPTR addr)
-{
-	ui3b *ba = BankReadAddr[bankindex(addr)];
+extern blnr VIAInterruptRequest;
+extern blnr SCCInterruptRequest;
 
-	if (ba != nullpr) {
-		ui3b *m = (ui3b *)((addr & MemBankAddrMask) + ba);
-		return *m;
-	} else {
-		AddressBus = addr;
-		DataBus = 0;
-		ByteSizeAccess = trueblnr;
-		WriteMemAccess = falseblnr;
-		MM_Access();
-		return (ui3b) DataBus;
+LOCALVAR ui3b CurIPL = 0;
+
+GLOBALPROC VIAorSCCinterruptChngNtfy(void)
+{
+	blnr VIAandNotSCC = VIAInterruptRequest
+		&& ! SCCInterruptRequest;
+	blnr NewIPL = (VIAandNotSCC ? 1 : 0)
+		| (SCCInterruptRequest ? 2 : 0)
+		| (InterruptButton? 4 : 0);
+	if (NewIPL != CurIPL) {
+		CurIPL = NewIPL;
+		m68k_IPLchangeNtfy();
 	}
 }
 
-GLOBALPROC put_long(CPTR addr, ui5b l)
+GLOBALFUNC blnr AddrSpac_Init(void)
 {
-	ui3b *ba = BankWritAddr[bankindex(addr)];
-
-	if (ba != nullpr) {
-		ui5b *m = (ui5b *)((addr & MemBankAddrMask) + ba);
-		do_put_mem_long(m, l);
-	} else {
-#ifdef MyCompilerMrC
-#pragma noinline_site put_word
-#endif
-		put_word(addr, (l >> 16) & (0x0000FFFF));
-		put_word(addr+2, l & (0x0000FFFF));
-	}
-}
-
-GLOBALPROC put_word(CPTR addr, ui5b w)
-{
-	ui3b *ba = BankWritAddr[bankindex(addr)];
-
-	if (ba != nullpr) {
-		ui4b *m = (ui4b *)((addr & MemBankAddrMask) + ba);
-		do_put_mem_word(m, w);
-	} else {
-		AddressBus = addr;
-		DataBus = w;
-		ByteSizeAccess = falseblnr;
-		WriteMemAccess = trueblnr;
-		MM_Access();
-	}
-}
-
-GLOBALPROC put_byte(CPTR addr, ui5b b)
-{
-	ui3b *ba = BankWritAddr[bankindex(addr)];
-
-	if (ba != nullpr) {
-		ui3b *m = (ui3b *)((addr & MemBankAddrMask) + ba);
-		*m = b;
-	} else {
-		AddressBus = addr;
-		DataBus = b;
-		ByteSizeAccess = trueblnr;
-		WriteMemAccess = trueblnr;
-		MM_Access();
-	}
-}
-
-LOCALFUNC ui3b *default_xlate(CPTR a)
-{
-	UnusedParam(a);
-	return (ui3b *) RAM; /* So we don't crash. */
-}
-
-GLOBALFUNC ui3b *get_real_address(CPTR addr)
-{
-	ui3b *ba = BankReadAddr[bankindex(addr)];
-
-	if (ba != nullpr) {
-		return (ui3b *)((addr & MemBankAddrMask) + ba);
-	} else {
-		return default_xlate(addr);
-	}
+	Memory_Reset();
+	MINEM68K_Init(BankReadAddr, BankWritAddr,
+		&CurIPL);
+	return trueblnr;
 }

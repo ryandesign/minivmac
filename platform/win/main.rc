@@ -1,6 +1,6 @@
 //  main.rc
 //
-//  Copyright (C) 2002 Philip Cummins, Weston Pawlowski, Paul Pratt
+//  Copyright (C) 2003 Philip Cummins, Weston Pawlowski, Paul Pratt
 //
 //  You can redistribute this file and/or modify it under the terms
 //  of version 2 of the GNU General Public License as published by
@@ -19,24 +19,6 @@
 #define IDI_DISK                        257
 #define IDI_ROM                         258
 
-#define IDR_MAINMENU                    256
-
-#define ID_FILE_INSERTDISK1             256
-#define ID_FILE_QUIT                    257
-#define ID_CONTROL_LIMITSPEED           258
-#define ID_CONTROL_RESET                259
-#define ID_CONTROL_INTERRUPT            260
-#define ID_HELP_ABOUT                   261
-
-#define IDD_MYABOUTDIALOG               134
-
-#define ID_ABOUT_VERSION 128
-#define ID_ABOUT_AUTHORS 129
-#define ID_ABOUT_LICENSE 130
-#define ID_ABOUT_WARRNTY 131
-#define ID_ABOUT_FORINFO 132
-#define ID_ABOUT_WEBPAGE 133
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // Icon
@@ -47,58 +29,3 @@
 IDI_VMAC                ICON    DISCARDABLE     "app_icon.ico"
 IDI_DISK                ICON    DISCARDABLE     "dsk_icon.ico"
 IDI_ROM                 ICON    DISCARDABLE     "rom_icon.ico"
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Menu
-//
-
-IDR_MAINMENU MENU DISCARDABLE 
-BEGIN
-    POPUP "File"
-    BEGIN
-        MENUITEM "Open Disk Image...",          ID_FILE_INSERTDISK1
-        MENUITEM SEPARATOR
-        MENUITEM "Quit",                        ID_FILE_QUIT
-    END
-    POPUP "Special"
-    BEGIN
-        MENUITEM "Limit Speed",                 ID_CONTROL_LIMITSPEED
-        MENUITEM SEPARATOR
-        MENUITEM "Reset",                       ID_CONTROL_RESET
-        MENUITEM "Interrupt",                   ID_CONTROL_INTERRUPT
-    END
-    POPUP "Help"
-    BEGIN
-        MENUITEM "About",                       ID_HELP_ABOUT
-    END
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog
-//
-
-#define my_DS_MODALFRAME       0x80L   /* Can be combined with WS_CAPTION  */
-#define my_S_POPUP            0x80000000L
-#define my_WS_CAPTION          0x00C00000L     /* WS_BORDER | WS_DLGFRAME  */
-#define my_WS_SYSMENU          0x00080000L
-#define my_IDC_STATIC      (-1)
-#define my_IDCANCEL            2
-
-IDD_MYABOUTDIALOG DIALOG DISCARDABLE  0, 0, 256, 154
-STYLE my_DS_MODALFRAME | my_S_POPUP | my_WS_CAPTION | my_WS_SYSMENU
-CAPTION "About"
-FONT 8, "MS Sans Serif"
-BEGIN
-    DEFPUSHBUTTON   "OK",my_IDCANCEL,191,124,50,14
-    LTEXT           "",ID_ABOUT_VERSION,88,7,161,14
-    LTEXT           "",ID_ABOUT_AUTHORS,88,26,161,30
-    LTEXT           "",ID_ABOUT_LICENSE,88,60,161,22
-    LTEXT           "",ID_ABOUT_WARRNTY,7,85,242,30
-    LTEXT           "",ID_ABOUT_FORINFO,7,116,94,11
-    LTEXT           "",ID_ABOUT_WEBPAGE,22,132,134,15
-    ICON            IDI_VMAC,my_IDC_STATIC,34,34,18,20
-END

@@ -1,7 +1,7 @@
 /*
 	MYOSGLUE.c
 
-	Copyright (C) 2002 Paul Pratt
+	Copyright (C) 2004 Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -25,14 +25,12 @@
 
 IMPORTPROC ProgramMain(void);
 
-
-GLOBALVAR char *screencomparebuff;
+GLOBALVAR char *screencomparebuff = nullpr;
+GLOBALVAR char *CntrlDisplayBuff = nullpr;
 
 GLOBALVAR ui4b *RAM = nullpr;
 
-GLOBALVAR ui5b kRAM_Size = 0;
-
-GLOBALVAR ui4b *ROM;
+GLOBALVAR ui4b *ROM = nullpr;
 
 GLOBALVAR ui4b CurMouseV = 0;
 GLOBALVAR ui4b CurMouseH = 0;
@@ -40,17 +38,87 @@ GLOBALVAR ui3b CurMouseButton = falseblnr;
 
 GLOBALVAR ui5b theKeys[4];
 
-GLOBALVAR blnr RequestMacOff = falseblnr;
-GLOBALVAR blnr RequestMacInterrupt = falseblnr;
-GLOBALVAR blnr RequestMacReset = falseblnr;
+GLOBALVAR blnr SpeedLimit = falseblnr;
 
-GLOBALVAR ui5b MountPending = 0;
+GLOBALVAR si3b TimeAdjust = 0;
+
+#if UseControlKeys
+GLOBALVAR blnr ControlKeyPressed = falseblnr;
+#endif
+
+#if EnableFullScreen
+GLOBALVAR blnr WantFullScreen = falseblnr;
+#endif
+
+#if EnableMagnify
+GLOBALVAR blnr WantMagnify = falseblnr;
+#endif
+
+#if EnableMouseMotion
+GLOBALVAR blnr HaveMouseMotion = falseblnr;
+GLOBALVAR ui4b MouseMotionV = 0;
+GLOBALVAR ui4b MouseMotionH = 0;
+#endif
+
+#if MySoundEnabled
+#ifndef MySoundFullScreenOnly
+#define MySoundFullScreenOnly 0
+#endif
+#endif
+
+GLOBALVAR blnr RequestMacOff = falseblnr;
+
+GLOBALVAR ui5b vSonyWritableMask = 0;
+GLOBALVAR ui5b vSonyInsertedMask = 0;
+GLOBALVAR ui5b vSonyMountedMask = 0;
+
+GLOBALVAR ui5b CurMacDateInSeconds = 0;
+GLOBALVAR ui5b CurMacLatitude = 0;
+GLOBALVAR ui5b CurMacLongitude = 0;
+GLOBALVAR ui5b CurMacDelta = 0;
+
+LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
+{
+	si4b i;
+
+	for (i = 0; i < NumDrives; ++i) {
+		if ((vSonyInsertedMask & ((ui5b)1 << i)) == 0) {
+			*Drive_No = i;
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
+
+GLOBALFUNC blnr AnyDiskInserted(void)
+{
+	si4b i;
+
+	for (i = 0; i < NumDrives; ++i) {
+		if ((vSonyInsertedMask & ((ui5b)1 << i)) != 0) {
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
 
 #define kStrTooManyImagesTitle "Too many Disk Images."
-#define kStrTooManyImagesMessage "Mini vMac can not mount more than three Disk Images. Try ejecting one."
+#define kStrTooManyImagesMessage "Mini vMac can not mount that many Disk Images. Try ejecting one."
 
 #define kStrImageInUseTitle "Disk Image in use."
 #define kStrImageInUseMessage "The Disk Image can not be mounted because it is already in use by another application."
+
+#ifndef EnableDragDrop
+#define EnableDragDrop 1
+#endif
+
+#ifndef RomFileName
+#if CurEmu <= kEmu512K
+#define RomFileName "Mac128K.ROM"
+#else
+#define RomFileName "vMac.ROM"
+#endif
+#endif
 
 #ifndef MacTarget
 #define MacTarget 0
@@ -62,7 +130,7 @@ GLOBALVAR ui5b MountPending = 0;
 #define XWnTarget 0
 #endif
 
-#if MacTarget /* This entire file is for macintosh only */
+#if MacTarget /* This entire file is for Macintosh only */
 #include "MCOSGLUE.h"
 #define Have_OSGLUEcore 1
 #endif /* MacTarget */

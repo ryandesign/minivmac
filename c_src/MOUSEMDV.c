@@ -1,7 +1,7 @@
 /*
 	MOUSEMDV.c
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,12 +20,14 @@
 	Emulation of the mouse in the Mac Plus.
 
 	This code descended from "Mouse-MacOS.c" in Richard F. Bannister's
-	macintosh port of vMac, by Philip Cummins.
+	Macintosh port of vMac, by Philip Cummins.
 */
 
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
+#include "ENDIANAC.h"
+#include "MINEM68K.h"
 #include "ADDRSPAC.h"
 #include "SCCEMDEV.h"
 #endif
@@ -35,104 +37,52 @@
 LOCALVAR ui3b X2 = 0;
 LOCALVAR ui3b Y2 = 0;
 
-#if 0
-LOCALFUNC unsigned int mapmouse0(unsigned int i)
+GLOBALPROC Mouse_Update(void)
 {
-	if (i < 8) {
-		return 0;
-	} else if (i < 24) {
-		return (i - 8) / 4 + 2;
-	} else if (i < 40) {
-		return (i - 24) / 2 + 4 + 2;
-	} else {
-		return (i - 40) + 12 + 2;
-	}
-}
+	if (Mouse_Enabled()) { /* SCC activated yet */
+#if EnableMouseMotion
+		if (HaveMouseMotion) {
+			if ((MouseMotionH != 0) || (MouseMotionV != 0)) {
+				CurMouseV = get_ram_word(0x082C);
+				CurMouseH = get_ram_word(0x082E);
 
-LOCALFUNC int mapmouse(int i)
-{
-	if (i >= 0) {
-		return mapmouse0(i);
-	} else {
-		return -mapmouse0(-i);
-	}
-}
-
-LOCALVAR int mousedeltav = 0;
-LOCALVAR int mousedeltah = 0;
+				put_ram_word(0x0828, get_ram_word(0x0828) + MouseMotionV);
+				put_ram_word(0x082A, get_ram_word(0x082A) + MouseMotionH);
+				put_ram_byte(0x08CE, get_ram_byte(0x08CF)); /* Tell MacOS to redraw the Mouse */
+				MouseMotionV = 0;
+				MouseMotionH = 0;
+			}
+		} else
 #endif
+		{
+			ui5b NewMouse = (CurMouseV << 16) | CurMouseH;
 
-GLOBALPROC Mouse_Update2(void)
-{
-	ui5b NewMouse;
-
-	if (Mouse_Enabled()) { // SCC activated yet
-#if 1
-		NewMouse = (CurMouseV << 16) | CurMouseH;
-
-		if (get_long(0x0828) != NewMouse) {
-			put_long(0x0828, NewMouse); // Set Mouse Position
-			put_long(0x082C, NewMouse);
-			put_long(0x0830, NewMouse);
-			put_byte(0x08CE, 0xFF); // Tell MacOS to redraw the Mouse
-		}
-#else
-		ui4b CurMacMouseV = get_word(0x82C);
-		ui4b CurMacMouseH = get_word(0x82E);
-		si4b dv = CurMouseV - CurMacMouseV;
-		si4b dh = CurMouseH - CurMacMouseH;
-
-		if ((dv != 0) || (dh != 0)) {
-			ui4b CrsrThresh = get_word(0x8Ec);
-			blnr adv = dv;
-			blnr adh = dh;
+			if (get_ram_long(0x0828) != NewMouse) {
+				put_ram_long(0x0828, NewMouse); /* Set Mouse Position */
+				put_ram_long(0x082C, NewMouse);
+				put_ram_byte(0x08CE, get_ram_byte(0x08CF)); /* Tell MacOS to redraw the Mouse */
 #if 0
-			if (dv < 0) {
-				adv = -adv;
-			}
-			if (dh < 0) {
-				adh = -adh;
-			}
-			if (adv + adh >= CrsrThresh) {
-				adv /= 2;
-				adh /= 2;
-			}
-			if (dv < 0) {
-				adv = -adv;
-			}
-			if (dh < 0) {
-				adh = -adh;
-			}
+				put_ram_long(0x0830, NewMouse);
+				put_ram_byte(0x08CE, 0xFF); /* Tell MacOS to redraw the Mouse */
 #endif
-			mousedeltav += mapmouse(CurMouseV - (vMacScreenHeight / 2));
-			mousedeltah += mapmouse(CurMouseH - (vMacScreenWidth / 2));
-			{
-				int nextv = mousedeltav / 32;
-				int nexth = mousedeltah / 32;
-				mousedeltav -= nextv * 32;
-				mousedeltah -= nexth * 32;
-				put_word(0x0828, get_word(0x0828) + /* adv */nextv);
-				put_word(0x082A, get_word(0x082A) + /* adh */nexth);
-				put_byte(0x08CE, 0xFF); // Tell MacOS to redraw the Mouse
 			}
 		}
-#endif
 	}
 }
 
-// VIA Interface Functions
+/* VIA Interface Functions */
 
-GLOBALFUNC ui3b VIA_GORB5(void) // Mouse Y2
+GLOBALFUNC ui3b VIA_GORB5(void) /* Mouse Y2 */
 {
 	return Y2;
 }
 
-GLOBALFUNC ui3b VIA_GORB4(void) // Mouse X2
+GLOBALFUNC ui3b VIA_GORB4(void) /* Mouse X2 */
 {
 	return X2;
 }
 
-GLOBALFUNC ui3b VIA_GORB3(void) // Mouse Button
+GLOBALFUNC ui3b VIA_GORB3(void) /* Mouse Button */
 {
 	return ! CurMouseButton;
 }

@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.c
 
-	Copyright (C) 2002 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,34 +22,35 @@
 	This code adapted from "IWM.c" in vMac by Philip Cummins.
 */
 
-// This is the emulation for the IWM, the Integrated Woz Machine. It's basically
-// a serial to parallel converter with some timing in-built into it to perform
-// handshaking. Emulation so far just includes Status and Mode Register Accesses.
+/* This is the emulation for the IWM, the Integrated Woz Machine. It's basically */
+/* a serial to parallel converter with some timing in-built into it to perform */
+/* handshaking. Emulation so far just includes Status and Mode Register Accesses. */
 
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 
+#include "MINEM68K.h"
 #include "ADDRSPAC.h"
 #endif
 
 #include "IWMEMDEV.h"
 
-#define kph0L     0x00 // CA0 off (0)
-#define kph0H     0x01 // CA0 on (1)
-#define kph1L     0x02 // CA1 off (0)
-#define kph1H     0x03 // CA1 on (1)
-#define kph2L     0x04 // CA2 off (0)
-#define kph2H     0x05 // CA2 on (1)
-#define kph3L     0x06 // LSTRB off (low)
-#define kph3H     0x07 // LSTRB on (high)
-#define kmtrOff   0x08 // disk enable off
-#define kmtrOn    0x09 // disk enable on
-#define kintDrive 0x0A // select internal drive
-#define kextDrive 0x0B // select external drive
-#define kq6L      0x0C // Q6 off
-#define kq6H      0x0D // Q6 on
-#define kq7L      0x0E // Q7 off
-#define kq7H      0x0F // Q7 on
+#define kph0L     0x00 /* CA0 off (0) */
+#define kph0H     0x01 /* CA0 on (1) */
+#define kph1L     0x02 /* CA1 off (0) */
+#define kph1H     0x03 /* CA1 on (1) */
+#define kph2L     0x04 /* CA2 off (0) */
+#define kph2H     0x05 /* CA2 on (1) */
+#define kph3L     0x06 /* LSTRB off (low) */
+#define kph3H     0x07 /* LSTRB on (high) */
+#define kmtrOff   0x08 /* disk enable off */
+#define kmtrOn    0x09 /* disk enable on */
+#define kintDrive 0x0A /* select internal drive */
+#define kextDrive 0x0B /* select external drive */
+#define kq6L      0x0C /* Q6 off */
+#define kq6H      0x0D /* Q6 on */
+#define kq7L      0x0E /* Q7 off */
+#define kq7H      0x0F /* Q7 on */
 
 #define kph0 0x01
 #define kph1 0x02
@@ -60,17 +61,17 @@
 #define kq6  0x40
 #define kq7  0x80
 
-LOCALVAR ui3b vSel; // Selection Line from VIA
+LOCALVAR ui3b vSel; /* Selection Line from VIA */
 
 typedef struct
 {
-	ui3b DataIn;    // Read Data Register
-	ui3b Handshake; // Read Handshake Register
-	ui3b Status;    // Read Status Register
-	ui3b Mode;      // Drive Off : Write Mode Register
-	                 // Drive On  : Write Data Register
-	ui3b DataOut;   // Write Data Register
-	ui3b Lines;     // Used to Access Disk Drive Registers
+	ui3b DataIn;    /* Read Data Register */
+	ui3b Handshake; /* Read Handshake Register */
+	ui3b Status;    /* Read Status Register */
+	ui3b Mode;      /* Drive Off : Write Mode Register */
+	                /* Drive On  : Write Data Register */
+	ui3b DataOut;   /* Write Data Register */
+	ui3b Lines;     /* Used to Access Disk Drive Registers */
 } IWM_Ty;
 
 IWM_Ty IWM;
@@ -94,77 +95,74 @@ LOCALPROC IWM_Set_Lines(ui3b line, Mode_Ty the_mode)
 FORWARDFUNC ui3b IWM_Read_Reg(void);
 FORWARDPROC IWM_Write_Reg(ui3b in);
 
-GLOBALPROC IWM_Access(CPTR addr)
+GLOBALFUNC ui5b IWM_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
-	if (ByteSizeAccess) {
-		if ((addr & 1) == 0) {
-			switch (addr >> 9) {
-				case kph0L :
-					IWM_Set_Lines(kph0, Off);
-					break;
-				case kph0H :
-					IWM_Set_Lines(kph0, On);
-					break;
-				case kph1L :
-					IWM_Set_Lines(kph1, Off);
-					break;
-				case kph1H :
-					IWM_Set_Lines(kph1, On);
-					break;
-				case kph2L :
-					IWM_Set_Lines(kph2, Off);
-					break;
-				case kph2H :
-					IWM_Set_Lines(kph2, On);
-					break;
-				case kph3L :
-					IWM_Set_Lines(kph3, Off);
-					break;
-				case kph3H :
-					IWM_Set_Lines(kph3, On);
-					break;
-				case kmtrOff :
-					IWM.Status &= 0xDF;
-					IWM_Set_Lines(kmtr, Off);
-					break;
-				case kmtrOn :
-					IWM.Status |= 0x20;
-					IWM_Set_Lines(kmtr, On);
-					break;
-				case kintDrive :
-					IWM_Set_Lines(kdrv, Off);
-					break;
-				case kextDrive :
-					IWM_Set_Lines(kdrv, On);
-					break;
-				case kq6L :
-					IWM_Set_Lines(kq6, Off);
-					break;
-				case kq6H :
-					IWM_Set_Lines(kq6, On);
-					break;
-				case kq7L :
-					if (! WriteMemAccess) {
-						DataBus = IWM_Read_Reg();
-					}
-					IWM_Set_Lines(kq7, Off);
-					break;
-				case kq7H :
-					if (WriteMemAccess) {
-						IWM_Write_Reg(DataBus);
-					}
-					IWM_Set_Lines(kq7, On);
-					break;
+	switch (addr) {
+		case kph0L :
+			IWM_Set_Lines(kph0, Off);
+			break;
+		case kph0H :
+			IWM_Set_Lines(kph0, On);
+			break;
+		case kph1L :
+			IWM_Set_Lines(kph1, Off);
+			break;
+		case kph1H :
+			IWM_Set_Lines(kph1, On);
+			break;
+		case kph2L :
+			IWM_Set_Lines(kph2, Off);
+			break;
+		case kph2H :
+			IWM_Set_Lines(kph2, On);
+			break;
+		case kph3L :
+			IWM_Set_Lines(kph3, Off);
+			break;
+		case kph3H :
+			IWM_Set_Lines(kph3, On);
+			break;
+		case kmtrOff :
+			IWM.Status &= 0xDF;
+			IWM_Set_Lines(kmtr, Off);
+			break;
+		case kmtrOn :
+			IWM.Status |= 0x20;
+			IWM_Set_Lines(kmtr, On);
+			break;
+		case kintDrive :
+			IWM_Set_Lines(kdrv, Off);
+			break;
+		case kextDrive :
+			IWM_Set_Lines(kdrv, On);
+			break;
+		case kq6L :
+			IWM_Set_Lines(kq6, Off);
+			break;
+		case kq6H :
+			IWM_Set_Lines(kq6, On);
+			break;
+		case kq7L :
+			if (! WriteMem) {
+				Data = IWM_Read_Reg();
 			}
-			return;
-		}
+			IWM_Set_Lines(kq7, Off);
+			break;
+		case kq7H :
+			if (WriteMem) {
+				IWM_Write_Reg(Data);
+			}
+			IWM_Set_Lines(kq7, On);
+			break;
 	}
+	return Data;
 }
 
 LOCALFUNC ui3b IWM_Read_Reg(void)
 {
 	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
 		case 0 :
+			ReportAbnormal("IWM Data Read");
 #ifdef _IWM_Debug
 			printf("IWM Data Read\n");
 #endif
@@ -177,6 +175,7 @@ LOCALFUNC ui3b IWM_Read_Reg(void)
 			return IWM.Status;
 			break;
 		case 2 :
+			ReportAbnormal("IWM Handshake Read");
 #ifdef _IWM_Debug
 			printf("IWM Handshake Read\n");
 #endif
@@ -200,9 +199,9 @@ LOCALPROC IWM_Write_Reg(ui3b in)
 	}
 }
 
-// VIA Interface Headers
+/* VIA Interface Headers */
 
-GLOBALFUNC ui3b VIA_GORA5(void) // Floppy Disk Line SEL
+GLOBALFUNC ui3b VIA_GORA5(void) /* Floppy Disk Line SEL */
 {
 #ifdef _VIA_Interface_Debug
 	printf("VIA ORA5 attempts to be an input\n");
