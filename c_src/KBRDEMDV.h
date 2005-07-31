@@ -1,7 +1,7 @@
 /*
 	KBRDEMDV.h
 
-	Copyright (C) 2003 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -20,6 +20,14 @@
 #define KBRDEMDV_H
 #endif
 
-EXPORTPROC Keyboard_Put(ui3b in);
-
 EXPORTPROC KeyBoard_Update(void);
+
+#if CurEmu <= kEmuPlus
+EXPORTPROC Kybd_DataLineChngNtfy(void);
+EXPORTPROC DoKybd_ReceiveEndCommand(void);
+EXPORTPROC DoKybd_ReceiveCommand(void);
+#else
+EXPORTPROC ADBstate_ChangeNtfy(void);
+EXPORTPROC ADB_DoNewState(void);
+EXPORTPROC ADB_DataLineChngNtfy(void);
+#endif

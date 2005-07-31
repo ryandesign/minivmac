@@ -1,7 +1,7 @@
 /*
 	ENDIANAC.h
 
-	Copyright (C) 2003 Bernd Schmidt, Paul Pratt
+	Copyright (C) 2003 Bernd Schmidt, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -44,7 +44,7 @@ static MayInline ui4b do_get_mem_word(ui3p a)
 {
 	ui3b *b = a;
 
-	return (*b << 8) | (*(b+1));
+	return (*b << 8) | (*(b + 1));
 }
 #endif
 
@@ -55,7 +55,8 @@ static MayInline ui5b do_get_mem_long(ui3p a)
 {
 	ui3b *b = a;
 
-	return (*b << 24) | (*(b+1) << 16) | (*(b+2) << 8) | (*(b+3));
+	return (*b << 24) | (*(b + 1) << 16)
+		| (*(b + 2) << 8) | (*(b + 3));
 }
 #endif
 
@@ -69,7 +70,7 @@ static MayInline void do_put_mem_word(ui3p a, ui4b v)
 	ui3b *b = a;
 
 	*b = v >> 8;
-	*(b+1) = v;
+	*(b + 1) = v;
 }
 #endif
 
@@ -81,8 +82,8 @@ static MayInline void do_put_mem_long(ui3p a, ui5b v)
 	ui3b *b = a;
 
 	*b = v >> 24;
-	*(b+1) = v >> 16;
-	*(b+2) = v >> 8;
-	*(b+3) = v;
+	*(b + 1) = v >> 16;
+	*(b + 2) = v >> 8;
+	*(b + 3) = v;
 }
 #endif

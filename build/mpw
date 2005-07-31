@@ -1,0 +1,219 @@
+# building with MPW
+
+Set my_source_d "`Directory -q`"
+
+If not "`exists -d -q "{my_source_d}c_src:"`"
+	Echo "The current directory isn't right,"
+	Echo "the 'c_src' folder doesn't exist."
+	exit 1
+End
+
+#----------------------
+# find output directory
+
+Set to_relative 1
+Set my_output_d "output"
+If {#} > 1
+	If "{1}" == "-to"
+		Set to_relative 0
+		Set my_output_d "{2}"
+		Shift 2
+	Else If "{1}" == "-torel"
+		Set my_output_d "{2}"
+		Shift 2
+	End
+End
+
+If not "`exists -d -q "{my_output_d}"`"
+	NewFolder "{my_output_d}"
+	Set fresh_output 1
+Else
+	Set fresh_output 0
+End
+Directory "{my_output_d}"
+
+Set my_output_d "`Directory -q`"
+
+#--------------------
+# get setup directory
+
+If not "`exists -d -q "setup"`"
+	NewFolder "setup"
+End
+Directory "setup"
+
+Set my_setup_d "`Directory -q`"
+
+Echo -n > "{my_setup_d}setupopt.h"
+
+Directory "{my_source_d}"
+
+#-------------------------
+# parse rest of parameters
+
+Set do_compile 1
+Set keep_setup 0
+Set keep_make 0
+Set use_IDE auto
+Set use_Targ auto
+Set use_Script auto
+Set be_quiet 0
+
+Loop
+	Break If {#} == 0
+	Set cur_arg "{1}"
+	Shift
+	If "{cur_arg}" == "-nocompile"
+		Set do_compile 0
+	Else If "{cur_arg}" == "-keepsetup"
+		Set keep_setup 1
+	Else If "{cur_arg}" == "-keepmake"
+		Set keep_make 1
+	Else If "{cur_arg}" == "-quiet"
+		Set be_quiet 1
+	Else If "{cur_arg}" == "-ds"
+		Echo "#define {1} \"{2}\"" >> "{my_setup_d}setupopt.h"
+		Shift 2
+	Else If "{cur_arg}" == "-d"
+		Echo "#define {1} {2}" >> "{my_setup_d}setupopt.h"
+		Shift 2
+	Else If "{cur_arg}" == "-ide"
+		If "{use_IDE}" == "auto"
+			Set use_IDE "UseIde{1}"
+			Shift
+		Else
+			Echo "only one UseIde parameter allowed"
+			Exit 1
+		End
+	Else If "{cur_arg}" == "-targ"
+		If "{use_Targ}" == "auto"
+			Set use_Targ "UseTarg{1}"
+			Shift
+		Else
+			Echo "only one UseTarg parameter allowed"
+			Exit 1
+		End
+	Else If "{cur_arg}" == "-script"
+		If "{use_Script}" == "auto"
+			Set use_Script "UseScript{1}"
+			Shift
+		Else
+			Echo "only one UseScript parameter allowed"
+			Exit 1
+		End
+	Else
+		Echo "#define {cur_arg} 1" >> "{my_setup_d}setupopt.h"
+	End
+End
+
+If not "{be_quiet}"
+	Echo "building with MPW"
+	Echo "my_source_d = {my_source_d}"
+	Echo "my_output_d = {my_output_d}"
+End
+
+If "{use_IDE}" == "auto"
+	Set use_IDE "UseIdeMPW3_6_a1"
+End
+
+If "{use_Targ}" == "auto"
+	Set use_Targ "UseTargCarbon"
+End
+
+If "{use_Script}" == "auto"
+	Set use_Script "UseScriptMPW"
+End
+
+If "{to_relative}"
+	Echo "#define TheUseAbsolute 0" >> "{my_setup_d}setupopt.h"
+End
+Echo "#define {use_Script} 1" >> "{my_setup_d}setupopt.h"
+Echo "#define {use_IDE} 1" >> "{my_setup_d}setupopt.h"
+Echo "#define {use_Targ} 1" >> "{my_setup_d}setupopt.h"
+
+If "{MPW_Tools}" == ""
+	Set MPW_Tools "{MPW}Tools:"
+End
+
+Set LinkLibs ""
+If "`exists -q "{MPW_Tools}SC"`"
+	Set CompileLine "sc"
+	Set LinkLibs "{LinkLibs} '{Libraries}MacRuntime.o'"
+	Set LinkLibs "{LinkLibs} '{Libraries}Interface.o'"
+	Set LinkLibs "{LinkLibs} '{Libraries}IntEnv.o'"
+	Set LinkLibs "{LinkLibs} '{CLibraries}IOStreams.o'"
+	Set LinkLibs "{LinkLibs} '{CLibraries}CPlusLib.o'"
+	Set LinkLibs "{LinkLibs} '{CLibraries}StdCLib.o'"
+Else If "`exists -q "{MPW_Tools}C"`"
+	Set CompileLine "c -b -r -w"
+	Set LinkLibs "{LinkLibs} '{libraries}Interface.o'"
+	Set LinkLibs "{LinkLibs} '{clibraries}CRuntime.o'"
+	Set LinkLibs "{LinkLibs} '{clibraries}StdCLib.o'"
+	Set LinkLibs "{LinkLibs} '{clibraries}CInterface.o'"
+Else
+	Echo "no C compiler found"
+	Exit 1
+End
+
+If "{MPWVersion}" == "3.6a1"
+	Echo "#define MPWOneEchoPerFile 0" >> "{my_setup_d}setupopt.h"
+End
+
+#-----------
+
+{CompileLine} "{my_source_d}build:setup.c" -o "{my_setup_d}setup.o" -i "{my_setup_d}" -i "{my_source_d}"
+Link -t 'MPST' -c 'MPS ' -o "{my_setup_d}setup" "{my_setup_d}setup.o" {LinkLibs}
+
+"{my_setup_d}setup" > "{my_setup_d}setup.mpw"
+
+If "{use_Script}" == "UseScriptMPW"
+
+	If "{to_relative}"
+		"{my_setup_d}setup.mpw" "{my_output_d}"
+	Else
+		"{my_setup_d}setup.mpw" "{my_output_d}" "{my_source_d}"
+	End
+
+	If not "{keep_setup}"
+		Delete -y "{my_setup_d}"
+	End
+
+	If "{use_IDE}" == "UseIdeMPW3_6_a1"
+		Directory "{my_output_d}"
+
+		If not "{fresh_output}"
+			If not "{be_quiet}"
+				Echo 'set echo 1' > "{my_output_d}BuildScript"
+			Else
+				Echo -n > "{my_output_d}BuildScript"
+			End
+			Make clean >> "{my_output_d}BuildScript"
+			"{my_output_d}BuildScript"
+			Delete "{my_output_d}BuildScript"
+		End
+
+		If "{do_compile}"
+			If not "{be_quiet}"
+				Echo "Make"
+				Echo 'set echo 1' > "{my_output_d}BuildScript"
+			Else
+				Echo -n > "{my_output_d}BuildScript"
+			End
+			Make >> "{my_output_d}BuildScript"
+			"{my_output_d}BuildScript"
+			Delete "{my_output_d}BuildScript"
+			If not "{keep_make}"
+				Delete -y "{my_output_d}Makefile"
+				Delete -y "{my_output_d}config"
+				Delete -y "{my_output_d}obj"
+			End
+		End
+
+		Directory "{my_source_d}"
+	End
+End
+
+#---------
+If not "{be_quiet}"
+	Echo "Done"
+End

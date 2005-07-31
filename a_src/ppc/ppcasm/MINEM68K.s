@@ -1,6 +1,6 @@
 ;	MINEM68K.s
 ;
-;	Copyright (C) 2004 Paul Pratt
+;	Copyright (C) 2004 Paul C. Pratt
 ;
 ;	You can redistribute this file and/or modify it under the terms
 ;	of version 2 of the GNU General Public License as published by
@@ -27,6 +27,11 @@
 	toc
 	tc	customreset[TC],customreset[DS]
 
+	import	.get_real_address[PR]
+	import	get_real_address[DS]
+	toc
+	tc	get_real_address[TC],get_real_address[DS]
+
 
 ; exports
 
@@ -41,6 +46,18 @@
 	tc	m68k_IPLchangeNtfy[TC],m68k_IPLchangeNtfy[DS]
 	csect	m68k_IPLchangeNtfy[DS]
 	dc.l	.m68k_IPLchangeNtfy
+	dc.l	TOC[tc0]
+
+	toc
+	tc	GetInstructionsRemaining[TC],GetInstructionsRemaining[DS]
+	csect	GetInstructionsRemaining[DS]
+	dc.l	.GetInstructionsRemaining
+	dc.l	TOC[tc0]
+
+	toc
+	tc	SetInstructionsRemaining[TC],SetInstructionsRemaining[DS]
+	csect	SetInstructionsRemaining[DS]
+	dc.l	.SetInstructionsRemaining
 	dc.l	TOC[tc0]
 
 	toc
@@ -196,7 +213,7 @@ fIPL: equ $-.b2regs9999[RW]
 	dc.l	.DoCodeC
 	dc.l	.DoCodeD
 	dc.l	.DoCodeE
-	dc.l	.op_illg
+	dc.l	.DoCodeF
 
 x_b2S9993: equ $-.Dispatches[RW]
 	dc.l	.L49
@@ -318,9 +335,9 @@ x_b2S9977: equ $-.Dispatches[RW]
 	bl	.MyEmulatorEntry
 
 	mr	rMaxInstrsToGo, r3
-.B2LP_9657:
 	addi	r12, 0, 0
 	stw	r12, fReg_MoreInstrs(rRegs)
+.B2LP_9657:
 
 	lbz	r0, fReg_ExtIntPend(rRegs)
 	cmpi	cr0, r0, 0
@@ -341,8 +358,10 @@ x_b2S9977: equ $-.Dispatches[RW]
 	addi	rPC_p, rPC_p, -2
 
 	lwz	r0, fReg_MoreInstrs(rRegs)
+	addi	r12, 0, 0
 	mr	rMaxInstrsToGo, r0
 	cmpi	cr0, r0, 0
+	stw	r12, fReg_MoreInstrs(rRegs)
 	bne	cr0,.B2LP_9657
 	bl	.MyEmulatorExit
 
@@ -734,7 +753,7 @@ x_b2S9977: equ $-.Dispatches[RW]
 
 
 .m68k_getSR:
-	mr	r3, rFlag_c	
+	mr	r3, rFlag_c
 	lbz	r6, fReg_t1(rRegs)
 	lbz	r0, fReg_s(rRegs)
 	lwz	r5, fReg_intmask(rRegs)
@@ -868,7 +887,7 @@ x_b2S9977: equ $-.Dispatches[RW]
 	rlwinm	r12, r3, 17, 23, 29
 	lwzx	r12, r12, rBankReadAddr
 	cmpi	cr0, r12, 0
-	beq	cr0,.B2SEL9982
+	beq	cr0,.get_pc_real_address_ext
 	rlwinm	r4, r3, 0, 15, 31
 	add	rPC_p, r4, r12
 .end_get_pc_real_address:
@@ -877,10 +896,6 @@ x_b2S9977: equ $-.Dispatches[RW]
 	stw	rPC_p, fReg_pc_oldp(rRegs)
 
 	blr
-
-.B2SEL9982:
-	lwz	rPC_p, 0(rBankReadAddr)
-	b	.end_get_pc_real_address
 
 
 .ExceptionTo:
@@ -2228,43 +2243,8 @@ x_b2S9977: equ $-.Dispatches[RW]
 	b	.DoCompare
 .L1095:
 	cmpi	cr0, r9, 7
-	bne	cr0,.L1120
-	lbz	r30, fReg_s(rRegs)
-	cmpi	cr0, r30, 0
-	bne	cr0,.L1101
-	addi	r3, 0, 8
-	addi	rPC_p, rPC_p, -2
-	bl	.Exception
-	b	.m68k_NextInstruction
-.L1101:
-	rlwinm	r30, rOpCode, 2, 27, 29
-	add	r4, r30, rRegs
-	lhzu	r3, 2(rPC_p)
-	extsh	r9, r3
-	lwz	r3, 32(r4)
-	rlwinm.	r5, r9, 0, 20, 20
-	mr	r28, r9
-	beq	cr0,.L1106
-	rlwinm	r6, r9, 22, 26, 29
-	lwzx	r4, r6, rRegs
-	bl	.put_byte
-	b	.m68k_NextInstruction
-.L1106:
-	bl	.get_byte
-	mr	r0, r28
-	extsh	r12, r0
-	rlwinm.	r0, r0, 0, 16, 16
-	rlwinm	r12, r12, 22, 27, 29
-	add	r9, r12, rRegs
-	beq	cr0,.L1111
-	stw	r3, 32(r9)
-	b	.m68k_NextInstruction
-.L1111:
-	lwz	r0, 0(r9)
-	rlwimi	r0, r3, 0, 24, 31
-	stw	r0, 0(r9)
-	b	.m68k_NextInstruction
-.L1120:
+	beq-	cr0,.op_illg ; MOVES, not for 68000
+
 	bl	.FindOpSizeFromb76
 	addi	r6, rDispatches, x_b2S9980
 	rlwinm	r5, rOpCode, 23, 29, 31
@@ -3394,6 +3374,13 @@ x_b2S9977: equ $-.Dispatches[RW]
 	b	.DoBinOp1notA
 
 
+.DoCodeF:
+	addi	r3, 0, 11
+	addi	rPC_p, rPC_p, -2
+	bl	.Exception
+	b	.m68k_NextInstruction
+
+
 .op_illg:
 	addi	r3, 0, 4
 	addi	rPC_p, rPC_p, -2
@@ -3569,39 +3556,84 @@ x_b2S9977: equ $-.Dispatches[RW]
 	blr
 
 
-.MyEmulatorPartialEntry:
-	lwz	rRegs, .b2regs9999[TC](rtoc)
-	lwz	rMaxInstrsToGo, fReg_MaxInstrs(rRegs)
-	blr
+.get_pc_real_address_ext:
+	mflr	r0
+	stw	r0, 8(sp)
+	stwu	sp, -64(sp)
+	bl	.MyEmulatorTempLeave
 
+	mr	r5, r3		; addr
+	addi	r4, 0, 0	; WritableMem
+	addi	r3, 0, 2	; L
 
-.MyEmulatorPartialExit:
-	stw	rMaxInstrsToGo, fReg_MaxInstrs(rRegs)
-	blr
+	bl	.get_real_address[PR]
+	Nop
+	mr	rPC_p, r3	; addr
+
+	bl	.MyEmulatorTempReturn
+	lwz	r0, 72(sp)
+	addi	sp, sp, 64
+	mtlr	r0
+
+	cmpi	cr0, rPC_p, 0
+	bne+	cr0,.end_get_pc_real_address
+	lwz	rPC_p, 0(rBankReadAddr)
+	b	.end_get_pc_real_address
 
 
 	export	.m68k_IPLchangeNtfy[PR]
 	export	m68k_IPLchangeNtfy[DS]
 	csect	.m68k_IPLchangeNtfy[PR]
 .m68k_IPLchangeNtfy:
-	mflr	r0
-	stw	r0, 8(sp)
-	stwu	sp, -64(sp)
-	bl	.MyEmulatorPartialEntry
-
-	bl	.ReadInterruptPriorityLevel
-	lwz	r6, fReg_intmask(rRegs)
-	cmp	cr1, r3, r6
+	lwz	r6, .b2regs9999[TC](rtoc)
+	lwz	r11, fIPL(r6)
+	lwz	r4, fReg_intmask(r6)
+	lbz	r3, 0x0000(r11)
+	cmp	cr1, r3, r4
 	bgt	cr1,.L126
 	cmpi	cr0, r3, 7
-	bne	cr0,.B2end9965
+	bnelr	cr0
 .L126:
-	bl	.SetExternalInterruptPending
-.B2end9965:
-	bl	.MyEmulatorPartialExit
-	lwz	r0, 72(sp)
-	addi	sp, sp, 64
-	mtlr	r0
+	lwz	r12, fReg_MaxInstrs(r6)
+	addi	r3, 0, 1
+	stb	r3, fReg_ExtIntPend(r6)
+	cmpi	cr0, r12, 0
+	beqlr	cr0
+	lwz	r3, fReg_MoreInstrs(r6)
+	addi	r4, 0, 1
+	stw	r4, fReg_MaxInstrs(r6)
+	add	r3, r3, r12
+	addi	r3, r3, -1
+	stw	r3, fReg_MoreInstrs(r6)
+	blr
+
+
+	export	.GetInstructionsRemaining[PR]
+	export	GetInstructionsRemaining[DS]
+	csect	.GetInstructionsRemaining[PR]
+.GetInstructionsRemaining:
+	lwz	r6, .b2regs9999[TC](rtoc)
+	lwz	r3,fReg_MoreInstrs(r6)
+	lwz	r5,fReg_MaxInstrs(r6)
+	add	r3,r3,r5
+	blr
+
+
+	export	.SetInstructionsRemaining[PR]
+	export	SetInstructionsRemaining[DS]
+	csect	.SetInstructionsRemaining[PR]
+.SetInstructionsRemaining:
+	lwz	r6, .b2regs9999[TC](rtoc)
+	lwz	r5,fReg_MaxInstrs(r6)
+	cmplw	r5,r3
+	blt	.L1_SetInstructionsRemaining
+	li	r0,0
+	stw	r3,fReg_MaxInstrs(r6)
+	stw	r0,fReg_MoreInstrs(r6)
+	blr
+.L1_SetInstructionsRemaining:
+	sub	r4,r3,r5
+	stw	r4,fReg_MoreInstrs(r6)
 	blr
 
 
@@ -3646,10 +3678,6 @@ x_b2S9977: equ $-.Dispatches[RW]
 	addi	r30, 0, 0
 	addi	r29, 0, 7
 	addi	r28, 0, 1
-	bl	.MyEmulatorExit
-	bl	.customreset[PR]
-	Nop
-	bl	.MyEmulatorEntry
 	addi	r3, 0, 4
 	bl	.get_long
 	bl	.m68k_setpc
@@ -3685,4 +3713,4 @@ x_b2S9977: equ $-.Dispatches[RW]
 	stw	r3, fBankReadAddr(r9)
 	stw	r4, fBankWritAddr(r9)
 	stw	r5, fIPL(r9)
-	b	.m68k_reset[PR]	; exported
+	blr

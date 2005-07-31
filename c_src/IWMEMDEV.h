@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.h
 
-	Copyright (C) 2004 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,8 +23,3 @@
 EXPORTPROC IWM_Reset(void);
 
 EXPORTFUNC ui5b IWM_Access(ui5b Data, blnr WriteMem, CPTR addr);
-
-/* VIA Interface Headers */
-
-EXPORTFUNC ui3b VIA_GORA5(void); /* Floppy Disk Line SEL */
-EXPORTPROC VIA_PORA5(ui3b Data);

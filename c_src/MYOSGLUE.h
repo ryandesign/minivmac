@@ -1,7 +1,7 @@
 /*
 	MYOSGLUE.h
 
-	Copyright (C) 2004 Philip Cummins, Richard F. Bannister, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Richard F. Bannister, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -32,13 +32,21 @@
 #define MYOSGLUE_H
 #endif
 
-#define kEmu128K     0
-#define kEmu512K     1
-#define kEmu512Ke    2
-#define kEmuPlus1M   3
-#define kEmuPlus2M   4
-#define kEmuPlus2_5M 5
-#define kEmuPlus     6
+#define kEmu128K        0
+#define kEmu512K        1
+#define kEmu512Ke       2
+#define kEmuPlus1M      3
+#define kEmuPlus2M      4
+#define kEmuPlus2_5M    5
+#define kEmuPlus        6
+#define kEmuSE1M        7
+#define kEmuSE2M        8
+#define kEmuSE2_5M      9
+#define kEmuSE          10
+#define kEmuClassic1M   11
+#define kEmuClassic2M   12
+#define kEmuClassic2_5M 13
+#define kEmuClassic     14
 
 #ifndef CurEmu
 #define CurEmu kEmuPlus
@@ -59,8 +67,26 @@ EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 #define kRAM_Size 0x00200000
 #elif (CurEmu == kEmuPlus2_5M)
 #define kRAM_Size 0x00280000
-#else
+#elif (CurEmu == kEmuPlus)
 #define kRAM_Size 0x00400000
+#elif (CurEmu == kEmuSE1M)
+#define kRAM_Size 0x00100000
+#elif (CurEmu == kEmuSE2M)
+#define kRAM_Size 0x00200000
+#elif (CurEmu == kEmuSE2_5M)
+#define kRAM_Size 0x00280000
+#elif (CurEmu == kEmuSE)
+#define kRAM_Size 0x00400000
+#elif (CurEmu == kEmuClassic1M)
+#define kRAM_Size 0x00100000
+#elif (CurEmu == kEmuClassic2M)
+#define kRAM_Size 0x00200000
+#elif (CurEmu == kEmuClassic2_5M)
+#define kRAM_Size 0x00280000
+#elif (CurEmu == kEmuClassic)
+#define kRAM_Size 0x00400000
+#else
+#error "kRAM_Size not defined"
 #endif
 #endif
 
@@ -72,12 +98,31 @@ EXPORTVAR(ui4b, *RAM)
 		possible for the emulator to write up to 3 bytes past kRAM_Size.
 	*/
 
-#define kROM_Size 0x020000 /* ROM size is 128 KB */
 
 #if CurEmu <= kEmu512K
 #define kTrueROM_Size 0x010000 /* ROM size is 64 KB */
+#elif CurEmu <= kEmuPlus
+#define kTrueROM_Size 0x020000 /* ROM size is 128 KB */
+#elif CurEmu <= kEmuSE
+#define kTrueROM_Size 0x040000 /* ROM size is 256 KB */
+#elif CurEmu <= kEmuClassic
+#define kTrueROM_Size 0x080000 /* ROM size is 512 KB */
 #else
-#define kTrueROM_Size kROM_Size /* ROM size is 128 KB */
+#error "kTrueROM_Size not defined"
+#endif
+
+#if CurEmu <= kEmu512K
+#define kROM_Size 0x020000 /* ROM size is 128 KB */
+#else
+#define kROM_Size kTrueROM_Size
+#endif
+
+#ifndef TempDebug /* a way to mark temporary debugging code */
+#if (CurEmu >= kEmuSE1M) && (CurEmu <= kEmuClassic)
+#define TempDebug 1 /* flag some stuff that needs look at */
+#else
+#define TempDebug 0
+#endif
 #endif
 
 EXPORTVAR(ui4b, *ROM)
@@ -128,11 +173,21 @@ EXPORTVAR(char, *CntrlDisplayBuff)
 
 EXPORTVAR(blnr, RequestMacOff)
 
+EXPORTVAR(blnr, ForceMacOff)
+
+EXPORTVAR(blnr, RequestInsertDisk)
+
 EXPORTVAR(si3b, TimeAdjust)
 
-EXPORTPROC CheckIntSixtieth(blnr MayWaitForIt);
+EXPORTFUNC blnr ExtraTimeNotOver(void);
 
 EXPORTVAR(blnr, SpeedLimit)
+
+EXPORTVAR(blnr, SpeedStopped)
+
+EXPORTVAR(blnr, RunInBackground)
+
+EXPORTVAR(ui3b, SpeedValue)
 
 #ifndef EnableMagnify
 #define EnableMagnify 1
@@ -187,8 +242,6 @@ EXPORTFUNC ui3p GetCurSoundOutBuff(void);
 /* Length of the audio buffer */
 #define SOUND_LEN 370
 #endif
-
-EXPORTPROC InsertADisk(void);
 
 EXPORTVAR(ui5b, theKeys[4])
 

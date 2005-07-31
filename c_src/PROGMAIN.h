@@ -1,7 +1,7 @@
 /*
 	PROGMAIN.h
 
-	Copyright (C) 2003 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,5 +22,6 @@
 
 #define kNumSubTicks 16
 
-EXPORTPROC ProgramMain(void);
+EXPORTPROC DoEmulateOneTick(void);
+EXPORTPROC DoEmulateExtraTime(void);
 EXPORTPROC DoMacReset(void);

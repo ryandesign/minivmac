@@ -1,7 +1,7 @@
 /*
 	MINEM68K.c
 
-	Copyright (C) 2004 Bernd Schmidt, Paul Pratt
+	Copyright (C) 2004 Bernd Schmidt, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 /*
 	MINimum EMulator of 68K cpu
 
-	This code descends from a simple 68000 emulator that I (Paul Pratt)
+	This code descends from a simple 68000 emulator that I (Paul C. Pratt)
 	wrote long ago. That emulator ran on a 680x0, and used the cpu
 	it ran on to do some of the work. This descendent fills
 	in those holes with code from the Un*x Amiga Emulator
@@ -34,26 +34,64 @@
 #endif
 
 #include "ENDIANAC.h"
+#include "ADDRSPAC.h"
 
 #include "MINEM68K.h"
 
 IMPORTFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr);
+IMPORTFUNC ui3b *get_real_address(ui5b L, blnr WritableMem, CPTR addr);
 IMPORTPROC customreset(void);
 
 typedef unsigned char flagtype;
 
+#ifndef Use68020
+#define Use68020 0
+#endif
+
+#ifndef AccurateIllegal
+#define AccurateIllegal 0
+#endif
+
 LOCALVAR struct regstruct
 {
-	ui5b regs[16];
-	CPTR usp;
-	CPTR isp;
-	ui5b pc;
-	int intmask;
-	flagtype t1;
-	flagtype s;
-#if 0 /* not on 68000 */
-	flagtype m;
+	ui5b regs[16]; /* Data and Address registers */
+	ui5b pc; /* Program Counter */
+	CPTR usp; /* User Stack Pointer */
+	CPTR isp; /* Interrupt Stack Pointer */
+#if Use68020
+	CPTR msp; /* Master Stack Pointer */
 #endif
+
+	/* Status Register */
+	int intmask; /* bits 10-8 : interrupt priority mask */
+	flagtype t1; /* bit 15: Trace mode 1 */
+#if Use68020
+	flagtype t0; /* bit 14: Trace mode 0 */
+#endif
+	flagtype s; /* bit 13: Supervisor or user privilege level  */
+#if Use68020
+	flagtype m; /* bit 12: Master or interrupt mode */
+#endif
+	flagtype x; /* bit 4: eXtend */
+	flagtype n; /* bit 3: Negative */
+	flagtype z; /* bit 2: Zero */
+	flagtype v; /* bit 1: oVerflow */
+	flagtype c; /* bit 0: Carry */
+
+#if Use68020
+	ui5b sfc; /* Source Function Code register */
+	ui5b dfc; /* Destination Function Code register */
+	ui5b vbr; /* Vector Base Register */
+	ui5b cacr; /* Cache Control Register */
+		/*
+			bit 0 : Enable Cache
+			bit 1 : Freeze Cache
+			bit 2 : Clear Entry In Cache (write only)
+			bit 3 : Clear Cache (write only)
+		*/
+	ui5b caar; /* Cache Address Register */
+#endif
+
 	flagtype TracePending;
 	flagtype ExternalInterruptPending;
 	ui3b **fBankReadAddr;
@@ -65,7 +103,7 @@ LOCALVAR struct regstruct
 } regs;
 
 #define m68k_dreg(num) (regs.regs[(num)])
-#define m68k_areg(num) (regs.regs[(num)+8])
+#define m68k_areg(num) (regs.regs[(num) + 8])
 
 LOCALFUNC si5b get_word(CPTR addr)
 {
@@ -150,52 +188,55 @@ LOCALFUNC ui3p get_pc_real_address(CPTR addr)
 	if (ba != nullpr) {
 		return (addr & MemBankAddrMask) + ba;
 	} else {
-		/* in trouble if get here */
-		return regs.fBankReadAddr[0];
+		ba = get_real_address(2, falseblnr, addr);
+		if (ba != nullpr) {
+			return ba;
+		} else {
+			/* in trouble if get here */
+			return regs.fBankReadAddr[0];
+		}
 	}
 }
 
-LOCALVAR flagtype regflags_c;
-LOCALVAR flagtype regflags_z;
-LOCALVAR flagtype regflags_n;
-LOCALVAR flagtype regflags_v;
-LOCALVAR flagtype regflags_x;
-
-#define ZFLG (regflags_z)
-#define NFLG (regflags_n)
-#define CFLG (regflags_c)
-#define VFLG (regflags_v)
-#define XFLG (regflags_x)
+#define ZFLG regs.z
+#define NFLG regs.n
+#define CFLG regs.c
+#define VFLG regs.v
+#define XFLG regs.x
 
 #define LOCALPROCUSEDONCE LOCALFUNC MayInline void
 
 LOCALFUNC MayInline int cctrue(const int cc)
 {
-	switch(cc){
-		case 0:  return 1;                       /* T */
-		case 1:  return 0;                       /* F */
-		case 2:  return !CFLG && !ZFLG;          /* HI */
-		case 3:  return CFLG || ZFLG;            /* LS */
-		case 4:  return !CFLG;                   /* CC */
-		case 5:  return CFLG;                    /* CS */
-		case 6:  return !ZFLG;                   /* NE */
-		case 7:  return ZFLG;                    /* EQ */
-		case 8:  return !VFLG;                   /* VC */
-		case 9:  return VFLG;                    /* VS */
-		case 10: return !NFLG;                   /* PL */
-		case 11: return NFLG;                    /* MI */
-		case 12: return NFLG == VFLG;            /* GE */
-		case 13: return NFLG != VFLG;            /* LT */
-		case 14: return !ZFLG && (NFLG == VFLG); /* GT */
-		case 15: return ZFLG || (NFLG != VFLG);  /* LE */
+	switch (cc) {
+		case 0:  return 1;                          /* T */
+		case 1:  return 0;                          /* F */
+		case 2:  return (! CFLG) && (! ZFLG);       /* HI */
+		case 3:  return CFLG || ZFLG;               /* LS */
+		case 4:  return ! CFLG;                     /* CC */
+		case 5:  return CFLG;                       /* CS */
+		case 6:  return ! ZFLG;                     /* NE */
+		case 7:  return ZFLG;                       /* EQ */
+		case 8:  return ! VFLG;                     /* VC */
+		case 9:  return VFLG;                       /* VS */
+		case 10: return ! NFLG;                     /* PL */
+		case 11: return NFLG;                       /* MI */
+		case 12: return NFLG == VFLG;               /* GE */
+		case 13: return NFLG != VFLG;               /* LT */
+		case 14: return (! ZFLG) && (NFLG == VFLG); /* GT */
+		case 15: return ZFLG || (NFLG != VFLG);     /* LE */
 		default: return 0; /* shouldn't get here */
 	}
 }
 
 LOCALFUNC ui4b m68k_getSR(void)
 {
-	return (regs.t1 << 15) | (regs.s << 13)
-#if 0 /* not on 68000 */
+	return (regs.t1 << 15)
+#if Use68020
+			| (regs.t0 << 14)
+#endif
+			| (regs.s << 13)
+#if Use68020
 			| (regs.m << 12)
 #endif
 			| (regs.intmask << 8)
@@ -218,25 +259,42 @@ FORWARDPROC SetExternalInterruptPending(void);
 
 LOCALPROC m68k_setSR(ui4b newsr)
 {
-	int olds = regs.s;
+	CPTR *pnewstk;
+	CPTR *poldstk = regs.s ? (
+#if Use68020
+		regs.m ? &regs.msp :
+#endif
+		&regs.isp) : &regs.usp;
 	int oldintmask = regs.intmask;
 
 	m68k_setCR(newsr);
 	regs.t1 = (newsr >> 15) & 1;
+#if Use68020
+	regs.t0 = (newsr >> 14) & 1;
+	if (regs.t0) {
+		ReportAbnormal("t0 flag set in m68k_setSR");
+	}
+#endif
 	regs.s = (newsr >> 13) & 1;
-#if 0 /* not on 68000 */
+#if Use68020
 	regs.m = (newsr >> 12) & 1;
+	if (regs.m) {
+		ReportAbnormal("m flag set in m68k_setSR");
+	}
 #endif
 	regs.intmask = (newsr >> 8) & 7;
-	if (olds != regs.s) {
-		if (olds) {
-			regs.isp = m68k_areg(7);
-			m68k_areg(7) = regs.usp;
-		} else {
-			regs.usp = m68k_areg(7);
-			m68k_areg(7) = regs.isp;
-		}
+
+	pnewstk = regs.s ? (
+#if Use68020
+		regs.m ? &regs.msp :
+#endif
+		&regs.isp) : &regs.usp;
+
+	if (poldstk != pnewstk) {
+		*poldstk = m68k_areg(7);
+		m68k_areg(7) = *pnewstk;
 	}
+
 	if (regs.intmask != oldintmask) {
 		SetExternalInterruptPending();
 	}
@@ -264,42 +322,19 @@ LOCALPROC m68k_setSR(ui4b newsr)
 #endif
 
 #if USE_POINTER
-	LOCALVAR ui3p pc_p;
-	LOCALVAR ui3p pc_oldp;
+LOCALVAR ui3p pc_p;
+LOCALVAR ui3p pc_oldp;
 #endif
-
-/* bill comment --- */
-/* Damn Damn Damn Damn !!!! */
-/*  */
-/* "pc_p" is defined as a ui3b, which */
-/* is 8 bits wide. */
-/*  */
-/* In the old UAE 0.60 emulator, it was defined */
-/* as ui4b, which is a 16 wide entity. */
-/* Since this version of nextilong() is from the old emulator, */
-/* the assignments in this function were only */
-/* copying 8 bits of data instead of 16... */
-/*  */
-/* I must make a cast to a 16 entity, so that upon */
-/* dereferencing, it will copy a 16 bits instead of 8. */
-/*  */
-/* All auto increment operations must also be changed */
-/* to explicit specified human defined constants, because */
-/* the compiler will vary the autoincrement byte size count */
-/* depending on size of the base type. This is what */
-/* led to the incorrect functioning of nextilong(), */
-/* nextibyte(), nextiword()... */
-/*  */
 
 #if USE_POINTER
 
 LOCALFUNC MayInline ui5b nextibyte(void)
 {
-/* ui5b r = do_get_mem_byte(pc_p+1); */
+/* ui5b r = do_get_mem_byte(pc_p + 1); */
 	ui5b r;
 
 /* debugout(trueblnr, "nextibyte = %02x\n", (ui3b) pc_p); */
-	r = do_get_mem_byte(pc_p+1);
+	r = do_get_mem_byte(pc_p + 1);
 	pc_p += 2;
 	return r;
 }
@@ -309,7 +344,6 @@ LOCALFUNC MayInline ui5b nextiword(void)
 /* ui5b r = do_get_mem_word(pc_p); */
 	ui5b r;
 
-/* debugout(trueblnr, "nextiword = %04hx\n", (ui4b) pc_p); */
 	r = do_get_mem_word(pc_p);
 	pc_p += 2;
 	return r;
@@ -319,7 +353,7 @@ LOCALFUNC MayInline ui5b nextilong(void)
 {
 /* ui5b r = do_get_mem_long(pc_p); */
 	ui5b r;
-/* debugout(trueblnr, "nextilong = %08lx\n", (ui5b) pc_p); */
+
 	r = do_get_mem_long(pc_p);
 	pc_p += 4;
 	return r;
@@ -329,7 +363,7 @@ LOCALFUNC MayInline ui5b nextilong(void)
 
 LOCALFUNC MayInline ui5b nextibyte(void)
 {
-	ui5b r = (ui5b)get_byte(regs.pc+1);
+	ui5b r = (ui5b)get_byte(regs.pc + 1);
 	regs.pc += 2;
 	return r & 0x00FF;
 }
@@ -389,7 +423,7 @@ LOCALFUNC MayInline void m68k_setpc(CPTR newpc)
 	DumpAJump2(newpc);
 #endif
 #if 0
-	if (newpc == 0xBD50/*401AB4*/) {
+	if (newpc == 0xBD50 /* 401AB4 */) {
 		/* Debugger(); */
 		Exception(5); /* try and get macsbug */
 	}
@@ -422,22 +456,49 @@ LOCALFUNC MayInline CPTR m68k_getpc(void)
 #define FastRelativeJump (1 && USE_POINTER)
 #endif
 
-LOCALPROC ExceptionTo(CPTR newpc)
+LOCALPROC ExceptionTo(CPTR newpc
+#if Use68020
+	, int nr
+#endif
+	)
 {
 	ui4b saveSR = m68k_getSR();
 
 	if (! regs.s) {
 		regs.usp = m68k_areg(7);
-		m68k_areg(7) = regs.isp;
+		m68k_areg(7) =
+#if Use68020
+			regs.m ? regs.msp :
+#endif
+			regs.isp;
 		regs.s = 1;
 	}
+#if Use68020
+	switch (nr) {
+		case 5: /* Zero Divide */
+		case 6: /* CHK, CHK2 */
+		case 7: /* cpTRAPcc, TRAPCcc, TRAPv */
+		case 9: /* Trace */
+			m68k_areg(7) -= 4;
+			put_long(m68k_areg(7), m68k_getpc());
+			m68k_areg(7) -= 2;
+			put_word(m68k_areg(7), 0x2000 + nr * 4);
+			break;
+		default:
+			m68k_areg(7) -= 2;
+			put_word(m68k_areg(7), nr * 4);
+			break;
+	}
+	/* if regs.m should make throw away stack frame */
+#endif
 	m68k_areg(7) -= 4;
-	put_long (m68k_areg(7), m68k_getpc ());
+	put_long(m68k_areg(7), m68k_getpc());
 	m68k_areg(7) -= 2;
-	put_word (m68k_areg(7), saveSR);
+	put_word(m68k_areg(7), saveSR);
 	m68k_setpc(newpc);
 	regs.t1 = 0;
-#if 0 /* not on 68000 */
+#if Use68020
+	regs.t0 = 0;
 	regs.m = 0;
 #endif
 	regs.TracePending = falseblnr;
@@ -445,14 +506,26 @@ LOCALPROC ExceptionTo(CPTR newpc)
 
 LOCALPROC Exception(int nr)
 {
-	ExceptionTo(get_long(4 * nr));
+	ExceptionTo(get_long(4 * nr
+#if Use68020
+		+ regs.vbr
+#endif
+		)
+#if Use68020
+		, nr
+#endif
+		);
 }
 
 GLOBALPROC DiskInsertedPsuedoException(CPTR newpc, ui5b data)
 {
-	ExceptionTo(newpc);
+	ExceptionTo(newpc
+#if Use68020
+		, 0
+#endif
+		);
 	m68k_areg(7) -= 4;
-	put_long (m68k_areg(7), data);
+	put_long(m68k_areg(7), data);
 }
 
 LOCALPROC DoCheckExternalInterruptPending(void)
@@ -484,21 +557,28 @@ LOCALPROC m68k_DoReset(void)
 	m68k_areg(7) = get_long(0x00000000);
 
 	regs.s = 1;
-#if 0 /* not on 68000 */
+#if Use68020
 	regs.m = 0;
+	regs.t0 = 0;
 #endif
 	regs.t1 = 0;
 	ZFLG = CFLG = NFLG = VFLG = 0;
 	regs.ExternalInterruptPending = falseblnr;
 	regs.TracePending = falseblnr;
 	regs.intmask = 7;
+
+#if Use68020
+	regs.sfc = 0;
+	regs.dfc = 0;
+	regs.vbr = 0;
+	regs.cacr = 0;
+	regs.caar = 0;
+#endif
 }
 #endif
 
 GLOBALPROC m68k_reset(void)
 {
-	customreset();
-
 #if 0
 	regs.ResetPending = trueblnr;
 	NeedToGetOut();
@@ -510,14 +590,23 @@ GLOBALPROC m68k_reset(void)
 	m68k_areg(7) = get_long(0x00000000);
 
 	regs.s = 1;
-#if 0 /* not on 68000 */
+#if Use68020
 	regs.m = 0;
+	regs.t0 = 0;
 #endif
 	regs.t1 = 0;
 	ZFLG = CFLG = NFLG = VFLG = 0;
 	regs.ExternalInterruptPending = falseblnr;
 	regs.TracePending = falseblnr;
 	regs.intmask = 7;
+
+#if Use68020
+	regs.sfc = 0;
+	regs.dfc = 0;
+	regs.vbr = 0;
+	regs.cacr = 0;
+	regs.caar = 0;
+#endif
 #endif
 }
 
@@ -527,18 +616,98 @@ GLOBALPROC MINEM68K_Init(ui3b **BankReadAddr, ui3b **BankWritAddr,
 	regs.fBankWritAddr = BankWritAddr;
 	regs.fBankReadAddr = BankReadAddr;
 	regs.fIPL = fIPL;
-	m68k_reset();
 }
 
 LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 {
 	ui4b dp = nextiword();
-	int reg = (dp >> 12) & 15;
+	int reg = (dp >> 12) & 0x0F;
 	si5b regd = regs.regs[reg];
-	if ((dp & 0x800) == 0) {
+	if ((dp & 0x0800) == 0) {
 		regd = (si5b)(si4b)regd;
 	}
-	return base + (si3b)(dp) + regd;
+#if Use68020
+	regd <<= (dp >> 9) & 3;
+#if ExtraAbormalReports
+	if (((dp >> 9) & 3) != 0) {
+		/* ReportAbnormal("Have scale in Extension Word"); */
+		/* apparently can happen in Sys 7.5.5 boot on 68000 */
+	}
+#endif
+	if (dp & 0x0100) {
+		if ((dp & 0x80) != 0) {
+			base = 0;
+			/* ReportAbnormal("Extension Word: suppress base"); */
+			/* used by Sys 7.5.5 boot */
+		}
+		if ((dp & 0x40) != 0) {
+			regd = 0;
+			ReportAbnormal("Extension Word: suppress regd");
+		}
+
+		switch ((dp >> 4) & 0x03) {
+			case 0:
+				/* reserved */
+				ReportAbnormal("Extension Word: dp reserved");
+				break;
+			case 1:
+				/* no displacement */
+				/* ReportAbnormal("Extension Word: no displacement"); */
+				/* used by Sys 7.5.5 boot */
+				break;
+			case 2:
+				base += (si5b)(si4b)nextiword();
+				/* ReportAbnormal("Extension Word: word displacement"); */
+				/* used by Sys 7.5.5 boot */
+				break;
+			case 3:
+				base += nextilong();
+				ReportAbnormal("Extension Word: long displacement");
+				break;
+		}
+
+		if ((dp & 0x03) == 0) {
+			base += regd;
+			if ((dp & 0x04) != 0) {
+				ReportAbnormal("Extension Word: reserved dp form");
+			}
+			/* ReportAbnormal("Extension Word: noindex"); */
+			/* used by Sys 7.5.5 boot */
+		} else {
+			if ((dp & 0x04) != 0) {
+				base = get_long(base);
+				base += regd;
+				/* ReportAbnormal("Extension Word: postindex"); */
+				/* used by Sys 7.5.5 boot */
+			} else {
+				base += regd;
+				base = get_long(base);
+				/* ReportAbnormal("Extension Word: preindex"); */
+				/* used by Sys 7.5.5 boot */
+			}
+			switch (dp & 0x03) {
+				case 1:
+					/* null outer displacement */
+					/* ReportAbnormal("Extension Word: null outer displacement"); */
+					/* used by Sys 7.5.5 boot */
+					break;
+				case 2:
+					base += (si5b)(si4b)nextiword();
+					ReportAbnormal("Extension Word: word outer displacement");
+					break;
+				case 3:
+					base += nextilong();
+					ReportAbnormal("Extension Word: long outer displacement");
+					break;
+			}
+		}
+
+		return base;
+	} else
+#endif
+	{
+		return base + (si3b)(dp) + regd;
+	}
 }
 
 LOCALVAR ui5b opsize;
@@ -694,10 +863,10 @@ LOCALPROC SetArgValue(si5b v)
 		case AKRegister:
 			switch (opsize) {
 				case 1:
-					regs.regs[ArgAddr] = (regs.regs[ArgAddr] & ~0xff) | ((v) & 0xff);
+					regs.regs[ArgAddr] = (regs.regs[ArgAddr] & ~ 0xff) | ((v) & 0xff);
 					break;
 				case 2:
-					regs.regs[ArgAddr] = (regs.regs[ArgAddr] & ~0xffff) | ((v) & 0xffff);
+					regs.regs[ArgAddr] = (regs.regs[ArgAddr] & ~ 0xffff) | ((v) & 0xffff);
 					break;
 				case 4:
 					regs.regs[ArgAddr] = v;
@@ -753,9 +922,19 @@ LOCALPROC DoMove(ui5b m1, ui5b r1, ui5b m2, ui5b r2) /* MOVE */
 #define BinOpDivU 23
 #define BinOpDivS 24
 
-#define extendopsizedstvalue() if (opsize == 1) {dstvalue = (si3b)dstvalue;} else if  (opsize == 2) {dstvalue = (si4b)dstvalue;}
+#define extendopsizedstvalue() \
+	if (opsize == 1) {\
+		dstvalue = (si3b)dstvalue;\
+	} else if (opsize == 2) {\
+		dstvalue = (si4b)dstvalue;\
+	}
 
-#define unextendopsizedstvalue() if (opsize == 1) {dstvalue = (ui3b)dstvalue;} else if  (opsize == 2) {dstvalue = (ui4b)dstvalue;}
+#define unextendopsizedstvalue() \
+	if (opsize == 1) {\
+		dstvalue = (ui3b)dstvalue;\
+	} else if (opsize == 2) {\
+		dstvalue = (ui4b)dstvalue;\
+	}
 
 LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 {
@@ -778,8 +957,8 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 					extendopsizedstvalue();
 					ZFLG = (dstvalue == 0);
 					NFLG = (dstvalue < 0);
-					VFLG = (flgs && flgo && !NFLG) || (!flgs && !flgo && NFLG);
-					XFLG = CFLG = (flgs && flgo) || (!NFLG && (flgo || flgs));
+					VFLG = (flgs && flgo && ! NFLG) || ((! flgs) && (! flgo) && NFLG);
+					XFLG = CFLG = (flgs && flgo) || ((! NFLG) && (flgo || flgs));
 				}
 				break;
 			case BinOpSub:
@@ -791,7 +970,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 					ZFLG = (dstvalue == 0);
 					NFLG = (dstvalue < 0);
 					VFLG = (flgs != flgo) && (NFLG != flgo);
-					XFLG = CFLG = (flgs && !flgo) || (NFLG && (!flgo || flgs));
+					XFLG = CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 				}
 				break;
 			case BinOpSubX:
@@ -804,8 +983,8 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 						ZFLG = 0;
 					}
 					NFLG = (dstvalue < 0);
-					VFLG = (!flgs && flgo && !NFLG) || (flgs && !flgo && NFLG);
-					XFLG = CFLG = (flgs && !flgo) || (NFLG && (!flgo || flgs));
+					VFLG = ((! flgs) && flgo && (! NFLG)) || (flgs && (! flgo) && NFLG);
+					XFLG = CFLG = (flgs && (! flgo)) || (NFLG && ((! flgo) || flgs));
 				}
 				break;
 			case BinOpAddX:
@@ -818,8 +997,8 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 						ZFLG = 0;
 					}
 					NFLG = (dstvalue < 0);
-					XFLG = CFLG = (flgs && flgo) || (!NFLG && (flgo || flgs));
-					VFLG = (flgs && flgo && !NFLG) || (!flgs && !flgo && NFLG);
+					XFLG = CFLG = (flgs && flgo) || ((! NFLG) && (flgo || flgs));
+					VFLG = (flgs && flgo && ! NFLG) || ((! flgs) && (! flgo) && NFLG);
 				}
 				break;
 			case BinOpAnd:
@@ -860,7 +1039,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 						extendopsizedstvalue();
 					}
 					if (dstvalue < 0) {
-						comparevalue = -(si5b)(((ui5b)-dstvalue) >> (cnt));
+						comparevalue = - (si5b)(((ui5b) - dstvalue) >> (cnt));
 					} else {
 						comparevalue = (si5b)(((ui5b)dstvalue) >> (cnt));
 					}
@@ -878,7 +1057,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 						CFLG = 0;
 					} else {
 						if (NFLG) {
-							dstvalue = (~dstvalue);
+							dstvalue = (~ dstvalue);
 						}
 						unextendopsizedstvalue();
 						if (cnt > 32) {
@@ -890,7 +1069,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 						dstvalue = (si5b)(((ui5b)dstvalue) >> 1);
 						if (NFLG) {
 							CFLG = ! CFLG;
-							dstvalue = (~dstvalue);
+							dstvalue = (~ dstvalue);
 						}
 						XFLG = CFLG;
 					}
@@ -944,7 +1123,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 					if (! cnt) {
 						CFLG = 0;
 					} else {
-						for (;cnt;--cnt) {
+						for (; cnt; --cnt) {
 							CFLG = (dstvalue < 0);
 							dstvalue = (si5b)(((ui5b)dstvalue) << 1);
 							if (CFLG) {
@@ -964,7 +1143,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 					if (! cnt) {
 						CFLG = XFLG;
 					} else {
-						for (;cnt;--cnt) {
+						for (; cnt; --cnt) {
 							CFLG = (dstvalue < 0);
 							dstvalue = (si5b)(((ui5b)dstvalue) << 1);
 							if (XFLG) {
@@ -987,7 +1166,7 @@ LOCALPROC DoBinOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 						CFLG = 0;
 					} else {
 						unextendopsizedstvalue();
-						for(;cnt;--cnt){
+						for (; cnt; --cnt) {
 							CFLG = ((((ui5b)dstvalue) & 1) != 0);
 							dstvalue = (si5b)(((ui5b)dstvalue) >> 1);
 							if (CFLG) {
@@ -1147,7 +1326,7 @@ LOCALPROC DoCompare(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 		ZFLG = (dstvalue == 0);
 		NFLG = (dstvalue < 0);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
-		CFLG = (flgs && !flgo) || (NFLG && (!flgo || flgs));
+		CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 	}
 }
 
@@ -1167,7 +1346,7 @@ LOCALPROC DoCompareA(ui5b m1, ui5b r1, ui5b r2)
 		ZFLG = (dstvalue == 0);
 		NFLG = (dstvalue < 0);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
-		CFLG = (flgs && !flgo) || (NFLG && (!flgo || flgs));
+		CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 	}
 }
 
@@ -1198,7 +1377,7 @@ LOCALPROC DoBinBitOp1(ui5b m1, ui5b r1, ui5b m2, ui5b r2, ui5b binop)
 					dstvalue ^= (1 << srcvalue);
 					break;
 				case BinOpBClr:
-					dstvalue &= ~(1 << srcvalue);
+					dstvalue &= ~ (1 << srcvalue);
 					break;
 				case BinOpBSet:
 					dstvalue |= (1 << srcvalue);
@@ -1255,7 +1434,7 @@ LOCALPROC DoUniOp1(ui5b m2, ui5b r2, ui5b uniop)
 			break;
 		case UniOpNot:
 			{
-				dstvalue = ~dstvalue;
+				dstvalue = ~ dstvalue;
 				extendopsizedstvalue();
 				ZFLG = (dstvalue == 0);
 				NFLG = (dstvalue < 0);
@@ -1372,7 +1551,7 @@ LOCALPROC DoBinOpDiv1(ui5b m1, ui5b r1, ui5b r2, ui5b binop)
 					if ((newv & 0xffff8000) != 0 && (newv & 0xffff8000) != 0xffff8000) {
 						VFLG = NFLG = 1; CFLG = 0;
 					} else {
-						if (((si4b)rem < 0) != ((si5b)dstvalue < 0)) rem = -rem;
+						if (((si4b)rem < 0) != ((si5b)dstvalue < 0)) rem = - rem;
 						VFLG = CFLG = 0;
 						ZFLG = ((si4b)(newv)) == 0;
 						NFLG = ((si4b)(newv)) < 0;
@@ -1456,6 +1635,212 @@ LOCALFUNC blnr GetEffectiveAddress(si5b *v)
 	}
 }
 
+#if Use68020
+LOCALPROC DoCHK2orCMP2(void)
+{
+	si5b regv;
+	si5b lower;
+	si5b upper;
+	ui4b extra = nextiword();
+
+	switch ((opcode >> 9) & 3) {
+		case 0:
+			opsize = 1;
+			break;
+		case 1:
+			opsize = 2;
+			break;
+		case 2:
+			opsize = 4;
+			break;
+		default:
+			ReportAbnormal("illegal opsize in CHK2 or CMP2");
+			break;
+	}
+	if ((extra & 0x8000) == 0) {
+		DecodeModeRegister(0, (extra >> 12) & 0x07);
+		regv = GetArgValue();
+	} else {
+		regv = m68k_areg((extra >> 12) & 0x07);
+	}
+	DecodeModeRegister(mode, reg);
+	if (ArgKind != AKMemory) {
+		ReportAbnormal("illegal CHK2 or CMP2 mode");
+	} else {
+		/* CPTR oldpc = m68k_getpc(); */
+		lower = GetArgValue();
+		ArgAddr += opsize;
+		upper = GetArgValue();
+
+		ZFLG = (upper == regv) || (lower == regv);
+		CFLG = (lower <= upper)
+				? (regv < lower || regv > upper)
+				: (regv > upper || regv < lower);
+		if ((extra & 0x800) && CFLG) {
+			Exception(6);
+		}
+	}
+}
+#endif
+
+#if Use68020
+LOCALPROC DoCAS(void)
+{
+	si5b srcvalue;
+	si5b dstvalue;
+
+	ui4b src = nextiword();
+	int ru = (src >> 6) & 7;
+	int rc = src & 7;
+
+	switch ((opcode >> 9) & 3) {
+		case 1 :
+			opsize = 1;
+			break;
+		case 2 :
+			opsize = 2;
+			break;
+		case 3 :
+			opsize = 4;
+			break;
+	}
+
+	DecodeModeRegister(0, rc);
+	srcvalue = GetArgValue();
+	DecodeModeRegister(mode, reg);
+	dstvalue = GetArgValue();
+	{
+		int flgs = srcvalue < 0;
+		int flgo = dstvalue < 0;
+		si5b newv = dstvalue - srcvalue;
+		if (opsize == 1) {
+			newv = (ui3b)newv;
+		} else if (opsize == 2) {
+			newv = (ui4b)newv;
+		}
+		ZFLG = (newv == 0);
+		NFLG = (newv < 0);
+		VFLG = (flgs != flgo) && (NFLG != flgo);
+		CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
+		if (ZFLG) {
+			SetArgValue(m68k_dreg(ru));
+		} else {
+			DecodeModeRegister(0, rc);
+			SetArgValue(dstvalue);
+		}
+	}
+}
+#endif
+
+#if Use68020
+LOCALPROC DoCAS2(void)
+{
+	ui5b extra = nextilong();
+	int dc2 = extra & 7;
+	int du2 = (extra >> 6) & 7;
+	int dc1 = (extra >> 16) & 7;
+	int du1 = (extra >> 22) & 7;
+	CPTR rn1 = regs.regs[(extra >> 28) & 0x0F];
+	CPTR rn2 = regs.regs[(extra >> 12) & 0x0F];
+	si5b src = m68k_dreg(dc1);
+	si5b dst1;
+	si5b dst2;
+	switch ((opcode >> 9) & 3) {
+		case 1 :
+			op_illg();
+			return;
+			break;
+		case 2 :
+			opsize = 2;
+			break;
+		case 3 :
+			opsize = 4;
+			break;
+	}
+	if (opsize == 2) {
+		dst1 = get_word(rn1);
+		dst2 = get_word(rn2);
+		src = (si5b)(si4b)src;
+	} else {
+		dst1 = get_long(rn1);
+		dst2 = get_long(rn2);
+	}
+	{
+		int flgs = src < 0;
+		int flgo = dst1 < 0;
+		si5b newv = dst1 - src;
+		if (opsize == 2) {
+			newv = (ui4b)newv;
+		}
+		ZFLG = (newv == 0);
+		NFLG = (newv < 0);
+		VFLG = (flgs != flgo) && (NFLG != flgo);
+		CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
+		if (ZFLG) {
+			src = m68k_dreg(dc2);
+			if (opsize == 2) {
+				src = (si5b)(si4b)src;
+			}
+			flgs = src < 0;
+			flgo = dst2 < 0;
+			newv = dst2 - src;
+			if (opsize == 2) {
+				newv = (ui4b)newv;
+			}
+			ZFLG = (newv == 0);
+			NFLG = (newv < 0);
+			VFLG = (flgs != flgo) && (NFLG != flgo);
+			CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
+			if (ZFLG) {
+				if (opsize == 2) {
+					put_word(rn1, m68k_dreg(du1));
+					put_word(rn2, m68k_dreg(du2));
+				} else {
+					put_word(rn1, m68k_dreg(du1));
+					put_word(rn2, m68k_dreg(du2));
+				}
+			}
+		}
+	}
+	if (! ZFLG) {
+		if (opsize == 2) {
+			m68k_dreg(du1) = (m68k_dreg(du1) & ~ 0xffff) | ((ui5b)dst1 & 0xffff);
+			m68k_dreg(du2) = (m68k_dreg(du2) & ~ 0xffff) | ((ui5b)dst2 & 0xffff);
+		} else {
+			m68k_dreg(du1) = dst1;
+			m68k_dreg(du2) = dst2;
+		}
+	}
+}
+#endif
+
+#if Use68020
+LOCALPROC DoMOVES(void)
+{
+	if (! regs.s) {
+		BackupPC();
+		Exception(8);
+	} else {
+		ui4b extra = nextiword();
+		FindOpSizeFromb76();
+		DecodeModeRegister(mode, reg);
+		if (extra & 0x0800) {
+			ui5b src = regs.regs[(extra >> 12) & 0x0F];
+			SetArgValue(src);
+		} else {
+			ui5b rr = (extra >> 12) & 7;
+			si5b srcvalue = GetArgValue();
+			if (extra & 0x8000) {
+				m68k_areg(rr) = srcvalue;
+			} else {
+				DecodeModeRegister(0, rr);
+				SetArgValue(srcvalue);
+			}
+		}
+	}
+}
+#endif
+
 LOCALPROCUSEDONCE DoCode0(void)
 {
 	if (b8 == 1) {
@@ -1479,7 +1864,7 @@ LOCALPROCUSEDONCE DoCode0(void)
 					{
 						ui4b val = ((get_byte(memp) & 0x00FF) << 8)
 							| (get_byte(memp + 2) & 0x00FF);
-						m68k_dreg(TheRg9) = (m68k_dreg(TheRg9) & ~0xffff) | ((val) & 0xffff);
+						m68k_dreg(TheRg9) = (m68k_dreg(TheRg9) & ~ 0xffff) | ((val) & 0xffff);
 					}
 					break;
 				case 1:
@@ -1514,7 +1899,37 @@ LOCALPROCUSEDONCE DoCode0(void)
 		if (rg9 == 4) {
 			/* static bit 00001010ssmmmrrr */
 			DoBinBitOp1(7, 4, mode, reg, bitop());
-		} else if (rg9 == 6) {
+		} else
+#if Use68020 || AccurateIllegal
+		if (b76 == 3) {
+#if Use68020
+			if (rg9 < 3) {
+				/* CHK2 or CMP2 00000ss011mmmrrr */
+				/* ReportAbnormal("CHK2 or CMP2 instruction"); */
+				DoCHK2orCMP2();
+			} else
+			if (rg9 >= 5) {
+				if ((mode == 7) && (reg == 4)) {
+					/* CAS2 00001ss011111100 */
+					ReportAbnormal("DoCAS2 instruction");
+					DoCAS2();
+				} else {
+					/* CAS  00001ss011mmmrrr */
+					ReportAbnormal("CAS instruction");
+					DoCAS();
+				}
+			} else
+			if (rg9 == 3) {
+				/* CALLM or RTM 0000011011mmmrrr */
+				ReportAbnormal("CALLM or RTM instruction");
+			} else
+#endif
+			{
+				op_illg();
+			}
+		} else
+#endif
+		if (rg9 == 6) {
 			if (mode != 1) {
 				FindOpSizeFromb76();
 				DoCompare(7, 4, mode, reg);
@@ -1522,30 +1937,13 @@ LOCALPROCUSEDONCE DoCode0(void)
 				op_illg();
 			}
 		} else if (rg9 == 7) {
-			/* Debugger(); */
-			/* MoveS */
-
-			if (! regs.s) {
-				BackupPC();
-				Exception(8);
-			} else {
-				ui5b dstreg = reg;
-				si4b extra = nextiword();
-				if (extra & 0x800) {
-					ui5b src = regs.regs[(extra >> 12) & 15];
-					CPTR dsta = m68k_areg(dstreg);
-					put_byte(dsta, src);
-				}else{
-					CPTR srca = m68k_areg(dstreg);
-					si5b src = get_byte(srca);
-					if (extra & 0x8000) {
-						m68k_areg((extra >> 12) & 7) = (ui5b)src;
-					} else {
-						m68k_dreg((extra >> 12) & 7) = (m68k_dreg((extra >> 12) & 7) & ~0xff) | (src & 0x00FF);
-					}
-				}
-			}
-
+#if Use68020
+			ReportAbnormal("MoveS instruction");
+			/* MoveS 00001110ssmmmrrr */
+			DoMOVES();
+#else
+			op_illg();
+#endif
 		} else {
 			ui5b BinOp;
 
@@ -1644,7 +2042,7 @@ LOCALPROCUSEDONCE DoTest1(ui5b m1, ui5b r1)
 	NFLG = (srcvalue < 0);
 }
 
-LOCALPROC reglist (si4b direction, ui5b m1, ui5b r1)
+LOCALPROC reglist(si4b direction, ui5b m1, ui5b r1)
 {
 	si4b z;
 	si5b p;
@@ -1662,7 +2060,6 @@ LOCALPROC reglist (si4b direction, ui5b m1, ui5b r1)
 							p += 2;
 						}
 					}
-					m68k_areg(r1) = (si5b)p;
 				} else {
 					for (z = 0; z < 16; ++z) {
 						if ((regmask & (1 << (z))) != 0) {
@@ -1672,27 +2069,50 @@ LOCALPROC reglist (si4b direction, ui5b m1, ui5b r1)
 					}
 				}
 				m68k_areg(r1) = p;
+			} else {
+#if AccurateIllegal
+				op_illg();
+#endif
 			}
 			break;
 		case 4:
 			if (direction == 0) {
 				p = m68k_areg(r1);
+#if Use68020
+				{
+					int n = 0;
+
+					for (z = 0; z < 16; ++z) {
+						if ((regmask & (1 << z)) != 0) {
+							n++;
+						}
+					}
+					m68k_areg(r1) = p - n * opsize;
+				}
+#endif
+
 				if (opsize == 2) {
 					for (z = 16; --z >= 0; ) {
-						if ((regmask & (1 << (15-z))) != 0) {
+						if ((regmask & (1 << (15 - z))) != 0) {
 							p -= 2;
 							put_word(p, regs.regs[z]);
 						}
 					}
 				} else {
 					for (z = 16; --z >= 0; ) {
-						if ((regmask & (1 << (15-z))) != 0) {
+						if ((regmask & (1 << (15 - z))) != 0) {
 							p -= 4;
 							put_long(p, regs.regs[z]);
 						}
 					}
 				}
+#if ! Use68020
 				m68k_areg(r1) = p;
+#endif
+			} else {
+#if AccurateIllegal
+				op_illg();
+#endif
 			}
 			break;
 		default:
@@ -1736,6 +2156,429 @@ LOCALPROC reglist (si4b direction, ui5b m1, ui5b r1)
 	}
 }
 
+#define ui5b_lo(x) ((x) & 0x0000FFFF)
+#define ui5b_hi(x) (((x) >> 16) & 0x0000FFFF)
+
+#if Use68020
+struct ui6r {
+	ui5b hi;
+	ui5b lo;
+};
+typedef struct ui6r ui6r;
+#endif
+
+#if Use68020
+LOCALPROC Ui6r_Negate(ui6r *v)
+{
+	v->hi = ~ v->hi;
+	v->lo = - v->lo;
+	if (v->lo == 0) {
+		v->hi++;
+	}
+}
+#endif
+
+#if Use68020
+LOCALFUNC blnr Ui6r_IsZero(ui6r *v)
+{
+	return (v->hi == 0) && (v->lo == 0);
+}
+#endif
+
+#if Use68020
+LOCALFUNC blnr Ui6r_IsNeg(ui6r *v)
+{
+	return ((si5b)v->hi) < 0;
+}
+#endif
+
+#if Use68020
+LOCALPROC mul_unsigned(ui5b src1, ui5b src2, ui6r *dst)
+{
+	ui5b src1_lo = ui5b_lo(src1);
+	ui5b src2_lo = ui5b_lo(src2);
+	ui5b src1_hi = ui5b_hi(src1);
+	ui5b src2_hi = ui5b_hi(src2);
+
+	ui5b r0 = src1_lo * src2_lo;
+	ui5b r1 = src1_hi * src2_lo;
+	ui5b r2 = src1_lo * src2_hi;
+	ui5b r3 = src1_hi * src2_hi;
+
+	ui5b ra1 = ui5b_hi(r0) + ui5b_lo(r1) + ui5b_lo(r2);
+
+	dst->lo = (ui5b_lo(ra1) << 16) | ui5b_lo(r0);
+	dst->hi = ui5b_hi(ra1) + ui5b_hi(r1) + ui5b_hi(r2) + r3;
+}
+#endif
+
+#if Use68020
+LOCALFUNC blnr div_unsigned(ui6r *src, ui5b div,
+	ui5b *quot, ui5b *rem)
+{
+	int i;
+	ui5b q = 0;
+	ui5b cbit = 0;
+	ui5b src_hi = src->hi;
+	ui5b src_lo = src->lo;
+
+	if (div <= src_hi) {
+		return trueblnr;
+	}
+	for (i = 0 ; i < 32 ; i++) {
+		cbit = src_hi & 0x80000000ul;
+		src_hi <<= 1;
+		if (src_lo & 0x80000000ul) {
+			src_hi++;
+		}
+		src_lo <<= 1;
+		q = q << 1;
+		if (cbit || div <= src_hi) {
+			q |= 1;
+			src_hi -= div;
+		}
+	}
+	*quot = q;
+	*rem = src_hi;
+	return falseblnr;
+}
+#endif
+
+#if Use68020
+LOCALPROC DoMulL(void)
+{
+	ui6r dst;
+	ui5b srcvalue;
+	ui4b extra = nextiword();
+	ui5b r2 = (extra >> 12) & 7;
+	ui5b dstvalue = m68k_dreg(r2);
+
+	DecodeModeRegister(mode, reg);
+	srcvalue = (ui5b)GetArgValue();
+
+	if (extra & 0x800) {
+		/* MULS.L - signed */
+
+		si5b src1 = (si5b)srcvalue;
+		si5b src2 = (si5b)dstvalue;
+		flagtype s1 = src1 < 0;
+		flagtype s2 = src2 < 0;
+		flagtype sr = s1 != s2;
+
+		/* ReportAbnormal("MULS.L"); */
+		/* used by Sys 7.5.5 boot extensions */
+		if (s1) {
+			src1 = - src1;
+		}
+		if (s2) {
+			src2 = - src2;
+		}
+		mul_unsigned((ui5b)src1, (ui5b)src2, &dst);
+		if (sr) {
+			Ui6r_Negate(&dst);
+		}
+		VFLG = CFLG = 0;
+		ZFLG = Ui6r_IsZero(&dst);
+		NFLG = Ui6r_IsNeg(&dst);
+		if (extra & 0x400) {
+			m68k_dreg(extra & 7) = dst.hi;
+		} else {
+			if ((dst.lo & 0x80000000) != 0) {
+				if ((dst.hi & 0xffffffff) != 0xffffffff) {
+					VFLG = 1;
+				}
+			} else {
+				if (dst.hi != 0) {
+					VFLG = 1;
+				}
+			}
+		}
+	} else {
+		/* MULU.L - unsigned */
+
+		/* ReportAbnormal("MULU.U"); */
+		/* Used by various Apps */
+
+		mul_unsigned(srcvalue, dstvalue, &dst);
+
+		VFLG = CFLG = 0;
+		ZFLG = Ui6r_IsZero(&dst);
+		NFLG = Ui6r_IsNeg(&dst);
+		if (extra & 0x400) {
+			m68k_dreg(extra & 7) = dst.hi;
+		} else {
+			if (dst.hi != 0) {
+				VFLG = 1;
+			}
+		}
+	}
+	m68k_dreg(r2) = dst.lo;
+}
+#endif
+
+#if Use68020
+LOCALPROC DoDivL(void)
+{
+	ui6r v2;
+	ui5b src;
+	ui5b quot;
+	ui5b rem;
+	ui4b extra = nextiword();
+	ui5b rDr = extra & 7;
+	ui5b rDq = (extra >> 12) & 7;
+
+	DecodeModeRegister(mode, reg);
+	src = (ui5b)GetArgValue();
+
+	if (src == 0) {
+		Exception(5);
+		return;
+	}
+	if (extra & 0x0800) {
+		/* signed variant */
+		flagtype sr;
+		flagtype s2;
+		flagtype s1 = ((si5b)src < 0);
+
+		v2.lo = (si5b)m68k_dreg(rDq);
+		if (extra & 0x0400) {
+			v2.hi = (si5b)m68k_dreg(rDr);
+		} else {
+			v2.hi = ((si5b)v2.lo) < 0 ? -1 : 0;
+		}
+		s2 = Ui6r_IsNeg(&v2);
+		sr = (s1 != s2);
+		if (s2) {
+			Ui6r_Negate(&v2);
+		}
+		if (s1) {
+			src = - src;
+		}
+		if (div_unsigned(&v2, src, &quot, &rem) ||
+			sr ? quot > 0x80000000 : quot > 0x7fffffff) {
+			VFLG = NFLG = 1;
+			CFLG = 0;
+		} else {
+			if (sr) {
+				quot = - quot;
+			}
+			if (((si5b)rem < 0) != s2) {
+				rem = - rem;
+			}
+			VFLG = CFLG = 0;
+			ZFLG = ((si5b)quot) == 0;
+			NFLG = ((si5b)quot) < 0;
+			m68k_dreg(rDr) = rem;
+			m68k_dreg(rDq) = quot;
+		}
+	} else {
+		/* unsigned */
+
+		v2.lo = (ui5b)m68k_dreg(rDq);
+		if (extra & 0x400) {
+			v2.hi = (ui5b)m68k_dreg(rDr);
+		} else {
+			v2.hi = 0;
+		}
+		if (div_unsigned(&v2, src, &quot, &rem)) {
+			VFLG = NFLG = 1;
+			CFLG = 0;
+		} else {
+			VFLG = CFLG = 0;
+			ZFLG = ((si5b)quot) == 0;
+			NFLG = ((si5b)quot) < 0;
+			m68k_dreg(rDr) = rem;
+			m68k_dreg(rDq) = quot;
+		}
+	}
+}
+#endif
+
+#if Use68020
+LOCALPROC DoMoveToControl(void)
+{
+	if (! regs.s) {
+		BackupPC();
+		Exception(8);
+	} else {
+		ui4b src = nextiword();
+		int regno = (src >> 12) & 0x0F;
+		ui5b v = regs.regs[regno];
+
+		switch (src & 0x0FFF) {
+			case 0x0000:
+				regs.sfc = v & 7;
+				/* ReportAbnormal("DoMoveToControl: sfc"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0001:
+				regs.dfc = v & 7;
+				/* ReportAbnormal("DoMoveToControl: dfc"); */
+				break;
+			case 0x0002:
+				regs.cacr = v & 0x3;
+				/* ReportAbnormal("DoMoveToControl: cacr"); */
+				/* used by Sys 7.5.5 boot */
+				break;
+			case 0x0800:
+				regs.usp = v;
+				ReportAbnormal("DoMoveToControl: usp");
+				break;
+			case 0x0801:
+				regs.vbr = v;
+				/* ReportAbnormal("DoMoveToControl: vbr"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0802:
+				regs.caar = v &0xfc;
+				/* ReportAbnormal("DoMoveToControl: caar"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0803:
+				regs.msp = v;
+				if (regs.m == 1) {
+					m68k_areg(7) = regs.msp;
+				}
+				/* ReportAbnormal("DoMoveToControl: msp"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0804:
+				regs.isp = v;
+				if (regs.m == 0) {
+					m68k_areg(7) = regs.isp;
+				}
+				ReportAbnormal("DoMoveToControl: isp");
+				break;
+			default:
+				op_illg();
+				ReportAbnormal("DoMoveToControl: unknown reg");
+				break;
+		}
+	}
+}
+#endif
+
+#if Use68020
+LOCALPROC DoMoveFromControl(void)
+{
+	if (! regs.s) {
+		BackupPC();
+		Exception(8);
+	} else {
+		ui5b v;
+		ui4b src = nextiword();
+		int regno = (src >> 12) & 0x0F;
+
+		switch (src & 0x0FFF) {
+			case 0x0000:
+				v = regs.sfc;
+				/* ReportAbnormal("DoMoveFromControl: sfc"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0001:
+				v = regs.dfc;
+				/* ReportAbnormal("DoMoveFromControl: dfc"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0002:
+				v = regs.cacr;
+				/* ReportAbnormal("DoMoveFromControl: cacr"); */
+				/* used by Sys 7.5.5 boot */
+				break;
+			case 0x0800:
+				v = regs.usp;
+				ReportAbnormal("DoMoveFromControl: usp");
+				break;
+			case 0x0801:
+				v = regs.vbr;
+				/* ReportAbnormal("DoMoveFromControl: vbr"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0802:
+				v = regs.caar;
+				/* ReportAbnormal("DoMoveFromControl: caar"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0803:
+				v = (regs.m == 1)
+					? m68k_areg(7)
+					: regs.msp;
+				/* ReportAbnormal("DoMoveFromControl: msp"); */
+				/* happens on entering macsbug */
+				break;
+			case 0x0804:
+				v = (regs.m == 0)
+					? m68k_areg(7)
+					: regs.isp;
+				ReportAbnormal("DoMoveFromControl: isp");
+				break;
+			default:
+				ReportAbnormal("DoMoveFromControl: unknown reg");
+				op_illg();
+				break;
+		}
+		regs.regs[regno] = v;
+	}
+}
+#endif
+
+LOCALPROC DoRTE(void)
+{
+	if (! regs.s) {
+		BackupPC();
+		Exception(8);
+	} else {
+		ui5b NewPC;
+		CPTR stackp = m68k_areg(7);
+		ui5b NewSR = (ui5b) get_word(stackp);
+		stackp += 2;
+		NewPC = get_long(stackp);
+		stackp += 4;
+
+#if Use68020
+		{
+			ui4b format = get_word(stackp);
+			stackp += 2;
+
+			switch ((format >> 12) & 0x0F) {
+				case 0:
+					/* ReportAbnormal("rte stack frame format 0"); */
+					break;
+				case 1:
+					ReportAbnormal("rte stack frame format 1");
+					NewPC = m68k_getpc() - 2;
+						/* rerun instruction */
+					break;
+				case 2:
+					ReportAbnormal("rte stack frame format 2");
+					stackp += 4;
+					break;
+				case 9:
+					ReportAbnormal("rte stack frame format 9");
+					stackp += 12;
+					break;
+				case 10:
+					ReportAbnormal("rte stack frame format 10");
+					stackp += 24;
+					break;
+				case 11:
+					ReportAbnormal("rte stack frame format 11");
+					stackp += 84;
+					break;
+				default:
+					ReportAbnormal("unknown rte stack frame format");
+					Exception(14);
+					return;
+					break;
+			}
+		}
+#endif
+		m68k_areg(7) = stackp;
+		m68k_setSR(NewSR);
+		m68k_setpc(NewPC);
+	}
+}
+
 FORWARDPROC m68k_setstopped(void);
 
 LOCALPROCUSEDONCE DoCode4(void)
@@ -1744,9 +2587,18 @@ LOCALPROCUSEDONCE DoCode4(void)
 		if (b8 != 0) {
 			switch (b76) {
 				case 0 :
+#if Use68020
+					/* Chk.L 0100ddd100mmmrrr */
+					ReportAbnormal("CHK.L instruction");
+					opsize = 4;
+					DoCheck(mode, reg, rg9);
+#else
+					op_illg();
+#endif
+					break;
 				case 2 :
-					/* Chk 0100ddd1s0mmmrrr */
-					opsize = 4 - b76;
+					/* Chk.W 0100ddd110mmmrrr */
+					opsize = 2;
 					DoCheck(mode, reg, rg9);
 					break;
 				case 1 :
@@ -1766,6 +2618,10 @@ LOCALPROCUSEDONCE DoCode4(void)
 						FindOpSizeFromb76();
 						DoUniOp1(mode, reg, UniOpNegX);
 					} else {
+#if Use68020
+	/* reference seems incorrect to say not for 68000 */
+#endif
+						/* Move from SR 0100000011mmmrrr */
 						opsize = 2;
 						DecodeModeRegister(mode, reg);
 						SetArgValue(m68k_getSR());
@@ -1777,10 +2633,15 @@ LOCALPROCUSEDONCE DoCode4(void)
 						FindOpSizeFromb76();
 						DoMove(8, 0, mode, reg);
 					} else {
-						/* 0100001011mmmrrr */
+#if Use68020
+						/* Move from CCR 0100001011mmmrrr */
+						ReportAbnormal("Move from CCR");
 						opsize = 2;
 						DecodeModeRegister(mode, reg);
 						SetArgValue(m68k_getSR() & 0xFF);
+#else
+						op_illg();
+#endif
 					}
 					break;
 				case 2 :
@@ -1819,12 +2680,13 @@ LOCALPROCUSEDONCE DoCode4(void)
 								/* Swap 0100100001000rrr */
 								ui5b srcreg = reg;
 								ui5b src = (ui5b)m68k_dreg(srcreg);
-								si5b dst = (si5b)(((src >> 16)&0xFFFF) | ((src&0xFFFF)<<16));
+								si5b dst = (si5b)(((src >> 16) & 0xFFFF) | ((src&0xFFFF) << 16));
 								VFLG = CFLG = 0;
 								ZFLG = (dst == 0);
 								NFLG = (dst < 0);
 								m68k_dreg(srcreg) = dst;
 							} else {
+								/* PEA 0100100001mmmrrr */
 								si5b srcvalue;
 
 								opsize = 4;
@@ -1832,6 +2694,19 @@ LOCALPROCUSEDONCE DoCode4(void)
 								if (GetEffectiveAddress(&srcvalue)) {
 									m68k_areg(7) -= 4;
 									put_long(m68k_areg(7), srcvalue);
+								} else {
+#if Use68020 || AccurateIllegal
+#if Use68020
+									if (mode == 1) {
+										/* BKPT 0100100001001rrr */
+										ReportAbnormal("BKPT instruction");
+										op_illg();
+									} else
+#endif
+									{
+										op_illg();
+									}
+#endif
 								}
 							}
 							break;
@@ -1846,7 +2721,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 									VFLG = CFLG = 0;
 									ZFLG = ((si4b)(dst)) == 0;
 									NFLG = ((si4b)(dst)) < 0;
-									m68k_dreg(srcreg) = (m68k_dreg(srcreg) & ~0xffff) | ((dst) & 0xffff);
+									m68k_dreg(srcreg) = (m68k_dreg(srcreg) & ~ 0xffff) | ((dst) & 0xffff);
 								} else {
 									/* EXT.L */
 									ui5b srcreg = reg;
@@ -1858,6 +2733,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 									m68k_dreg(srcreg) = (dst);
 								}
 							} else {
+								/* MOVEM reg to mem 01001d001ssmmmrrr */
 								opsize = 2 * b76 - 2;
 								reglist(0, mode, reg);
 							}
@@ -1881,11 +2757,25 @@ LOCALPROCUSEDONCE DoCode4(void)
 					break;
 				case 6 :
 					if (((opcode >> 7) & 1) == 1) {
+						/* MOVEM mem to reg 0100110011smmmrrr */
 						opsize = 2 * b76 - 2;
 						reglist(1, mode, reg);
 					} else {
-						/* MULS/MULU/DIVS/DIVU long operations for MC68020 */
+#if Use68020
+						opsize = 4;
+						if (((opcode >> 7) & 1) == 1) {
+							/* DIVU 0100110001mmmrrr 0rrr0s0000000rrr */
+							/* DIVS 0100110001mmmrrr 0rrr1s0000000rrr */
+							ReportAbnormal("DIVS/DIVU long");
+							DoDivL();
+						} else {
+							/* MULU 0100110000mmmrrr 0rrr0s0000000rrr */
+							/* MULS 0100110000mmmrrr 0rrr1s0000000rrr */
+							DoMulL();
+						}
+#else
 						op_illg();
+#endif
 					}
 					break;
 				case 7 :
@@ -1898,7 +2788,7 @@ LOCALPROCUSEDONCE DoCode4(void)
 								case 0 :
 								case 1 : /* this case actually handled elsewhere */
 									/* Trap 010011100100vvvv */
-									Exception((opcode & 15)+32);
+									Exception((opcode & 15) + 32);
 									break;
 								case 2 :
 									/* Link */
@@ -1971,24 +2861,22 @@ LOCALPROCUSEDONCE DoCode4(void)
 											break;
 										case 3 :
 											/* Rte 0100111001110011 */
-											if (! regs.s) {
-												BackupPC();
-												Exception(8);
-											} else {
-												ui5b NewPC;
-												CPTR stackp = m68k_areg(7);
-												ui5b NewSR = (ui5b) get_word(stackp);
-												stackp += 2;
-												NewPC = get_long(stackp);
-												stackp += 4;
-												m68k_areg(7) = stackp;
-												m68k_setSR(NewSR);
-												m68k_setpc(NewPC);
-											}
+											DoRTE();
 											break;
 										case 4 :
 											/* Rtd 0100111001110100 */
+#if Use68020
+											{
+												ui5b NewPC = get_long(m68k_areg(7));
+												si5b offs = (si5b)(si4b)nextiword();
+												/* ReportAbnormal("RTD"); */
+												/* used by Sys 7.5.5 boot */
+												m68k_areg(7) += (4 + offs);
+												m68k_setpc(NewPC);
+											}
+#else
 											op_illg();
+#endif
 											break;
 										case 5 :
 											/* Rts 0100111001110101 */
@@ -2021,7 +2909,23 @@ LOCALPROCUSEDONCE DoCode4(void)
 									}
 									break;
 								case 7 :
+#if Use68020
+									/* MOVEC 010011100111101m */
+									/* ReportAbnormal("MOVEC"); */
+									switch (reg) {
+										case 2:
+											DoMoveFromControl();
+											break;
+										case 3:
+											DoMoveToControl();
+											break;
+										default:
+											op_illg();
+											break;
+									}
+#else
 									op_illg();
+#endif
 									break;
 							}
 							break;
@@ -2056,9 +2960,30 @@ LOCALPROCUSEDONCE DoCode4(void)
 			}
 		}
 	} else {
+#if Use68020
+		if ((opcode & 0xFFF8) == 0x4808) {
+			/* Link.L 0100100000001rrr */
+
+			ui5b srcreg = reg;
+			CPTR stackp = m68k_areg(7);
+
+			ReportAbnormal("Link.L");
+
+			stackp -= 4;
+			m68k_areg(7) = stackp; /* only matters if srcreg == 7 */
+			put_long(stackp, m68k_areg(srcreg));
+			m68k_areg(srcreg) = stackp;
+			m68k_areg(7) += (si5b)nextilong();
+		} else
+		if ((opcode & 0xFF00) == 0x4A00) {
+			/* Tst  01001010ssmmmrrr */ /* address register allowed */
+			FindOpSizeFromb76();
+			DoTest1(mode, reg);
+		} else
+#endif
 		if ((opcode & 0xFFF0) == 0x4E40) {
 			/* Trap 010011100100vvvv */
-			Exception((opcode & 15)+32);
+			Exception((opcode & 15) + 32);
 		} else {
 			op_illg();
 		}
@@ -2083,7 +3008,7 @@ LOCALPROCUSEDONCE DoCode5(void)
 			if (! cctrue(cond)) {
 				dstvalue = (si5b)(si4b)m68k_dreg(reg);
 				--dstvalue;
-				m68k_dreg(reg) = (m68k_dreg(reg) & ~0xffff)
+				m68k_dreg(reg) = (m68k_dreg(reg) & ~ 0xffff)
 					| ((dstvalue) & 0xffff);
 				if (dstvalue != -1) {
 #if FastRelativeJump
@@ -2094,10 +3019,44 @@ LOCALPROCUSEDONCE DoCode5(void)
 				}
 			}
 		} else {
-			/* Scc 0101cccc11mmmrrr */
-			opsize = 1;
-			DecodeModeRegister(mode, reg);
-			SetArgValue(cctrue(cond) ? 0xff : 0);
+#if Use68020 || AccurateIllegal
+			if ((mode == 7) && (reg >= 2)) {
+#if Use68020
+				/* TRAPcc 0101cccc11111sss */
+				/* ReportAbnormal("TRAPcc"); */
+				switch (reg) {
+					case 2:
+						ReportAbnormal("TRAPcc word data");
+						(void) nextiword();
+						break;
+					case 3:
+						ReportAbnormal("TRAPcc long data");
+						(void) nextilong();
+						break;
+					case 4:
+						/* no optional data */
+						break;
+					default:
+						ReportAbnormal("TRAPcc illegal format");
+						op_illg();
+						break;
+				}
+				if (cctrue(cond)) {
+					ReportAbnormal("TRAPcc trapping");
+					Exception(7);
+					/* pc pushed onto stack wrong */
+				}
+#else
+				op_illg();
+#endif
+			} else
+#endif
+			{
+				/* Scc 0101cccc11mmmrrr */
+				opsize = 1;
+				DecodeModeRegister(mode, reg);
+				SetArgValue(cctrue(cond) ? 0xff : 0);
+			}
 		}
 	} else {
 		ui5b BinOp;
@@ -2130,9 +3089,11 @@ LOCALPROCUSEDONCE DoCode6(void)
 	if (src == 0) {
 		s += (si5b)(si4b)nextiword();
 	} else
-#if 0 /* not on 68000 */
+#if Use68020
 	if (src == 255) {
 		s += (si5b)nextilong();
+		/* ReportAbnormal("long branch in DoCode6"); */
+		/* Used by various Apps */
 	} else
 #endif
 	{
@@ -2170,6 +3131,49 @@ LOCALPROCUSEDONCE DoCode7(void)
 	m68k_dreg(dstreg) = (src);
 }
 
+#if Use68020
+LOCALPROC DoUNPK(void)
+{
+	si5b val;
+	ui5b m1 = ((opcode >> 3) & 1) << 2;
+	ui5b srcreg = reg;
+	ui5b dstreg = rg9;
+	si5b offs = (si5b)(si4b)nextiword();
+
+	opsize = 1;
+	DecodeModeRegister(m1, srcreg);
+	val = GetArgValue();
+
+	val = (((val & 0xF0) << 4) | (val & 0x0F)) + offs;
+
+	opsize = 2;
+	DecodeModeRegister(m1, dstreg);
+	SetArgValue(val);
+}
+#endif
+
+#if Use68020
+LOCALPROC DoPACK(void)
+{
+	si5b val;
+	ui5b m1 = ((opcode >> 3) & 1) << 2;
+	ui5b srcreg = reg;
+	ui5b dstreg = rg9;
+	si5b offs = (si5b)(si4b)nextiword();
+
+	opsize = 2;
+	DecodeModeRegister(m1, srcreg);
+	val = GetArgValue();
+
+	val += offs;
+	val = ((val >> 4) & 0xf0) | (val & 0xf);
+
+	opsize = 1;
+	DecodeModeRegister(m1, dstreg);
+	SetArgValue(val);
+}
+#endif
+
 LOCALPROCUSEDONCE DoCode8(void)
 {
 	if (b76 == 3) {
@@ -2187,13 +3191,36 @@ LOCALPROCUSEDONCE DoCode8(void)
 		}
 	} else {
 		if ((b8 == 1) && (mode < 2)) {
-			/* SBCD 1000xxx10000mxxx */
-			opsize = 1;
-			if (mode == 0) {
-				DoBinOp1(0, reg, 0, rg9, BinOpSubBCD);
-			} else {
-				DoBinOp1(4, reg, 4, rg9, BinOpSubBCD);
+#if Use68020 || AccurateIllegal
+			switch (b76) {
+				case 0:
+#endif
+					/* SBCD 1000xxx10000mxxx */
+					opsize = 1;
+					if (mode == 0) {
+						DoBinOp1(0, reg, 0, rg9, BinOpSubBCD);
+					} else {
+						DoBinOp1(4, reg, 4, rg9, BinOpSubBCD);
+					}
+#if Use68020 || AccurateIllegal
+					break;
+#if Use68020
+				case 1:
+					/* PACK 1000rrr10100mrrr */
+					ReportAbnormal("PACK");
+					DoPACK();
+					break;
+				case 2:
+					/* UNPK 1000rrr11000mrrr */
+					ReportAbnormal("UNPK");
+					DoUNPK();
+					break;
+#endif
+				default:
+					op_illg();
+					break;
 			}
+#endif /* Use68020 || AccurateIllegal */
 		} else {
 			/* OR 1000dddmssmmmrrr */
 			FindOpSizeFromb76();
@@ -2364,11 +3391,126 @@ LOCALFUNC ui5b rolops(ui5b x)
 	return binop;
 }
 
+#if Use68020
+LOCALPROC DoBitField(void)
+{
+	ui5b tmp;
+	ui5b newtmp;
+	si5b dsta;
+	ui5b bf0;
+	ui5b bf1;
+	ui5b dstreg = opcode & 7;
+	ui4b extra = nextiword();
+	si5b offset = ((extra & 0x0800) != 0)
+		? m68k_dreg((extra >> 6) & 7)
+		: ((extra >> 6) & 0x1f);
+	ui5b width = ((extra & 0x0020) != 0)
+		? m68k_dreg(extra & 7)
+		: extra;
+
+	width = ((width - 1) & 0x1f) + 1; /* 0 -> 32 */
+	if (mode == 0) {
+		bf0 = m68k_dreg(dstreg);
+		offset &= 0x1f;
+		tmp = bf0 << offset;
+	} else {
+		DecodeModeRegister(mode, reg);
+		if (GetEffectiveAddress(&dsta)) {
+			dsta += (offset >> 3) | (offset & 0x80000000 ? ~ 0x1fffffff : 0);
+			offset &= 7;
+			{
+				bf0 = get_long(dsta);
+				bf1 = get_byte(dsta + 4) & 0xff;
+				tmp = (bf0 << offset) | (bf1 >> (8 - offset));
+			}
+		}
+	}
+
+	NFLG = ((si5b)tmp) < 0;
+	tmp >>= (32 - width);
+	ZFLG = tmp == 0;
+	VFLG = 0;
+	CFLG = 0;
+
+	newtmp = tmp;
+
+	switch ((opcode >> 8) & 7) {
+		case 0: /* BFTST */
+			/* do nothing */
+			break;
+		case 1: /* BFEXTU */
+			m68k_dreg((extra >> 12) & 7) = tmp;
+			break;
+		case 2: /* BFCHG */
+			newtmp = (~ newtmp) & ((1 << width) - 1);
+			break;
+		case 3: /* BFEXTS */
+			if (NFLG) {
+				m68k_dreg((extra >> 12) & 7) = tmp
+					| ((width == 32) ? 0 : (-1 << width));
+			} else {
+				m68k_dreg((extra >> 12) & 7) = tmp;
+			}
+			break;
+		case 4: /* BFCLR */
+			newtmp = 0;
+			break;
+		case 5: /* BFFFO */
+			{
+				ui5b mask = 1 << (width - 1);
+				si5b i = offset;
+				while (mask && ((tmp & mask) != 0)) {
+					mask >>= 1;
+					i++;
+				}
+				m68k_dreg((extra >> 12) & 7) = i;
+			}
+			break;
+		case 6: /* BFSET */
+			newtmp = (1 << width) - 1;
+			break;
+		case 7: /* BFINS */
+			newtmp = m68k_dreg((extra >> 12) & 7) & ((1 << width) - 1);
+			break;
+	}
+
+	if (newtmp != tmp) {
+		ui5b mask = ~ ((((1 << width) - 1) << (32 - width)) >> offset);
+
+		newtmp <<= (32 - width);
+		bf0 = (bf0 & mask) | (newtmp >> offset);
+		if (mode == 0) {
+			m68k_dreg(dstreg) = bf0;
+		} else {
+			put_long(dsta, bf0);
+			if ((offset + width) > 32) {
+				bf1 = (bf1 & (0xff >> (width - 32 + offset)))
+					| (newtmp << (8 - offset));
+				put_byte(dsta + 4, bf1);
+			}
+		}
+	}
+}
+#endif
+
 LOCALPROCUSEDONCE DoCodeE(void)
 {
 	if (b76 == 3) {
-		opsize = 2;
-		DoBinOp1(8, 1, mode, reg, rolops(rg9));
+#if Use68020 || AccurateIllegal
+		if ((opcode & 0x0800) != 0) {
+#if Use68020
+			/* 11101???11mmmrrr */
+			ReportAbnormal("Bit Field operator");
+			DoBitField();
+#else
+			op_illg();
+#endif
+		} else
+#endif
+		{
+			opsize = 2;
+			DoBinOp1(8, 1, mode, reg, rolops(rg9));
+		}
 	} else {
 		FindOpSizeFromb76();
 		if (mode < 4) {
@@ -2383,7 +3525,10 @@ LOCALPROCUSEDONCE DoCodeE(void)
 
 LOCALPROCUSEDONCE DoCodeF(void)
 {
-	op_illg();
+	/* ReportAbnormal("DoCodeF"); */
+	/* op_illg(); */
+	BackupPC();
+	Exception(0xB);
 }
 
 LOCALPROC op_illg(void)
@@ -2471,6 +3616,21 @@ LOCALPROC NeedToGetOut(void)
 	}
 }
 
+GLOBALFUNC ui5b GetInstructionsRemaining(void)
+{
+	return MoreInstructionsToGo + MaxInstructionsToGo;
+}
+
+GLOBALPROC SetInstructionsRemaining(ui5b n)
+{
+	if (MaxInstructionsToGo >= n) {
+		MoreInstructionsToGo = 0;
+		MaxInstructionsToGo = n;
+	} else {
+		MoreInstructionsToGo = n - MaxInstructionsToGo;
+	}
+}
+
 LOCALPROC do_trace(void)
 {
 	regs.TracePending = trueblnr;
@@ -2492,8 +3652,8 @@ LOCALPROC m68k_setstopped(void)
 GLOBALPROC m68k_go_nInstructions(ui5b n)
 {
 	MaxInstructionsToGo = n;
+	MoreInstructionsToGo = 0;
 	do {
-		MoreInstructionsToGo = 0;
 
 #if 0
 		if (regs.ResetPending) {
@@ -2512,5 +3672,6 @@ GLOBALPROC m68k_go_nInstructions(ui5b n)
 		}
 		m68k_go_MaxInstructions();
 		MaxInstructionsToGo = MoreInstructionsToGo;
+		MoreInstructionsToGo = 0;
 	} while (MaxInstructionsToGo != 0);
 }

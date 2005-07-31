@@ -1,6 +1,6 @@
 //  main.rc
 //
-//  Copyright (C) 2003 Philip Cummins, Weston Pawlowski, Paul Pratt
+//  Copyright (C) 2003 Philip Cummins, Weston Pawlowski, Paul C. Pratt
 //
 //  You can redistribute this file and/or modify it under the terms
 //  of version 2 of the GNU General Public License as published by
@@ -26,6 +26,6 @@
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_VMAC                ICON    DISCARDABLE     "app_icon.ico"
-IDI_DISK                ICON    DISCARDABLE     "dsk_icon.ico"
-IDI_ROM                 ICON    DISCARDABLE     "rom_icon.ico"
+IDI_VMAC                ICON    DISCARDABLE     "AppIcon.ico"
+IDI_DISK                ICON    DISCARDABLE     "DskIcon.ico"
+IDI_ROM                 ICON    DISCARDABLE     "RomIcon.ico"

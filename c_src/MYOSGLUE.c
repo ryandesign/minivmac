@@ -1,7 +1,7 @@
 /*
 	MYOSGLUE.c
 
-	Copyright (C) 2004 Paul Pratt
+	Copyright (C) 2005 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,7 +23,9 @@
 
 #include "MYOSGLUE.h"
 
-IMPORTPROC ProgramMain(void);
+IMPORTPROC DoEmulateOneTick(void);
+IMPORTPROC DoEmulateExtraTime(void);
+IMPORTFUNC blnr InitEmulation(void);
 
 GLOBALVAR char *screencomparebuff = nullpr;
 GLOBALVAR char *CntrlDisplayBuff = nullpr;
@@ -38,7 +40,17 @@ GLOBALVAR ui3b CurMouseButton = falseblnr;
 
 GLOBALVAR ui5b theKeys[4];
 
-GLOBALVAR blnr SpeedLimit = falseblnr;
+#ifndef WantInitSpeedLimit
+#define WantInitSpeedLimit 1
+#endif
+
+GLOBALVAR blnr SpeedLimit = (WantInitSpeedLimit != 0);
+
+GLOBALVAR blnr SpeedStopped = falseblnr;
+
+GLOBALVAR ui3b SpeedValue = 3;
+
+GLOBALVAR blnr RunInBackground = falseblnr;
 
 GLOBALVAR si3b TimeAdjust = 0;
 
@@ -46,12 +58,20 @@ GLOBALVAR si3b TimeAdjust = 0;
 GLOBALVAR blnr ControlKeyPressed = falseblnr;
 #endif
 
+#ifndef WantInitFullScreen
+#define WantInitFullScreen 0
+#endif
+
 #if EnableFullScreen
-GLOBALVAR blnr WantFullScreen = falseblnr;
+GLOBALVAR blnr WantFullScreen = (WantInitFullScreen != 0);
+#endif
+
+#ifndef WantInitMagnify
+#define WantInitMagnify 0
 #endif
 
 #if EnableMagnify
-GLOBALVAR blnr WantMagnify = falseblnr;
+GLOBALVAR blnr WantMagnify = (WantInitMagnify != 0);
 #endif
 
 #if EnableMouseMotion
@@ -67,6 +87,10 @@ GLOBALVAR ui4b MouseMotionH = 0;
 #endif
 
 GLOBALVAR blnr RequestMacOff = falseblnr;
+
+GLOBALVAR blnr ForceMacOff = falseblnr;
+
+GLOBALVAR blnr RequestInsertDisk = falseblnr;
 
 GLOBALVAR ui5b vSonyWritableMask = 0;
 GLOBALVAR ui5b vSonyInsertedMask = 0;
@@ -115,8 +139,14 @@ GLOBALFUNC blnr AnyDiskInserted(void)
 #ifndef RomFileName
 #if CurEmu <= kEmu512K
 #define RomFileName "Mac128K.ROM"
-#else
+#elif CurEmu <= kEmuPlus
 #define RomFileName "vMac.ROM"
+#elif CurEmu <= kEmuSE
+#define RomFileName "MacSE.ROM"
+#elif CurEmu <= kEmuClassic
+#define RomFileName "Classic.ROM"
+#else
+#error "RomFileName not defined"
 #endif
 #endif
 

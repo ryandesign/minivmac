@@ -1,7 +1,7 @@
 /*
 	PROGMAIN.c
 
-	Copyright (C) 2003 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -17,7 +17,8 @@
 /*
 	PROGram MAIN
 
-	Contains the platform independent main routine, "ProgramMain".
+	Contains the platform independent main routines
+		"DoEmulateOneTick" and "DoEmulateExtraTime".
 	Called from platform dependent code in the OSGLUxxx.c files.
 
 	This code is a distant descendent of code in vMac by Philip Cummins.
@@ -27,12 +28,12 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "GLOBGLUE.h"
-#include "MINEM68K.h"
+#include "ADDRSPAC.h"
 #endif
 
 #include "PROGMAIN.h"
 
-IMPORTPROC Memory_Reset(void);
+IMPORTPROC Screen_Draw(void);
 
 LOCALPROC vSonyEjectAllDisks(void)
 {
@@ -51,76 +52,54 @@ LOCALPROC vSonyEjectAllDisks(void)
 GLOBALPROC DoMacReset(void)
 {
 	vSonyEjectAllDisks();
-	Memory_Reset();
-	m68k_reset();
+	EmulatedHardwareZap();
 }
-
-#define InstructionsPerTick 12250
-	/*
-		This a bit too fast on average, but
-		if this was much lower, Concertware wouldn't
-		work properly with speed limit on. If this was
-		much higher, the initial sounds in Dark Castle
-		would have static.
-		This can only be an approximation, since on
-		a real machine the number of instructions
-		executed per time can vary by almost a factor
-		of two, because different instructions take
-		different times.
-	*/
 
 #define InstructionsPerSubTick (InstructionsPerTick / kNumSubTicks)
 
-LOCALPROC MainEventLoop(void)
+LOCALVAR ui5b ExtraSubTicksToDo = 0;
+
+GLOBALPROC DoEmulateOneTick(void)
 {
 	long KiloInstructionsCounter = 0;
-	blnr OverDue;
 
-	do {
-		if (KiloInstructionsCounter < kNumSubTicks) {
-			m68k_go_nInstructions(InstructionsPerSubTick);
+	SixtiethSecondNotify();
+
+	if (! SpeedStopped) {
+		do {
+			m68k_go_nInstructions_1(InstructionsPerSubTick);
 			SubTickNotify(KiloInstructionsCounter);
 			++KiloInstructionsCounter;
-		} else if (! SpeedLimit) {
-			m68k_go_nInstructions(2048);
-		}
+		} while (KiloInstructionsCounter < kNumSubTicks);
 
-		OverDue = (KiloInstructionsCounter >= kNumSubTicks);
-		CheckIntSixtieth(SpeedLimit && OverDue && (0 == TimeAdjust));
+		if (! SpeedLimit) {
+			ExtraSubTicksToDo = (ui5b) -1;
+		} else if (SpeedValue == 0) {
+			ExtraSubTicksToDo = 0;
+		} else {
+			ui5b ExtraAdd = (kNumSubTicks << SpeedValue) - kNumSubTicks;
+			ui5b ExtraLimit = ExtraAdd << 3;
 
-		if (TimeAdjust > 0) {
-			blnr WantNextSixtieth;
-
-			if (TimeAdjust <= 6) {
-				WantNextSixtieth = OverDue;
-			} else {
-				/* emulation lagging, try to catch up */
-				WantNextSixtieth = (KiloInstructionsCounter
-					>= (kNumSubTicks / 2));
-				if (TimeAdjust > 8) {
-					/* emulation not fast enough */
-					TimeAdjust = 8;
-				}
-			}
-
-			if (WantNextSixtieth) {
-				while (KiloInstructionsCounter < kNumSubTicks) {
-					SubTickNotify(KiloInstructionsCounter);
-					++KiloInstructionsCounter;
-				}
-				KiloInstructionsCounter = 0;
-				SixtiethSecondNotify();
-				--TimeAdjust;
+			ExtraSubTicksToDo += ExtraAdd;
+			if (ExtraSubTicksToDo > ExtraLimit) {
+				ExtraSubTicksToDo = ExtraLimit;
 			}
 		}
-	} while (! RequestMacOff);
+	} else {
+		ExtraSubTicksToDo = 0;
+	}
+
+	Screen_Draw();
 }
 
-GLOBALPROC ProgramMain(void)
+GLOBALPROC DoEmulateExtraTime(void)
 {
-	ZapProgramVars();
-	if (InitProgram()) {
-		MainEventLoop();
+	if (ExtraTimeNotOver() && (ExtraSubTicksToDo > 0)) {
+		ExtraTimeBeginNotify();
+		do {
+			m68k_go_nInstructions_1(InstructionsPerSubTick);
+			--ExtraSubTicksToDo;
+		} while (ExtraTimeNotOver() && (ExtraSubTicksToDo > 0));
+		ExtraTimeEndNotify();
 	}
-	UnInitProgram();
 }

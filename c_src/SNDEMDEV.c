@@ -1,7 +1,7 @@
 /*
 	SNDEMDEV.c
 
-	Copyright (C) 2003 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -27,105 +27,16 @@
 
 #include "MYOSGLUE.h"
 #include "PROGMAIN.h"
+#include "ADDRSPAC.h"
 #endif
 
 #include "SNDEMDEV.h"
-
-LOCALVAR ui3b SoundDisable = 0;
-LOCALVAR ui3b SoundVolume = 0; /* 0 - 7 */
-LOCALVAR ui3b SoundBuffer = 0; /* 0 = Main, 1 = Alternate */
 
 #define kSnd_Main_Offset   0x0300
 #define kSnd_Alt_Offset    0x5F00
 
 #define kSnd_Main_Buffer (kRAM_Size - kSnd_Main_Offset)
 #define kSnd_Alt_Buffer (kRAM_Size - kSnd_Alt_Offset)
-
-/* VIA Interface Functions */
-
-GLOBALFUNC ui3b VIA_GORA3 (void) /* Main/Alternate Sound Buffer */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA3 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORA3(ui3b Data)
-{
-	SoundBuffer = ! Data;
-}
-
-GLOBALFUNC ui3b VIA_GORA2(void) /* Sound Volume Bit 2 */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA2 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORA2(ui3b Data)
-{
-	if (Data == 0) {
-		SoundVolume &= 0x03;
-	} else {
-		SoundVolume |= 0x04;
-	}
-}
-
-GLOBALFUNC ui3b VIA_GORA1(void) /* Sound Volume Bit 1 */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA1 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORA1(ui3b Data)
-{
-	if (Data == 0) {
-		SoundVolume &= 0x05;
-	} else {
-		SoundVolume |= 0x02;
-	}
-}
-
-GLOBALFUNC ui3b VIA_GORA0(void) /* Sound Volume Bit 0 */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA0 attempts to be an input\n");
-#endif
-/*  */
-/* bill huey --- */
-/* I'm basically trying to take a guess as to what */
-/* would be neutral return value for the "return" */
-/* statement that I just added to satisfy GCC's */
-/* complaints... */
-
-	return 0;
-}
-
-GLOBALPROC VIA_PORA0(ui3b Data)
-{
-	if (Data == 0) {
-		SoundVolume &= 0x06;
-	} else {
-		SoundVolume |= 0x01;
-	}
-}
-
-GLOBALFUNC ui3b VIA_GORB7(void) /* Sound Disable */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORB7 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORB7(ui3b Data)
-{
-	SoundDisable = Data;
-}
 
 
 #if MySoundEnabled
@@ -169,10 +80,13 @@ GLOBALPROC MacSound_SubTick(int SubTick)
 		int i;
 		ui4b SoundInvertTime = GetSoundInvertTime();
 		ui5b StartOffset = SubTick_offset[SubTick];
-		ui5b n = SubTick_offset[SubTick+1] - StartOffset;
-		unsigned long addy = (SoundBuffer != 0) ?
-			kSnd_Alt_Buffer : kSnd_Main_Buffer;
-		ui3p addr = addy + (2 * StartOffset) +(ui3p)RAM;
+		ui5b n = SubTick_offset[SubTick + 1] - StartOffset;
+		unsigned long addy =
+#ifdef SoundBuffer
+			(SoundBuffer == 0) ? kSnd_Alt_Buffer :
+#endif
+			kSnd_Main_Buffer;
+		ui3p addr = addy + (2 * StartOffset) + (ui3p)RAM;
 		ui3p p = StartOffset + TheCurSoundBuff;
 
 		if (SoundDisable && (SoundInvertTime == 0)) {
@@ -188,6 +102,9 @@ GLOBALPROC MacSound_SubTick(int SubTick)
 				*/
 			}
 		} else {
+			ui3b SoundVolume = SoundVolb0
+				| (SoundVolb1 << 1)
+				| (SoundVolb2 << 2);
 			ui3b offset = vol_offset[SoundVolume];
 
 			if (SoundVolume >= 7) {

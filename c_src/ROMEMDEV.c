@@ -1,7 +1,7 @@
 /*
 	ROMEMDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 
 #include "ROMEMDEV.h"
 
+#if CurEmu <= kEmuClassic
 LOCALVAR const ui4b sony_driver[] = {
 /*
 	Replacement for .Sony driver
@@ -557,13 +558,19 @@ LOCALVAR const ui4b sony_driver[] = {
 	0x70E8, 0x4E5E, 0x4E75
 #endif
 };
+#endif
 
 #if CurEmu <= kEmu512K
 #define Sony_DriverBase 0x1690
-#else
+#elif CurEmu <= kEmuPlus
 #define Sony_DriverBase 0x17D30
+#elif CurEmu <= kEmuSE
+#define Sony_DriverBase 0x34680
+#elif CurEmu <= kEmuClassic
+#define Sony_DriverBase 0x34680
 #endif
 
+#if CurEmu <= kEmuClassic
 LOCALPROC Sony_Install(void)
 {
 	int i;
@@ -576,6 +583,7 @@ LOCALPROC Sony_Install(void)
 		pto += 2;
 	}
 }
+#endif
 
 LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
 {
@@ -583,7 +591,7 @@ LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
 	ui5b CheckSum2 = 0;
 	ui3p p = 4 + (ui3p)ROM;
 
-	for (i = (kTrueROM_Size - 4) >> 1; --i >=0; ) {
+	for (i = (kTrueROM_Size - 4) >> 1; --i >= 0; ) {
 		CheckSum2 += do_get_mem_word(p);
 		p += 2;
 	}
@@ -598,23 +606,25 @@ GLOBALFUNC blnr ROM_Init(void)
 		MacMsg("ROM checksum failed.", "The ROM image may be corrupted.", trueblnr);
 	} else
 #if CurEmu <= kEmu512K
-	if (CheckSum == 0x28BA61CE)
-	{
-		/* printf("ROM: Mac 64k ROM\n"); */
-	} else if (CheckSum == 0x28BA4E50)
-	{
-		/* printf("ROM: Mac 64k ROM\n"); */
+	if (CheckSum == 0x28BA61CE) {
 	} else
-#else
-	if (CheckSum == 0x4D1EEEE1)
-	{
+	if (CheckSum == 0x28BA4E50) {
+	} else
+#elif CurEmu <= kEmuPlus
+	if (CheckSum == 0x4D1EEEE1) {
 		/* printf("ROM: Mac Plus ROM v 1, 'Lonely Hearts'.\n"); */
-	} else if (CheckSum == 0x4D1EEAE1)
-	{
+	} else
+	if (CheckSum == 0x4D1EEAE1) {
 		/* printf("ROM: Mac Plus ROM v 2, 'Lonely Heifers'.\n"); */
-	} else if (CheckSum == 0x4D1F8172)
-	{
+	} else
+	if (CheckSum == 0x4D1F8172) {
 		/* printf("ROM: Mac Plus ROM v 3, 'Loud Harmonicas'.\n"); */
+	} else
+#elif CurEmu <= kEmuSE
+	if (CheckSum == 0xB2E362A8) {
+	} else
+#elif CurEmu <= kEmuClassic
+	if (CheckSum == 0xA49F9914) {
 	} else
 #endif
 	{
@@ -626,20 +636,29 @@ GLOBALFUNC blnr ROM_Init(void)
 		try to run anyway. It shouldn't do any harm.
 	*/
 
+/* skip the rom checksum */
 #if CurEmu <= kEmu512K
-	do_put_mem_word(226 + (ui3p)ROM, 0x6004); /* skip the rom checksum */
-#else
-	do_put_mem_word(3450 + (ui3p)ROM, 0x6022); /* skip the rom checksum */
+	do_put_mem_word(226 + (ui3p)ROM, 0x6004);
+#elif CurEmu <= kEmuPlus
+	do_put_mem_word(3450 + (ui3p)ROM, 0x6022);
+#elif CurEmu <= kEmuClassic
+	do_put_mem_word(7272 + (ui3p)ROM, 0x6008);
 #endif
 
-#if CurEmu > kEmu512K
+#if CurEmu <= kEmu512K
+#elif CurEmu <= kEmuPlus
 	do_put_mem_word(3752 + (ui3p)ROM, 0x4E71); /* shorten the ram check read */
 	do_put_mem_word(3728 + (ui3p)ROM, 0x4E71); /* shorten the ram check write*/
+#elif CurEmu <= kEmuClassic
+	do_put_mem_word(134 + (ui3p)ROM, 0x6002);
+	do_put_mem_word(286 + (ui3p)ROM, 0x6002);
 #endif
 
 	/* do_put_mem_word(862 + (ui3p)ROM, 0x4E71); */ /* shorten set memory*/
 
+#if CurEmu <= kEmuClassic
 	Sony_Install();
+#endif
 
 #if CurEmu <= kEmu512K
 	MyMoveBytes((ui3p)ROM, kTrueROM_Size + (ui3p)ROM, kTrueROM_Size);

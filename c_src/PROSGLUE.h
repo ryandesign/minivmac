@@ -1,7 +1,7 @@
 /*
 	PROSGLUE.h
 
-	Copyright (C) 2004 Paul Pratt
+	Copyright (C) 2004 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -113,11 +113,31 @@ LOCALFUNC blnr AllocateMacRAM (void)
 	return falseblnr;
 }
 
-GLOBALFUNC blnr CheckIntSixtieth(blnr OverDue, blnr NotTooSoon)
+GLOBALFUNC si3b GetCurrentTimeAdjust(void)
 {
-	UnusedParam(WaitForIt);
-	RequestMacOff = trueblnr;
-	return NotTooSoon;
+	ForceMacOff = trueblnr;
+	return TimeAdjust;
+}
+
+LOCALPROC DoEndTheSixtieth(void)
+{
+	if (TimeAdjust < 0) {
+		do {
+		} while (GetCurrentTimeAdjust() < 0);
+	} else if (TimeAdjust > 7) {
+		/* emulation not fast enough */
+		TimeAdjust = 7;
+	}
+}
+
+LOCALPROC MainEventLoop(void)
+{
+	do {
+		DoEmulateOneTick();
+		--TimeAdjust;
+		DoEmulateExtraTime();
+		DoEndTheSixtieth();
+	} while (! ForceMacOff);
 }
 
 LOCALPROC ZapOSGLUVars(void)
@@ -129,6 +149,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (AllocateMacROM())
 	if (LoadMacRom())
 	if (AllocateMacRAM())
+	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -143,7 +164,7 @@ int main(void)
 {
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
-		ProgramMain();
+		MainEventLoop();
 	}
 	UnInitOSGLU();
 	return 0;

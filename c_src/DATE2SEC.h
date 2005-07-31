@@ -1,6 +1,6 @@
 /*
 	DATE2SEC.h
-	Copyright (C) 2003 Bradford L. Barrett, Paul Pratt
+	Copyright (C) 2003 Bradford L. Barrett, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 /*
 	The function jdate was found at the end of the file
 	webalizer.c in the program webalizer at
-	"http://www.mrunix.net/webalizer/".
+	"www.mrunix.net/webalizer/".
 	Here is copyright info from the top of that file:
 
 	webalizer - a web server log analysis program
@@ -77,24 +77,28 @@
 LOCALFUNC ui5b jdate(int day, int month, int year)
 {
 	ui5b days;                      /* value returned */
-	int mtable[] = {0,31,59,90,120,151,181,212,243,273,304,334};
+	int mtable[] = {
+		0,    31,  59,  90, 120, 151,
+		181, 212, 243, 273, 304, 334
+	};
 
 	/* First, calculate base number including leap and Centenial year stuff */
 
-	days = (((ui5b)year*365)+day+mtable[month-1]+
-		((year+4)/4) - ((year/100)-(year/400)));
+	days = (((ui5b)year * 365) + day + mtable[month - 1]
+		+ ((year + 4) / 4) - ((year / 100) - (year / 400)));
 
 	/* now adjust for leap year before March 1st */
 
-	if ((year % 4 == 0) && !((year % 100 == 0) &&
-		(year % 400 != 0)) && (month < 3))
+	if ((year % 4 == 0)
+		&& (! ((year % 100 == 0) && (year % 400 != 0)))
+		&& (month < 3))
 	{
 		--days;
 	}
 
 	/* done, return with calculated value */
 
-	return(days+5);
+	return(days + 5);
 }
 
 LOCALFUNC ui5b Date2MacSeconds(int second, int minute, int hour,

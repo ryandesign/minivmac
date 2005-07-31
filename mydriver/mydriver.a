@@ -1,6 +1,6 @@
 ;	mydriver.a
 ;
-;	Copyright (C) 2004 Paul Pratt
+;	Copyright (C) 2004 Paul C. Pratt
 ;
 ;	You can redistribute this file and/or modify it under the terms
 ;	of version 2 of the GNU General Public License as published by
@@ -103,7 +103,7 @@ IOReturn
 
 @NotQueued
 	TST.W    D0             ; test asynchronous return result
-	BLE.B    @ImmedRTS      ; result must be 3Ú40
+	BLE.B    @ImmedRTS      ; result must be <= 0
 	CLR.W    D0             ; "in progress" result (> 0) not passed back
 
 @ImmedRTS
@@ -113,7 +113,7 @@ IOReturn
 
 @Queued
 	TST.W    D0             ; test asynchronous return result
-	BLE.B    @MyIODone      ; I/O is complete if result 3Ú4 0
+	BLE.B    @MyIODone      ; I/O is complete if result <= 0
 	CLR.W    D0             ; "in progress" result (> 0) not passed back
 	RTS
 

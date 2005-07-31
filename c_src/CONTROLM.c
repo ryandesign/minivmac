@@ -1,7 +1,7 @@
 /*
 	CONTROLM.c
 
-	Copyright (C) 2004 Paul Pratt
+	Copyright (C) 2005 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "GLOBGLUE.h"
-#include "MINEM68K.h"
 #include "PROGMAIN.h"
 #include "ADDRSPAC.h"
 #endif
@@ -41,16 +40,15 @@ enum {
 	kCntrlModeConfirmReset,
 	kCntrlModeConfirmInterrupt,
 	kCntrlModeConfirmQuit,
+	kCntrlModeSpeedControl,
 
 	kNumCntrlModes
 };
 
 enum {
 	kCntrlMsgBaseStart,
-	kCntrlMsgMagnifyOn,
-	kCntrlMsgMagnifyOff,
-	kCntrlMsgFullScreenOn,
-	kCntrlMsgFullScreenOff,
+	kCntrlMsgMagnify,
+	kCntrlMsgFullScreen,
 	kCntrlMsgConfirmResetStart,
 	kCntrlMsgHaveReset,
 	kCntrlMsgResetCancelled,
@@ -59,10 +57,10 @@ enum {
 	kCntrlMsgInterruptCancelled,
 	kCntrlMsgConfirmQuitStart,
 	kCntrlMsgQuitCancelled,
-	kCntrlMsgHaveEmCntrlOn,
-	kCntrlMsgHaveEmCntrlOff,
-	kCntrlMsgHaveLimitSpeedOn,
-	kCntrlMsgHaveLimitSpeedOff,
+	kCntrlMsgEmCntrl,
+	kCntrlMsgSpeedControlStart,
+	kCntrlMsgNewSpeed,
+	kCntrlMsgNewRunInBack,
 	kCntrlMsgAbout,
 	kCntrlMsgHelp,
 
@@ -80,6 +78,15 @@ GLOBALPROC DoLeaveControlMode(void)
 	CurControlMode = kCntrlModeOff;
 }
 
+LOCALPROC SetSpeedValue(ui3b i)
+{
+	SpeedStopped = falseblnr;
+	SpeedLimit = trueblnr;
+	SpeedValue = i;
+	CurControlMode = kCntrlModeBase;
+	ControlMessage = kCntrlMsgNewSpeed;
+}
+
 GLOBALPROC DoControlModeKey(int key)
 {
 	switch (CurControlMode) {
@@ -87,19 +94,11 @@ GLOBALPROC DoControlModeKey(int key)
 			switch (key) {
 				case MKC_K:
 					ControlKeyPressed = ! ControlKeyPressed;
-					if (ControlKeyPressed) {
-						ControlMessage = kCntrlMsgHaveEmCntrlOn;
-					} else {
-						ControlMessage = kCntrlMsgHaveEmCntrlOff;
-					}
+					ControlMessage = kCntrlMsgEmCntrl;
 					break;
-				case MKC_L:
-					SpeedLimit = ! SpeedLimit;
-					if (SpeedLimit) {
-						ControlMessage = kCntrlMsgHaveLimitSpeedOn;
-					} else {
-						ControlMessage = kCntrlMsgHaveLimitSpeedOff;
-					}
+				case MKC_S:
+					CurControlMode = kCntrlModeSpeedControl;
+					ControlMessage = kCntrlMsgSpeedControlStart;
 					break;
 				case MKC_I:
 					CurControlMode = kCntrlModeConfirmInterrupt;
@@ -116,7 +115,7 @@ GLOBALPROC DoControlModeKey(int key)
 					break;
 				case MKC_Q:
 					if (! AnyDiskInserted()) {
-						RequestMacOff = trueblnr;
+						ForceMacOff = trueblnr;
 					} else {
 						CurControlMode = kCntrlModeConfirmQuit;
 						ControlMessage = kCntrlMsgConfirmQuitStart;
@@ -129,26 +128,18 @@ GLOBALPROC DoControlModeKey(int key)
 					ControlMessage = kCntrlMsgHelp;
 					break;
 				case MKC_O:
-					InsertADisk();
+					RequestInsertDisk = trueblnr;
 					break;
 #if EnableMagnify
 				case MKC_M:
 					ToggleWantMagnify();
-					if (WantMagnify) {
-						ControlMessage = kCntrlMsgMagnifyOn;
-					} else {
-						ControlMessage = kCntrlMsgMagnifyOff;
-					}
+					ControlMessage = kCntrlMsgMagnify;
 					break;
 #endif
 #if EnableFullScreen
 				case MKC_F:
 					ToggleWantFullScreen();
-					if (WantFullScreen) {
-						ControlMessage = kCntrlMsgFullScreenOn;
-					} else {
-						ControlMessage = kCntrlMsgFullScreenOff;
-					}
+					ControlMessage = kCntrlMsgFullScreen;
 					break;
 #endif
 			}
@@ -182,7 +173,7 @@ GLOBALPROC DoControlModeKey(int key)
 		case kCntrlModeConfirmQuit:
 			switch (key) {
 				case MKC_Y:
-					RequestMacOff = trueblnr;
+					ForceMacOff = trueblnr;
 					CurControlMode = kCntrlModeBase;
 					ControlMessage = kCntrlMsgBaseStart;
 						/* shouldn't see this message since quitting */
@@ -190,6 +181,49 @@ GLOBALPROC DoControlModeKey(int key)
 				case MKC_N:
 					CurControlMode = kCntrlModeBase;
 					ControlMessage = kCntrlMsgQuitCancelled;
+					break;
+			}
+			break;
+		case kCntrlModeSpeedControl:
+			switch (key) {
+				case MKC_E:
+					CurControlMode = kCntrlModeBase;
+					ControlMessage = kCntrlMsgBaseStart;
+					break;
+				case MKC_B:
+					RunInBackground = ! RunInBackground;
+					CurControlMode = kCntrlModeBase;
+					ControlMessage = kCntrlMsgNewRunInBack;
+					break;
+				case MKC_S:
+					SpeedStopped = trueblnr;
+					SpeedLimit = falseblnr;
+					CurControlMode = kCntrlModeBase;
+					ControlMessage = kCntrlMsgNewSpeed;
+					break;
+				case MKC_Z:
+					SetSpeedValue(0);
+					break;
+				case MKC_1:
+					SetSpeedValue(1);
+					break;
+				case MKC_2:
+					SetSpeedValue(2);
+					break;
+				case MKC_3:
+					SetSpeedValue(3);
+					break;
+				case MKC_4:
+					SetSpeedValue(4);
+					break;
+				case MKC_5:
+					SetSpeedValue(5);
+					break;
+				case MKC_A:
+					SpeedStopped = falseblnr;
+					SpeedLimit = falseblnr;
+					CurControlMode = kCntrlModeBase;
+					ControlMessage = kCntrlMsgNewSpeed;
 					break;
 			}
 			break;
@@ -434,7 +468,7 @@ LOCALPROC DrawCell(unsigned int h, unsigned int v, int x)
 		ui3p p = ((ui3p)CntrlDisplayBuff) + (h + 1) + (v * 16 + 11) * vMacScreenByteWidth;
 		ui3p p0 = ((ui3p)CellData) + 16 * x;
 
-		for (i = 16; --i >=0; ) {
+		for (i = 16; --i >= 0; ) {
 			*p = *p0;
 			p += vMacScreenByteWidth;
 			p0 ++;
@@ -461,7 +495,7 @@ LOCALFUNC int CountNewLines(char *s)
 #define kEmuName "128K"
 #elif CurEmu == kEmu512K
 #define kEmuName "512K"
-#elif CurEmu == kEmu512K
+#elif CurEmu == kEmu512Ke
 #define kEmuName "512Ke"
 #elif CurEmu == kEmuPlus1M
 #define kEmuName "Plus 1M"
@@ -469,8 +503,26 @@ LOCALFUNC int CountNewLines(char *s)
 #define kEmuName "Plus 2M"
 #elif CurEmu == kEmuPlus2_5M
 #define kEmuName "Plus 2.5M"
-#else
+#elif CurEmu == kEmuPlus
 #define kEmuName "Plus 4M"
+#elif CurEmu == kEmuSE1M
+#define kEmuName "SE 1M"
+#elif CurEmu == kEmuSE2M
+#define kEmuName "SE 2M"
+#elif CurEmu == kEmuSE2_5M
+#define kEmuName "SE 2.5M"
+#elif CurEmu == kEmuSE
+#define kEmuName "SE 4M"
+#elif CurEmu == kEmuClassic1M
+#define kEmuName "Classic 1M"
+#elif CurEmu == kEmuClassic2M
+#define kEmuName "Classic 2M"
+#elif CurEmu == kEmuClassic2_5M
+#define kEmuName "Classic 2.5M"
+#elif CurEmu == kEmuClassic
+#define kEmuName "Classic 4M"
+#else
+#error "kEmuName not defined"
 #endif
 #endif
 
@@ -493,6 +545,66 @@ LOCALFUNC char * GetSubstitutionStr(char x)
 			break;
 		case 'e':
 			s = kEmuName;
+			break;
+		case 'm':
+			s = kMaintainerName;
+			break;
+		case 'k':
+			if (ControlKeyPressed) {
+				s = "pressed";
+			} else {
+				s = "released";
+			}
+			break;
+		case 'g':
+			if (WantMagnify) {
+				s = "on";
+			} else {
+				s = "off";
+			}
+			break;
+		case 'f':
+			if (WantFullScreen) {
+				s = "on";
+			} else {
+				s = "off";
+			}
+			break;
+		case 'b':
+			if (RunInBackground) {
+				s = "on";
+			} else {
+				s = "off";
+			}
+			break;
+		case 's':
+			if (SpeedStopped) {
+				s = "Stopped";
+			} else if (SpeedLimit) {
+				switch (SpeedValue) {
+					case 1:
+						s = "2x";
+						break;
+					case 2:
+						s = "4x";
+						break;
+					case 3:
+						s = "8x";
+						break;
+					case 4:
+						s = "16x";
+						break;
+					case 5:
+						s = "32x";
+						break;
+					case 0:
+					default:
+						s = "1x";
+						break;
+				}
+			} else {
+				s = "All out";
+			}
 			break;
 		default:
 			s = "???";
@@ -540,6 +652,9 @@ LOCALFUNC char * ControlMode2Str(void)
 		case kCntrlModeConfirmQuit:
 			s = "Confirm (Type 'Y' to Quit, 'N' to cancel)";
 			break;
+		case kCntrlModeSpeedControl:
+			s = "Speed Control";
+			break;
 		case kCntrlModeBase:
 		default:
 			s = "Control Mode (Type 'H' for help)";
@@ -557,20 +672,20 @@ LOCALFUNC char * ControlMessage2Str(void)
 			s = "\
 ^v, ^e, Copyright ^y.\n\
 \n\
-Including or based upon code by Bernd Schmidt, Philip\n\
-Cummins, Richard F. Bannister, Weston Pawlowski, Michael\n\
-Hanni, Paul Pratt, and others.\n\
+^p contains the work of many people.\n\
+This version is maintained by:\n\
+^m\n\
+\n\
+For more information, see:\n\
+\n\
+^w\n\
 \n\
 ^p is distributed under the terms of the GNU Public\n\
 License, version 2.\n\
 \n\
 ^p is distributed in the hope that it will be useful,\n\
 but WITHOUT ANY WARRANTY; without even the implied warranty\n\
-of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\
-\n\
-For more information, see:\n\
-\n\
-^w";
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.";
 			break;
 		case kCntrlMsgHelp:
 			s = "\
@@ -578,32 +693,47 @@ To leave the Control Mode, release the 'control' key.\n\
 Otherwise, type a letter. Available commands are:\n\
 \n\
 'A' - About (version information)\n\
-'O' - Open Disk Image\n\
+'O' - Open disk image\n\
 'Q' - Quit\n\
-'L' - Limit Speed toggle\n\
-'M' - Magnify toggle\n\
-'F' - Full Screen toggle\n\
-'K' - emulated 'control' Key toggle\n\
+'S' - Speed control (^s)\n\
+'M' - Magnify toggle (^g)\n\
+'F' - Full screen toggle (^f)\n\
+'K' - emulated 'control' Key toggle (^k)\n\
 'R' - Reset\n\
 'I' - Interrupt\n\
 'H' - Help (show this message)";
-			break;
-		case kCntrlMsgMagnifyOn:
-			s = "Magnify is on";
-			break;
-		case kCntrlMsgMagnifyOff:
-			s = "Magnify is off";
-			break;
-		case kCntrlMsgFullScreenOn:
-			s = "Full Screen is on";
-			break;
-		case kCntrlMsgFullScreenOff:
-			s = "Full Screen is off";
 			break;
 /*
 012345678901234567890123456789012345678901234567890123456789
 000000000011111111112222222222333333333344444444445555555555
 */
+		case kCntrlMsgSpeedControlStart:
+			s = "Current speed: ^s\n\
+'S' - Stopped\n\
+'Z' - 1x\n\
+'1' - 2x\n\
+'2' - 4x\n\
+'3' - 8x\n\
+'4' - 16x\n\
+'5' - 32x\n\
+'A' - All out\n\
+\n\
+'B' - run in Background toggle (^b)\n\
+\n\
+'E' - Exit speed control";
+			break;
+		case kCntrlMsgNewSpeed:
+			s = "Speed: ^s";
+			break;
+		case kCntrlMsgNewRunInBack:
+			s = "Run in background is ^b";
+			break;
+		case kCntrlMsgMagnify:
+			s = "Magnify is ^g";
+			break;
+		case kCntrlMsgFullScreen:
+			s = "Full Screen is ^f";
+			break;
 		case kCntrlMsgConfirmResetStart:
 			s = "\
 Are you sure you want to Reset?\n\
@@ -640,17 +770,8 @@ files.";
 		case kCntrlMsgQuitCancelled:
 			s = "Quit cancelled";
 			break;
-		case kCntrlMsgHaveEmCntrlOn:
-			s = "Emulated 'control' key pressed";
-			break;
-		case kCntrlMsgHaveEmCntrlOff:
-			s = "Emulated 'control' key released";
-			break;
-		case kCntrlMsgHaveLimitSpeedOn:
-			s = "Limit speed is on";
-			break;
-		case kCntrlMsgHaveLimitSpeedOff:
-			s = "Limit speed is off";
+		case kCntrlMsgEmCntrl:
+			s = "Emulated 'control' key ^k";
 			break;
 		case kCntrlMsgBaseStart:
 		default:

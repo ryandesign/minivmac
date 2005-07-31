@@ -1,7 +1,7 @@
 /*
 	SONYEMDV.c
 
-	Copyright (C) 2004 Paul Pratt
+	Copyright (C) 2004 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -278,12 +278,12 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 											result = 0xFFBF; /* Say it's offline (-65) */
 										} else {
 											result = vSonyEject(Drive_No);
-											vSonyWritableMask &= ~((ui5b)1 << Drive_No);
-											vSonyInsertedMask &= ~((ui5b)1 << Drive_No);
-											vSonyMountedMask &= ~((ui5b)1 << Drive_No);
+											vSonyWritableMask &= ~ ((ui5b)1 << Drive_No);
+											vSonyInsertedMask &= ~ ((ui5b)1 << Drive_No);
+											vSonyMountedMask &= ~ ((ui5b)1 << Drive_No);
 											if (QuitOnEject != 0) {
 												if (! AnyDiskInserted()) {
-													RequestMacOff = trueblnr;
+													ForceMacOff = trueblnr;
 												}
 											}
 										}
@@ -336,7 +336,7 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 GLOBALPROC Sony_Reset(void)
 {
 	DelayUntilNextInsert = 0;
-	QuitOnEject = 0;
+	QuitOnEject = falseblnr;
 	MountCallBack = 0;
 	ParamAddrHi = -1;
 }

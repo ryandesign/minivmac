@@ -1,7 +1,7 @@
 /*
 	RTCEMDEV.c
 
-	Copyright (C) 2003 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
-#include "MINEM68K.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -56,10 +55,7 @@
 typedef struct
 {
 	/* RTC VIA Flags */
-	ui3b UnEnabled;
 	ui3b WrProtect;
-	ui3b Clock;
-	ui3b DataLine;
 	ui3b DataOut;
 	ui3b DataNextOut;
 
@@ -82,6 +78,10 @@ LOCALVAR RTC_Ty RTC;
 /* RTC Functions */
 
 LOCALVAR ui5b LastRealDate;
+
+#ifndef RTCinitPRAM
+#define RTCinitPRAM 1
+#endif
 
 #ifndef SpeakerVol /* in 0..7 */
 #if MySoundEnabled
@@ -150,8 +150,8 @@ GLOBALFUNC blnr RTC_Init(void)
 	int Counter;
 	ui5b secs;
 
-	RTC.UnEnabled = RTC.Clock = RTC.Mode = RTC.ShiftData = RTC.Counter = 0;
-	RTC.DataOut = RTC.DataNextOut = RTC.DataLine = 0;
+	RTC.Mode = RTC.ShiftData = RTC.Counter = 0;
+	RTC.DataOut = RTC.DataNextOut = 0;
 	RTC.WrProtect = falseblnr;
 
 	secs = CurMacDateInSeconds;
@@ -166,7 +166,7 @@ GLOBALFUNC blnr RTC_Init(void)
 		RTC.PARAMRAM[Counter] = 0;
 	}
 
-#if 1
+#if RTCinitPRAM
 	RTC.PARAMRAM[0 + Group1Base] = 168; /* valid */
 	RTC.PARAMRAM[3 + Group1Base] = 34; /* config, serial ports */
 	RTC.PARAMRAM[4 + Group1Base] = 204; /* portA, high */
@@ -192,6 +192,17 @@ GLOBALFUNC blnr RTC_Init(void)
 	do_put_mem_long(&RTC.PARAMRAM[0xE4], CurMacLatitude);
 	do_put_mem_long(&RTC.PARAMRAM[0xE8], CurMacLongitude);
 	do_put_mem_long(&RTC.PARAMRAM[0xEC], CurMacDelta);
+#endif
+
+#if (CurEmu > kEmuPlus) && (CurEmu <= kEmuClassic)
+	RTC.PARAMRAM[0x01] = 0x80;
+	RTC.PARAMRAM[0x02] = 0x4F;
+
+	/* start up disk (encoded how?) */
+	RTC.PARAMRAM[0x78] = 0x00;
+	RTC.PARAMRAM[0x79] = 0x01;
+	RTC.PARAMRAM[0x7A] = 0xFF;
+	RTC.PARAMRAM[0x7B] = 0xFE;
 #endif
 
 #endif
@@ -328,86 +339,52 @@ LOCALPROC RTC_DoCmd(void)
 	}
 }
 
-/* VIA Interface Functions */
-
-GLOBALFUNC ui3b VIA_GORB2(void) /* RTC Enable */
+GLOBALPROC RTCunEnabled_ChangeNtfy(void)
 {
+	if (RTCunEnabled) {
+		/* abort anything going on */
+		if (RTC.Counter != 0) {
 #ifdef _RTC_Debug
-	printf("VIA ORB2 attempts to be an input\n");
+			printf("aborting, %2x\n", RTC.Counter);
 #endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORB2(ui3b Data)
-{
-	if (Data != RTC.UnEnabled) {
-		RTC.UnEnabled = Data;
-		if (RTC.UnEnabled) {
-			/* abort anything going on */
-			if (RTC.Counter != 0) {
-#ifdef _RTC_Debug
-				printf("aborting, %2x\n", RTC.Counter);
-#endif
-				ReportAbnormal("RTC aborting");
-			}
-			RTC.Mode = 0;
-			RTC.DataOut = 0;
-			RTC.DataNextOut = 0;
-			RTC.ShiftData = 0;
-			RTC.Counter = 0;
+			ReportAbnormal("RTC aborting");
 		}
+		RTC.Mode = 0;
+		RTC.DataOut = 0;
+		RTC.DataNextOut = 0;
+		RTC.ShiftData = 0;
+		RTC.Counter = 0;
 	}
 }
 
-GLOBALFUNC ui3b VIA_GORB1(void) /* RTC Data Clock */
+GLOBALPROC RTCclock_ChangeNtfy(void)
 {
-#ifdef _RTC_Debug
-	printf("VIA ORB1 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORB1(ui3b Data)
-{
-	if (Data != RTC.Clock) {
-		RTC.Clock = Data;
-
-		if (! RTC.UnEnabled) {
-			if (RTC.Clock) {
-				RTC.Counter = (RTC.Counter - 1) & 0x07;
-				if (RTC.DataOut) {
-					RTC.DataLine = ((RTC.ShiftData >> RTC.Counter) & 0x01);
-					if (RTC.Counter == 0) {
-						RTC.DataNextOut = 0;
-					}
-				} else {
-					RTC.ShiftData = (RTC.ShiftData << 1) | RTC.DataLine;
-					if (RTC.Counter == 0) {
-						RTC_DoCmd();
-					}
+	if (! RTCunEnabled) {
+		if (RTCclock) {
+			RTC.Counter = (RTC.Counter - 1) & 0x07;
+			if (RTC.DataOut) {
+				RTCdataLine = ((RTC.ShiftData >> RTC.Counter) & 0x01);
+				/* should notify VIA if changed, so can check
+					data direction
+				*/
+				if (RTC.Counter == 0) {
+					RTC.DataNextOut = 0;
 				}
 			} else {
-				RTC.DataOut = RTC.DataNextOut;
+				RTC.ShiftData = (RTC.ShiftData << 1) | RTCdataLine;
+				if (RTC.Counter == 0) {
+					RTC_DoCmd();
+				}
 			}
+		} else {
+			RTC.DataOut = RTC.DataNextOut;
 		}
 	}
 }
 
-GLOBALFUNC ui3b VIA_GORB0(void) /* RTC Data */
-{
-	if (RTC.DataOut) {
-		return RTC.DataLine;
-	} else {
-		ReportAbnormal("read RTC Data unexpected direction");
-		return 0;
-	}
-}
-
-GLOBALPROC VIA_PORB0(ui3b Data)
+GLOBALPROC RTCdataLine_ChangeNtfy(void)
 {
 	if (RTC.DataOut) {
 		ReportAbnormal("write RTC Data unexpected direction");
-	} else {
-		RTC.DataLine = Data;
 	}
 }

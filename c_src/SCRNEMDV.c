@@ -1,7 +1,7 @@
 /*
 	SCRNEMDV.c
 
-	Copyright (C) 2003 Philip Cummins, Richard F. Bannister, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Richard F. Bannister, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -30,13 +30,10 @@
 #include "CONTROLM.h"
 #endif
 #include "ENDIANAC.h"
-#include "MINEM68K.h"
 #include "ADDRSPAC.h"
 #endif
 
 #include "SCRNEMDV.h"
-
-LOCALVAR ui3b vPage2 = 1;
 
 LOCALFUNC blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 					long L, long *j)
@@ -99,7 +96,7 @@ GLOBALPROC Screen_Draw(void)
 		MaxRowsDrawnPerTick = vMacScreenHeight / 4;
 	}
 
-	if (vPage2 == 1) {
+	if (SCRNvPage2 == 1) {
 		screencurrentbuff = (char *) get_ram_address(kMain_Buffer);
 	} else {
 		screencurrentbuff = (char *) get_ram_address(kAlternate_Buffer);
@@ -143,32 +140,4 @@ GLOBALPROC Screen_Draw(void)
 
 		HaveChangedScreenBuff(j0, 0, j0 + copyrows, vMacScreenWidth);
 	}
-}
-
-/* VIA Interface Functions */
-
-GLOBALFUNC ui3b VIA_GORA6(void) /* Main/Alternate Screen Buffer */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA6 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORA6(ui3b Data)
-{
-	vPage2 = Data;
-}
-
-GLOBALFUNC ui3b VIA_GORB6(void) /* Video Beam in Display */
-{
-	return 0; /* Assume it is */
-}
-
-GLOBALPROC VIA_PORB6(ui3b Data)
-{
-	UnusedParam(Data);
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORB6 attempts to be an output\n");
-#endif
 }

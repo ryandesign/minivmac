@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 
-#include "MINEM68K.h"
+#include "MYOSGLUE.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -61,15 +61,14 @@
 #define kq6  0x40
 #define kq7  0x80
 
-LOCALVAR ui3b vSel; /* Selection Line from VIA */
-
 typedef struct
 {
 	ui3b DataIn;    /* Read Data Register */
 	ui3b Handshake; /* Read Handshake Register */
 	ui3b Status;    /* Read Status Register */
-	ui3b Mode;      /* Drive Off : Write Mode Register */
-	                /* Drive On  : Write Data Register */
+	ui3b Mode;
+		/* Drive Off : Write Mode Register */
+		/* Drive On  : Write Data Register */
 	ui3b DataOut;   /* Write Data Register */
 	ui3b Lines;     /* Used to Access Disk Drive Registers */
 } IWM_Ty;
@@ -162,7 +161,11 @@ LOCALFUNC ui3b IWM_Read_Reg(void)
 {
 	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
 		case 0 :
+#if TempDebug && (CurEmu >= kEmuSE1M)
+			/* don't report */
+#else
 			ReportAbnormal("IWM Data Read");
+#endif
 #ifdef _IWM_Debug
 			printf("IWM Data Read\n");
 #endif
@@ -197,19 +200,4 @@ LOCALPROC IWM_Write_Reg(ui3b in)
 		IWM.Mode = in;
 		IWM.Status = ((IWM.Status & 0xE0) + (IWM.Mode & 0x1F));
 	}
-}
-
-/* VIA Interface Headers */
-
-GLOBALFUNC ui3b VIA_GORA5(void) /* Floppy Disk Line SEL */
-{
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA5 attempts to be an input\n");
-#endif
-	return 0;
-}
-
-GLOBALPROC VIA_PORA5(ui3b Data)
-{
-	vSel = Data;
 }

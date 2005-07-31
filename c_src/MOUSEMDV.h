@@ -1,7 +1,7 @@
 /*
 	MOUSEMDV.h
 
-	Copyright (C) 2003 Philip Cummins, Paul Pratt
+	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -21,14 +21,3 @@
 #endif
 
 EXPORTPROC Mouse_Update(void);
-
-/* VIA Interface Headers */
-
-EXPORTFUNC ui3b VIA_GORB5(void); /* Mouse Y2 */
-EXPORTPROC VIA_PORB5(ui3b Data);
-
-EXPORTFUNC ui3b VIA_GORB4(void); /* Mouse X2 */
-EXPORTPROC VIA_PORB4(ui3b Data);
-
-EXPORTFUNC ui3b VIA_GORB3(void); /* Mouse Button */
-EXPORTPROC VIA_PORB3(ui3b Data);

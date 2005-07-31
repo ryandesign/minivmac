@@ -1,7 +1,7 @@
 /*
 	VIAEMDEV.h
 
-	Copyright (C) 2004 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,16 +22,18 @@
 
 /* PC - VIA Memory Handlers */
 
-EXPORTVAR(blnr, VIAInterruptRequest)
-
+EXPORTPROC VIA_Zap(void);
 EXPORTPROC VIA_Reset(void);
 
 EXPORTFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr);
 
-EXPORTPROC VIA_Timer(int SubTick);
+EXPORTPROC VIA_ExtraTimeBegin(void);
+EXPORTPROC VIA_ExtraTimeEnd(void);
 EXPORTPROC VIA_Int_Vertical_Blanking(void);
 EXPORTPROC VIA_Int_One_Second(void);
-
-EXPORTPROC GotKeyBoardData(ui3b v);
+EXPORTPROC VIA_DoTimer2Check(void);
 
 EXPORTFUNC ui4b GetSoundInvertTime(void);
+
+EXPORTPROC VIA_ShiftInData(ui3b v);
+EXPORTFUNC ui3b VIA_ShiftOutData(void);

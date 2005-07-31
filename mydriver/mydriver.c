@@ -1,7 +1,7 @@
 /*
 	mydriver.c
 
-	Copyright (C) 2004 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -361,8 +361,8 @@ si4b Sony_Open(CPTR ParamBlk, CPTR DeviceCtl)
 				SetTrapAddress(MyAddDrive64k, 0xA04E);
 
 				put_word(0x308, 0);
-				put_long(0x308+2, 0);
-				put_long(0x308+6, 0);
+				put_long(0x308 + 2, 0);
+				put_long(0x308 + 6, 0);
 #else
 				((ui3b *)(DeviceCtl))[7] = 1;
 
@@ -395,7 +395,7 @@ si4b Sony_Open(CPTR ParamBlk, CPTR DeviceCtl)
 				put_word(&DskDatV + DSKDat_commnd, kCmndDiskSetCallBack);
 				put_long(&DskDatV + kParamDiskBuffer, (ui5b)&DUpdate);
 				put_long(SonyVars->pokeaddr, (ui5b)&DskDatV);
-				
+
 				result = 0x0000; /* No Error */
 			}
 		}
@@ -605,7 +605,7 @@ si4b Sony_Status (CPTR ParamBlk, CPTR DeviceCtl)
 			result = 0xFFC8; /* No Such Drive (-56) */
 		} else {
 			Dst = ParamBlk + kcsParam;
-			for (Counter = 11; --Counter >=0; ) {
+			for (Counter = 11; --Counter >= 0; ) {
 				put_word(Dst, get_word(Src));
 				Src += 2; Dst += 2;
 			}

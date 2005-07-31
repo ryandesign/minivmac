@@ -1,7 +1,7 @@
 /*
 	SCCEMDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Weston Pawlowski, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Weston Pawlowski, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 
-#include "MINEM68K.h"
+#include "MYOSGLUE.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -133,8 +133,6 @@ typedef struct {
 #endif
 } SCC_Ty;
 
-GLOBALVAR blnr SCCInterruptRequest;
-
 LOCALVAR SCC_Ty SCC;
 
 #if 0
@@ -142,7 +140,7 @@ LOCALVAR int ReadPrint;
 LOCALVAR int ReadModem;
 #endif
 
-EXPORTFUNC blnr Mouse_Enabled(void)
+EXPORTFUNC blnr SCC_InterruptsEnabled(void)
 {
 	return SCC.MIE;
 }
@@ -200,7 +198,7 @@ LOCALPROC CheckSCCInterruptFlag(void)
 #endif
 		;
 #endif
-	blnr NewSCCInterruptRequest;
+	ui3b NewSCCInterruptRequest;
 
 	if (! SCC.MIE) {
 		SCC.SCC_Interrupt_Type = 0;
@@ -211,11 +209,13 @@ LOCALPROC CheckSCCInterruptFlag(void)
 	} else {
 		SCC.SCC_Interrupt_Type = 0;
 	}
-	NewSCCInterruptRequest = (SCC.SCC_Interrupt_Type != 0);
+	NewSCCInterruptRequest = (SCC.SCC_Interrupt_Type != 0) ? 1 : 0;
 
 	if (NewSCCInterruptRequest != SCCInterruptRequest) {
 		SCCInterruptRequest = NewSCCInterruptRequest;
-		VIAorSCCinterruptChngNtfy();
+#ifdef SCCinterruptChngNtfy
+		SCCinterruptChngNtfy();
+#endif
 	}
 }
 
@@ -300,6 +300,8 @@ LOCALPROC SCC_ResetChannel(int chan)
 
 GLOBALPROC SCC_Reset(void)
 {
+	SCCwaitrq = 1;
+
 	SCC.SCC_Interrupt_Type = 0;
 
 	SCCInterruptRequest = 0;
@@ -368,51 +370,53 @@ LOCALPROC SCC_Int(void)
 	/* Check for incoming data */
 	if (ModemPort)
 	{
-		if (!(SCC.a[0].RxEnable)) /* Rx Disabled */
-			ReadModem=0;
+		if (! SCC.a[0].RxEnable) { /* Rx Disabled */
+			ReadModem = 0;
+		}
 
-		if (ModemBytes>0 && (ModemCount>ModemBytes-1))
+		if ((ModemBytes > 0) && (ModemCount > ModemBytes - 1))
 		{
 			SCC.a[0].RxChrAvail = falseblnr;
-			ReadModem=ModemBytes=ModemCount=0;
+			ReadModem = ModemBytes = ModemCount = 0;
 		}
 
 		if (ReadModem)
 		{
-			ReadModem=2;
+			ReadModem = 2;
 
 			SCC.a[0].RxChrAvail = trueblnr;
 
-			if (SCC.a[0].WR[0] & Bit5 && !(SCC.a[0].WR[0] & (Bit4|Bit3))) /* Int on next Rx char */
+			if (SCC.a[0].WR[0] & Bit5 && ! (SCC.a[0].WR[0] & (Bit4 | Bit3))) /* Int on next Rx char */
 				SCC_Interrupt(SCC_A_Rx);
-			else if (SCC.a[0].WR[1] & Bit3 && !(SCC.a[0].WR[1] & Bit4)) /* Int on first Rx char */
+			else if (SCC.a[0].WR[1] & Bit3 && ! (SCC.a[0].WR[1] & Bit4)) /* Int on first Rx char */
 				SCC_Interrupt(SCC_A_Rx);
-			else if (SCC.a[0].WR[1] & Bit4 && !(SCC.a[0].WR[1] & Bit3)) /* Int on all Rx chars */
+			else if (SCC.a[0].WR[1] & Bit4 && ! (SCC.a[0].WR[1] & Bit3)) /* Int on all Rx chars */
 				SCC_Interrupt(SCC_A_Rx);
 		}
 	}
 	if (PrintPort)
 	{
-		if (!(SCC.a[1].RxEnable)) /* Rx Disabled */
-			ReadPrint=0;
+		if (! SCC.a[1].RxEnable) { /* Rx Disabled */
+			ReadPrint = 0;
+		}
 
-		if (PrintBytes>0 && (PrintCount>PrintBytes-1))
+		if ((PrintBytes > 0) && (PrintCount > PrintBytes - 1))
 		{
 			SCC.a[1].RxChrAvail = falseblnr;
-			ReadPrint=PrintBytes=PrintCount=0;
+			ReadPrint = PrintBytes = PrintCount = 0;
 		}
 
 		if (ReadPrint)
 		{
-			ReadPrint=2;
+			ReadPrint = 2;
 
 			SCC.a[1].RxChrAvail = trueblnr;
 
-			if (SCC.a[1].WR[0] & Bit5 && !(SCC.a[1].WR[0] & (Bit4|Bit3))) /* Int on next Rx char */
+			if (SCC.a[1].WR[0] & Bit5 && ! (SCC.a[1].WR[0] & (Bit4 | Bit3))) /* Int on next Rx char */
 				SCC_Interrupt(SCC_B_Rx);
-			else if (SCC.a[1].WR[1] & Bit3 && !(SCC.a[1].WR[1] & Bit4)) /* Int on first Rx char */
+			else if (SCC.a[1].WR[1] & Bit3 && ! (SCC.a[1].WR[1] & Bit4)) /* Int on first Rx char */
 				SCC_Interrupt(SCC_B_Rx);
-			else if (SCC.a[1].WR[1] & Bit4 && !(SCC.a[1].WR[1] & Bit3)) /* Int on all Rx chars */
+			else if (SCC.a[1].WR[1] & Bit4 && ! (SCC.a[1].WR[1] & Bit3)) /* Int on all Rx chars */
 				SCC_Interrupt(SCC_B_Rx);
 		}
 	}
@@ -459,7 +463,7 @@ LOCALFUNC ui3b SCC_GetReg(int chan, ui3b SCC_Reg)
 			/* fall through */
 		case 1:
 			/* happens in MacCheck */
-			return Bit2|Bit1
+			return Bit2 | Bit1
 #if 0 /* AllSent always true */
 				| (SCC.a[chan].AllSent ? (1 << 0) : 0)
 #else
@@ -496,39 +500,39 @@ LOCALFUNC ui3b SCC_GetReg(int chan, ui3b SCC_Reg)
 
 						switch (SCC.SCC_Interrupt_Type) {
 							case SCC_A_Rx:
-								TempData|=Bit4|Bit5;
+								TempData |= Bit4 | Bit5;
 								break;
 
 							case SCC_A_Rx_Spec:
-								TempData|=Bit4|Bit5|Bit6;
+								TempData |= Bit4 | Bit5 | Bit6;
 								break;
 
 							case SCC_A_Tx_Empty:
-								TempData|=Bit4;
+								TempData |= Bit4;
 								break;
 
 							case SCC_A_Ext:
-								TempData|=Bit4|Bit6;
+								TempData |= Bit4 | Bit6;
 								break;
 
 							case SCC_B_Rx:
-								TempData|=Bit5;
+								TempData |= Bit5;
 								break;
 
 							case SCC_B_Rx_Spec:
-								TempData|=Bit5|Bit6;
+								TempData |= Bit5 | Bit6;
 								break;
 
 							case SCC_B_Tx_Empty:
-								TempData|=0;
+								TempData |= 0;
 								break;
 
 							case SCC_B_Ext:
-								TempData|=Bit6;
+								TempData |= Bit6;
 								break;
 
 							default:
-								TempData|=Bit5|Bit6;
+								TempData |= Bit5 | Bit6;
 								break;
 						}
 					} else
@@ -539,44 +543,44 @@ LOCALFUNC ui3b SCC_GetReg(int chan, ui3b SCC_Reg)
 
 						switch (SCC.SCC_Interrupt_Type) {
 							case SCC_A_Rx:
-								TempData|=Bit3|Bit2;
+								TempData |= Bit3 | Bit2;
 								break;
 
 							case SCC_A_Rx_Spec:
-								TempData|=Bit3|Bit2|Bit1;
+								TempData |= Bit3 | Bit2 | Bit1;
 								break;
 
 							case SCC_A_Tx_Empty:
-								TempData|=Bit3;
+								TempData |= Bit3;
 								break;
 
 							case SCC_A_Ext:
-								TempData|=Bit3|Bit1;
+								TempData |= Bit3 | Bit1;
 								break;
 
 							case SCC_B_Rx:
-								TempData|=Bit2;
+								TempData |= Bit2;
 								break;
 
 							case SCC_B_Rx_Spec:
-								TempData|=Bit2|Bit1;
+								TempData |= Bit2 | Bit1;
 								break;
 
 							case SCC_B_Tx_Empty:
-								TempData|=0;
+								TempData |= 0;
 								break;
 
 							case SCC_B_Ext:
-								TempData|=Bit1;
+								TempData |= Bit1;
 								break;
 
 							default:
-								TempData|=Bit2|Bit1;
+								TempData |= Bit2 | Bit1;
 								break;
 						}
 					}
 
-					/* SCC.SCC_Interrupt_Type=0; */
+					/* SCC.SCC_Interrupt_Type = 0; */
 
 				}
 				return TempData;
@@ -603,7 +607,10 @@ LOCALFUNC ui3b SCC_GetReg(int chan, ui3b SCC_Reg)
 		case 8: /* Receive Buffer */
 			/* happens on boot with appletalk on */
 			if (SCC.a[chan].RxEnable) { /* Rx Enable */
+#if TempDebug && (CurEmu >= kEmuSE1M)
+#else
 				ReportAbnormal("read rr8 when RxEnable");
+#endif
 
 				/* Input 1 byte from Modem Port/Printer into Data */
 			} else {
@@ -964,7 +971,7 @@ LOCALPROC SCC_PutReg(int Data, int chan, ui3b SCC_Reg)
 			if ((Data & Bit7) == 0) { /* DTR */
 				/* happens in MacCheck */
 				/* value of Data Terminal Ready output pin,
-				when WR14 D2=0 (DTR/request function)  */
+				when WR14 D2 = 0 (DTR/request function)  */
 			}
 			break;
 		case 6:
@@ -1038,7 +1045,10 @@ LOCALPROC SCC_PutReg(int Data, int chan, ui3b SCC_Reg)
 					CheckSCCInterruptFlag();
 					break;
 				case 3: /* Force Hardware Reset */
+#if TempDebug && (CurEmu >= kEmuSE1M)
+#else
 					ReportAbnormal("SCC_Reset");
+#endif
 					SCC_Reset();
 					CheckSCCInterruptFlag();
 					break;
@@ -1243,7 +1253,10 @@ LOCALPROC SCC_PutReg(int Data, int chan, ui3b SCC_Reg)
 			SCC.a[chan].DCD_IE = (Data & Bit3) != 0;
 #else
 			if ((Data & Bit3) == 0) { /* DCD_IE */
+#if TempDebug && (CurEmu >= kEmuSE1M)
+#else
 				ReportAbnormal("not DCD IE");
+#endif
 			}
 #endif
 
@@ -1282,7 +1295,7 @@ LOCALPROC SCC_PutReg(int Data, int chan, ui3b SCC_Reg)
 GLOBALFUNC ui5b SCC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
 	ui3b SCC_Reg;
-	int chan = (~addr) & 1;
+	int chan = (~ addr) & 1;
 	if (((addr >> 1) & 1) == 0) {
 		/* Channel Control */
 		SCC_Reg = SCC.PointerBits;
@@ -1297,19 +1310,4 @@ GLOBALFUNC ui5b SCC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 		Data = SCC_GetReg(chan, SCC_Reg);
 	}
 	return Data;
-}
-
-/* VIA Interface Functions */
-
-EXPORTFUNC ui3b VIA_GORA7(void)
-{
-	return 1; /* No Wait/Requests */
-}
-
-GLOBALPROC VIA_PORA7(ui3b Data)
-{
-	UnusedParam(Data);
-#ifdef _VIA_Interface_Debug
-	printf("VIA ORA7 attempts to be an output\n");
-#endif
 }

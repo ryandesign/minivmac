@@ -1,7 +1,7 @@
 /*
 	VIAEMDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul Pratt
+	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -25,230 +25,104 @@
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 
-#include "MINEM68K.h"
+#include "MYOSGLUE.h"
 #include "ADDRSPAC.h"
 #include "PROGMAIN.h"
-#include "MYOSGLUE.h"
 #endif
 
 #include "VIAEMDEV.h"
 
-IMPORTPROC Keyboard_Put(ui3b in);
+#define VIA_ORA_CanIn 0x80
+#define VIA_ORA_CanOut 0x7F
 
-IMPORTFUNC ui3b VIA_GORA7(void);  /* SCC */
-IMPORTPROC VIA_PORA7(ui3b Data);
+#define VIA_ORA_FloatVal 0xEF
+#define VIA_ORB_FloatVal 0xFF
 
-IMPORTFUNC ui3b VIA_GORA6(void); /* Main/Alternate Screen Buffer */
-IMPORTPROC VIA_PORA6(ui3b Data);
+#if CurEmu >= kEmuSE1M
+#define VIA_ORB_CanIn 0x09
+#define VIA_ORB_CanOut 0xF7
+#else
+#define VIA_ORB_CanIn 0x79
+#define VIA_ORB_CanOut 0x87
+#endif
 
-IMPORTFUNC ui3b VIA_GORA5(void); /* Floppy Disk Line SEL */
-IMPORTPROC VIA_PORA5(ui3b Data);
+#ifdef VIAiA0_ChangeNtfy
+IMPORTPROC VIAiA0_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORA4(void); /* Overlay/Normal Memory Mapping */
-IMPORTPROC VIA_PORA4(ui3b Data);
+#ifdef VIAiA1_ChangeNtfy
+IMPORTPROC VIAiA1_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORA3(void); /* Main/Alternate Sound Buffer */
-IMPORTPROC VIA_PORA3(ui3b Data);
+#ifdef VIAiA2_ChangeNtfy
+IMPORTPROC VIAiA2_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORA2(void); /* Sound Volume Bit 2 */
-IMPORTPROC VIA_PORA2(ui3b Data);
+#ifdef VIAiA3_ChangeNtfy
+IMPORTPROC VIAiA3_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORA1(void); /* Sound Volume Bit 1 */
-IMPORTPROC VIA_PORA1(ui3b Data);
+#ifdef VIAiA4_ChangeNtfy
+IMPORTPROC VIAiA4_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORA0(void); /* Sound Volume Bit 0 */
-IMPORTPROC VIA_PORA0(ui3b Data);
+#ifdef VIAiA5_ChangeNtfy
+IMPORTPROC VIAiA5_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB7(void); /* Sound Enable */
-IMPORTPROC VIA_PORB7(ui3b Data);
+#ifdef VIAiA6_ChangeNtfy
+IMPORTPROC VIAiA6_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB6(void); /* Video Beam in Display */
-IMPORTPROC VIA_PORB6(ui3b Data);
+#ifdef VIAiA7_ChangeNtfy
+IMPORTPROC VIAiA7_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB5(void); /* Mouse Y2 */
-IMPORTPROC VIA_PORB5(ui3b Data);
+#ifdef VIAiB0_ChangeNtfy
+IMPORTPROC VIAiB0_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB4(void); /* Mouse X2 */
-IMPORTPROC VIA_PORB4(ui3b Data);
+#ifdef VIAiB1_ChangeNtfy
+IMPORTPROC VIAiB1_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB3(void); /* Mouse Button */
-IMPORTPROC VIA_PORB3(ui3b Data);
+#ifdef VIAiB2_ChangeNtfy
+IMPORTPROC VIAiB2_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB2(void); /* RTC Enable */
-IMPORTPROC VIA_PORB2(ui3b Data);
+#ifdef VIAiB3_ChangeNtfy
+IMPORTPROC VIAiB3_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB1(void); /* RTC Data Clock */
-IMPORTPROC VIA_PORB1(ui3b Data);
+#ifdef VIAiB4_ChangeNtfy
+IMPORTPROC VIAiB4_ChangeNtfy(void);
+#endif
 
-IMPORTFUNC ui3b VIA_GORB0(void); /* RTC Data */
-IMPORTPROC VIA_PORB0(ui3b Data);
+#ifdef VIAiB5_ChangeNtfy
+IMPORTPROC VIAiB5_ChangeNtfy(void);
+#endif
 
-/* VIA_Get_ORA : VIA Get Port A Data */
-/* This function queries VIA Port A interfaced hardware about their status */
+#ifdef VIAiB6_ChangeNtfy
+IMPORTPROC VIAiB6_ChangeNtfy(void);
+#endif
 
-LOCALFUNC ui3b VIA_Get_ORA(ui3b Selection)
-{
-	ui3b Value = 0;
+#ifdef VIAiB7_ChangeNtfy
+IMPORTPROC VIAiB7_ChangeNtfy(void);
+#endif
 
-	if ((Selection & 0x80) == 0) { /* SCC Wait/Request */
-		Value |= (VIA_GORA7() << 7);
-	}
-
-	if ((Selection & 0x40) == 0) { /* Main/Alternate Screen Buffer */
-		Value |= (VIA_GORA6() << 6);
-	}
-
-	if ((Selection & 0x20) == 0) { /* Floppy Disk Line SEL */
-		Value |= (VIA_GORA5() << 5);
-	}
-
-	if ((Selection & 0x10) == 0) { /* Overlay/Normal Memory Mapping */
-		Value |= (VIA_GORA4() << 4);
-	}
-
-	if ((Selection & 0x08) == 0) { /* Main/Alternate Sound Buffer */
-		Value |= (VIA_GORA3() << 3);
-	}
-
-	if ((Selection & 0x04) == 0) { /* Sound Volume Bit 2 */
-		Value |= (VIA_GORA2() << 2);
-	}
-
-	if ((Selection & 0x02) == 0) { /* Sound Volume Bit 1 */
-		Value |= (VIA_GORA1() << 1);
-	}
-
-	if ((Selection & 0x01) == 0) { /* Sound Volume Bit 0 */
-		Value |= VIA_GORA0();
-	}
-
-	return Value;
-}
-
-/* VIA_Get_ORB : VIA Get Port B Data */
-/* This function queries VIA Port B interfaced hardware about their status */
-
-LOCALFUNC ui3b VIA_Get_ORB(ui3b Selection)
-{
-	ui3b Value = 0;
-
-	if ((Selection & 0x80) == 0) { /* Sound Enable */
-		Value |= (VIA_GORB7() << 7);
-	}
-
-	if ((Selection & 0x40) == 0) { /* Video Beam in Display */
-		Value |= (VIA_GORB6() << 6);
-	}
-
-	if ((Selection & 0x20) == 0) { /* Mouse Y2 */
-		Value |= (VIA_GORB5() << 5);
-	}
-
-	if ((Selection & 0x10) == 0) { /* Mouse X2 */
-		Value |= (VIA_GORB4() << 4);
-	}
-
-	if ((Selection & 0x08) == 0) { /* Mouse Button */
-		Value |= (VIA_GORB3() << 3);
-	}
-
-	if ((Selection & 0x04) == 0) { /* RTC Enable */
-		Value |= (VIA_GORB2() << 2);
-	}
-
-	if ((Selection & 0x02) == 0) { /* RTC Data Clock */
-		Value |= (VIA_GORB1() << 1);
-	}
-
-	if ((Selection & 0x01) == 0) { /* RTC Data */
-		Value |= VIA_GORB0();
-	}
-
-	return Value;
-}
-
-LOCALPROC VIA_Put_ORA(ui3b Selection, ui3b Data)
-{
-	if ((Selection & 0x80) != 0) { /* SCC Wait/Request */
-		VIA_PORA7((Data & 0x80) >> 7);
-	}
-
-	if ((Selection & 0x40) != 0) { /* Main/Alternate Screen Buffer */
-		VIA_PORA6((Data & 0x40) >> 6);
-	}
-
-	if ((Selection & 0x20) != 0) { /* Floppy Disk Line SEL */
-		VIA_PORA5((Data & 0x20) >> 5);
-	}
-
-	if ((Selection & 0x10) != 0) { /* Overlay/Normal Memory Mapping */
-		VIA_PORA4((Data & 0x10) >> 4);
-	}
-
-	if ((Selection & 0x08) != 0) { /* Main/Alternate Sound Buffer */
-		VIA_PORA3((Data & 0x08) >> 3);
-	}
-
-	if ((Selection & 0x04) != 0) { /* Sound Volume Bit 2 */
-		VIA_PORA2((Data & 0x04) >> 2);
-	}
-
-	if ((Selection & 0x02) != 0) { /* Sound Volume Bit 1 */
-		VIA_PORA1((Data & 0x02) >> 1);
-	}
-
-	if ((Selection & 0x01) != 0) { /* Sound Volume Bit 0 */
-		VIA_PORA0(Data & 0x01);
-	}
-}
-
-LOCALPROC VIA_Put_ORB(ui3b Selection, ui3b Data)
-{
-	if ((Selection & 0x80) != 0) { /* Sound Enable */
-		VIA_PORB7((Data & 0x80) >> 7);
-	}
-
-	if ((Selection & 0x40) != 0) { /* Video Beam in Display */
-		VIA_PORB6((Data & 0x40) >> 6);
-	}
-
-	if ((Selection & 0x20) != 0) { /* Mouse Y2 */
-		VIA_PORB5((Data & 0x20) >> 5);
-	}
-
-	if ((Selection & 0x10) != 0) { /* Mouse X2 */
-		VIA_PORB4((Data & 0x10) >> 4);
-	}
-
-	if ((Selection & 0x08) != 0) { /* Mouse Button */
-		VIA_PORB3((Data & 0x08) >> 3);
-	}
-
-	if ((Selection & 0x04) != 0) { /* RTC Enable */
-		VIA_PORB2((Data & 0x04) >> 2);
-	}
-
-	if ((Selection & 0x02) != 0) { /* RTC Data Clock */
-		VIA_PORB1((Data & 0x02) >> 1);
-	}
-
-	if ((Selection & 0x01) != 0) { /* RTC Data */
-		VIA_PORB0(Data & 0x01);
-	}
-}
-
+#ifdef VIAiCB2_ChangeNtfy
+IMPORTPROC VIAiCB2_ChangeNtfy(void);
+#endif
 
 typedef struct {
+	ui5b T1C_F;  /* Timer 1 Counter Fixed Point */
+	ui5b T2C_F;  /* Timer 2 Counter Fixed Point */
 	ui3b ORB;    /* Buffer B */
 	/* ui3b ORA_H;     Buffer A with Handshake */
 	ui3b DDR_B;  /* Data Direction Register B */
 	ui3b DDR_A;  /* Data Direction Register A */
-	ui3b T1C_L;  /* Timer 1 Counter Low */
-	ui3b T1C_H;  /* Timer 1 Counter High */
 	ui3b T1L_L;  /* Timer 1 Latch Low */
 	ui3b T1L_H;  /* Timer 1 Latch High */
-	ui3b T2C_L;  /* Timer 2 Counter Low */
-	ui3b T2C_H;  /* Timer 2 Counter High */
 	ui3b T2L_L;  /* Timer 2 Latch Low */
 	ui3b SR;     /* Shift Register */
 	ui3b ACR;    /* Auxiliary Control Register */
@@ -259,6 +133,539 @@ typedef struct {
 } VIA_Ty;
 
 LOCALVAR VIA_Ty VIA;
+
+#define kIntCA2 0 /* One_Second */
+#define kIntCA1 1 /* Vertical_Blanking */
+#define kIntSR 2 /* Keyboard_Data_Ready */
+#define kIntCB2 3 /* Keyboard_Data */
+#define kIntCB1 4 /* Keyboard_Clock */
+#define kIntT2 5 /* Timer_2 */
+#define kIntT1 6 /* Timer_1 */
+
+#define Ui3rPowOf2(p) (1 << (p))
+#define Ui3rTestBit(i, p) (((i) & Ui3rPowOf2(p)) != 0)
+
+/* VIA_Get_ORA : VIA Get Port A Data */
+/* This function queries VIA Port A interfaced hardware about their status */
+
+LOCALFUNC ui3b VIA_Get_ORA(void)
+{
+	ui3b Selection = ~ VIA.DDR_A;
+	ui3b Value = VIA.ORA & VIA.DDR_A;
+
+#if 0
+	if ((Selection & ~ VIA_ORA_CanIn) != 0) {
+		ReportAbnormal("Set VIA DDR_A unexpected direction");
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 7)
+	if (Ui3rTestBit(Selection, 7)) {
+		Value |= (VIAiA7 << 7);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 6)
+	if (Ui3rTestBit(Selection, 6)) {
+		Value |= (VIAiA6 << 6);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 5)
+	if (Ui3rTestBit(Selection, 5)) {
+		Value |= (VIAiA5 << 5);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 4)
+	if (Ui3rTestBit(Selection, 4)) {
+		Value |= (VIAiA4 << 4);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 3)
+	if (Ui3rTestBit(Selection, 3)) {
+		Value |= (VIAiA3 << 3);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 2)
+	if (Ui3rTestBit(Selection, 2)) {
+		Value |= (VIAiA2 << 2);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 1)
+	if (Ui3rTestBit(Selection, 1)) {
+		Value |= (VIAiA1 << 1);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanIn, 0)
+	if (Ui3rTestBit(Selection, 0)) {
+		Value |= (VIAiA0 << 0);
+	}
+#endif
+
+	VIA.ORA = Value;
+	return Value;
+}
+
+/* VIA_Get_ORB : VIA Get Port B Data */
+/* This function queries VIA Port B interfaced hardware about their status */
+
+LOCALFUNC ui3b VIA_Get_ORB(void)
+{
+	ui3b Selection = ~ VIA.DDR_B;
+	ui3b Value = VIA.ORB & VIA.DDR_B;
+
+#if 0
+	if ((Selection & ~ VIA_ORB_CanIn) != 0) {
+		ReportAbnormal("Set VIA DDR_A unexpected direction");
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 7)
+	if (Ui3rTestBit(Selection, 7)) {
+		Value |= (VIAiB7 << 7);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 6)
+	if (Ui3rTestBit(Selection, 6)) {
+		Value |= (VIAiB6 << 6);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 5)
+	if (Ui3rTestBit(Selection, 5)) {
+		Value |= (VIAiB5 << 5);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 4)
+	if (Ui3rTestBit(Selection, 4)) {
+		Value |= (VIAiB4 << 4);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 3)
+	if (Ui3rTestBit(Selection, 3)) {
+		Value |= (VIAiB3 << 3);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 2)
+	if (Ui3rTestBit(Selection, 2)) {
+		Value |= (VIAiB2 << 2);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 1)
+	if (Ui3rTestBit(Selection, 1)) {
+		Value |= (VIAiB1 << 1);
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanIn, 0)
+	if (Ui3rTestBit(Selection, 0)) {
+		Value |= (VIAiB0 << 0);
+	}
+#endif
+
+	VIA.ORB = Value;
+	return Value;
+}
+
+#define ViaORcheckBit(p, x) \
+	(Ui3rTestBit(Selection, p) && \
+	((v = (Data >> p) & 1) != x))
+
+LOCALPROC VIA_Put_ORA(void)
+{
+	ui3b v;
+	ui3b Data = VIA.ORA;
+	ui3b Selection = VIA.DDR_A;
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 7)
+	if (ViaORcheckBit(7, VIAiA7)) {
+		VIAiA7 = v;
+#ifdef VIAiA7_ChangeNtfy
+		VIAiA7_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 6)
+	if (ViaORcheckBit(6, VIAiA6)) {
+		VIAiA6 = v;
+#ifdef VIAiA6_ChangeNtfy
+		VIAiA6_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 5)
+	if (ViaORcheckBit(5, VIAiA5)) {
+		VIAiA5 = v;
+#ifdef VIAiA5_ChangeNtfy
+		VIAiA5_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 4)
+	if (ViaORcheckBit(4, VIAiA4)) {
+		VIAiA4 = v;
+#ifdef VIAiA4_ChangeNtfy
+		VIAiA4_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 3)
+	if (ViaORcheckBit(3, VIAiA3)) {
+		VIAiA3 = v;
+#ifdef VIAiA3_ChangeNtfy
+		VIAiA3_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 2)
+	if (ViaORcheckBit(2, VIAiA2)) {
+		VIAiA2 = v;
+#ifdef VIAiA2_ChangeNtfy
+		VIAiA2_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 1)
+	if (ViaORcheckBit(1, VIAiA1)) {
+		VIAiA1 = v;
+#ifdef VIAiA1_ChangeNtfy
+		VIAiA1_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORA_CanOut, 0)
+	if (ViaORcheckBit(0, VIAiA0)) {
+		VIAiA0 = v;
+#ifdef VIAiA0_ChangeNtfy
+		VIAiA0_ChangeNtfy();
+#endif
+	}
+#endif
+}
+
+LOCALPROC VIA_Put_ORB(void)
+{
+	ui3b v;
+	ui3b Data = VIA.ORB;
+	ui3b Selection = VIA.DDR_B;
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 7)
+	if (ViaORcheckBit(7, VIAiB7)) {
+		VIAiB7 = v;
+#ifdef VIAiB7_ChangeNtfy
+		VIAiB7_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 6)
+	if (ViaORcheckBit(6, VIAiB6)) {
+		VIAiB6 = v;
+#ifdef VIAiB6_ChangeNtfy
+		VIAiB6_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 5)
+	if (ViaORcheckBit(5, VIAiB5)) {
+		VIAiB5 = v;
+#ifdef VIAiB5_ChangeNtfy
+		VIAiB5_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 4)
+	if (ViaORcheckBit(4, VIAiB4)) {
+		VIAiB4 = v;
+#ifdef VIAiB4_ChangeNtfy
+		VIAiB4_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 3)
+	if (ViaORcheckBit(3, VIAiB3)) {
+		VIAiB3 = v;
+#ifdef VIAiB3_ChangeNtfy
+		VIAiB3_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 2)
+	if (ViaORcheckBit(2, VIAiB2)) {
+		VIAiB2 = v;
+#ifdef VIAiB2_ChangeNtfy
+		VIAiB2_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 1)
+	if (ViaORcheckBit(1, VIAiB1)) {
+		VIAiB1 = v;
+#ifdef VIAiB1_ChangeNtfy
+		VIAiB1_ChangeNtfy();
+#endif
+	}
+#endif
+
+#if Ui3rTestBit(VIA_ORB_CanOut, 0)
+	if (ViaORcheckBit(0, VIAiB0)) {
+		VIAiB0 = v;
+#ifdef VIAiB0_ChangeNtfy
+		VIAiB0_ChangeNtfy();
+#endif
+	}
+#endif
+}
+
+LOCALPROC VIA_SetDDR_A(ui3b Data)
+{
+	ui3b floatbits = VIA.DDR_A & ~ Data;
+	ui3b unfloatbits = Data & ~ VIA.DDR_A;
+
+	if (floatbits != 0) {
+		VIA.ORA = (VIA.ORA & ~ floatbits)
+			| (VIA_ORA_FloatVal & floatbits);
+		VIA_Put_ORA();
+	}
+	VIA.DDR_A = Data;
+	if (unfloatbits != 0) {
+		VIA_Put_ORA();
+	}
+	if ((Data & ~ VIA_ORA_CanOut) != 0) {
+		ReportAbnormal("Set VIA DDR_A unexpected direction");
+	}
+}
+
+LOCALPROC VIA_SetDDR_B(ui3b Data)
+{
+	ui3b floatbits = VIA.DDR_B & ~ Data;
+	ui3b unfloatbits = Data & ~ VIA.DDR_B;
+
+	if (floatbits != 0) {
+		VIA.ORB = (VIA.ORB & ~ floatbits)
+			| (VIA_ORB_FloatVal & floatbits);
+		VIA_Put_ORB();
+	}
+	VIA.DDR_B = Data;
+	if (unfloatbits != 0) {
+		VIA_Put_ORB();
+	}
+	if ((Data & ~ VIA_ORB_CanOut) != 0) {
+		ReportAbnormal("Set VIA DDR_B unexpected direction");
+	}
+}
+
+
+LOCALPROC CheckVIAInterruptFlag(void)
+{
+	ui3b NewVIAInterruptRequest = ((VIA.IFR & VIA.IER) != 0) ? 1 : 0;
+
+	if (NewVIAInterruptRequest != VIAInterruptRequest) {
+		VIAInterruptRequest = NewVIAInterruptRequest;
+#ifdef VIAinterruptChngNtfy
+		VIAinterruptChngNtfy();
+#endif
+	}
+}
+
+
+LOCALVAR ui3b T1_Active = 0;
+LOCALVAR ui3b T2_Active = 0;
+
+LOCALPROC VIA_Clear(void)
+{
+	VIA.ORA   = 0; VIA.DDR_A = 0;
+	VIA.ORB   = 0; VIA.DDR_B = 0;
+	VIA.T1L_L = VIA.T1L_H = 0x00;
+	VIA.T2L_L = 0x00;
+	VIA.T1C_F = 0;
+	VIA.T2C_F = 0;
+	VIA.SR = VIA.ACR = 0x00;
+	VIA.PCR   = VIA.IFR   = VIA.IER   = 0x00;
+	T1_Active = T2_Active = 0x00;
+}
+
+GLOBALPROC VIA_Zap(void)
+{
+	VIA_Clear();
+	VIAInterruptRequest = 0;
+}
+
+GLOBALPROC VIA_Reset(void)
+{
+	VIA_SetDDR_A(0);
+	VIA_SetDDR_B(0);
+
+	VIA_Clear();
+
+	CheckVIAInterruptFlag();
+}
+
+LOCALPROC SetVIAInterruptFlag(ui3b VIA_Int)
+{
+	VIA.IFR |= ((ui3b)1 << VIA_Int);
+	CheckVIAInterruptFlag();
+}
+
+#ifdef _VIA_Debug
+#include <stdio.h>
+#endif
+
+GLOBALPROC VIA_ShiftInData(ui3b v)
+{
+	ui3b ShiftMode = (VIA.ACR & 0x1C) >> 2;
+	if (ShiftMode != 3) {
+		if (ShiftMode == 0) {
+			/* happens on reset */
+		} else {
+			ReportAbnormal("VIA Not ready to shift in");
+		}
+	} else {
+		VIA.SR = v;
+		SetVIAInterruptFlag(kIntSR);
+	}
+}
+
+GLOBALFUNC ui3b VIA_ShiftOutData(void)
+{
+	if (((VIA.ACR & 0x1C) >> 2) != 7) {
+		ReportAbnormal("VIA Not ready to shift out");
+		return 0;
+	} else {
+		SetVIAInterruptFlag(kIntSR);
+		VIAiCB2 = (VIA.SR & 1);
+		return VIA.SR;
+	}
+}
+
+#define TimerTicksPerTick (704 * 370 / 20)
+#define TimerTicksPerSubTick (TimerTicksPerTick / kNumSubTicks)
+
+#define ConvertTimeConst (0x00010000 * TimerTicksPerTick / InstructionsPerTick)
+#define ConvertTimeInv (0x00010000 * InstructionsPerTick / TimerTicksPerTick)
+
+LOCALVAR blnr T1Running = trueblnr;
+LOCALVAR iCountt VIA_T1LastTime = 0;
+
+LOCALPROC VIA_DoTimer1Check(void)
+{
+	if (T1Running) {
+		iCountt NewTime = GetCuriCount();
+		ui5b Temp = VIA.T1C_F; /* Get Timer 1 Counter */
+		iCountt deltaTime = NewTime - VIA_T1LastTime;
+		ui5b deltaTemp = deltaTime * ConvertTimeConst; /* may overflow */
+		ui5b NewTemp = Temp - deltaTemp;
+		if (T1_Active == 1) {
+			if ((deltaTime > ConvertTimeInv)
+				|| ((Temp <= deltaTemp) && (Temp != 0)))
+			{
+				if ((VIA.ACR & 0x40) != 0) { /* Free Running? */
+					/* Reload Counter from Latches */
+					ui4b v = (VIA.T1L_H << 8) + VIA.T1L_L;
+					if (v != 0) {
+						ui4b ntrans = (((deltaTemp - Temp) / v) >> 16) + 1;
+						Temp += (v * ntrans) >> 16;
+						if ((ntrans & 1) != 0) {
+							VIAiB7 ^= 1;
+#ifdef VIAiB7_ChangeNtfy
+							VIAiB7_ChangeNtfy();
+#endif
+						}
+					}
+				} else {
+					T1_Active = 0;
+				}
+				SetVIAInterruptFlag(kIntT1);
+			} else {
+#if 0
+				ui5b NewTimer;
+#ifdef _VIA_Debug
+				fprintf(stderr, "posting Timer1Check, %d, %d\n", Temp, GetCuriCount());
+#endif
+				if (NewTemp == 0) {
+					NewTimer = ConvertTimeInv;
+				} else {
+					NewTimer = (((NewTemp >> 16) * ConvertTimeInv) >> 16) + 1;
+				}
+				ICT_add(kICT_VIA_Timer1Check, NewTimer);
+#endif
+			}
+		}
+		VIA.T1C_F = NewTemp;
+		VIA_T1LastTime = NewTime;
+	}
+}
+
+GLOBALFUNC ui4b GetSoundInvertTime(void)
+{
+	ui4b v;
+
+	if (T1_Active && ((VIA.ACR & 0xC0) == 0xC0)) {
+		v = (VIA.T1L_H << 8) + VIA.T1L_L;
+	} else {
+		v = 0;
+	}
+	return v;
+}
+
+LOCALVAR blnr T2Running = trueblnr;
+LOCALVAR blnr T2C_ShortTime = falseblnr;
+LOCALVAR iCountt VIA_T2LastTime = 0;
+
+GLOBALPROC VIA_DoTimer2Check(void)
+{
+	if (T2Running) {
+		iCountt NewTime = GetCuriCount();
+		ui5b Temp = VIA.T2C_F; /* Get Timer 2 Counter */
+		iCountt deltaTime = NewTime - VIA_T2LastTime;
+		ui5b deltaTemp = deltaTime * ConvertTimeConst; /* may overflow */
+		ui5b NewTemp = Temp - deltaTemp;
+		if (T2_Active == 1) {
+			if ((deltaTime > ConvertTimeInv)
+				|| ((Temp <= deltaTemp) && (Temp != 0)))
+			{
+				T2C_ShortTime = falseblnr;
+				T2_Active = 0;
+				SetVIAInterruptFlag(kIntT2);
+			} else {
+				ui5b NewTimer;
+#ifdef _VIA_Debug
+				fprintf(stderr, "posting Timer2Check, %d, %d\n", Temp, GetCuriCount());
+#endif
+				if (NewTemp == 0) {
+					NewTimer = ConvertTimeInv;
+				} else {
+					NewTimer = (((NewTemp >> 16) * ConvertTimeInv) >> 16) + 1;
+				}
+				ICT_add(kICT_VIA_Timer2Check, NewTimer);
+			}
+		}
+		VIA.T2C_F = NewTemp;
+		VIA_T2LastTime = NewTime;
+	}
+}
 
 #define kORB    0x00
 #define kORA_H  0x01
@@ -277,71 +684,6 @@ LOCALVAR VIA_Ty VIA;
 #define kIER    0x0E
 #define kORA    0x0F
 
-LOCALVAR ui3b T1_Active = 0;
-LOCALVAR ui3b T2_Active = 0;
-LOCALVAR blnr WaitingForKeyBoard = falseblnr;
-LOCALVAR blnr HaveKeyBoardResult = falseblnr;
-LOCALVAR ui3b KeyBoardResult;
-
-GLOBALVAR blnr VIAInterruptRequest;
-
-GLOBALPROC VIA_Reset(void)
-{
-	VIA.ORA   = 0x79; VIA.DDR_A = 0x7F;
-	VIA.ORB   = 0x87; VIA.DDR_B = 0x87;
-	VIA.T1C_L = VIA.T1C_H = VIA.T1L_L = VIA.T1L_H = 0x00;
-	VIA.T2C_L = VIA.T2C_H = VIA.T2L_L = 0x00;
-	VIA.SR = VIA.ACR = 0x00;
-	VIA.PCR   = VIA.IFR   = VIA.IER   = 0x00;
-	T1_Active = T2_Active = 0x00;
-	WaitingForKeyBoard = falseblnr;
-	HaveKeyBoardResult = falseblnr;
-	VIAInterruptRequest = 0;
-}
-
-LOCALPROC CheckVIAInterruptFlag(void)
-{
-	blnr NewVIAInterruptRequest = (VIA.IFR & VIA.IER) != 0;
-
-	if (NewVIAInterruptRequest != VIAInterruptRequest) {
-		VIAInterruptRequest = NewVIAInterruptRequest;
-		VIAorSCCinterruptChngNtfy();
-	}
-}
-
-LOCALPROC SetVIAInterruptFlag(ui3b VIA_Int)
-{
-	VIA.IFR |= ((ui3b)1 << VIA_Int);
-	CheckVIAInterruptFlag();
-}
-
-GLOBALPROC GotKeyBoardData(ui3b v)
-{
-	if (! WaitingForKeyBoard) {
-		HaveKeyBoardResult = trueblnr;
-		KeyBoardResult = v;
-	} else {
-		if (((VIA.ACR & 0x1C) >> 2) == 3) {
-			VIA.SR = v;
-			SetVIAInterruptFlag(2);
-		}
-	}
-}
-
-GLOBALFUNC ui4b GetSoundInvertTime(void)
-{
-	ui4b v;
-
-	if ((VIA.ACR & 0xC0) == 0xC0) {
-		v = (VIA.T1L_H << 8) + VIA.T1L_L;
-	} else {
-		v = 0;
-	}
-	return v;
-}
-
-#define TimerTicksPerSubTick ((704 * 370 / 20) / kNumSubTicks)
-
 GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
 	switch (addr) {
@@ -351,29 +693,22 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				CheckVIAInterruptFlag();
 			}
 			if (WriteMem) {
-				VIA_Put_ORB(VIA.DDR_B, Data);
 				VIA.ORB = Data;
+				VIA_Put_ORB();
 			} else {
-				VIA.ORB = (VIA.ORB & VIA.DDR_B) + VIA_Get_ORB(VIA.DDR_B);
-				Data = VIA.ORB;
+				Data = VIA_Get_ORB();
 			}
 			break;
 		case kDDR_B :
 			if (WriteMem) {
-				VIA.DDR_B = Data;
-				if ((VIA.DDR_B & 0xFE) != 0x86) {
-					ReportAbnormal("Set VIA DDR_B unexpected direction");
-				}
+				VIA_SetDDR_B(Data);
 			} else {
 				Data = VIA.DDR_B;
 			}
 			break;
 		case kDDR_A :
 			if (WriteMem) {
-				VIA.DDR_A = Data;
-				if (VIA.DDR_A != 0x7F) {
-					ReportAbnormal("Set VIA DDR_A unexpected direction");
-				}
+				VIA_SetDDR_A(Data);
 			} else {
 				Data = VIA.DDR_A;
 			}
@@ -384,7 +719,8 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			} else {
 				VIA.IFR &= 0xBF; /* Clear T1 Interrupt */
 				CheckVIAInterruptFlag();
-				Data = VIA.T1C_L;
+				VIA_DoTimer1Check();
+				Data = (VIA.T1C_F & 0x00FF0000) >> 16;
 			}
 			break;
 		case kT1C_H :
@@ -392,11 +728,13 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				VIA.T1L_H = Data;
 				VIA.IFR &= 0xBF; /* Clear T1 Interrupt */
 				CheckVIAInterruptFlag();
-				VIA.T1C_H = VIA.T1L_H;
-				VIA.T1C_L = VIA.T1L_L;
+				VIA.T1C_F = (Data << 24) + (VIA.T1L_L << 16);
 				T1_Active = 1;
+				VIA_T1LastTime = GetCuriCount();
+				VIA_DoTimer1Check();
 			} else {
-				Data = VIA.T1C_H;
+				VIA_DoTimer1Check();
+				Data = (VIA.T1C_F & 0xFF000000) >> 24;
 			}
 			break;
 		case kT1L_L :
@@ -419,71 +757,69 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			} else {
 				VIA.IFR &= 0xDF; /* Clear T2 Interrupt */
 				CheckVIAInterruptFlag();
-				Data = VIA.T2C_L;
+				VIA_DoTimer2Check();
+				Data = (VIA.T2C_F & 0x00FF0000) >> 16;
 			}
 			break;
 		case kT2_H  :
 			if (WriteMem) {
-				VIA.T2C_H  = Data;
-				VIA.T2C_L  = VIA.T2L_L;
+				VIA.T2C_F = (Data << 24) + (VIA.T2L_L << 16);
 				VIA.IFR &= 0xDF; /* Clear T2 Interrupt */
 				CheckVIAInterruptFlag();
 				T2_Active = 1;
-#if 1
+
+				if ((VIA.T2C_F < (128UL << 16))
+					&& (VIA.T2C_F != 0))
 				{
+					T2C_ShortTime = trueblnr;
+					T2Running = trueblnr;
 					/*
-						Work around for tendency to hang when
-						playing sounds in System 7. Not sure if
-						this is due to bug in system software,
-						or some deeper problem in Mini vMac.
+						Running too many instructions during
+						a short timer interval can crash when
+						playing sounds in System 7. So
+						in this case don't let timer pause.
 					*/
-					ui4b Temp = (VIA.T2C_H << 8) + VIA.T2C_L;
-					if ((Temp < /* TimerTicksPerSubTick */128)
-						&& (Temp != 0))
-					{
-						T2_Active = 0; /* Deactivate Timer 2 */
-						SetVIAInterruptFlag(5);
-						VIA.T2C_H = 0;
-						VIA.T2C_L = 0;
-					}
 				}
-#endif
+				VIA_T2LastTime = GetCuriCount();
+				VIA_DoTimer2Check();
 			} else {
-				Data = VIA.T2C_H;
+				VIA_DoTimer2Check();
+				Data = (VIA.T2C_F & 0xFF000000) >> 24;
 			}
 			break;
 		case kSR:
+#ifdef _VIA_Debug
+			fprintf(stderr, "VIA.SR: %d, %d, %d\n", WriteMem, ((VIA.ACR & 0x1C) >> 2), Data);
+#endif
 			if (WriteMem) {
 				VIA.SR = Data;
 			}
 			switch ((VIA.ACR & 0x1C) >> 2) {
 				case 3 : /* Shifting In */
-					if (HaveKeyBoardResult) {
-						VIA.SR = KeyBoardResult;
-						HaveKeyBoardResult = falseblnr;
-						SetVIAInterruptFlag(2);
-					} else {
-						WaitingForKeyBoard = trueblnr;
-						VIA.IFR &= 0xFB;
-						CheckVIAInterruptFlag();
-					}
+					VIA.IFR &= 0xFB;
+					CheckVIAInterruptFlag();
 					break;
-				case 6 : /* shift out under o2 clock ? */
+				case 6 : /* shift out under o2 clock */
 					if ((! WriteMem) || (VIA.SR != 0)) {
 						ReportAbnormal("VIA shift mode 6, non zero");
+					} else {
+#ifdef _VIA_Debug
+						fprintf(stderr, "posting Foo2Task\n");
+#endif
+						if (VIAiCB2 != 0) {
+							VIAiCB2 = 0;
+#ifdef VIAiCB2_ChangeNtfy
+							VIAiCB2_ChangeNtfy();
+#endif
+						}
 					}
 #if 0 /* possibly should do this. seems not to affect anything. */
-					WaitingForKeyBoard = falseblnr;
-					HaveKeyBoardResult = falseblnr;
-					Keyboard_Put(VIA.SR);
-					SetVIAInterruptFlag(2); /* don't wait */
+					SetVIAInterruptFlag(kIntSR); /* don't wait */
 #endif
 					break;
 				case 7 : /* Shifting Out */
-					WaitingForKeyBoard = falseblnr;
-					HaveKeyBoardResult = falseblnr;
-					Keyboard_Put(VIA.SR);
-					SetVIAInterruptFlag(2); /* don't wait */
+					VIA.IFR &= 0xFB;
+					CheckVIAInterruptFlag();
 					break;
 			}
 			if (! WriteMem) {
@@ -492,6 +828,21 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			break;
 		case kACR:
 			if (WriteMem) {
+#if 1
+				if ((VIA.ACR & 0x10) != (Data & 0x10)) {
+					/* shift direction has changed */
+					if ((Data & 0x10) == 0) {
+						/* no longer an output,
+							set data to float value */
+						if (VIAiCB2 == 0) {
+							VIAiCB2 = 1;
+#ifdef VIAiCB2_ChangeNtfy
+							VIAiCB2_ChangeNtfy();
+#endif
+						}
+					}
+				}
+#endif
 				VIA.ACR = Data;
 				if ((VIA.ACR & 0x20) != 0) { /* Not pulse counting? */
 					ReportAbnormal("Set VIA ACR T2 Timer pulse counting");
@@ -503,11 +854,17 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 						break;
 				}
 				switch ((VIA.ACR & 0x1C) >> 2) {
+					case 0: /* this isn't sufficient */
+						VIA.IFR &= 0xFB;
+						CheckVIAInterruptFlag();
+						break;
 					case 1:
 					case 2:
 					case 4:
 					case 5:
 						ReportAbnormal("Set VIA ACR shift mode 1,2,4,5");
+						break;
+					default:
 						break;
 				}
 				if ((VIA.ACR & 0x03) != 0) {
@@ -560,7 +917,10 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				}
 				CheckVIAInterruptFlag();
 				if ((VIA.IER & (1 << 1)) == 0) {
+#if TempDebug && (CurEmu >= kEmuSE1M)
+#else
 					ReportAbnormal("IER ~1");
+#endif
 				}
 				if ((VIA.IER & (1 << 3)) != 0) {
 					ReportAbnormal("IER 3");
@@ -579,61 +939,39 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				CheckVIAInterruptFlag();
 			}
 			if (WriteMem) {
-				VIA_Put_ORA(VIA.DDR_A, Data);
 				VIA.ORA = Data;
+				VIA_Put_ORA();
 			} else {
-				VIA.ORA = (VIA.ORA & VIA.DDR_A) + VIA_Get_ORA(VIA.DDR_A);
-				Data = VIA.ORA;
+				Data = VIA_Get_ORA();
 			}
 			break;
 	}
 	return Data;
 }
 
-#define CA2 0 /* One_Second */
-#define CA1 1 /* Vertical_Blanking */
-#define SR 2 /* Keyboard_Data_Ready */
-#define CB2 3 /* Keyboard_Data */
-#define CB1 4 /* Keyboard_Clock */
-#define T2 5 /* Timer_2 */
-#define T1 6 /* Timer_1 */
-
-GLOBALPROC VIA_Timer(int SubTick)
+GLOBALPROC VIA_ExtraTimeBegin(void)
 {
-	ui4b Temp;
-
-	UnusedParam(SubTick);
-	Temp = (VIA.T1C_H << 8) + VIA.T1C_L; /* Get Timer 1 Counter */
-	if ((Temp <= TimerTicksPerSubTick) && (Temp != 0)) {
-		if (T1_Active == 1) {
-			if ((VIA.ACR & 0x40) != 0) { /* Free Running? */
-				/* Reload Counter from Latches */
-				ui4b v = (VIA.T1L_H << 8) + VIA.T1L_L;
-				if (v != 0) {
-					Temp += v * ((TimerTicksPerSubTick - Temp) / v + 1);
-				}
-			} else {
-				T1_Active = 0; /* Deactivate Timer 1 */
-			}
-			SetVIAInterruptFlag(6); /* */
-		}
+	if (T1Running) {
+		VIA_DoTimer1Check(); /* run up to this moment */
+		T1Running = falseblnr;
 	}
-	Temp -= TimerTicksPerSubTick;
-	VIA.T1C_H = (Temp & 0xFF00) >> 8; /* Save Counter */
-	VIA.T1C_L = Temp & 0xFF;
+	if (T2Running & (! T2C_ShortTime)) {
+		VIA_DoTimer2Check(); /* run up to this moment */
+		T2Running = falseblnr;
+	}
+}
 
-	/* if ((VIA.ACR & 0x20) == 0) */
-	{ /* Not when pulse counting? */
-		Temp = (VIA.T2C_H << 8) + VIA.T2C_L; /* Get Timer 2 Counter */
-		if ((Temp <= TimerTicksPerSubTick) && (Temp != 0)) {
-			if (T2_Active == 1) {
-				T2_Active = 0; /* Deactivate Timer 2 */
-				SetVIAInterruptFlag(5);
-			}
-		}
-		Temp -= TimerTicksPerSubTick;
-		VIA.T2C_H = (Temp & 0xFF00) >> 8; /* Save Counter */
-		VIA.T2C_L = Temp & 0xFF;
+GLOBALPROC VIA_ExtraTimeEnd(void)
+{
+	if (! T1Running) {
+		T1Running = trueblnr;
+		VIA_T1LastTime = GetCuriCount();
+		VIA_DoTimer1Check();
+	}
+	if (! T2Running) {
+		T2Running = trueblnr;
+		VIA_T2LastTime = GetCuriCount();
+		VIA_DoTimer2Check();
 	}
 }
 
@@ -641,10 +979,10 @@ GLOBALPROC VIA_Timer(int SubTick)
 
 GLOBALPROC VIA_Int_Vertical_Blanking(void)
 {
-	SetVIAInterruptFlag(CA1);
+	SetVIAInterruptFlag(kIntCA1);
 }
 
 GLOBALPROC VIA_Int_One_Second(void)
 {
-	SetVIAInterruptFlag(CA2);
+	SetVIAInterruptFlag(kIntCA2);
 }
