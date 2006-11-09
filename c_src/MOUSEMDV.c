@@ -1,7 +1,7 @@
 /*
 	MOUSEMDV.c
 
-	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -49,7 +49,9 @@ GLOBALPROC Mouse_Update(void)
 
 				put_ram_word(0x0828, get_ram_word(0x0828) + MouseMotionV);
 				put_ram_word(0x082A, get_ram_word(0x082A) + MouseMotionH);
-				put_ram_byte(0x08CE, get_ram_byte(0x08CF)); /* Tell MacOS to redraw the Mouse */
+				put_ram_byte(0x08CE, get_ram_byte(0x08CF));
+					/* Tell MacOS to redraw the Mouse */
+
 				MouseMotionV = 0;
 				MouseMotionH = 0;
 			}
@@ -62,10 +64,12 @@ GLOBALPROC Mouse_Update(void)
 				put_ram_long(0x0828, NewMouse); /* Set Mouse Position */
 				put_ram_long(0x082C, NewMouse);
 #if CurEmu <= kEmuPlus
-				put_ram_byte(0x08CE, get_ram_byte(0x08CF)); /* Tell MacOS to redraw the Mouse */
+				put_ram_byte(0x08CE, get_ram_byte(0x08CF));
+					/* Tell MacOS to redraw the Mouse */
 #else
 				put_ram_long(0x0830, NewMouse);
-				put_ram_byte(0x08CE, 0xFF); /* Tell MacOS to redraw the Mouse */
+				put_ram_byte(0x08CE, 0xFF);
+					/* Tell MacOS to redraw the Mouse */
 #endif
 			}
 		}

@@ -1,7 +1,7 @@
 /*
 	PROGMAIN.c
 
-	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -33,8 +33,6 @@
 
 #include "PROGMAIN.h"
 
-IMPORTPROC Screen_Draw(void);
-
 LOCALPROC vSonyEjectAllDisks(void)
 {
 	si4b i;
@@ -65,31 +63,23 @@ GLOBALPROC DoEmulateOneTick(void)
 
 	SixtiethSecondNotify();
 
-	if (! SpeedStopped) {
-		do {
-			m68k_go_nInstructions_1(InstructionsPerSubTick);
-			SubTickNotify(KiloInstructionsCounter);
-			++KiloInstructionsCounter;
-		} while (KiloInstructionsCounter < kNumSubTicks);
+	do {
+		m68k_go_nInstructions_1(InstructionsPerSubTick);
+		SubTickNotify(KiloInstructionsCounter);
+		++KiloInstructionsCounter;
+	} while (KiloInstructionsCounter < kNumSubTicks);
 
-		if (! SpeedLimit) {
-			ExtraSubTicksToDo = (ui5b) -1;
-		} else if (SpeedValue == 0) {
-			ExtraSubTicksToDo = 0;
-		} else {
-			ui5b ExtraAdd = (kNumSubTicks << SpeedValue) - kNumSubTicks;
-			ui5b ExtraLimit = ExtraAdd << 3;
-
-			ExtraSubTicksToDo += ExtraAdd;
-			if (ExtraSubTicksToDo > ExtraLimit) {
-				ExtraSubTicksToDo = ExtraLimit;
-			}
-		}
+	if (! SpeedLimit) {
+		ExtraSubTicksToDo = (ui5b) -1;
 	} else {
-		ExtraSubTicksToDo = 0;
-	}
+		ui5b ExtraAdd = (kNumSubTicks << SpeedValue) - kNumSubTicks;
+		ui5b ExtraLimit = ExtraAdd << 3;
 
-	Screen_Draw();
+		ExtraSubTicksToDo += ExtraAdd;
+		if (ExtraSubTicksToDo > ExtraLimit) {
+			ExtraSubTicksToDo = ExtraLimit;
+		}
+	}
 }
 
 GLOBALPROC DoEmulateExtraTime(void)

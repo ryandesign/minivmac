@@ -1,7 +1,7 @@
 /*
 	SCRNEMDV.c
 
-	Copyright (C) 2003 Philip Cummins, Richard F. Bannister, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Richard F. Bannister, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -26,9 +26,6 @@
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
-#if UseControlKeys
-#include "CONTROLM.h"
-#endif
 #include "ENDIANAC.h"
 #include "ADDRSPAC.h"
 #endif
@@ -74,10 +71,15 @@ LOCALFUNC blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 	return falseblnr;
 }
 
+#define kMain_Offset      0x5900
+#define kAlternate_Offset 0xD900
+#define kMain_Buffer      (kRAM_Size - kMain_Offset)
+#define kAlternate_Buffer (kRAM_Size - kAlternate_Offset)
+
 LOCALVAR unsigned long NextDrawRow = 0;
 
-/* Draw the screen */
-GLOBALPROC Screen_Draw(void)
+GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
+	si4b *top, si4b *left, si4b *bottom, si4b *right)
 {
 	char *screencurrentbuff;
 	long j0;
@@ -88,9 +90,9 @@ GLOBALPROC Screen_Draw(void)
 	unsigned long LimitDrawRow;
 	unsigned long MaxRowsDrawnPerTick;
 
-	if (TimeAdjust <= 2) {
+	if (TimeAdjust < 4) {
 		MaxRowsDrawnPerTick = vMacScreenHeight;
-	} else if (TimeAdjust <= 4) {
+	} else if (TimeAdjust < 6) {
 		MaxRowsDrawnPerTick = vMacScreenHeight / 2;
 	} else {
 		MaxRowsDrawnPerTick = vMacScreenHeight / 4;
@@ -102,21 +104,12 @@ GLOBALPROC Screen_Draw(void)
 		screencurrentbuff = (char *) get_ram_address(kAlternate_Buffer);
 	}
 
-#if UseControlKeys
-	if (CurControlMode != 0) {
-		MyMoveBytes((anyp)screencurrentbuff, (anyp)CntrlDisplayBuff, vMacScreenNumBytes);
-		screencurrentbuff = CntrlDisplayBuff;
-
-		DrawControlMode();
-	}
-#endif
-
 	if (! FindFirstChangeInLVecs((long *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
 			(long *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),
 			((long)(vMacScreenHeight - NextDrawRow) * (long)vMacScreenWidth) / 32, &j0))
 	{
 		NextDrawRow = 0;
-		return;
+		return falseblnr;
 	}
 	j0 /= (vMacScreenWidth / 32);
 	j0 += NextDrawRow;
@@ -127,10 +120,12 @@ GLOBALPROC Screen_Draw(void)
 	} else {
 		NextDrawRow = LimitDrawRow;
 	}
-	if (FindLastChangeInLVecs((long *)screencurrentbuff,
+	if (! FindLastChangeInLVecs((long *)screencurrentbuff,
 		(long *)screencomparebuff,
 		((long)LimitDrawRow * (long)vMacScreenWidth) / 32, &j1))
 	{
+		return falseblnr;
+	} else {
 		j1 /= (vMacScreenWidth / 32); j1++;
 
 		copyrows = j1 - j0;
@@ -138,6 +133,10 @@ GLOBALPROC Screen_Draw(void)
 		copysize = copyrows * vMacScreenByteWidth;
 		MyMoveBytes((anyp)screencurrentbuff + copyoffset, (anyp)screencomparebuff + copyoffset, copysize);
 
-		HaveChangedScreenBuff(j0, 0, j0 + copyrows, vMacScreenWidth);
+		*top = j0;
+		*left = 0;
+		*bottom = j0 + copyrows;
+		*right = vMacScreenWidth;
+		return trueblnr;
 	}
 }

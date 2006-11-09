@@ -1,7 +1,7 @@
 /*
 	SYSDEPNS.h
 
-	Copyright (C) 2003 Bernd Schmidt, Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Bernd Schmidt, Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -32,6 +32,10 @@
 
 #ifndef UnusedParam
 #define UnusedParam(p) (void) p
+#endif
+
+#ifndef BigEndianUnaligned
+#define BigEndianUnaligned 0
 #endif
 
 /* If char has more then 8 bits, good night. */

@@ -1,6 +1,6 @@
 /*
 	setup.h
-	Copyright (C) 2005 Paul C. Pratt
+	Copyright (C) 2006 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -19,31 +19,39 @@
 
 #define kStrAppName "Mini vMac"
 #define kStrAppAbbrev "minivmac" /* [a-z0-9_]{1,8} */
-#define kMajorVersion "2"
-#define kMinorVersion "7"
+#define kMajorVersion "3"
+#define kMinorVersion "0"
 #define kMinorSubVersion "0"
-#define kStrCopyrightYear "2005"
-#define kMaintainerName "Paul C. Pratt"
-#define kStrHomePage "http://minivmac.sourceforge.net/"
+#define kStrCopyrightYear "2006"
 #define kMacCreatorSig "MnvM"
 #define kBundleIdentifier "com.gryphel.minivmac"
 #define kShortDescription "miniature Macintosh emulator"
+
+#ifndef kStrHomePage
+#if (gbo_lang == gbk_lang_fre)
+#define kStrHomePage "http://pages.videotron.com/plemieux/minivmac/"
+#else
+#define kStrHomePage "http://minivmac.sourceforge.net/"
+#endif
+#endif
 
 /* --- list of source files --- */
 
 static void DoAllExtraHeaders(tDoOneExtraHeader p)
 {
-	p("SYSDEPNS.h");
-	p("DATE2SEC.h");
-	p("ENDIANAC.h");
+	p(kDepDirCSrc, "SYSDEPNS.h");
+	p(kDepDirCSrc, "DATE2SEC.h");
+	p(kDepDirCSrc, "ENDIANAC.h");
+	p(kDepDirPlat, "PLATGLUE.h");
+	p(kDepDirLang, "STRCONST.h");
+	p(kDepDirCSrc, "CONTROLM.h");
 }
 
 static void DoMYOSGLUEdepends(tDoOneDepends p)
 {
-	p("PROSGLUE.h");
-	p("MCOSGLUE.h");
-	p("WNOSGLUE.h");
-	p("XWOSGLUE.h");
+	p(kDepDirPlat, "PLATGLUE.h");
+	p(kDepDirLang, "STRCONST.h");
+	p(kDepDirCSrc, "CONTROLM.h");
 }
 
 #ifndef Use68020
@@ -52,27 +60,27 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 
 static void DoAllSrcFiles(tDoOneCFile p)
 {
-	p("MYOSGLUE", falseblnr, DoMYOSGLUEdepends);
-	p("GLOBGLUE", falseblnr, nullpr);
-	p("ADDRSPAC", falseblnr, nullpr);
-	p("PROGMAIN", falseblnr, nullpr);
-	p("CONTROLM", falseblnr, nullpr);
+	p("MYOSGLUE", kCSrcFlgmInclPlat | kCSrcFlgmInclLang,
+		DoMYOSGLUEdepends);
+	p("GLOBGLUE", kCSrcFlgmNone, nullpr);
+	p("ADDRSPAC", kCSrcFlgmNone, nullpr);
+	p("PROGMAIN", kCSrcFlgmNone, nullpr);
 #if Use68020
-	p("MINEM68K", falseblnr, nullpr);
+	p("MINEM68K", kCSrcFlgmNone, nullpr);
 #else
-	p("MINEM68K", trueblnr, nullpr);
+	p("MINEM68K", kCSrcFlgmAsmAvail, nullpr);
 #endif
-	p("VIAEMDEV", falseblnr, nullpr);
-	p("IWMEMDEV", falseblnr, nullpr);
-	p("SCCEMDEV", falseblnr, nullpr);
-	p("RTCEMDEV", falseblnr, nullpr);
-	p("ROMEMDEV", falseblnr, nullpr);
-	p("SCSIEMDV", falseblnr, nullpr);
-	p("SONYEMDV", falseblnr, nullpr);
-	p("SNDEMDEV", falseblnr, nullpr);
-	p("SCRNEMDV", falseblnr, nullpr);
-	p("KBRDEMDV", falseblnr, nullpr);
-	p("MOUSEMDV", falseblnr, nullpr);
+	p("VIAEMDEV", kCSrcFlgmNone, nullpr);
+	p("IWMEMDEV", kCSrcFlgmNone, nullpr);
+	p("SCCEMDEV", kCSrcFlgmNone, nullpr);
+	p("RTCEMDEV", kCSrcFlgmNone, nullpr);
+	p("ROMEMDEV", kCSrcFlgmNone, nullpr);
+	p("SCSIEMDV", kCSrcFlgmNone, nullpr);
+	p("SONYEMDV", kCSrcFlgmNone, nullpr);
+	p("SNDEMDEV", kCSrcFlgmNone, nullpr);
+	p("SCRNEMDV", kCSrcFlgmNone, nullpr);
+	p("KBRDEMDV", kCSrcFlgmNone, nullpr);
+	p("MOUSEMDV", kCSrcFlgmNone, nullpr);
 }
 
 /* --- list of document types --- */
@@ -95,44 +103,7 @@ static void DoAllDocTypes(tWriteOneDocType p)
 
 static void WriteAppSpecificCNFGGLOBoptions(void)
 {
-#ifdef WantInitSpeedLimit
-#if WantInitSpeedLimit
-	WriteDestFileLn("#define WantInitSpeedLimit 1");
-#endif
-#endif
-
-#ifdef WantInitFullScreen
-#if WantInitFullScreen
-	WriteDestFileLn("#define WantInitFullScreen 1");
-#endif
-#endif
-
-#ifdef WantInitMagnify
-#if WantInitMagnify
-	WriteDestFileLn("#define WantInitMagnify 1");
-#endif
-#endif
-
 #if Use68020
 	WriteDestFileLn("#define Use68020 1");
-#endif
-
-#ifdef NumDrives
-#ifdef (NumDrives > 0) && (NumDrives < 32)
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define NumDrives ");
-	WriteUnsignedToOutput(NumDrives);
-	WriteEndDestFileLn();
-#endif
-#endif
-
-#ifdef DetailedAbormalReport
-#if DetailedAbormalReport
-	WriteDestFileLn("#define DetailedAbormalReport 1");
-#endif
-#endif
-
-#if UseCPUFam68K
-		WriteDestFileLn("#define CurEmu kEmuPlus2M");
 #endif
 }

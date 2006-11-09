@@ -1,7 +1,7 @@
 /*
 	ROMEMDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -603,7 +603,7 @@ GLOBALFUNC blnr ROM_Init(void)
 	ui5b CheckSum = do_get_mem_long((ui3p)ROM);
 
 	if (! Check_Checksum(CheckSum)) {
-		MacMsg("ROM checksum failed.", "The ROM image may be corrupted.", trueblnr);
+		WarnMsgCorruptedROM();
 	} else
 #if CurEmu <= kEmu512K
 	if (CheckSum == 0x28BA61CE) {
@@ -612,13 +612,13 @@ GLOBALFUNC blnr ROM_Init(void)
 	} else
 #elif CurEmu <= kEmuPlus
 	if (CheckSum == 0x4D1EEEE1) {
-		/* printf("ROM: Mac Plus ROM v 1, 'Lonely Hearts'.\n"); */
+		/* Mac Plus ROM v 1, 'Lonely Hearts' */
 	} else
 	if (CheckSum == 0x4D1EEAE1) {
-		/* printf("ROM: Mac Plus ROM v 2, 'Lonely Heifers'.\n"); */
+		/* Mac Plus ROM v 2, 'Lonely Heifers' */
 	} else
 	if (CheckSum == 0x4D1F8172) {
-		/* printf("ROM: Mac Plus ROM v 3, 'Loud Harmonicas'.\n"); */
+		/* Mac Plus ROM v 3, 'Loud Harmonicas' */
 	} else
 #elif CurEmu <= kEmuSE
 	if (CheckSum == 0xB2E362A8) {
@@ -628,8 +628,7 @@ GLOBALFUNC blnr ROM_Init(void)
 	} else
 #endif
 	{
-		/* printf("ROM loaded successfully, but we don't support this ROM yet.\n"); */
-		MacMsg("Unsupported ROM.", "The ROM image file loaded successfully, but we don't support this ROM yet.", trueblnr);
+		WarnMsgUnsupportedROM();
 	}
 	/*
 		Even if ROM is corrupt or unsupported, go ahead and

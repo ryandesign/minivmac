@@ -1,7 +1,7 @@
 /*
 	KBRDEMDV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -27,9 +27,6 @@
 #include "MYOSGLUE.h"
 #include "GLOBGLUE.h"
 #include "ADDRSPAC.h"
-#if UseControlKeys
-#include "CONTROLM.h"
-#endif
 #include "VIAEMDEV.h"
 #endif
 
@@ -39,20 +36,10 @@
 #include <stdio.h>
 #endif
 
-#if UseControlKeys
-LOCALVAR ui5b theEmKeys[4];
-#else
-#define theEmKeys theKeys
-#endif
-	/*
-		What the emulated keyboard thinks is the
-		state of the keyboard.
-	*/
-
 LOCALVAR ui5b theKeyCopys[4];
 	/*
 		What the emulated keyboard thinks the mac thinks is the
-		state of the keyboard. This is compared to theEmKeys.
+		state of the keyboard. This is compared to theKeys.
 	*/
 
 LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
@@ -61,7 +48,7 @@ LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
 	int b;
 
 	for (j = 0; j < 16; ++j) {
-		ui3b k1 = ((ui3b *)theEmKeys)[j];
+		ui3b k1 = ((ui3b *)theKeys)[j];
 		ui3b k2 = ((ui3b *)theKeyCopys)[j];
 
 		if (k1 != k2) {
@@ -637,63 +624,27 @@ LOCALPROC ADB_DoOnIdle(void)
 }
 #endif
 
-#if UseControlKeys
-LOCALVAR ui5b LastKeys[4];
-LOCALVAR blnr LastControlKey = falseblnr;
-#endif
+IMPORTPROC DoMacReset(void);
 
 GLOBALPROC KeyBoard_Update(void)
 {
-#if UseControlKeys
-	int i;
-	int j;
-
 	SetInterruptButton(falseblnr);
 		/*
 			in case has been set. so only stays set
 			for 60th of a second.
 		*/
 
-	if ((((ui3b *)theKeys)[7] & (1 << 3)) == 0) {
-		if (LastControlKey) {
-			LastControlKey = falseblnr;
-			DoLeaveControlMode();
-		}
-		for (i = 0; i < 4; ++i) {
-			theEmKeys[i] = theKeys[i];
-		}
-		if (ControlKeyPressed) {
-			((ui3b *)theEmKeys)[7] |=  (1 << 3);
-		}
-	} else {
-		if (! LastControlKey) {
-			LastControlKey = trueblnr;
-			DoEnterControlMode();
-		} else {
-			for (j = 0; j < 16; ++j) {
-				ui3b k1 = ((ui3b *)theKeys)[j];
-				ui3b k2 = ((ui3b *)LastKeys)[j];
-				ui3b k3 = k1 & (~ k2);
-
-				if (k3 != 0) {
-					for (i = 0; i < 8; ++i) {
-						if ((k3 & (1 << i)) != 0) {
-							DoControlModeKey(j * 8 + i);
-						}
-					}
-				}
-			}
-		}
-
-		for (i = 0; i < 4; ++i) {
-			LastKeys[i] = theKeys[i];
-		}
-	}
-#endif
-
 #if EmClassicKbrd
 	DoOnClassicKbrdIdle();
 #elif EmADB
 	ADB_DoOnIdle();
 #endif
+	if (WantMacInterrupt) {
+		SetInterruptButton(trueblnr);
+		WantMacInterrupt = falseblnr;
+	}
+	if (WantMacReset) {
+		DoMacReset();
+		WantMacReset = falseblnr;
+	}
 }

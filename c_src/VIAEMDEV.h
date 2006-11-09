@@ -31,6 +31,7 @@ EXPORTPROC VIA_ExtraTimeBegin(void);
 EXPORTPROC VIA_ExtraTimeEnd(void);
 EXPORTPROC VIA_Int_Vertical_Blanking(void);
 EXPORTPROC VIA_Int_One_Second(void);
+EXPORTPROC VIA_DoTimer1Check(void);
 EXPORTPROC VIA_DoTimer2Check(void);
 
 EXPORTFUNC ui4b GetSoundInvertTime(void);

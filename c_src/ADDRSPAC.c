@@ -1,7 +1,7 @@
 /*
 	ADDRSPAC.c
 
-	Copyright (C) 2005 Bernd Schmidt, Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Bernd Schmidt, Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -64,13 +64,11 @@ GLOBALPROC DoReportAbnormal(void)
 #endif
 {
 	if (! GotOneAbormal) {
-		MacMsg("Abnormal Situation",
 #if DetailedAbormalReport
-			s,
+		WarnMsgAbnormal(s);
 #else
-			"The emulated machine is attempting an operation that wasn't expected to happen in normal use.",
+		WarnMsgAbnormal();
 #endif
-			falseblnr);
 #if ReportAbnormalInterrupt
 		SetInterruptButton(trueblnr);
 #endif
@@ -464,6 +462,7 @@ IMPORTPROC DoKybd_ReceiveCommand(void);
 #else
 IMPORTPROC ADB_DoNewState(void);
 #endif
+IMPORTPROC VIA_DoTimer1Check(void);
 IMPORTPROC VIA_DoTimer2Check(void);
 
 LOCALPROC ICT_DoTask(int taskid)
@@ -481,6 +480,9 @@ LOCALPROC ICT_DoTask(int taskid)
 			ADB_DoNewState();
 			break;
 #endif
+		case kICT_VIA_Timer1Check:
+			VIA_DoTimer1Check();
+			break;
 		case kICT_VIA_Timer2Check:
 			VIA_DoTimer2Check();
 			break;
@@ -521,6 +523,7 @@ GLOBALFUNC iCountt GetCuriCount(void)
 
 GLOBALPROC ICT_add(int taskid, ui5b n)
 {
+	/* n must be > 0 */
 	ui5b x = GetInstructionsRemaining();
 	ui5b when = NextiCount - x + n;
 
@@ -535,21 +538,41 @@ GLOBALPROC ICT_add(int taskid, ui5b n)
 	}
 }
 
-LOCALFUNC ui5b ICT_DoCurrentGetNext(ui5b maxn)
+LOCALPROC ICT_DoCurrentTasks(void)
 {
 	int i;
-	int v = maxn;
 
 	for (i = 0; i < kNumICTs; i++) {
 		if (ICTactive[i]) {
-			ui5b d = ICTwhen[i] - NextiCount;
-			if (d == 0) {
+			if (ICTwhen[i] == NextiCount) {
 				ICTactive[i] = falseblnr;
 #ifdef _VIA_Debug
 				fprintf(stderr, "doing task %d, %d\n", NextiCount, i);
 #endif
 				ICT_DoTask(i);
-			} else if (d < v) {
+
+				/*
+					A Task may set the time of
+					any task, including itself.
+					But it cannot set any task
+					to execute immediately, so
+					one pass is sufficient.
+				*/
+			}
+		}
+	}
+}
+
+LOCALFUNC ui5b ICT_DoGetNext(ui5b maxn)
+{
+	int i;
+	ui5b v = maxn;
+
+	for (i = 0; i < kNumICTs; i++) {
+		if (ICTactive[i]) {
+			ui5b d = ICTwhen[i] - NextiCount;
+			/* at this point d must be > 0 */
+			if (d < v) {
 #ifdef _VIA_Debug
 				fprintf(stderr, "coming task %d, %d, %d\n", NextiCount, i, d);
 #endif
@@ -565,7 +588,8 @@ GLOBALPROC m68k_go_nInstructions_1(ui5b n)
 	ui5b n2;
 	ui5b StopiCount = NextiCount + n;
 	do {
-		n2 = ICT_DoCurrentGetNext(n);
+		ICT_DoCurrentTasks();
+		n2 = ICT_DoGetNext(n);
 		NextiCount += n2;
 		m68k_go_nInstructions(n2);
 		n = StopiCount - NextiCount;

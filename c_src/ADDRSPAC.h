@@ -1,7 +1,7 @@
 /*
 	ADDRSPAC.h
 
-	Copyright (C) 2004 Bernd Schmidt, Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Bernd Schmidt, Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -70,10 +70,6 @@ EXPORTFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr);
 EXPORTFUNC blnr AddrSpac_Init(void);
 
 
-#ifndef DetailedAbormalReport
-#define DetailedAbormalReport 0
-#endif
-
 #ifndef ExtraAbormalReports
 #define ExtraAbormalReports DetailedAbormalReport
 #endif
@@ -100,6 +96,7 @@ enum {
 #else
 	kICT_ADB_NewState,
 #endif
+	kICT_VIA_Timer1Check,
 	kICT_VIA_Timer2Check,
 
 	kNumICTs

@@ -494,6 +494,8 @@ LOCALPROC CheckVIAInterruptFlag(void)
 LOCALVAR ui3b T1_Active = 0;
 LOCALVAR ui3b T2_Active = 0;
 
+LOCALVAR blnr T1IntReady = falseblnr;
+
 LOCALPROC VIA_Clear(void)
 {
 	VIA.ORA   = 0; VIA.DDR_A = 0;
@@ -505,6 +507,7 @@ LOCALPROC VIA_Clear(void)
 	VIA.SR = VIA.ACR = 0x00;
 	VIA.PCR   = VIA.IFR   = VIA.IER   = 0x00;
 	T1_Active = T2_Active = 0x00;
+	T1IntReady = falseblnr;
 }
 
 GLOBALPROC VIA_Zap(void)
@@ -526,6 +529,12 @@ GLOBALPROC VIA_Reset(void)
 LOCALPROC SetVIAInterruptFlag(ui3b VIA_Int)
 {
 	VIA.IFR |= ((ui3b)1 << VIA_Int);
+	CheckVIAInterruptFlag();
+}
+
+LOCALPROC ClrVIAInterruptFlag(ui3b VIA_Int)
+{
+	VIA.IFR &= ~ ((ui3b)1 << VIA_Int);
 	CheckVIAInterruptFlag();
 }
 
@@ -560,33 +569,34 @@ GLOBALFUNC ui3b VIA_ShiftOutData(void)
 	}
 }
 
-#define TimerTicksPerTick (704 * 370 / 20)
+#define TimerTicksPerTick (704UL * 370 / 20)
 #define TimerTicksPerSubTick (TimerTicksPerTick / kNumSubTicks)
 
-#define ConvertTimeConst (0x00010000 * TimerTicksPerTick / InstructionsPerTick)
-#define ConvertTimeInv (0x00010000 * InstructionsPerTick / TimerTicksPerTick)
+#define ConvertTimeConst (0x00010000UL * TimerTicksPerTick / InstructionsPerTick)
+#define ConvertTimeInv (0x00010000UL * InstructionsPerTick / TimerTicksPerTick)
 
 LOCALVAR blnr T1Running = trueblnr;
 LOCALVAR iCountt VIA_T1LastTime = 0;
 
-LOCALPROC VIA_DoTimer1Check(void)
+GLOBALPROC VIA_DoTimer1Check(void)
 {
 	if (T1Running) {
 		iCountt NewTime = GetCuriCount();
-		ui5b Temp = VIA.T1C_F; /* Get Timer 1 Counter */
 		iCountt deltaTime = NewTime - VIA_T1LastTime;
-		ui5b deltaTemp = deltaTime * ConvertTimeConst; /* may overflow */
-		ui5b NewTemp = Temp - deltaTemp;
-		if (T1_Active == 1) {
+		if (deltaTime != 0) {
+			ui5b Temp = VIA.T1C_F; /* Get Timer 1 Counter */
+			ui5b deltaTemp = deltaTime * ConvertTimeConst; /* may overflow */
+			ui5b NewTemp = Temp - deltaTemp;
 			if ((deltaTime > ConvertTimeInv)
 				|| ((Temp <= deltaTemp) && (Temp != 0)))
 			{
 				if ((VIA.ACR & 0x40) != 0) { /* Free Running? */
 					/* Reload Counter from Latches */
 					ui4b v = (VIA.T1L_H << 8) + VIA.T1L_L;
-					if (v != 0) {
-						ui4b ntrans = (((deltaTemp - Temp) / v) >> 16) + 1;
-						Temp += (v * ntrans) >> 16;
+					ui4b ntrans = 1 + (v == 0) ? 0 :
+						(((deltaTemp - Temp) / v) >> 16);
+					NewTemp += (((ui5b)v * ntrans) << 16);
+					if ((VIA.ACR & 0x80) != 0) { /* invert ? */
 						if ((ntrans & 1) != 0) {
 							VIAiB7 ^= 1;
 #ifdef VIAiB7_ChangeNtfy
@@ -594,12 +604,23 @@ LOCALPROC VIA_DoTimer1Check(void)
 #endif
 						}
 					}
+					SetVIAInterruptFlag(kIntT1);
 				} else {
-					T1_Active = 0;
+					if (T1_Active == 1) {
+						T1_Active = 0;
+						SetVIAInterruptFlag(kIntT1);
+					}
 				}
-				SetVIAInterruptFlag(kIntT1);
-			} else {
-#if 0
+			}
+
+			VIA.T1C_F = NewTemp;
+			VIA_T1LastTime = NewTime;
+		}
+
+		T1IntReady = falseblnr;
+		if ((VIA.IFR & (1 << kIntT1)) == 0) {
+			if (((VIA.ACR & 0x40) != 0) || (T1_Active == 1)) {
+				ui5b NewTemp = VIA.T1C_F; /* Get Timer 1 Counter */
 				ui5b NewTimer;
 #ifdef _VIA_Debug
 				fprintf(stderr, "posting Timer1Check, %d, %d\n", Temp, GetCuriCount());
@@ -610,11 +631,29 @@ LOCALPROC VIA_DoTimer1Check(void)
 					NewTimer = (((NewTemp >> 16) * ConvertTimeInv) >> 16) + 1;
 				}
 				ICT_add(kICT_VIA_Timer1Check, NewTimer);
-#endif
+				T1IntReady = trueblnr;
 			}
 		}
-		VIA.T1C_F = NewTemp;
-		VIA_T1LastTime = NewTime;
+	}
+}
+
+LOCALPROC CheckT1IntReady(void)
+{
+	if (T1Running) {
+		blnr NewT1IntReady = falseblnr;
+
+		if ((VIA.IFR & (1 << kIntT1)) == 0) {
+			if (((VIA.ACR & 0x40) != 0) || (T1_Active == 1)) {
+				NewT1IntReady = trueblnr;
+			}
+		}
+
+		if (T1IntReady != NewT1IntReady) {
+			T1IntReady = NewT1IntReady;
+			if (NewT1IntReady) {
+				VIA_DoTimer1Check();
+			}
+		}
 	}
 }
 
@@ -622,7 +661,7 @@ GLOBALFUNC ui4b GetSoundInvertTime(void)
 {
 	ui4b v;
 
-	if (T1_Active && ((VIA.ACR & 0xC0) == 0xC0)) {
+	if ((VIA.ACR & 0xC0) == 0xC0) {
 		v = (VIA.T1L_H << 8) + VIA.T1L_L;
 	} else {
 		v = 0;
@@ -689,8 +728,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 	switch (addr) {
 		case kORB   :
 			if ((VIA.PCR & 0xE0) == 0) {
-				VIA.IFR &= 0xF7;
-				CheckVIAInterruptFlag();
+				ClrVIAInterruptFlag(kIntCB2);
 			}
 			if (WriteMem) {
 				VIA.ORB = Data;
@@ -717,8 +755,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			if (WriteMem) {
 				VIA.T1L_L = Data;
 			} else {
-				VIA.IFR &= 0xBF; /* Clear T1 Interrupt */
-				CheckVIAInterruptFlag();
+				ClrVIAInterruptFlag(kIntT1);
 				VIA_DoTimer1Check();
 				Data = (VIA.T1C_F & 0x00FF0000) >> 16;
 			}
@@ -726,10 +763,11 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 		case kT1C_H :
 			if (WriteMem) {
 				VIA.T1L_H = Data;
-				VIA.IFR &= 0xBF; /* Clear T1 Interrupt */
-				CheckVIAInterruptFlag();
+				ClrVIAInterruptFlag(kIntT1);
 				VIA.T1C_F = (Data << 24) + (VIA.T1L_L << 16);
-				T1_Active = 1;
+				if ((VIA.ACR & 0x40) == 0) {
+					T1_Active = 1;
+				}
 				VIA_T1LastTime = GetCuriCount();
 				VIA_DoTimer1Check();
 			} else {
@@ -755,8 +793,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			if (WriteMem) {
 				VIA.T2L_L = Data;
 			} else {
-				VIA.IFR &= 0xDF; /* Clear T2 Interrupt */
-				CheckVIAInterruptFlag();
+				ClrVIAInterruptFlag(kIntT2);
 				VIA_DoTimer2Check();
 				Data = (VIA.T2C_F & 0x00FF0000) >> 16;
 			}
@@ -764,8 +801,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 		case kT2_H  :
 			if (WriteMem) {
 				VIA.T2C_F = (Data << 24) + (VIA.T2L_L << 16);
-				VIA.IFR &= 0xDF; /* Clear T2 Interrupt */
-				CheckVIAInterruptFlag();
+				ClrVIAInterruptFlag(kIntT2);
 				T2_Active = 1;
 
 				if ((VIA.T2C_F < (128UL << 16))
@@ -796,8 +832,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			}
 			switch ((VIA.ACR & 0x1C) >> 2) {
 				case 3 : /* Shifting In */
-					VIA.IFR &= 0xFB;
-					CheckVIAInterruptFlag();
+					ClrVIAInterruptFlag(kIntSR);
 					break;
 				case 6 : /* shift out under o2 clock */
 					if ((! WriteMem) || (VIA.SR != 0)) {
@@ -818,8 +853,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 #endif
 					break;
 				case 7 : /* Shifting Out */
-					VIA.IFR &= 0xFB;
-					CheckVIAInterruptFlag();
+					ClrVIAInterruptFlag(kIntSR);
 					break;
 			}
 			if (! WriteMem) {
@@ -853,10 +887,10 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 						ReportAbnormal("Set VIA ACR T1 Timer mode 2");
 						break;
 				}
+				CheckT1IntReady();
 				switch ((VIA.ACR & 0x1C) >> 2) {
 					case 0: /* this isn't sufficient */
-						VIA.IFR &= 0xFB;
-						CheckVIAInterruptFlag();
+						ClrVIAInterruptFlag(kIntSR);
 						break;
 					case 1:
 					case 2:
@@ -901,6 +935,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 					VIA.IFR = VIA.IFR | (Data & 0x7F); /* Set Enable Bits */
 				}
 				CheckVIAInterruptFlag();
+				CheckT1IntReady();
 			} else {
 				Data = VIA.IFR;
 				if ((VIA.IFR & VIA.IER) != 0) {
@@ -935,8 +970,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 		case kORA   :
 		case kORA_H :
 			if ((VIA.PCR & 0xE) == 0) {
-				VIA.IFR &= 0xFE;
-				CheckVIAInterruptFlag();
+				ClrVIAInterruptFlag(kIntCA2);
 			}
 			if (WriteMem) {
 				VIA.ORA = Data;

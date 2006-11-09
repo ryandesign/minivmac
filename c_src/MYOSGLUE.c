@@ -1,7 +1,7 @@
 /*
 	MYOSGLUE.c
 
-	Copyright (C) 2005 Paul C. Pratt
+	Copyright (C) 2006 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -23,12 +23,13 @@
 
 #include "MYOSGLUE.h"
 
-IMPORTPROC DoEmulateOneTick(void);
-IMPORTPROC DoEmulateExtraTime(void);
 IMPORTFUNC blnr InitEmulation(void);
+IMPORTPROC DoEmulateOneTick(void);
+IMPORTFUNC blnr ScreenFindChanges(si3b TimeAdjust,
+	si4b *top, si4b *left, si4b *bottom, si4b *right);
+IMPORTPROC DoEmulateExtraTime(void);
 
 GLOBALVAR char *screencomparebuff = nullpr;
-GLOBALVAR char *CntrlDisplayBuff = nullpr;
 
 GLOBALVAR ui4b *RAM = nullpr;
 
@@ -40,39 +41,13 @@ GLOBALVAR ui3b CurMouseButton = falseblnr;
 
 GLOBALVAR ui5b theKeys[4];
 
-#ifndef WantInitSpeedLimit
-#define WantInitSpeedLimit 1
+#ifndef WantInitSpeedValue
+#define WantInitSpeedValue 3
 #endif
 
-GLOBALVAR blnr SpeedLimit = (WantInitSpeedLimit != 0);
+GLOBALVAR ui3b SpeedValue = WantInitSpeedValue;
 
-GLOBALVAR blnr SpeedStopped = falseblnr;
-
-GLOBALVAR ui3b SpeedValue = 3;
-
-GLOBALVAR blnr RunInBackground = falseblnr;
-
-GLOBALVAR si3b TimeAdjust = 0;
-
-#if UseControlKeys
-GLOBALVAR blnr ControlKeyPressed = falseblnr;
-#endif
-
-#ifndef WantInitFullScreen
-#define WantInitFullScreen 0
-#endif
-
-#if EnableFullScreen
-GLOBALVAR blnr WantFullScreen = (WantInitFullScreen != 0);
-#endif
-
-#ifndef WantInitMagnify
-#define WantInitMagnify 0
-#endif
-
-#if EnableMagnify
-GLOBALVAR blnr WantMagnify = (WantInitMagnify != 0);
-#endif
+GLOBALVAR blnr SpeedLimit = (WantInitSpeedValue != -1);
 
 #if EnableMouseMotion
 GLOBALVAR blnr HaveMouseMotion = falseblnr;
@@ -86,27 +61,81 @@ GLOBALVAR ui4b MouseMotionH = 0;
 #endif
 #endif
 
-GLOBALVAR blnr RequestMacOff = falseblnr;
+#ifndef EnableDragDrop
+#define EnableDragDrop 1
+#endif
+
+LOCALVAR blnr RequestMacOff = falseblnr;
 
 GLOBALVAR blnr ForceMacOff = falseblnr;
 
-GLOBALVAR blnr RequestInsertDisk = falseblnr;
+GLOBALVAR blnr WantMacInterrupt = falseblnr;
+
+GLOBALVAR blnr WantMacReset = falseblnr;
 
 GLOBALVAR ui5b vSonyWritableMask = 0;
 GLOBALVAR ui5b vSonyInsertedMask = 0;
 GLOBALVAR ui5b vSonyMountedMask = 0;
+
+#if IncludeSonyRawMode
+GLOBALVAR blnr vSonyRawMode = falseblnr;
+#endif
+
+#if IncludePbufs
+GLOBALVAR ui5b PbufAllocatedMask;
+GLOBALVAR ui5b PbufSize[NumPbufs];
+#endif
+
+#if IncludeSonyNew
+GLOBALVAR blnr vSonyNewDiskWanted = falseblnr;
+GLOBALVAR ui5b vSonyNewDiskSize;
+#endif
+
+#if IncludeSonyNameNew
+GLOBALVAR ui4b vSonyNewDiskName = NotAPbuf;
+#endif
 
 GLOBALVAR ui5b CurMacDateInSeconds = 0;
 GLOBALVAR ui5b CurMacLatitude = 0;
 GLOBALVAR ui5b CurMacLongitude = 0;
 GLOBALVAR ui5b CurMacDelta = 0;
 
+#if IncludePbufs
+LOCALFUNC blnr FirstFreePbuf(ui4b *r)
+{
+	si4b i;
+
+	for (i = 0; i < NumPbufs; ++i) {
+		if (! PbufIsAllocated(i)) {
+			*r = i;
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
+#endif
+
+#if IncludePbufs
+LOCALPROC PbufNewNotify(ui4b Pbuf_No, ui5b count)
+{
+	PbufSize[Pbuf_No] = count;
+	PbufAllocatedMask |= ((ui5b)1 << Pbuf_No);
+}
+#endif
+
+#if IncludePbufs
+LOCALPROC PbufDisposeNotify(ui4b Pbuf_No)
+{
+	PbufAllocatedMask &= ~ ((ui5b)1 << Pbuf_No);
+}
+#endif
+
 LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
 {
 	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
-		if ((vSonyInsertedMask & ((ui5b)1 << i)) == 0) {
+		if (! vSonyIsInserted(i)) {
 			*Drive_No = i;
 			return trueblnr;
 		}
@@ -119,62 +148,55 @@ GLOBALFUNC blnr AnyDiskInserted(void)
 	si4b i;
 
 	for (i = 0; i < NumDrives; ++i) {
-		if ((vSonyInsertedMask & ((ui5b)1 << i)) != 0) {
+		if (vSonyIsInserted(i)) {
 			return trueblnr;
 		}
 	}
 	return falseblnr;
 }
 
-#define kStrTooManyImagesTitle "Too many Disk Images."
-#define kStrTooManyImagesMessage "Mini vMac can not mount that many Disk Images. Try ejecting one."
+LOCALPROC DiskInsertNotify(ui4b Drive_No, blnr locked)
+{
+	vSonyInsertedMask |= ((ui5b)1 << Drive_No);
+	if (! locked) {
+		vSonyWritableMask |= ((ui5b)1 << Drive_No);
+	}
+}
 
-#define kStrImageInUseTitle "Disk Image in use."
-#define kStrImageInUseMessage "The Disk Image can not be mounted because it is already in use by another application."
+LOCALPROC DiskEjectedNotify(ui4b Drive_No)
+{
+	vSonyWritableMask &= ~ ((ui5b)1 << Drive_No);
+	vSonyInsertedMask &= ~ ((ui5b)1 << Drive_No);
+	vSonyMountedMask &= ~ ((ui5b)1 << Drive_No);
+}
 
-#ifndef EnableDragDrop
-#define EnableDragDrop 1
-#endif
+FORWARDPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right);
 
-#ifndef RomFileName
-#if CurEmu <= kEmu512K
-#define RomFileName "Mac128K.ROM"
-#elif CurEmu <= kEmuPlus
-#define RomFileName "vMac.ROM"
-#elif CurEmu <= kEmuSE
-#define RomFileName "MacSE.ROM"
-#elif CurEmu <= kEmuClassic
-#define RomFileName "Classic.ROM"
-#else
-#error "RomFileName not defined"
-#endif
-#endif
+/* Draw the screen */
+LOCALPROC Screen_Draw(si3b TimeAdjust)
+{
+	si4b top;
+	si4b left;
+	si4b bottom;
+	si4b right;
 
-#ifndef MacTarget
-#define MacTarget 0
-#endif
-#ifndef WinTarget
-#define WinTarget 0
-#endif
-#ifndef XWnTarget
-#define XWnTarget 0
-#endif
+	if (ScreenFindChanges(TimeAdjust,
+		&top, &left, &bottom, &right))
+	{
+		HaveChangedScreenBuff(top, left, bottom, right);
+	}
 
-#if MacTarget /* This entire file is for Macintosh only */
-#include "MCOSGLUE.h"
-#define Have_OSGLUEcore 1
-#endif /* MacTarget */
+}
 
-#if WinTarget /* This entire file is for Windows only */
-#include "WNOSGLUE.h"
-#define Have_OSGLUEcore 1
-#endif /* WinTarget */
+LOCALPROC SetLongs(ui5b *p, long n)
+{
+	long i;
 
-#if XWnTarget /* This entire file is for X only */
-#include "XWOSGLUE.h"
-#define Have_OSGLUEcore 1
-#endif /* XWnTarget */
+	for (i = n; --i >= 0; ) {
+		*p++ = (ui5b) -1;
+	}
+}
 
-#ifndef Have_OSGLUEcore
-#include "PROSGLUE.h"
-#endif
+#include "STRCONST.h"
+
+#include "PLATGLUE.h"

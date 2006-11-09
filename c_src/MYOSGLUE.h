@@ -1,7 +1,7 @@
 /*
 	MYOSGLUE.h
 
-	Copyright (C) 2004 Philip Cummins, Richard F. Bannister, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Richard F. Bannister, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -52,7 +52,18 @@
 #define CurEmu kEmuPlus
 #endif
 
-EXPORTPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal);
+EXPORTPROC WarnMsgCorruptedROM(void);
+EXPORTPROC WarnMsgUnsupportedROM(void);
+
+#ifndef DetailedAbormalReport
+#define DetailedAbormalReport 0
+#endif
+
+#if DetailedAbormalReport
+EXPORTPROC WarnMsgAbnormal(char *s);
+#else
+EXPORTPROC WarnMsgAbnormal(void);
+#endif
 
 EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 
@@ -127,6 +138,30 @@ EXPORTVAR(ui4b, *RAM)
 
 EXPORTVAR(ui4b, *ROM)
 
+#ifndef IncludePbufs
+#define IncludePbufs 1
+#endif
+
+#if IncludePbufs
+
+#ifndef NumPbufs
+#define NumPbufs 4
+#endif
+
+#define NotAPbuf ((ui4b)0xFFFF)
+
+EXPORTVAR(ui5b, PbufAllocatedMask)
+EXPORTVAR(ui5b, PbufSize[NumPbufs])
+
+#define PbufIsAllocated(i) ((PbufAllocatedMask & ((ui5b)1 << (i))) != 0)
+
+EXPORTFUNC si4b PbufNew(ui5b count, ui4b *r);
+EXPORTPROC PbufDispose(ui4b i);
+EXPORTPROC PbufTransfer(void *Buffer,
+	ui4b i, ui5b offset, ui5b count, blnr IsWrite);
+
+#endif
+
 #ifndef NumDrives
 #if CurEmu <= kEmu512K
 #define NumDrives 2
@@ -146,7 +181,42 @@ EXPORTFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *So
 EXPORTFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count);
 EXPORTFUNC si4b vSonyEject(ui4b Drive_No);
 EXPORTFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count);
+
 EXPORTFUNC blnr AnyDiskInserted(void);
+
+#ifndef IncludeSonyRawMode
+#define IncludeSonyRawMode 1
+#endif
+
+#if IncludeSonyRawMode
+EXPORTVAR(blnr, vSonyRawMode)
+#endif
+
+#ifndef IncludeSonyGetName
+#define IncludeSonyGetName 1
+#endif
+
+#ifndef IncludeSonyNew
+#define IncludeSonyNew 1
+#endif
+
+#if IncludeSonyNew
+EXPORTVAR(blnr, vSonyNewDiskWanted)
+EXPORTVAR(ui5b, vSonyNewDiskSize)
+EXPORTFUNC si4b vSonyEjectDelete(ui4b Drive_No);
+#endif
+
+#ifndef IncludeSonyNameNew
+#define IncludeSonyNameNew 1
+#endif
+
+#if IncludeSonyNameNew
+EXPORTVAR(ui4b, vSonyNewDiskName)
+#endif
+
+#if IncludeSonyGetName
+EXPORTFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r);
+#endif
 
 EXPORTVAR(ui5b, CurMacDateInSeconds)
 EXPORTVAR(ui5b, CurMacLatitude)
@@ -161,75 +231,31 @@ EXPORTVAR(ui5b, CurMacDelta) /* (dlsDelta << 24) | (gmtDelta & 0x00FFFFFF) */
 
 EXPORTVAR(char, *screencomparebuff)
 
-EXPORTPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right);
-
-#ifndef UseControlKeys
-#define UseControlKeys 1
-#endif
-
-#if UseControlKeys
-EXPORTVAR(char, *CntrlDisplayBuff)
-#endif
-
-EXPORTVAR(blnr, RequestMacOff)
-
 EXPORTVAR(blnr, ForceMacOff)
 
-EXPORTVAR(blnr, RequestInsertDisk)
+EXPORTVAR(blnr, WantMacInterrupt)
 
-EXPORTVAR(si3b, TimeAdjust)
+EXPORTVAR(blnr, WantMacReset)
 
 EXPORTFUNC blnr ExtraTimeNotOver(void);
 
 EXPORTVAR(blnr, SpeedLimit)
 
-EXPORTVAR(blnr, SpeedStopped)
-
-EXPORTVAR(blnr, RunInBackground)
-
 EXPORTVAR(ui3b, SpeedValue)
-
-#ifndef EnableMagnify
-#define EnableMagnify 1
-#endif
-
-#ifndef EnableFullScreen
-#define EnableFullScreen (1 && UseControlKeys)
-#endif
-
-#ifndef EnableMouseMotion
-#define EnableMouseMotion (1 && EnableFullScreen)
-#endif
-
-#if UseControlKeys
-EXPORTVAR(blnr, ControlKeyPressed)
-#endif
-
-#if EnableFullScreen
-EXPORTVAR(blnr, WantFullScreen)
-#endif
-
-#if EnableFullScreen
-EXPORTPROC ToggleWantFullScreen(void);
-#endif
-
-#if EnableMagnify
-EXPORTVAR(blnr, WantMagnify)
-#endif
 
 EXPORTVAR(ui3b, CurMouseButton)
 
 EXPORTVAR(ui4b, CurMouseV)
 EXPORTVAR(ui4b, CurMouseH)
 
+#ifndef EnableMouseMotion
+#define EnableMouseMotion 1
+#endif
+
 #if EnableMouseMotion
 EXPORTVAR(blnr, HaveMouseMotion)
 EXPORTVAR(ui4b, MouseMotionV)
 EXPORTVAR(ui4b, MouseMotionH)
-#endif
-
-#if EnableMagnify
-EXPORTPROC ToggleWantMagnify(void);
 #endif
 
 #ifndef MySoundEnabled
@@ -243,7 +269,20 @@ EXPORTFUNC ui3p GetCurSoundOutBuff(void);
 #define SOUND_LEN 370
 #endif
 
+#ifndef IncludeHostTextClipExchange
+#define IncludeHostTextClipExchange 1
+#endif
+
+#if IncludeHostTextClipExchange
+EXPORTFUNC si4b HTCEexport(ui4b i);
+EXPORTFUNC si4b HTCEimport(ui4b *r);
+#endif
+
 EXPORTVAR(ui5b, theKeys[4])
+	/*
+		What the emulated keyboard thinks is the
+		state of the keyboard.
+	*/
 
 #define MKC_A 0x00
 #define MKC_B 0x0B

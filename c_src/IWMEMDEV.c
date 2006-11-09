@@ -1,7 +1,7 @@
 /*
 	IWMEVDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2006 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 	Emulates the IWM found in the Mac Plus.
 
-	This code adapted from "IWM.c" in vMac by Philip Cummins.
+	This code is adapted from "IWM.c" in vMac by Philip Cummins.
 */
 
 /* This is the emulation for the IWM, the Integrated Woz Machine. It's basically */

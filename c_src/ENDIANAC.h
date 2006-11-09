@@ -1,7 +1,7 @@
 /*
 	ENDIANAC.h
 
-	Copyright (C) 2003 Bernd Schmidt, Paul C. Pratt
+	Copyright (C) 2006 Bernd Schmidt, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -29,10 +29,6 @@
 #endif
 #else
 #define ENDIANAC_H
-#endif
-
-#ifndef BigEndianUnaligned
-#define BigEndianUnaligned 0
 #endif
 
 #define do_get_mem_byte(a) (*((ui3b *)(a)))
