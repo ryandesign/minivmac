@@ -293,6 +293,18 @@ GLOBALPROC DumpANote(char *s)
 	/* fprintf(DumpFile, "at %d\n", m68k_getpc1() - 0x00400000); */
 }
 
+EXPORTPROC DumpATable(ui5b *p, ui5b n);
+
+GLOBALPROC DumpATable(ui5b *p, ui5b n)
+{
+	si5b i;
+
+	for (i = 0; i < n; ++i) {
+		fprintf(DumpFile, "%d\n", p[i]);
+	}
+	/* fprintf(DumpFile, "at %d\n", m68k_getpc1() - 0x00400000); */
+}
+
 #endif
 
 /*--- main window data ---*/
@@ -351,10 +363,6 @@ LOCALPROC SetScrnRectFromCoords(Rect *r, si4b top, si4b left, si4b bottom, si4b 
 #if EnableMagnify
 #define MyScaledHeight (MyWindowScale * vMacScreenHeight)
 #define MyScaledWidth (MyWindowScale * vMacScreenWidth)
-#endif
-
-#ifndef UseOpenGL
-#define UseOpenGL 1 /* (EnableFullScreen && (! CALL_NOT_IN_CARBON)) */
 #endif
 
 #define EnableScalingBuff 1
@@ -2832,9 +2840,7 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 #endif
 #if EnableScalingBuff
 	ScalingBuff = malloc(vMacScreenNumBytes * (
-#if UseOpenGL
 		ScaleBuffSzMult < 8 ? 8 :
-#endif
 		ScaleBuffSzMult
 		));
 	if (ScalingBuff == NULL) {
@@ -3901,8 +3907,16 @@ LOCALFUNC blnr InitOSGLU(void)
 	return falseblnr;
 }
 
+#if MakeDumpFile
+IMPORTPROC DoDumpTable(void);
+#endif
+
 LOCALPROC UnInitOSGLU(void)
 {
+#if MakeDumpFile
+	DoDumpTable();
+#endif
+
 	if (MacMsgDisplayed) {
 		MacMsgDisplayOff();
 	}

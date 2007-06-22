@@ -30,6 +30,10 @@
 #define MayInline
 #endif
 
+#ifndef MayNotInline
+#define MayNotInline
+#endif
+
 #ifndef UnusedParam
 #define UnusedParam(p) (void) p
 #endif

@@ -936,7 +936,7 @@ LOCALPROC MySound_Start(void)
 		wfex.nBlockAlign = 1;
 		wfex.wBitsPerSample = 8;
 		wfex.cbSize = 0;
-		mmr = waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfex, 0, (DWORD) AppInstance,
+		mmr = waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfex, 0, 0 /* (DWORD) AppInstance */,
 						CALLBACK_NULL);
 		if (mmr != MMSYSERR_NOERROR) {
 			/* not recursive: MacMsg("waveOutOpen failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
@@ -1362,12 +1362,25 @@ LOCALPROC MyAppendSubmenuConvertName(HMENU hMenu,
 	HMENU hSubMenu, char *s)
 {
 	TCHAR ts[ClStrMaxLength + 1];
+	MENUITEMINFO mii;
 
 	NativeStrFromCStr(ts, s, falseblnr);
 
+#if 0
 	(void) InsertMenu(hMenu, 0xFFFFFFFF,
 		MF_BYPOSITION + MF_POPUP + MF_STRING + MF_ENABLED,
 		(UINT)hSubMenu, ts);
+#endif
+
+	memset(&mii, 0, sizeof(MENUITEMINFO));
+	mii.cbSize = sizeof(MENUITEMINFO);
+	mii.fMask = MIIM_TYPE | MIIM_SUBMENU;
+	mii.fType = MFT_STRING;
+	mii.hSubMenu = hSubMenu;
+	mii.dwTypeData = ts;
+	mii.cch = (UINT)_tcslen(ts);
+	(void) InsertMenuItem(hMenu, -1, TRUE,
+		&mii);
 }
 
 #ifndef kStrMenuFile_win
@@ -2410,7 +2423,7 @@ LOCALFUNC blnr LPTSTRtoHand(LPTSTR s, HGLOBAL *r)
 {
 	blnr IsOk = falseblnr;
 
-	UINT L = _tcslen(s);
+	size_t L = _tcslen(s);
 	HGLOBAL h = GlobalAlloc(GMEM_DDESHARE,
 		(L + 1) * sizeof(TCHAR));
 	if (h != NULL) {
@@ -2688,9 +2701,10 @@ LOCALPROC InsertADisk0(void)
 #if ! UseWinCE
 	TCHAR szFileTitle[256];
 #endif
-	UINT  i, cbString;
-	TCHAR  chReplace;
-	TCHAR  szFilter[256];
+	UINT i;
+	size_t cbString;
+	TCHAR chReplace;
+	TCHAR szFilter[256];
 	blnr IsOk;
 
 	szDirName[0] = (TCHAR)('\0');

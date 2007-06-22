@@ -863,7 +863,7 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 		case kACR:
 			if (WriteMem) {
 #if 1
-				if ((VIA.ACR & 0x10) != (Data & 0x10)) {
+				if ((VIA.ACR & 0x10) != ((ui3b)Data & 0x10)) {
 					/* shift direction has changed */
 					if ((Data & 0x10) == 0) {
 						/* no longer an output,

@@ -1,0 +1,703 @@
+/*
+	BLDUTIL3.i
+	Copyright (C) 2007 Paul Pratt
+
+	You can redistribute this file and/or modify it under the terms
+	of version 2 of the GNU General Public License as published by
+	the Free Software Foundation.  You should have received a copy
+	of the license along with this file; see the file COPYING.
+
+	This file is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	license for more details.
+*/
+
+/*
+	BuiLD system UTILities part 3
+*/
+
+
+LOCALVAR MyDir_R BaseDirR;
+LOCALVAR MyDir_R OutputDir0R;
+LOCALVAR MyDir_R OutputDirR;
+LOCALVAR MyDir_R ProjDirR;
+LOCALVAR MyDir_R ObjDirR;
+LOCALVAR MyDir_R SrcDirR;
+
+LOCALPROC WritepDtString(void)
+{
+	WriteCStrToDestFile((char *)pDt);
+}
+
+LOCALPROC WriteMaintainerName(void)
+{
+	WriteHandToDestFile(hMaintainerName);
+}
+
+LOCALPROC WriteHomePage(void)
+{
+	WriteHandToDestFile(hHomePage);
+}
+
+/* end of default value of options */
+
+#if 0
+LOCALPROC WriteVersionQuerry(void)
+{
+	printf("%s-%s.%s.%s\n", kStrAppAbbrev,
+		kMajorVersion, kMinorVersion, kMinorSubVersion);
+}
+#endif
+
+LOCALPROC WriteVersionStr(void)
+{
+	WriteCStrToDestFile(kMajorVersion);
+	WriteCStrToDestFile(".");
+	WriteCStrToDestFile(kMinorVersion);
+	WriteCStrToDestFile(".");
+	WriteCStrToDestFile(kMinorSubVersion);
+}
+
+LOCALPROC WriteAppVariationStr(void)
+{
+	WriteHandToDestFile(hVariationName);
+}
+
+LOCALPROC WriteGetInfoString(void)
+{
+	WriteAppVariationStr();
+	WriteCStrToDestFile(", Copyright ");
+	WriteCStrToDestFile(kStrCopyrightYear);
+	WriteCStrToDestFile(" maintained by ");
+	WriteMaintainerName();
+	WriteCStrToDestFile(".");
+}
+
+LOCALPROC WriteLProjName(void)
+{
+	WriteCStrToDestFile(GetLProjName(gbo_lang));
+}
+
+LOCALFUNC char * GetPlatformDirName(void)
+{
+	char *s;
+
+	switch (gbo_apifam) {
+		case gbk_apifam_mac:
+			s = "mac";
+			break;
+		case gbk_apifam_osx:
+#if OSXplatsep
+			s = "osx";
+#else
+			s = "mac";
+#endif
+			break;
+		case gbk_apifam_win:
+			s = "win";
+			break;
+		case gbk_apifam_xwn:
+			s = "xwn";
+			break;
+		default:
+			s = "gen";
+			break;
+	}
+	return s;
+}
+
+/* --- XML utilities --- */
+
+typedef void (*MyProc)(void);
+
+LOCALPROC WriteXMLtagBegin(char *s)
+{
+	WriteCStrToDestFile("<");
+	WriteCStrToDestFile(s);
+	WriteCStrToDestFile(">");
+}
+
+LOCALPROC WriteXMLtagEnd(char *s)
+{
+	WriteCStrToDestFile("</");
+	WriteCStrToDestFile(s);
+	WriteCStrToDestFile(">");
+}
+
+LOCALPROC WriteBeginXMLtagLine(char *s)
+{
+	WriteBgnDestFileLn();
+	WriteXMLtagBegin(s);
+	WriteEndDestFileLn();
+	++DestFileIndent;
+}
+
+LOCALPROC WriteEndXMLtagLine(char *s)
+{
+	--DestFileIndent;
+	WriteBgnDestFileLn();
+	WriteXMLtagEnd(s);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteXMLtagBeginValEndLine(char *t, char *v)
+{
+	WriteBgnDestFileLn();
+	WriteXMLtagBegin(t);
+	WriteCStrToDestFile(v);
+	WriteXMLtagEnd(t);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteXMLtagBeginProcValEndLine(char *t, MyProc v)
+{
+	WriteBgnDestFileLn();
+	WriteXMLtagBegin(t);
+	v();
+	WriteXMLtagEnd(t);
+	WriteEndDestFileLn();
+}
+
+/* --- end XML utilities --- */
+
+
+LOCALPROC WritePathInDirToDestFile0(MyProc p, MyProc ps,
+	blnr isdir)
+{
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+		case gbk_ide_mw8:
+			if (p != NULL) {
+				p();
+			} else {
+				WriteCStrToDestFile(":");
+			}
+			ps();
+			if (isdir) {
+				WriteCStrToDestFile(":");
+			}
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			if (p != NULL) {
+				p();
+			}
+			ps();
+			if (isdir) {
+				WriteCStrToDestFile("/");
+			}
+			break;
+#if SupportWinIDE
+		case gbk_ide_msv:
+		case gbk_ide_dvc:
+		case gbk_ide_lcc:
+			if (p != NULL) {
+				p();
+				WriteBackSlashToDestFile();
+			} else {
+				if (gbk_ide_lcc == cur_ide) {
+					WriteCStrToDestFile("c:\\output\\");
+				} else if ((gbk_ide_msv == cur_ide) && (ide_vers >= 8000)) {
+					WriteCStrToDestFile(".\\");
+				}
+			}
+			ps();
+			break;
+#endif
+	}
+}
+
+LOCALPROC WriteFileInDirToDestFile0(MyProc p, MyProc ps)
+{
+	WritePathInDirToDestFile0(p, ps, falseblnr);
+}
+
+LOCALPROC WriteSubDirToDestFile(MyProc p, MyProc ps)
+{
+	WritePathInDirToDestFile0(p, ps, trueblnr);
+}
+
+LOCALPROC Write_toplevel_f_ToDestFile(MyProc ps)
+{
+	WritePathInDirToDestFile0(NULL, ps, falseblnr);
+}
+
+LOCALPROC Write_toplevel_d_ToDestFile(MyProc ps)
+{
+	WritePathInDirToDestFile0(NULL, ps, trueblnr);
+}
+
+LOCALPROC Write_src_d_Name(void)
+{
+	WriteCStrToDestFile("src");
+}
+
+LOCALPROC Write_src_d_ToDestFile(void)
+{
+	Write_toplevel_d_ToDestFile(Write_src_d_Name);
+}
+
+LOCALPROC Write_obj_d_Name(void)
+{
+	WriteCStrToDestFile("obj");
+}
+
+LOCALPROC Write_obj_d_ToDestFile(void)
+{
+	Write_toplevel_d_ToDestFile(Write_obj_d_Name);
+}
+
+LOCALPROC WriteLProjFolderName(void)
+{
+	WriteLProjName();
+	WriteCStrToDestFile(".lproj");
+}
+
+LOCALPROC WriteLProjFolderPath(void)
+{
+	WriteSubDirToDestFile(Write_src_d_ToDestFile,
+		WriteLProjFolderName);
+}
+
+LOCALPROC WriteStrAppAbbrev(void)
+{
+	WriteCStrToDestFile(kStrAppAbbrev);
+}
+
+LOCALPROC WriteMachoAppNameStr(void)
+{
+	WriteStrAppAbbrev();
+	WriteCStrToDestFile(".app");
+}
+
+LOCALPROC Write_machobun_d_ToDestFile(void)
+{
+	Write_toplevel_d_ToDestFile(WriteMachoAppNameStr);
+}
+
+LOCALPROC Write_contents_d_Name(void)
+{
+	WriteCStrToDestFile("Contents");
+}
+
+LOCALPROC Write_machocontents_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_machobun_d_ToDestFile,
+		Write_contents_d_Name);
+}
+
+LOCALPROC Write_macos_d_Name(void)
+{
+	WriteCStrToDestFile("MacOS");
+}
+
+LOCALPROC Write_machomac_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_machocontents_d_ToDestFile,
+		Write_macos_d_Name);
+}
+
+LOCALPROC Write_resources_d_Name(void)
+{
+	WriteCStrToDestFile("Resources");
+}
+
+LOCALPROC Write_machores_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_machocontents_d_ToDestFile,
+		Write_resources_d_Name);
+}
+
+LOCALPROC Write_machobinpath_ToDestFile(void)
+{
+	if (HaveMacBundleApp) {
+		WriteFileInDirToDestFile0(Write_machomac_d_ToDestFile, WriteStrAppAbbrev);
+	} else {
+		Write_toplevel_f_ToDestFile(WriteStrAppAbbrev);
+	}
+}
+
+LOCALPROC Write_tmachobun_d_Name(void)
+{
+	WriteCStrToDestFile("AppTemp");
+}
+
+LOCALPROC Write_tmachobun_d_ToDestFile(void)
+{
+	Write_toplevel_d_ToDestFile(Write_tmachobun_d_Name);
+}
+
+LOCALPROC Write_tmachocontents_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_tmachobun_d_ToDestFile,
+		Write_contents_d_Name);
+}
+
+LOCALPROC Write_tmachomac_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_tmachocontents_d_ToDestFile,
+		Write_macos_d_Name);
+}
+
+LOCALPROC Write_tmachores_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_tmachocontents_d_ToDestFile,
+		Write_resources_d_Name);
+}
+
+LOCALPROC Write_tmacholang_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_tmachores_d_ToDestFile,
+		WriteLProjFolderName);
+}
+
+LOCALPROC Write_tmachobinpath_ToDestFile(void)
+{
+	WriteFileInDirToDestFile0(Write_tmachomac_d_ToDestFile, WriteStrAppAbbrev);
+}
+
+LOCALPROC Write_umachobun_d_Name(void)
+{
+	WriteStrAppAbbrev();
+	WriteCStrToDestFile("_u.app");
+}
+
+LOCALPROC Write_umachobun_d_ToDestFile(void)
+{
+	Write_toplevel_d_ToDestFile(Write_umachobun_d_Name);
+}
+
+LOCALPROC Write_umachocontents_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_umachobun_d_ToDestFile,
+		Write_contents_d_Name);
+}
+
+LOCALPROC Write_umachomac_d_ToDestFile(void)
+{
+	WriteSubDirToDestFile(Write_umachocontents_d_ToDestFile,
+		Write_macos_d_Name);
+}
+
+LOCALPROC Write_umachobinpath_ToDestFile(void)
+{
+	WriteFileInDirToDestFile0(Write_umachomac_d_ToDestFile, WriteStrAppAbbrev);
+}
+
+LOCALPROC WriteWinAppNameStr(void)
+{
+	WriteStrAppAbbrev();
+	WriteCStrToDestFile(".exe");
+}
+
+LOCALPROC WriteWinAppNamePath(void)
+{
+	Write_toplevel_f_ToDestFile(WriteWinAppNameStr);
+}
+
+LOCALPROC WriteInfoPlistFileName(void)
+{
+	WriteCStrToDestFile("Info.plist");
+}
+
+LOCALPROC WriteInfoPlistFilePath(void)
+{
+	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WriteInfoPlistFileName);
+}
+
+LOCALPROC WriteDummyLangFileName(void)
+{
+	WriteCStrToDestFile("dummy.txt");
+}
+
+LOCALPROC Write_tmachoLangDummyPath(void)
+{
+	WriteFileInDirToDestFile0(Write_tmacholang_d_ToDestFile, WriteDummyLangFileName);
+}
+
+LOCALPROC Write_tmachoLangDummyContents(void)
+{
+	WriteCStrToDestFile("dummy");
+}
+
+LOCALPROC Write_tmachoPkgInfoName(void)
+{
+	WriteCStrToDestFile("PkgInfo");
+}
+
+LOCALPROC Write_tmachoPkgInfoPath(void)
+{
+	WriteFileInDirToDestFile0(Write_tmachocontents_d_ToDestFile, Write_tmachoPkgInfoName);
+}
+
+LOCALPROC Write_tmachoPkgInfoContents(void)
+{
+	WriteCStrToDestFile("APPL");
+	WriteCStrToDestFile(kMacCreatorSig);
+}
+
+LOCALPROC Write_machoRsrcName(void)
+{
+	WriteStrAppAbbrev();
+	WriteCStrToDestFile(".rsrc");
+}
+
+LOCALPROC Write_machoRsrcPath(void)
+{
+	WriteFileInDirToDestFile0(Write_machores_d_ToDestFile, Write_machoRsrcName);
+}
+
+LOCALPROC Write_AppIconName(void)
+{
+	WriteCStrToDestFile("AppIcon.icns");
+}
+
+LOCALPROC Write_machoAppIconPath(void)
+{
+	WriteFileInDirToDestFile0(Write_machores_d_ToDestFile, Write_AppIconName);
+}
+
+LOCALPROC Write_srcAppIconPath(void)
+{
+	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, Write_AppIconName);
+}
+
+LOCALPROC WriteMainRsrcName(void)
+{
+	switch (cur_ide) {
+#if SupportWinIDE
+		case gbk_ide_msv:
+		case gbk_ide_dvc:
+		case gbk_ide_lcc:
+			WriteCStrToDestFile("main.rc");
+			break;
+#endif
+		default:
+			WriteCStrToDestFile("main.r");
+			break;
+	}
+}
+
+LOCALPROC WriteMainRsrcSrcPath(void)
+{
+	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WriteMainRsrcName);
+}
+
+LOCALPROC WriteMainRsrcObjName(void)
+{
+	switch (cur_ide) {
+#if SupportWinIDE
+		case gbk_ide_msv:
+			WriteCStrToDestFile("main.res");
+			break;
+#endif
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("main.rsrc");
+			break;
+	}
+}
+
+LOCALPROC WriteMainRsrcObjPath(void)
+{
+	WriteFileInDirToDestFile0(Write_obj_d_ToDestFile, WriteMainRsrcObjName);
+}
+
+LOCALPROC WriteCNFGGLOBName(void)
+{
+	WriteCStrToDestFile("CNFGGLOB.h");
+}
+
+LOCALPROC WriteCNFGGLOBPath(void)
+{
+	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WriteCNFGGLOBName);
+}
+
+LOCALPROC WriteCNFGRAPIName(void)
+{
+	WriteCStrToDestFile("CNFGRAPI.h");
+}
+
+LOCALPROC WriteCNFGRAPIPath(void)
+{
+	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WriteCNFGRAPIName);
+}
+
+LOCALPROC WritePathArgInMakeCmnd(MyProc p)
+{
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile(" \"");
+			p();
+			WriteCStrToDestFile("\"");
+			break;
+		default:
+			break;
+	}
+}
+
+LOCALPROC WriteMkDir(MyProc p)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("NewFolder");
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("mkdir");
+			break;
+		default:
+			break;
+	}
+	WritePathArgInMakeCmnd(p);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteRmDir(MyProc p)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("Delete -i -y");
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("rm -fr");
+			break;
+		default:
+			break;
+	}
+	WritePathArgInMakeCmnd(p);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteCopyFile(MyProc pfrom, MyProc pto)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("Duplicate");
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("cp");
+			break;
+		default:
+			break;
+	}
+	WritePathArgInMakeCmnd(pfrom);
+	WritePathArgInMakeCmnd(pto);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteMoveDir(MyProc pfrom, MyProc pto)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("Move");
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("mv");
+			break;
+		default:
+			break;
+	}
+	WritePathArgInMakeCmnd(pfrom);
+	WritePathArgInMakeCmnd(pto);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteEchoToNewFile(MyProc ptext, MyProc pto, blnr newline)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("Echo");
+			if (! newline) {
+				WriteCStrToDestFile(" -n");
+			}
+			WriteCStrToDestFile(" \"");
+			ptext();
+			WriteCStrToDestFile("\" >");
+			WritePathArgInMakeCmnd(pto);
+			break;
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("echo");
+			if (! newline) {
+				WriteCStrToDestFile(" -n");
+			}
+			WriteCStrToDestFile(" \"");
+			ptext();
+			WriteCStrToDestFile("\" >");
+			WritePathArgInMakeCmnd(pto);
+			break;
+		default:
+			break;
+	}
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteMakeDependFile(MyProc p)
+{
+	switch (cur_ide) {
+#if SupportWinIDE
+		case gbk_ide_msv:
+#endif
+		case gbk_ide_mpw:
+			WriteCStrToDestFile(" ");
+			WriteQuoteToDestFile();
+			p();
+			WriteQuoteToDestFile();
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile(" ");
+			p();
+			break;
+		default:
+			break;
+	}
+}
+
+LOCALPROC WriteMakeRule(MyProc ptarg,
+	MyProc pdeps, MyProc pbody)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteQuoteToDestFile();
+			ptarg();
+			WriteQuoteToDestFile();
+			WriteCStrToDestFile(" \304");
+			pdeps();
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			ptarg();
+			WriteCStrToDestFile(" :");
+			pdeps();
+			break;
+#if SupportWinIDE
+		case gbk_ide_msv:
+			WriteQuoteToDestFile();
+			ptarg();
+			WriteQuoteToDestFile();
+			WriteCStrToDestFile(" :");
+			pdeps();
+			break;
+#endif
+		default:
+			break;
+	}
+	WriteEndDestFileLn();
+	++DestFileIndent;
+		pbody();
+	--DestFileIndent;
+}

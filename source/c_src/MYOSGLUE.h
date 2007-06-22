@@ -48,10 +48,6 @@
 #define kEmuClassic2_5M 13
 #define kEmuClassic     14
 
-#ifndef CurEmu
-#define CurEmu kEmuPlus
-#endif
-
 EXPORTPROC WarnMsgCorruptedROM(void);
 EXPORTPROC WarnMsgUnsupportedROM(void);
 
@@ -160,14 +156,6 @@ EXPORTPROC PbufDispose(ui4b i);
 EXPORTPROC PbufTransfer(void *Buffer,
 	ui4b i, ui5b offset, ui5b count, blnr IsWrite);
 
-#endif
-
-#ifndef NumDrives
-#if CurEmu <= kEmu512K
-#define NumDrives 2
-#else
-#define NumDrives 6
-#endif
 #endif
 
 EXPORTVAR(ui5b, vSonyWritableMask)
