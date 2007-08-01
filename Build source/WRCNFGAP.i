@@ -1,6 +1,6 @@
 /*
 	WRCNFGAP.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -71,6 +71,8 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 #endif
 		{
 			WriteDestFileLn("#include <Carbon.h>");
+			WriteDestFileLn("#include <stdlib.h>");
+			WriteDestFileLn("#include <string.h>");
 #if UseOpenGLinOSX
 			WriteDestFileLn("#include <agl.h>");
 #endif
@@ -151,14 +153,6 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 		}
 	}
 
-#if SupportWinIDE
-	if ((cur_ide == gbk_ide_msv) && (ide_vers >= 6000)) {
-		WriteBlankLineToDestFile();
-		WriteDestFileLn("/* restore warnings */");
-		WriteDestFileLn("#pragma warning(pop)");
-	}
-#endif
-
 	if (gbo_cpufam == gbk_cpufam_68k) {
 		if (cur_ide == gbk_ide_mpw) {
 			WriteBlankLineToDestFile();
@@ -179,6 +173,19 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 		WriteSingleQuoteToDestFile();
 		WriteEndDestFileLn();
 	}
+
+#ifdef Have_SPCNFGAP
+	WriteAppSpecificCNFGRAPIoptions();
+#endif
+
+#if SupportWinIDE
+	if ((cur_ide == gbk_ide_msv) && (ide_vers >= 6000)) {
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("/* restore warnings */");
+		WriteDestFileLn("#pragma warning(pop)");
+	}
+#endif
+
 	WriteCloseDestFile();
 	}
 }

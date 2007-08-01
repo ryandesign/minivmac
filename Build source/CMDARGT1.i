@@ -1,6 +1,6 @@
 /*
 	CMDARGT1.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -72,4 +72,4 @@ LOCALPROC DisplayRunErr(char *s)
 	fprintf(stderr, "%s\n", s);
 }
 
-LOCALVAR blnr GotInterrupt = falseblnr;
+LOCALVAR blnr AbortRequested = falseblnr;

@@ -1,6 +1,6 @@
 /*
 	NZPLIBMC.i
-	Copyright (C) 2007 Paul Pratt, Mark Adler, and many others
+	Copyright (C) 2007 Paul C. Pratt, Mark Adler, and many others
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -332,7 +332,7 @@ LOCALFUNC blnr xbh_WriteToFile(xbh_r *r, short refNum)
 struct nzplib_r
 {
 	MyPtr SavepDt;
-	CInfoPBRec  cPB;
+	CInfoPBRec cPB;
 
 	short ofd;
 
@@ -471,7 +471,7 @@ static blnr nzplib_ProcessOne0(void)
 	l_ver = (ui4r)10; /* Need PKUNZIP 2.0 except for store */
 	l_flg = 0;  /* to be updated later */
 	l_lflg = l_flg;
-	l_how = (ui4r)zipmeth_STORE; /* may be changed later  */
+	l_how = (ui4r)zipmeth_STORE; /* may be changed later */
 	l_att = zipatt_BINARY; /* set sensible value in header */
 	if (CatInfoIsFolder(&nzplib_gd()->cPB)) {
 		l_atx = MSDOS_DIR_ATTR;

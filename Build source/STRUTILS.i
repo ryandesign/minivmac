@@ -1,6 +1,6 @@
 /*
 	STRUTILS.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -80,6 +80,12 @@ GLOBALPROC PStrFromCStr(ps3p r, /*CONST*/ char *s)
 	}
 	*r++ = (MyCharR)L;
 	MyMoveBytes((MyPtr)s, (MyPtr)r, L);
+}
+
+GLOBALPROC PStrFromChar(ps3p r, char x)
+{
+	r[0] = 1;
+	r[1] = x;
 }
 
 GLOBALPROC PStrFromPtr(MyPtr p, uimr L, ps3p s)

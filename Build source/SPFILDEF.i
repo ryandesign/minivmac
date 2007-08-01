@@ -28,6 +28,9 @@ static void DoAllExtraHeaders(tDoOneExtraHeader p)
 	p(kDepDirCSrc, "ENDIANAC.h");
 	p(kDepDirPlat, "PLATGLUE.h");
 	p(kDepDirLang, "STRCONST.h");
+	if (WantAltKeysMode) {
+		p(kDepDirCSrc, "ALTKEYSM.h");
+	}
 	p(kDepDirCSrc, "CONTROLM.h");
 }
 

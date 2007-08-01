@@ -1,6 +1,6 @@
 /*
 	BLDUTIL3.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -265,15 +265,66 @@ LOCALPROC WriteStrAppAbbrev(void)
 	WriteCStrToDestFile(kStrAppAbbrev);
 }
 
-LOCALPROC WriteMachoAppNameStr(void)
+LOCALPROC WriteAppNameStr(void)
 {
 	WriteStrAppAbbrev();
-	WriteCStrToDestFile(".app");
+	switch (gbo_apifam) {
+		case gbk_apifam_osx:
+			if (HaveMacBundleApp) {
+				WriteCStrToDestFile(".app");
+			}
+			break;
+		case gbk_apifam_win:
+			WriteCStrToDestFile(".exe");
+			break;
+		default:
+			break;
+	}
 }
 
-LOCALPROC Write_machobun_d_ToDestFile(void)
+LOCALPROC WriteAppNamePath(void)
 {
-	Write_toplevel_d_ToDestFile(WriteMachoAppNameStr);
+	if (HaveMacBundleApp) {
+		Write_toplevel_d_ToDestFile(WriteAppNameStr);
+	} else {
+		Write_toplevel_f_ToDestFile(WriteAppNameStr);
+	}
+}
+
+LOCALPROC WriteStrAppUnabrevName(void)
+{
+	WriteCStrToDestFile(kStrAppName);
+}
+
+LOCALPROC WriteAppUnabrevName(void)
+{
+	switch (gbo_apifam) {
+		case gbk_apifam_mac:
+			WriteStrAppUnabrevName();
+			break;
+		case gbk_apifam_osx:
+			WriteStrAppUnabrevName();
+			if (HaveMacBundleApp) {
+				WriteCStrToDestFile(".app");
+			}
+			break;
+		case gbk_apifam_win:
+			WriteStrAppUnabrevName();
+			WriteCStrToDestFile(".exe");
+			break;
+		default:
+			WriteStrAppAbbrev();
+			break;
+	}
+}
+
+LOCALPROC WriteAppUnabrevPath(void)
+{
+	if (HaveMacBundleApp) {
+		Write_toplevel_d_ToDestFile(WriteAppUnabrevName);
+	} else {
+		Write_toplevel_f_ToDestFile(WriteAppUnabrevName);
+	}
 }
 
 LOCALPROC Write_contents_d_Name(void)
@@ -283,7 +334,7 @@ LOCALPROC Write_contents_d_Name(void)
 
 LOCALPROC Write_machocontents_d_ToDestFile(void)
 {
-	WriteSubDirToDestFile(Write_machobun_d_ToDestFile,
+	WriteSubDirToDestFile(WriteAppNamePath,
 		Write_contents_d_Name);
 }
 
@@ -314,7 +365,7 @@ LOCALPROC Write_machobinpath_ToDestFile(void)
 	if (HaveMacBundleApp) {
 		WriteFileInDirToDestFile0(Write_machomac_d_ToDestFile, WriteStrAppAbbrev);
 	} else {
-		Write_toplevel_f_ToDestFile(WriteStrAppAbbrev);
+		WriteAppNamePath();
 	}
 }
 
@@ -383,17 +434,6 @@ LOCALPROC Write_umachomac_d_ToDestFile(void)
 LOCALPROC Write_umachobinpath_ToDestFile(void)
 {
 	WriteFileInDirToDestFile0(Write_umachomac_d_ToDestFile, WriteStrAppAbbrev);
-}
-
-LOCALPROC WriteWinAppNameStr(void)
-{
-	WriteStrAppAbbrev();
-	WriteCStrToDestFile(".exe");
-}
-
-LOCALPROC WriteWinAppNamePath(void)
-{
-	Write_toplevel_f_ToDestFile(WriteWinAppNameStr);
 }
 
 LOCALPROC WriteInfoPlistFileName(void)
@@ -523,12 +563,68 @@ LOCALPROC WriteCNFGRAPIPath(void)
 	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WriteCNFGRAPIName);
 }
 
+LOCALPROC WriteAppBinTarName(void)
+{
+	WriteAppVariationStr();
+	WriteCStrToDestFile(".bin.tar");
+}
+
+LOCALPROC WriteAppBinTarPath(void)
+{
+	Write_toplevel_f_ToDestFile(WriteAppBinTarName);
+}
+
+LOCALPROC WriteAppBinTgzName(void)
+{
+	WriteAppVariationStr();
+	WriteCStrToDestFile(".bin.tgz");
+}
+
+LOCALPROC WriteAppBinTgzPath(void)
+{
+	Write_toplevel_f_ToDestFile(WriteAppBinTgzName);
+}
+
+LOCALPROC WriteAppBinSitName(void)
+{
+	WriteAppVariationStr();
+	WriteCStrToDestFile(".bin.sit");
+}
+
+LOCALPROC WriteAppBinSitPath(void)
+{
+	Write_toplevel_f_ToDestFile(WriteAppBinSitName);
+}
+
+LOCALPROC WriteAppBinZipName(void)
+{
+	WriteAppVariationStr();
+	WriteCStrToDestFile(".bin.zip");
+}
+
+LOCALPROC WriteAppBinZipPath(void)
+{
+	Write_toplevel_f_ToDestFile(WriteAppBinZipName);
+}
+
+LOCALPROC WriteCheckSumFileName(void)
+{
+	WriteAppVariationStr();
+	WriteCStrToDestFile(".md5.txt");
+}
+
+LOCALPROC WriteCheckSumFilePath(void)
+{
+	Write_toplevel_f_ToDestFile(WriteCheckSumFileName);
+}
+
 LOCALPROC WritePathArgInMakeCmnd(MyProc p)
 {
 	switch (cur_ide) {
 		case gbk_ide_mpw:
 		case gbk_ide_bgc:
 		case gbk_ide_xcd:
+		case gbk_ide_msv:
 			WriteCStrToDestFile(" \"");
 			p();
 			WriteCStrToDestFile("\"");
@@ -566,6 +662,27 @@ LOCALPROC WriteRmDir(MyProc p)
 		case gbk_ide_bgc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("rm -fr");
+			break;
+		default:
+			break;
+	}
+	WritePathArgInMakeCmnd(p);
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteRmFile(MyProc p)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("Delete -i");
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("rm -f");
+			break;
+		case gbk_ide_msv:
+			WriteCStrToDestFile("-@erase");
 			break;
 		default:
 			break;

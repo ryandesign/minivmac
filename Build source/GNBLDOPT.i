@@ -1,6 +1,6 @@
 /*
 	GNBLDOPT.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -166,6 +166,8 @@ enum {
 	gbk_targ_mx11, /* X11 for MacOS X PowerPC */
 	gbk_targ_mi11, /* X11 for MacOS X Intel */
 	gbk_targ_lx86, /* X11 for linux on x86 */
+	gbk_targ_slrs, /* Solaris SPARC */
+	gbk_targ_sl86, /* Solaris Intel */
 	kNumTargets
 };
 
@@ -210,6 +212,12 @@ LOCALFUNC char * GetTargetName(int i)
 			break;
 		case gbk_targ_lx86:
 			s = "lx86";
+			break;
+		case gbk_targ_slrs:
+			s = "slrs";
+			break;
+		case gbk_targ_sl86:
+			s = "sl86";
 			break;
 		default:
 			s = "(unknown Target)";
@@ -316,6 +324,8 @@ LOCALPROC ChooseIde(void)
 				cur_ide = gbk_ide_msv;
 				break;
 			case gbk_targ_lx86:
+			case gbk_targ_slrs:
+			case gbk_targ_sl86:
 			default:
 				cur_ide = gbk_ide_bgc;
 				break;
@@ -356,6 +366,20 @@ LOCALPROC ChooseIdeVers(void)
 	}
 }
 
+/* option: print file list */
+
+LOCALVAR blnr CurPackageOut;
+
+LOCALPROC ResetPackageOut(void)
+{
+	CurPackageOut = falseblnr;
+}
+
+LOCALFUNC blnr TryAsPackageOutNot(void)
+{
+	return FlagTryAsOptionNot("-pk", &CurPackageOut);
+}
+
 /* option: use command line tools */
 
 LOCALVAR blnr UseCmndLine;
@@ -370,12 +394,20 @@ LOCALFUNC blnr TryAsCmndLineOptionNot(void)
 	return FlagTryAsOptionNot("-cl", &UseCmndLine);
 }
 
+LOCALPROC ChooseCmndLine(void)
+{
+	if (! UseCmndLine) {
+		UseCmndLine = CurPackageOut;
+	}
+}
+
 /* derived option: target cpu family */
 
 enum {
 	gbk_cpufam_68k, /* Motorola 680x0 */
 	gbk_cpufam_ppc, /* PowerPC */
 	gbk_cpufam_x86, /* Intel 80x86 */
+	gbk_cpufam_spr, /* SPARC */
 	kNumCPUFamilies
 };
 
@@ -396,9 +428,13 @@ LOCALPROC ChooseCPUFam(void)
 			break;
 		case gbk_targ_wx86:
 		case gbk_targ_lx86:
+		case gbk_targ_sl86:
 		case gbk_targ_imch:
 		case gbk_targ_mi11:
 			gbo_cpufam = gbk_cpufam_x86;
+			break;
+		case gbk_targ_slrs:
+			gbo_cpufam = gbk_cpufam_spr;
 			break;
 	}
 }
@@ -432,6 +468,8 @@ LOCALPROC ChooseAPIFam(void)
 			gbo_apifam = gbk_apifam_win;
 			break;
 		case gbk_targ_lx86:
+		case gbk_targ_slrs:
+		case gbk_targ_sl86:
 		case gbk_targ_mx11:
 		case gbk_targ_mi11:
 			gbo_apifam = gbk_apifam_xwn;
@@ -799,7 +837,9 @@ LOCALPROC ChooseHaveAsm(void)
 {
 	HaveAsm = falseblnr;
 	if (gbo_cpufam == gbk_cpufam_ppc) {
-		if (! ((cur_targ == gbk_targ_mach) && (cur_ide == gbk_ide_mw8))) {
+		if (! ((cur_ide == gbk_ide_mw8) && (cur_targ == gbk_targ_mach)))
+		if (! ((cur_ide == gbk_ide_xcd) && (! UseCmndLine) && (ide_vers < 1500)))
+		{
 			HaveAsm = trueblnr;
 		}
 	}
@@ -850,9 +890,9 @@ LOCALPROC ChooseVariationName(void)
 		PStrApndCStr(s, ".");
 		PStrApndCStr(s, kMinorSubVersion);
 		PStrApndCStr(s, "-");
-		PStrApndCStr(s, GetIdeName(cur_ide));
+		/* PStrApndCStr(s, GetIdeName(cur_ide)); */
 		PStrApndCStr(s, GetTargetName(cur_targ));
-		PStrApndCStr(s, GetDbgLvlName(gbo_dbg));
+		/* PStrApndCStr(s, GetDbgLvlName(gbo_dbg)); */
 		(void) PStr2Hand(s, &hVariationName);
 	}
 }
@@ -865,6 +905,7 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetTargetOption();
 	ResetIdeOption();
 	ResetIdeVersOption();
+	ResetPackageOut();
 	ResetCmndLine();
 	ResetDbgOption();
 	ResetLangOption();
@@ -882,6 +923,7 @@ LOCALFUNC blnr TryAsGNOptionNot(void)
 	if (TryAsTargetOptionNot())
 	if (TryAsIdeOptionNot())
 	if (TryAsIdeVersOptionNot())
+	if (TryAsPackageOutNot())
 	if (TryAsCmndLineOptionNot())
 	if (TryAsDbgOptionNot())
 	if (TryAsEolOptionNot())
@@ -904,6 +946,7 @@ LOCALFUNC blnr AutoChooseGNSettings(void)
 	{
 		ChooseIde();
 		ChooseIdeVers();
+		ChooseCmndLine();
 		ChooseCPUFam();
 		ChooseAPIFam();
 		ChooseDbgOption();

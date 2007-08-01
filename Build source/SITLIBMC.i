@@ -1,6 +1,6 @@
 /*
 	SITLIBMC.i
-	Copyright (C) 2007 Paul Pratt, Tom Bereiter, Nigel Perry,
+	Copyright (C) 2007 Paul C. Pratt, Tom Bereiter, Nigel Perry,
 		Mark G. Mendel
 
 	You can redistribute this file and/or modify it under the terms
@@ -39,7 +39,7 @@
 	|      sit file1
 	|
 	|  Tom Bereiter
-	|   ..!{rutgers, ames}!cs.utexas.edu!halley!rolex!twb
+	|   ..!{rutgers,ames}!cs.utexas.edu!halley!rolex!twb
 	|
 	| This version for CAP aufs files based on info from aufs source + mcvert etc.
 	| Aufs version is program is called AUFSNAME (default stuffit)

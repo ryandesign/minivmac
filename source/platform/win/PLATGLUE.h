@@ -232,6 +232,18 @@ LOCALVAR HINSTANCE AppInstance;
 #define myVK_RightBracket 0xDD
 #define myVK_Grave 0xC0
 
+/* some new ones, need to check if in all header versions */
+#define myVK_PRIOR 0x21
+#define myVK_NEXT 0x22
+#define myVK_END 0x23
+#define myVK_HOME 0x24
+#define myVK_INSERT 0x2D
+#define myVK_DELETE 0x2E
+#define myVK_HELP 0x2F
+#define myVK_SCROLL 0x91
+#define myVK_SNAPSHOT 0x2C
+#define myVK_PAUSE 0x13
+
 LOCALVAR si3b WinKey2Mac[256];
 
 LOCALPROC AssignOneMacKey(ui3b WinKey, si3b MacKey)
@@ -243,7 +255,7 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 {
 	int i;
 
-	for (i = 0; i < 256; i++) {
+	for (i = 0; i < 256; ++i) {
 		WinKey2Mac[i] = -1;
 	}
 
@@ -402,16 +414,27 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 	AssignOneMacKey(VK_DOWN, MKC_Down);
 	AssignOneMacKey(VK_UP, MKC_Up);
 
+	AssignOneMacKey(myVK_PRIOR, MKC_PageUp);
+	AssignOneMacKey(myVK_NEXT, MKC_PageDown);
+	AssignOneMacKey(myVK_END, MKC_End);
+	AssignOneMacKey(myVK_HOME, MKC_Home);
+	AssignOneMacKey(myVK_INSERT, MKC_Help);
+	AssignOneMacKey(myVK_DELETE, MKC_ForwardDel);
+	AssignOneMacKey(myVK_HELP, MKC_Help);
+	AssignOneMacKey(myVK_SNAPSHOT, MKC_Print);
+	AssignOneMacKey(myVK_SCROLL, MKC_ScrollLock);
+	AssignOneMacKey(myVK_PAUSE, MKC_Pause);
+
+	InitKeyCodes();
+
 	return trueblnr;
 }
 
 LOCALPROC DoKeyCode(int i, blnr down)
 {
-	if (i >= 0 && i < 256) {
-		int key = WinKey2Mac[i];
-		if (key >= 0) {
-			Keyboard_UpdateKeyMap2(key, down);
-		}
+	int key = WinKey2Mac[i];
+	if (key >= 0) {
+		Keyboard_UpdateKeyMap2(key, down);
 	}
 }
 
@@ -456,36 +479,54 @@ LOCALPROC CheckForLostKeyUps(void)
 }
 #endif
 
+LOCALPROC DoVKcode0(int i, blnr down)
+{
+#if EnableGrabSpecialKeys
+	if (HaveSetSysParam) {
+		/* will need to check for lost key ups */
+		if (VK_LWIN == i) {
+			VK_LWIN_pressed = down;
+		} else if (VK_RWIN == i) {
+			VK_RWIN_pressed = down;
+		}
+	}
+#endif
+	DoKeyCode(i, down);
+}
+
 LOCALPROC DoVKcode(int i, blnr down)
 {
 	if (i == VK_CAPITAL) {
 		CheckTheCapsLock();
-	} else {
-#if EnableGrabSpecialKeys
-		if (HaveSetSysParam) {
-			/* will need to check for lost key ups */
-			if (VK_LWIN == i) {
-				VK_LWIN_pressed = down;
-			} else if (VK_RWIN == i) {
-				VK_RWIN_pressed = down;
-			}
-		}
-#endif
-		DoKeyCode(i, down);
+	} else if (i >= 0 && i < 256) {
+		DoVKcode0(i, down);
 	}
 }
 
-LOCALPROC InitKeyCodes(void)
+LOCALVAR blnr WantCmdOptOnReconnect = falseblnr;
+
+LOCALPROC ReconnectKeyCodes3(void)
 {
-	theKeys[0] = 0;
-	theKeys[1] = 0;
-	theKeys[2] = 0;
-	theKeys[3] = 0;
+	int i;
 
 	CheckTheCapsLock();
 
-	Keyboard_UpdateKeyMap(MKC_Control, ControlKeyPressed);
+	if (WantCmdOptOnReconnect) {
+		WantCmdOptOnReconnect = falseblnr;
 
+		for (i = 0; i < 256; ++i) {
+			if ((GetKeyState(i) & 0x8000) != 0) {
+				if (i != VK_CAPITAL) {
+					DoVKcode0(i, trueblnr);
+				}
+			}
+		}
+	}
+}
+
+LOCALPROC DisconnectKeyCodes3(void)
+{
+	DisconnectKeyCodes2();
 	SetCurMouseButton(falseblnr);
 }
 
@@ -520,7 +561,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 {
 	if (nCode == HC_ACTION) {
 		My_KBDLLHOOKSTRUCT *p = (My_KBDLLHOOKSTRUCT *)lParam;
-		if ((p->vkCode < 256) && (p->vkCode != VK_CAPITAL)) {
+		if (p->vkCode != VK_CAPITAL) {
 			switch (wParam) {
 				case WM_KEYDOWN:
 				case WM_SYSKEYDOWN:
@@ -1178,7 +1219,7 @@ LOCALVAR blnr ADialogIsUp = falseblnr;
 
 LOCALPROC MyBeginDialog(void)
 {
-	KeyBoardAttachedToEm = falseblnr;
+	DisconnectKeyCodes3();
 	ADialogIsUp = trueblnr;
 #if EnableFullScreen
 	GrabMachine = falseblnr;
@@ -1190,8 +1231,7 @@ LOCALPROC MyBeginDialog(void)
 LOCALPROC MyEndDialog(void)
 {
 	ADialogIsUp = falseblnr;
-
-	Keyboard_UpdateControlKey(falseblnr);
+	ReconnectKeyCodes3();
 }
 
 LOCALFUNC LPTSTR FindLastTerm(LPTSTR s, TCHAR delim)
@@ -1645,7 +1685,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 			DestroyWindow(OldMainWindow);
 		}
 
-		KeyBoardAttachedToEm = falseblnr;
+		DisconnectKeyCodes3();
 			/* since key events per window */
 	} else {
 		(void) InvalidateRgn(MainWnd, NULL, FALSE);
@@ -3046,11 +3086,11 @@ LOCALFUNC blnr ScanCommandLine(void)
 
 	while (*p != 0) {
 		if (*p == ' ') {
-			p++;
+			++p;
 		} else if (*p == '/') {
-			p++;
+			++p;
 			if (*p == 'l') {
-				p++;
+				++p;
 				SpeedValue = 0;
 			} else {
 				MacMsg(kStrBadArgTitle, kStrBadArgMessage, falseblnr);
@@ -3058,12 +3098,12 @@ LOCALFUNC blnr ScanCommandLine(void)
 		} else {
 			filePtr = fileName;
 			if (*p == '\"') {
-				p++;
+				++p;
 				while (*p != '\"' && *p != 0) {
 					*filePtr++ = *p++;
 				}
 				if (*p == '\"') {
-					p++;
+					++p;
 				}
 			} else {
 				while (*p != ' ' && *p != 0) {
@@ -3150,7 +3190,7 @@ LOCALPROC DragFunc(HDROP hDrop)
 	TCHAR a[_MAX_PATH];
 
 	n = DragQueryFile(hDrop, (UINT) -1, NULL, 0);
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n; ++i) {
 		if (DragQueryFile(hDrop, i, NULL, 0) < _MAX_PATH - 1) {
 			(void) DragQueryFile(hDrop, i, a, _MAX_PATH);
 			(void) InsertDiskOrAlias(a);
@@ -3159,8 +3199,12 @@ LOCALPROC DragFunc(HDROP hDrop)
 
 	DragFinish(hDrop);
 
-	if (! SetForegroundWindow(MainWnd)) {
-		/* error message here ? */
+	if (gTrueBackgroundFlag) {
+		if (! SetForegroundWindow(MainWnd)) {
+			/* error message here ? */
+		}
+
+		WantCmdOptOnReconnect = trueblnr;
 	}
 }
 #endif
@@ -3220,12 +3264,12 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 
 LOCALPROC LeaveBackground(void)
 {
+	ReconnectKeyCodes3();
 }
 
 LOCALPROC EnterBackground(void)
 {
-	KeyBoardAttachedToEm = falseblnr;
-	Keyboard_UpdateControlKey(falseblnr);
+	DisconnectKeyCodes3();
 
 #if EnableFullScreen
 	if (WantFullScreen) {
@@ -3362,22 +3406,9 @@ LOCALPROC CheckForSavedTasks(void)
 		MacMsgDisplayOn();
 	}
 
-	if (KeyBoardAttachedToEm != (! (MacMsgDisplayed || LastControlKey
-		|| gTrueBackgroundFlag || ADialogIsUp)))
-	{
-		KeyBoardAttachedToEm = ! KeyBoardAttachedToEm;
-		if (KeyBoardAttachedToEm) {
-			InitKeyCodes();
-		}
-	}
-
 	if (NeedWholeScreenDraw) {
 		NeedWholeScreenDraw = falseblnr;
 		HaveChangedScreenBuff(0, 0, vMacScreenHeight, vMacScreenWidth);
-	}
-
-	if (ControlKeyPressed != Keyboard_TestKeyMap(MKC_Control)) {
-		Keyboard_UpdateKeyMap(MKC_Control, ControlKeyPressed);
 	}
 }
 
@@ -3787,11 +3818,11 @@ LOCALPROC ZapOSGLUVars(void)
 	{
 		int i;
 
-		for (i = 0; i < kNumMagStates; i++) {
+		for (i = 0; i < kNumMagStates; ++i) {
 			HavePositionWins[i] = falseblnr;
 		}
 #if EnableFullScreen && EnableMagnify
-		for (i = 0; i < kNumWinStates; i++) {
+		for (i = 0; i < kNumWinStates; ++i) {
 			WinMagStates[i] = kMagStateAuto;
 		}
 #endif

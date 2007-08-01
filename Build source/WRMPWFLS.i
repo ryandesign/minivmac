@@ -1,6 +1,6 @@
 /*
 	WRMPWFLS.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -140,8 +140,12 @@ static void WriteMPWSpecificFiles(void)
 
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("TheApplication \304");
-	WriteMakeDependFile(Write_machobinpath_ToDestFile);
+	WriteCStrToDestFile("TheDefaultOutput \304");
+	if (CurPackageOut) {
+		WriteMakeDependFile(WriteAppBinZipPath);
+	} else {
+		WriteMakeDependFile(Write_machobinpath_ToDestFile);
+	}
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -266,21 +270,64 @@ static void WriteMPWSpecificFiles(void)
 			WriteMainRsrcObjDeps, WriteMainRsrcObjMPWbody);
 	}
 
+	if (CurPackageOut) {
+		WriteBlankLineToDestFile();
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("\"");
+		WriteAppBinZipPath();
+		WriteCStrToDestFile("\" \304");
+		WriteMakeDependFile(Write_machobinpath_ToDestFile);
+		WriteEndDestFileLn();
+		++DestFileIndent;
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("Rename");
+			WritePathArgInMakeCmnd(WriteAppNamePath);
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("minisit");
+			WritePathArgInMakeCmnd(WriteAppBinSitPath);
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("Rename");
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WritePathArgInMakeCmnd(WriteAppNamePath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("minizip");
+			WritePathArgInMakeCmnd(WriteAppBinZipPath);
+			WritePathArgInMakeCmnd(WriteAppBinSitPath);
+			WriteEndDestFileLn();
+
+			WriteRmFile(WriteAppBinSitPath);
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("minimd5 <");
+			WritePathArgInMakeCmnd(WriteAppBinZipPath);
+			WriteCStrToDestFile(" >");
+			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
+			WriteEndDestFileLn();
+		--DestFileIndent;
+	}
+
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("clean \304");
 	++DestFileIndent;
 		WriteDestFileLn("Delete -i {ObjFiles}");
 		if (HaveMacBundleApp) {
-			WriteRmDir(Write_machobun_d_ToDestFile);
+			WriteRmDir(WriteAppNamePath);
 		} else {
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("Delete -i \"");
-			WriteCStrToDestFile(":");
-			WriteStrAppAbbrev();
-			WriteCStrToDestFile("\" \"");
-			WriteMainRsrcObjPath();
-			WriteCStrToDestFile("\"");
-			WriteEndDestFileLn();
+			WriteRmFile(WriteAppNamePath);
+			WriteRmFile(WriteMainRsrcObjPath);
+		}
+
+		if (CurPackageOut) {
+			WriteRmFile(WriteAppBinZipPath);
+			WriteRmFile(WriteCheckSumFilePath);
 		}
 	--DestFileIndent;
 	WriteBlankLineToDestFile();

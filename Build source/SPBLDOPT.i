@@ -1,6 +1,6 @@
 /*
 	SPBLDOPT.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -166,7 +166,7 @@ LOCALFUNC blnr TryAsAltCpuNot(void)
 	return FlagTryAsOptionNot("-alt-cpu", &WantAltCpu);
 }
 
-/* option: ide version */
+/* option: Emulated CPU version */
 
 LOCALVAR uimr em_cpu_vers;
 LOCALVAR blnr have_em_cpu_vers;
@@ -217,6 +217,34 @@ LOCALFUNC blnr TryAsInitMagnifyNot(void)
 	return BooleanTryAsOptionNot("-magnify", &WantInitMagnify);
 }
 
+/* option: Alternate Keyboard Mode */
+
+LOCALVAR blnr WantAltKeysMode;
+
+LOCALPROC ResetAltKeysMode(void)
+{
+	WantAltKeysMode = falseblnr;
+}
+
+LOCALFUNC blnr TryAsAltKeysModeNot(void)
+{
+	return FlagTryAsOptionNot("-akm", &WantAltKeysMode);
+}
+
+/* option: Command Option Swap */
+
+LOCALVAR blnr WantCmndOptSwap;
+
+LOCALPROC ResetCmndOptSwap(void)
+{
+	WantCmndOptSwap = falseblnr;
+}
+
+LOCALFUNC blnr TryAsCmndOptSwapNot(void)
+{
+	return FlagTryAsOptionNot("-ccs", &WantCmndOptSwap);
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -228,6 +256,8 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetEmCpuVersOption();
 	ResetInitFullScreen();
 	ResetInitMagnify();
+	ResetAltKeysMode();
+	ResetCmndOptSwap();
 }
 
 LOCALFUNC blnr TryAsSPOptionNot(void)
@@ -239,6 +269,8 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsEmCpuVersOptionNot())
 	if (TryAsInitFullScreenNot())
 	if (TryAsInitMagnifyNot())
+	if (TryAsAltKeysModeNot())
+	if (TryAsCmndOptSwapNot())
 	{
 		return trueblnr;
 	}

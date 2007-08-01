@@ -19,6 +19,8 @@
 #define support_ide_mw8 1
 #define support_ide_mpw 1
 
+#define Support64kROM 0
+
 #if ! IsAnApp
 #include "NEWMCAPI.h"
 #endif
@@ -30,8 +32,8 @@
 #include "IMATHOPT.i"
 #include "STRUTILS.i"
 #include "SAVEDERR.i"
-#include "MYMEMORY.i"
 #include "FILEUTIL.i"
+#include "MYMEMORY.i"
 #include "XBUFHAND.i"
 
 #if IsAnApp
@@ -41,6 +43,7 @@
 #include "TOOLUTIL.i"
 #endif
 
+#include "FILEHUTL.i"
 #include "EXTNSLIB.i"
 #include "DELLIBMC.i"
 #include "SITLIBMC.i"
@@ -76,6 +79,9 @@
 #include "SPCNFGGL.i"
 #endif
 #include "WRCNFGGL.i"
+#ifdef Have_SPCNFGAP
+#include "SPCNFGAP.i"
+#endif
 #include "WRCNFGAP.i"
 
 #if support_ide_mpw

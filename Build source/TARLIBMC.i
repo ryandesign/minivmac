@@ -1,6 +1,6 @@
 /*
 	TARLIBMC.i
-	Copyright (C) 2007 Paul Pratt, John Gilmore
+	Copyright (C) 2007 Paul C. Pratt, John Gilmore
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -96,7 +96,7 @@
 
 /* Common declarations for the tar program. */
 
-/* GNU tar Archive Format description.  */
+/* GNU tar Archive Format description. */
 
 /*
 	If OLDGNU_COMPATIBILITY is not zero, tar produces archives which, by
@@ -115,7 +115,7 @@
 | `tar' Header Block, from POSIX 1003.1-1990.  |
 `---------------------------------------------*/
 
-/* POSIX header.  */
+/* POSIX header. */
 
 struct tarlib_posix_header
 {
@@ -144,7 +144,7 @@ struct tarlib_posix_header
 #define TVERSION "00"    /* 00 and no null */
 #define TVERSLEN 2
 
-/* Values used in typeflag field.  */
+/* Values used in typeflag field. */
 #define REGTYPE  '0'  /* regular file */
 #define AREGTYPE '\0' /* regular file */
 #define LNKTYPE  '1'  /* link */
@@ -155,7 +155,7 @@ struct tarlib_posix_header
 #define FIFOTYPE '6'  /* FIFO special */
 #define CONTTYPE '7'  /* reserved */
 
-/* Bits used in the mode field, values in octal.  */
+/* Bits used in the mode field, values in octal. */
 #define TSUID    04000 /* set UID on execution */
 #define TSGID    02000 /* set GID on execution */
 #define TSVTX    01000 /* reserved */

@@ -1,5 +1,5 @@
 /*
-	CMDARGT2.i
+	SPCNFGAP.i
 	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
@@ -14,26 +14,17 @@
 */
 
 /*
-	CoMmandD ARGument Tool part 2
+	program SPecific CoNFiGuration of API users
+
+	(that is, configuration settings that are used
+	only by platform specific code)
 */
 
 
-int main(int argc, char *argv[])
+LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 {
-	int return_code = 1;
-
-	if (MyMemory_Init()) {
-		BeginParseCommandLineArguments(argc, argv);
-
-		DoTheCommand();
-
-		if (! ParseArgsFailed) {
-			return_code = 0;
-		}
+	if (WantAltKeysMode) {
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("#define EnableAltKeysMode 1");
 	}
-	MyMemory_UnInit();
-
-	ToolReportAnySavedError(argc, argv);
-
-	return return_code;
 }

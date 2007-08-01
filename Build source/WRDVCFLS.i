@@ -1,6 +1,6 @@
 /*
 	WRDVCFLS.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -91,7 +91,7 @@ static void WriteDevCSpecificFiles(void)
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("OverrideOutputName=");
-	WriteWinAppNameStr();
+	WriteAppNameStr();
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("IncludeVersionInfo=0");

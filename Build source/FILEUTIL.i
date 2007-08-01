@@ -1,6 +1,6 @@
 /*
 	FILEUTIL.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 
 
 struct MyDir_R {
-	short VRefNum;
 	long DirId;
+	short VRefNum;
 };
 typedef struct MyDir_R MyDir_R;
 
@@ -62,12 +62,24 @@ GLOBALFUNC blnr MyMakeNamedDir(MyDir_R *d, StringPtr s,
 GLOBALFUNC blnr MyDeleteFile(MyDir_R *d, StringPtr s)
 {
 	HParamBlockRec r;
+	OSErr err;
 
 	r.fileParam.ioCompletion = NULL;
 	r.fileParam.ioVRefNum = d->VRefNum;
-	r.fileParam.ioDirID = d->DirId;
 	r.fileParam.ioNamePtr = s;
-	return CheckSysErr(PBHDelete(&r, false));
+
+#if Support64kROM
+	if (Have64kROM()) {
+		r.fileParam.ioFVersNum = 0;
+		err = PBDelete((ParamBlockRec *)&r, false);
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = PBHDelete(&r, false);
+	}
+
+	return CheckSysErr(err);
 }
 
 /*
@@ -76,61 +88,182 @@ GLOBALFUNC blnr MyDeleteFile(MyDir_R *d, StringPtr s)
 	(System 7 according to Technical Note FL515)
 */
 
-GLOBALFUNC blnr MyOpenOldFileRead(MyDir_R *d, StringPtr s,
-	short *refnum)
+LOCALFUNC blnr MyFileOpen0(MyDir_R *d, StringPtr s,
+	char Permssn, short *refnum)
 {
 	HParamBlockRec r;
-	blnr IsOk = falseblnr;
+	OSErr err;
 
 	r.ioParam.ioCompletion = NULL;
 	r.ioParam.ioNamePtr = s;
 	r.ioParam.ioVRefNum = d->VRefNum;
-	r.ioParam.ioPermssn = (char)fsRdPerm;
+	r.ioParam.ioPermssn = Permssn;
 	r.ioParam.ioMisc = 0; /* use volume buffer */
-	r.fileParam.ioDirID = d->DirId;
-	if (CheckSysErr(PBHOpen(&r, false))) {
-		*refnum = r.ioParam.ioRefNum;
-		IsOk = trueblnr;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		r.ioParam.ioVersNum = 0;
+		err = PBOpen((ParamBlockRec *)&r, false);
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = PBHOpen(&r, false);
 	}
 
-	return IsOk;
+	*refnum = r.ioParam.ioRefNum;
+	return CheckSysErr(err);
+}
+
+GLOBALFUNC blnr MyOpenOldFileRead(MyDir_R *d, StringPtr s,
+	short *refnum)
+{
+	return MyFileOpen0(d, s, (char)fsRdPerm, refnum);
 }
 
 GLOBALFUNC blnr MyFileOpenWrite(MyDir_R *d, StringPtr s,
 	short *refnum)
 {
-	HParamBlockRec r;
-	blnr IsOk = falseblnr;
-
-	r.ioParam.ioCompletion = NULL;
-	r.ioParam.ioNamePtr = s;
-	r.ioParam.ioVRefNum = d->VRefNum;
-	r.ioParam.ioPermssn = (char)fsWrPerm;
-	r.ioParam.ioMisc = 0; /* use volume buffer */
-	r.fileParam.ioDirID = d->DirId;
-	if (CheckSysErr(PBHOpen(&r, false))) {
-		*refnum = r.ioParam.ioRefNum;
-		IsOk = trueblnr;
-	}
-
-	return IsOk;
+	return MyFileOpen0(d, s, (char)fsWrPerm, refnum);
 }
 
 GLOBALFUNC blnr MyFileOpenRFWrite(MyDir_R *d, StringPtr s,
 	short *refnum)
 {
 	HParamBlockRec r;
-	blnr IsOk = falseblnr;
+	OSErr err;
 
 	r.ioParam.ioCompletion = NULL;
 	r.ioParam.ioNamePtr = s;
 	r.ioParam.ioVRefNum = d->VRefNum;
 	r.ioParam.ioPermssn = (char)fsWrPerm;
 	r.ioParam.ioMisc = 0; /* use volume buffer */
-	r.fileParam.ioDirID = d->DirId;
-	if (CheckSysErr(PBHOpenRF(&r, false))) {
-		*refnum = r.ioParam.ioRefNum;
-		IsOk = trueblnr;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		r.ioParam.ioVersNum = 0;
+		err = PBOpenRF((ParamBlockRec *)&r, false);
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = PBHOpenRF(&r, false);
+	}
+
+	*refnum = r.ioParam.ioRefNum;
+	return CheckSysErr(err);
+}
+
+LOCALFUNC OSErr MyCreateFile0(MyDir_R *d, StringPtr s)
+{
+	HParamBlockRec r;
+	OSErr err;
+
+	r.fileParam.ioFlVersNum = 0;
+		/*
+			Think reference say to do this,
+			but not Inside Mac IV
+		*/
+
+	r.fileParam.ioCompletion = NULL;
+	r.fileParam.ioNamePtr = s;
+	r.fileParam.ioVRefNum = d->VRefNum;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		r.fileParam.ioFVersNum = 0;
+		err = PBCreate((ParamBlockRec *)&r, false);
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = PBHCreate(&r, false);
+	}
+
+	return err;
+}
+
+LOCALFUNC OSErr MyCreateFile(MyDir_R *d, StringPtr s)
+{
+	return CheckSysErr(MyCreateFile0(d, s));
+}
+
+LOCALFUNC blnr MyCreateFileOverWrite(MyDir_R *d, StringPtr s)
+{
+	OSErr err;
+	blnr IsOk = falseblnr;
+
+	err = MyCreateFile0(d, s);
+	if (dupFNErr == err) {
+		if (MyDeleteFile(d, s)) {
+			IsOk = MyCreateFile(d, s);
+		}
+	} else {
+		IsOk = CheckSysErr(err);
+	}
+
+	return IsOk;
+}
+
+GLOBALFUNC blnr MyFileGetInfo(MyDir_R *d, StringPtr s,
+	HParamBlockRec *r)
+{
+	OSErr err;
+
+	r->fileParam.ioCompletion = NULL;
+	r->fileParam.ioNamePtr = s;
+	r->fileParam.ioVRefNum = d->VRefNum;
+	r->fileParam.ioFVersNum = (char)0;
+	r->fileParam.ioFDirIndex = (short)0;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		err = PBGetFInfo((ParamBlockRec *)r, false);
+	} else
+#endif
+	{
+		r->fileParam.ioDirID = d->DirId;
+		err = PBHGetFInfo(r, false);
+	}
+
+	return CheckSysErr(err);
+}
+
+GLOBALFUNC blnr MyFileSetInfo(MyDir_R *d, StringPtr s,
+	HParamBlockRec *r)
+{
+	OSErr err;
+
+	r->fileParam.ioCompletion = NULL;
+	r->fileParam.ioNamePtr = s;
+	r->fileParam.ioVRefNum = d->VRefNum;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		r->fileParam.ioFVersNum = (char)0;
+		err = PBSetFInfo((ParamBlockRec *)r, false);
+	} else
+#endif
+	{
+		r->fileParam.ioDirID = d->DirId;
+		err = PBHSetFInfo(r, false);
+	}
+
+	return CheckSysErr(err);
+}
+
+GLOBALFUNC blnr MyFileSetTypeCreator(MyDir_R *d, StringPtr s,
+	OSType creator, OSType fileType)
+{
+	HParamBlockRec r;
+	blnr IsOk = falseblnr;
+
+	if (MyFileGetInfo(d, s, &r)) {
+		r.fileParam.ioFlFndrInfo.fdType = fileType;
+		r.fileParam.ioFlFndrInfo.fdCreator = creator;
+		if (MyFileSetInfo(d, s, &r)) {
+			IsOk = trueblnr;
+		}
 	}
 
 	return IsOk;
@@ -140,37 +273,13 @@ GLOBALFUNC blnr MyOpenNewFile(MyDir_R *d, StringPtr s,
 	OSType creator, OSType fileType,
 	short *refnum)
 {
-	HParamBlockRec r;
 	blnr IsOk = falseblnr;
 
-	r.fileParam.ioCompletion = NULL;
-	r.fileParam.ioVRefNum = d->VRefNum;
-	r.fileParam.ioDirID = d->DirId;
-	r.fileParam.ioNamePtr = s;
-	if (CheckSysErr(PBHCreate(&r, false))) {
-		r.fileParam.ioCompletion = NULL;
-		r.fileParam.ioNamePtr = s;
-		r.fileParam.ioDirID = d->DirId;
-		r.fileParam.ioVRefNum = d->VRefNum;
-		r.fileParam.ioFVersNum = (char)0;
-		r.fileParam.ioFDirIndex = (short)0;
-		if (CheckSysErr(PBHGetFInfo(&r, false))) {
-			r.fileParam.ioFlFndrInfo.fdType = fileType;
-			r.fileParam.ioFlFndrInfo.fdCreator = creator;
-			r.fileParam.ioNamePtr = s;
-			r.fileParam.ioDirID = d->DirId;
-			if (CheckSysErr(PBHSetFInfo(&r, false))) {
-				r.ioParam.ioCompletion = NULL;
-				r.ioParam.ioNamePtr = s;
-				r.ioParam.ioVRefNum = d->VRefNum;
-				r.ioParam.ioPermssn = (char)fsWrPerm;
-				r.ioParam.ioMisc = 0; /* use volume buffer */
-				r.fileParam.ioDirID = d->DirId;
-				if (CheckSysErr(PBHOpen(&r, false))) {
-					*refnum = r.ioParam.ioRefNum;
-					IsOk = trueblnr;
-				}
-			}
+	if (MyCreateFile(d, s)) {
+		if (MyFileSetTypeCreator(d, s,
+			creator, fileType))
+		{
+			IsOk = MyFileOpenWrite(d, s, refnum);
 		}
 		if (! IsOk) {
 			(void) MyDeleteFile(d, s);
@@ -247,6 +356,86 @@ GLOBALFUNC blnr MyBackReadBytes(short refNum, uimr offset,
 	return IsOk;
 }
 
+LOCALFUNC blnr MyOpenFileGetEOF(short refnum, uimr *L)
+{
+	return CheckSysErr(GetEOF(refnum, (long *)L));
+}
+
+LOCALFUNC blnr MyOpenFileSetEOF(short refnum, uimr L)
+{
+	return CheckSysErr(SetEOF(refnum, (long)L));
+}
+
+LOCALPROC MyFileFlush(short refnum)
+{
+	short vRefNum;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		vCheckSysErr(-1);
+			/*
+				fix me, GetVRefNum glue broken in MPW 3.
+				Thinks FCB for pre-HFS is 94 instead of 30.
+			*/
+		return;
+	}
+#endif
+
+	if (CheckSysErr(GetVRefNum(refnum, &vRefNum))) {
+		vCheckSysErr(FlushVol(NULL, vRefNum));
+	}
+}
+
+LOCALFUNC blnr MyOpenFileUpdtLocation(short refNum,
+	MyDir_R *d, ps3p s)
+{
+	/*
+		because the user could move or rename the
+		file while the program is working on it.
+	*/
+	blnr IsOk = falseblnr;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		IsOk = trueblnr;
+		/*
+			Do nothing. Volume of open file can't
+			change. And haven't figured out a
+			way to get name.
+		*/
+	} else
+#endif
+	{
+		FCBPBRec b;
+
+		b.ioCompletion = NULL;
+		b.ioNamePtr = (StringPtr)s;
+		b.ioVRefNum = 0;
+		b.ioRefNum = refNum;
+		b.ioFCBIndx = 0;
+		if (CheckSysErr(PBGetFCBInfo(&b, false))) {
+			d->VRefNum = b.ioFCBVRefNum;
+			d->DirId = b.ioFCBParID;
+			IsOk = trueblnr;
+		}
+	}
+
+	return IsOk;
+}
+
+LOCALPROC MyCloseNewFile(short refNum, MyDir_R *d, ps3p s, blnr KeepIt)
+/* s may be modified, must be Str255 (and d modified too) */
+{
+	blnr DoDelete;
+
+	DoDelete = (! KeepIt)
+		&& MyOpenFileUpdtLocation(refNum, d, s);
+	(void) MyCloseFile(refNum);
+	if (DoDelete) {
+		(void) MyDeleteFile(d, s);
+	}
+}
+
 #define CatInfoIsFolder(cPB) (((cPB)->hfileInfo.ioFlAttrib & ioDirMask) != 0)
 
 GLOBALFUNC blnr CatInfoOpenReadDF(CInfoPBRec *cPB,
@@ -286,89 +475,6 @@ GLOBALFUNC blnr CatInfoOpenReadRF(CInfoPBRec *cPB,
 	}
 	return IsOk;
 }
-
-#ifdef HaveTempBuffH
-GLOBALFUNC blnr MyFileCopyBytes(short src_refnum, short dst_refnum, uimr L)
-{
-	uimr maxn;
-	uimr n;
-	MyPtr p;
-	blnr IsOk = falseblnr;
-
-	if (TempBuffHBeginUse(&p)) {
-		maxn = TempBuffSize;
-
-doGetMore:
-		if (0 == L) {
-			IsOk = trueblnr;
-		} else {
-			if (L > maxn) {
-				n = maxn;
-			} else {
-				n = L;
-			}
-			if (MyReadBytes(src_refnum, p, n)) {
-				if (MyWriteBytes(dst_refnum, p, n)) {
-					L -= n;
-					goto doGetMore;
-				}
-			}
-		}
-
-		TempBuffHEndUse();
-	}
-
-	return IsOk;
-}
-#endif
-
-#ifdef HaveTempBuffH
-GLOBALFUNC blnr MyCatInfoCopyRF(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst_s)
-{
-	short src_refnum;
-	short dst_refnum;
-	uimr n = cPB->hfileInfo.ioFlRLgLen;
-	blnr IsOk = falseblnr;
-
-	if (0 == n) {
-		IsOk = trueblnr;
-	} else if (CatInfoOpenReadRF(cPB, &src_refnum)) {
-		if (MyFileOpenRFWrite(dst_d, dst_s, &dst_refnum)) {
-			if (MyFileCopyBytes(src_refnum, dst_refnum, n)) {
-				IsOk = trueblnr;
-			}
-			(void) MyCloseFile(dst_refnum);
-		}
-		(void) MyCloseFile(src_refnum);
-	}
-
-	return IsOk;
-}
-#endif
-
-#ifdef HaveTempBuffH
-GLOBALFUNC blnr MyCatInfoCopyDF(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst_s)
-{
-	short src_refnum;
-	short dst_refnum;
-	uimr n = cPB->hfileInfo.ioFlLgLen;
-	blnr IsOk = falseblnr;
-
-	if (0 == n) {
-		IsOk = trueblnr;
-	} else if (CatInfoOpenReadDF(cPB, &src_refnum)) {
-		if (MyFileOpenWrite(dst_d, dst_s, &dst_refnum)) {
-			if (MyFileCopyBytes(src_refnum, dst_refnum, n)) {
-				IsOk = trueblnr;
-			}
-			(void) MyCloseFile(dst_refnum);
-		}
-		(void) MyCloseFile(src_refnum);
-	}
-
-	return IsOk;
-}
-#endif
 
 GLOBALFUNC blnr MyFileGetCatInfo(MyDir_R *d, StringPtr s,
 	StringPtr NameBuffer, CInfoPBRec *cPB)
@@ -466,32 +572,6 @@ GLOBALFUNC blnr MyCatInfoCopyInfo(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst
 	return IsOk;
 }
 
-#ifdef HaveTempBuffH
-GLOBALFUNC blnr MyCatInfoCopyFile(CInfoPBRec *cPB, MyDir_R *dst_d, ps3p dst_s)
-{
-	HParamBlockRec r;
-	blnr IsOk = falseblnr;
-
-	r.fileParam.ioCompletion = NULL;
-	r.fileParam.ioVRefNum = dst_d->VRefNum;
-	r.fileParam.ioDirID = dst_d->DirId;
-	r.fileParam.ioNamePtr = dst_s;
-	if (CheckSysErr(PBHCreate(&r, false))) {
-		if (MyCatInfoCopyRF(cPB, dst_d, dst_s))
-		if (MyCatInfoCopyDF(cPB, dst_d, dst_s))
-		if (MyCatInfoCopyInfo(cPB, dst_d, dst_s))
-		{
-			IsOk = trueblnr;
-		}
-		if (! IsOk) {
-			(void) MyDeleteFile(dst_d, dst_s);
-		}
-	}
-
-	return IsOk;
-}
-#endif
-
 GLOBALFUNC blnr MyFileClearInitted(MyDir_R *dst_d, StringPtr dst_s)
 {
 	MyPStr NameBuffer;
@@ -573,3 +653,114 @@ GLOBALFUNC blnr MyFindNamedChildDir(MyDir_R *src_d, StringPtr s, MyDir_R *dst_d)
 
 	return IsOk;
 }
+
+LOCALFUNC blnr MyDirFromWD(short VRefNum, MyDir_R *d)
+{
+	Str63 s;
+	WDPBRec pb;
+	blnr IsOk = falseblnr;
+
+#if Support64kROM
+	if (Have64kROM()) {
+		d->VRefNum = VRefNum;
+		d->DirId = 0;
+		IsOk = trueblnr;
+	} else
+#endif
+	{
+		pb.ioCompletion = NULL;
+		pb.ioNamePtr = s;
+		pb.ioVRefNum = VRefNum;
+		pb.ioWDIndex = 0;
+		pb.ioWDProcID = 0;
+		if (CheckSysErr(PBGetWDInfo(&pb, false))) {
+			d->VRefNum = pb.ioWDVRefNum;
+			d->DirId = pb.ioWDDirID;
+			IsOk = trueblnr;
+		}
+	}
+
+	return IsOk;
+}
+
+#ifdef Have_MACINITS
+LOCALFUNC blnr MyFilePutNew(StringPtr prompt, StringPtr origName,
+		MyDir_R *d, StringPtr s)
+{
+	blnr IsOk = falseblnr;
+
+	if (! HaveCustomPutFileAvail()) {
+		SFReply reply;
+		Point tempPt;
+
+		tempPt.h = 100;
+		tempPt.v = 100;
+		SFPutFile(tempPt, prompt, origName, NULL, &reply);
+		if (reply.good) {
+			PStrCopy(s, reply.fName);
+			IsOk = MyDirFromWD(reply.vRefNum, d);
+		}
+	} else {
+		StandardFileReply reply;
+
+		StandardPutFile(prompt, origName, &reply);
+		if (reply.sfGood) {
+			d->VRefNum = reply.sfFile.vRefNum;
+			d->DirId = reply.sfFile.parID;
+			PStrCopy(s, reply.sfFile.name);
+			IsOk = trueblnr;
+		}
+	}
+
+	return IsOk;
+}
+#endif
+
+#ifdef Have_MACINITS
+LOCALFUNC blnr MyFileGetOld(simr nInputTypes,
+		ConstSFTypeListPtr pfInputType,
+		MyDir_R *d, StringPtr s)
+{
+	blnr IsOk = falseblnr;
+
+	if (! HaveCustomPutFileAvail()) {
+		SFReply reply;
+		Point tempPt;
+
+		tempPt.h = 50;
+		tempPt.v = 50;
+		SFGetFile(tempPt, "\p", NULL, nInputTypes,
+			(SFTypeList)pfInputType, NULL, &reply);
+		if (reply.good) {
+			PStrCopy(s, reply.fName);
+			IsOk = MyDirFromWD(reply.vRefNum, d);
+		}
+	} else {
+		StandardFileReply reply;
+
+		StandardGetFile (NULL, nInputTypes, (SFTypeList)pfInputType, &reply);
+		if (reply.sfGood) {
+			d->VRefNum = reply.sfFile.vRefNum;
+			d->DirId = reply.sfFile.parID;
+			PStrCopy(s, reply.sfFile.name);
+			IsOk = trueblnr;
+		}
+	}
+
+	return IsOk;
+}
+#endif
+
+#ifdef Have_MACINITS
+LOCALFUNC blnr CreateOpenNewFile(StringPtr prompt, StringPtr origName, OSType creator, OSType fileType,
+		MyDir_R *d, StringPtr s, short *refNum)
+{
+	blnr IsOk = falseblnr;
+
+	if (MyFilePutNew(prompt, origName, d, s)) {
+		IsOk = MyOpenNewFile(d, s, creator, fileType, refNum);
+	}
+
+	return IsOk;
+}
+#endif

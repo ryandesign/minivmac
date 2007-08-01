@@ -1,6 +1,6 @@
 /*
 	SAVEDERR.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 */
 
 
-GLOBALVAR OSErr SavedSysErr;
+GLOBALVAR OSErr SavedSysErr = noErr;
 
 GLOBALPROC vCheckSysErr(OSErr theErr)
 {
@@ -45,7 +45,8 @@ GLOBALFUNC char * GetTextForSavedSysErr(void)
 
 	switch (SavedSysErr) {
 		case dskFulErr:
-			s = "Disk full";
+		case dirFulErr:
+			s = "The disk is full";
 			break;
 		case nsvErr:
 			s = "No such Volume";
@@ -55,7 +56,7 @@ GLOBALFUNC char * GetTextForSavedSysErr(void)
 			break;
 		case mFulErr:
 		case memFullErr:
-			s = "Memory full";
+			s = "There is not enough memory";
 			break;
 		case fnfErr:
 			s = "Directory/File not found";
@@ -64,13 +65,13 @@ GLOBALFUNC char * GetTextForSavedSysErr(void)
 			s = "write protected";
 			break;
 		case fLckdErr:
-			s = "file is locked";
+			s = "The file is locked";
 			break;
 		case vLckdErr:
-			s = "volume is locked";
+			s = "The volume is locked";
 			break;
 		case fBsyErr:
-			s = "File is busy";
+			s = "The file is busy";
 			break;
 		case dupFNErr:
 			s = "duplicate filename";

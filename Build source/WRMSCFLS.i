@@ -1,6 +1,6 @@
 /*
 	WRMSCFLS.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -390,7 +390,7 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	}
 	WriteCStrToDestFile(" /machine:I386 /out:");
 	WriteQuoteToDestFile();
-	WriteWinAppNameStr();
+	WriteAppNameStr();
 	WriteQuoteToDestFile();
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteCStrToDestFile(" /pdbtype:sept");
@@ -582,7 +582,7 @@ LOCALPROC WriteMSVCCompilerToolConfig(void)
 LOCALPROC WriteMSVCLinkerToolConfig(void)
 {
 	WriteDestFileLn("AdditionalDependencies=\"winmm.lib\"");
-	WriteXMLQuotedProp("OutputFile", WriteWinAppNamePath);
+	WriteXMLQuotedProp("OutputFile", WriteAppNamePath);
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteDestFileLn("LinkIncremental=\"2\"");
 	} else {
@@ -885,9 +885,12 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("TheApplication : \"");
-	WriteWinAppNamePath();
-	WriteCStrToDestFile("\"");
+	WriteCStrToDestFile("TheDefaultOutput :");
+	if (CurPackageOut) {
+		WriteMakeDependFile(WriteAppBinZipPath);
+	} else {
+		WriteMakeDependFile(WriteAppNamePath);
+	}
 	WriteEndDestFileLn();
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
@@ -906,7 +909,7 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("\"");
-	WriteWinAppNamePath();
+	WriteAppNamePath();
 	WriteCStrToDestFile("\" : $(ObjFiles) \"");
 	WriteMainRsrcObjPath();
 	WriteCStrToDestFile("\"");
@@ -916,7 +919,7 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 		++DestFileIndent;
 			WriteBgnDestFileLn();
 			WriteCStrToDestFile("/out:\"");
-			WriteWinAppNamePath();
+			WriteAppNamePath();
 			WriteCStrToDestFile("\"");
 			WriteEndDestFileLn();
 			WriteDestFileLn("/nologo /subsystem:windows /incremental:no");
@@ -948,20 +951,59 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	--DestFileIndent;
 	WriteDestFileLn("<<");
 	WriteBlankLineToDestFile();
+
+
+	if (CurPackageOut) {
+		WriteBlankLineToDestFile();
+		WriteBgnDestFileLn();
+		WriteQuoteToDestFile();
+		WriteAppBinZipPath();
+		WriteQuoteToDestFile();
+		WriteCStrToDestFile(" : ");
+		WriteQuoteToDestFile();
+		WriteAppNamePath();
+		WriteQuoteToDestFile();
+		WriteEndDestFileLn();
+		++DestFileIndent;
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("rename");
+			WritePathArgInMakeCmnd(WriteAppNamePath);
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("zip -q");
+			WritePathArgInMakeCmnd(WriteAppBinZipPath);
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("rename");
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WritePathArgInMakeCmnd(WriteAppNamePath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("md5sum");
+			WritePathArgInMakeCmnd(WriteAppBinZipPath);
+			WriteCStrToDestFile(">");
+			WriteQuoteToDestFile();
+			WriteCheckSumFilePath();
+			WriteQuoteToDestFile();
+			WriteEndDestFileLn();
+		--DestFileIndent;
+	}
+
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("CLEAN :");
 	++DestFileIndent;
 		DoAllSrcFilesWithSetup(DoSrcFileNMakeEraseFile);
-		WriteBgnDestFileLn();
-		WriteCStrToDestFile("-@erase \"");
-		WriteMainRsrcObjPath();
-		WriteCStrToDestFile("\"");
-		WriteEndDestFileLn();
-		WriteBgnDestFileLn();
-		WriteCStrToDestFile("-@erase \"");
-		WriteWinAppNamePath();
-		WriteCStrToDestFile("\"");
-		WriteEndDestFileLn();
+		WriteRmFile(WriteMainRsrcObjPath);
+		WriteRmFile(WriteAppNamePath);
+		if (CurPackageOut) {
+			WriteRmFile(WriteAppBinZipPath);
+			WriteRmFile(WriteCheckSumFilePath);
+		}
 	--DestFileIndent;
 
 	WriteCloseDestFile();

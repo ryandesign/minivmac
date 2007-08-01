@@ -1,6 +1,6 @@
 /*
 	BLDUTIL1.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -55,7 +55,7 @@ LOCALFUNC blnr WriteFromFileToVolUsingBuff(short refNum,
 	ui5b L = Sony_Count;
 	ui5b offset = Sony_Start;
 
-	while ((L != 0) && (! GotInterrupt)) {
+	while ((L != 0) && (! AbortRequested)) {
 		ui5b n = (L > BuffL) ? BuffL : L;
 
 		/* OccasionalSpin(); */
@@ -133,11 +133,11 @@ LOCALFUNC blnr ExportFromFile2HostFile(short refNum, ui5b L, ui4b Name)
 							}
 							InsertErr = DiskNextPendingInsert(&InsertVol);
 						} while ((InsertErr == (OSErr)0xFFC8)
-							&& (! GotInterrupt) && (NewWanted != 0));
+							&& (! AbortRequested) && (NewWanted != 0));
 
 						if (noErr == InsertErr) {
 							InsertGotOne = trueblnr;
-						} else if (GotInterrupt || (NewWanted == 0)) {
+						} else if (AbortRequested || (NewWanted == 0)) {
 							DisplayRunErr("Aborted!");
 						} else {
 							CheckSysErr(InsertErr);

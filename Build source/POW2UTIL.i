@@ -1,6 +1,6 @@
 /*
 	POW2UTIL.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,14 +22,15 @@
 
 
 #define PowOf2(p) ((uimr)1 << (p))
-#define ModPow2(i, p) ((i) & (PowOf2(p) - 1))
+#define Pow2Mask(p) (PowOf2(p) - 1)
+#define ModPow2(i, p) ((i) & Pow2Mask(p))
 #define FloorDivPow2(i, p) ((i) >> (p))
-#define CeilDivPow2(i, p) (((i) + (PowOf2(p) - 1)) >> (p))
+#define CeilDivPow2(i, p) (((i) + Pow2Mask(p)) >> (p))
 	/* warning - CeilDivPow2 evaluates p twice */
 #define NotEvenPow2Mult(i, p) (ModPow2((i), (p)) != 0)
-#define FloorPow2Mult(i, p) ((i) & (~ (PowOf2(p) - 1)))
-#define CeilPow2Mult(i, p) ((i) + ((- (i)) & (PowOf2(p) - 1)))
-	/* warning - CeilPow2Mult evaluates i twice */
+#define FloorPow2Mult(i, p) ((i) & (~ Pow2Mask(p)))
+#define CeilPow2Mult(i, p) FloorPow2Mult((i) + Pow2Mask(p), (p))
+	/* warning - CeilPow2Mult evaluates p twice */
 
 #define IsOdd(i) NotEvenPow2Mult(i, 1)
 #define TestBit(i, p) (((uimr)(i) & PowOf2(p)) != 0)

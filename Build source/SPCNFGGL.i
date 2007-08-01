@@ -1,6 +1,6 @@
 /*
 	SPCNFGGL.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -43,5 +43,9 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 		if (WantInitMagnify) {
 			WriteDestFileLn("#define WantInitMagnify 1");
 		}
+	}
+
+	if (WantCmndOptSwap) {
+		WriteDestFileLn("#define SwapCommandControl 1");
 	}
 }

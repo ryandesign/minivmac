@@ -99,7 +99,7 @@
 /* Speed Control Screen */
 #define kStrCurrentSpeed "Current speed: ^s"
 #define kStrSpeedAllOut "All out"
-#define kStrSpeedStopped "Stopped toggle (^h)"
+#define kStrSpeedStopped "stopped toggle (^h)"
 #define kStrSpeedBackToggle "run in Background toggle (^b)"
 #define kStrSpeedExit "Exit speed control"
 

@@ -1,7 +1,7 @@
 /*
 	PLATGLUE.h
 
-	Copyright (C) 2006 Philip Cummins, Richard F. Bannister, Paul C. Pratt
+	Copyright (C) 2007 Philip Cummins, Richard F. Bannister, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 */
 
 /*
-	PLATform GLUE. (for Macintosh)
+	PLATform GLUE. (for Macintosh OS X)
 
 	All operating system dependent code for the
 	Macintosh platform should go here.
@@ -123,6 +123,331 @@ LOCALFUNC blnr HaveMySetSystemUIMode(void)
 	return (MySetSystemUIMode != NULL);
 }
 
+/* In 10.1 or later */
+
+typedef OSStatus (*LSCopyDisplayNameForRefProcPtr)
+	(const FSRef *inRef, CFStringRef *outDisplayName);
+LOCALVAR LSCopyDisplayNameForRefProcPtr MyLSCopyDisplayNameForRef = NULL;
+LOCALVAR blnr DidLSCopyDisplayNameForRef = falseblnr;
+
+LOCALFUNC blnr HaveMyLSCopyDisplayNameForRef(void)
+{
+	if (! DidLSCopyDisplayNameForRef) {
+		if (HaveApplicationServicesBun()) {
+			MyLSCopyDisplayNameForRef =
+				(LSCopyDisplayNameForRefProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("LSCopyDisplayNameForRef"));
+		}
+		DidLSCopyDisplayNameForRef = trueblnr;
+	}
+	return (MyLSCopyDisplayNameForRef != NULL);
+}
+
+/* routines not in carbon lib */
+
+
+#if UsingCarbonLib
+
+typedef CGDisplayErr
+(*CGGetActiveDisplayListProcPtr) (
+	CGDisplayCount       maxDisplays,
+	CGDirectDisplayID *  activeDspys,
+	CGDisplayCount *     dspyCnt);
+LOCALVAR CGGetActiveDisplayListProcPtr MyCGGetActiveDisplayList = NULL;
+LOCALVAR blnr DidCGGetActiveDisplayList = falseblnr;
+
+LOCALFUNC blnr HaveMyCGGetActiveDisplayList(void)
+{
+	if (! DidCGGetActiveDisplayList) {
+		if (HaveApplicationServicesBun()) {
+			MyCGGetActiveDisplayList =
+				(CGGetActiveDisplayListProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGGetActiveDisplayList"));
+		}
+		DidCGGetActiveDisplayList = trueblnr;
+	}
+	return (MyCGGetActiveDisplayList != NULL);
+}
+
+#else
+
+#define HaveMyCGGetActiveDisplayList() trueblnr
+#define MyCGGetActiveDisplayList CGGetActiveDisplayList
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef CGRect
+(*CGDisplayBoundsProcPtr) (CGDirectDisplayID display);
+LOCALVAR CGDisplayBoundsProcPtr MyCGDisplayBounds = NULL;
+LOCALVAR blnr DidCGDisplayBounds = falseblnr;
+
+LOCALFUNC blnr HaveMyCGDisplayBounds(void)
+{
+	if (! DidCGDisplayBounds) {
+		if (HaveApplicationServicesBun()) {
+			MyCGDisplayBounds =
+				(CGDisplayBoundsProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGDisplayBounds"));
+		}
+		DidCGDisplayBounds = trueblnr;
+	}
+	return (MyCGDisplayBounds != NULL);
+}
+
+#else
+
+#define HaveMyCGDisplayBounds() trueblnr
+#define MyCGDisplayBounds CGDisplayBounds
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef size_t
+(*CGDisplayPixelsWideProcPtr) (CGDirectDisplayID display);
+LOCALVAR CGDisplayPixelsWideProcPtr MyCGDisplayPixelsWide = NULL;
+LOCALVAR blnr DidCGDisplayPixelsWide = falseblnr;
+
+LOCALFUNC blnr HaveMyCGDisplayPixelsWide(void)
+{
+	if (! DidCGDisplayPixelsWide) {
+		if (HaveApplicationServicesBun()) {
+			MyCGDisplayPixelsWide =
+				(CGDisplayPixelsWideProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGDisplayPixelsWide"));
+		}
+		DidCGDisplayPixelsWide = trueblnr;
+	}
+	return (MyCGDisplayPixelsWide != NULL);
+}
+
+#else
+
+#define HaveMyCGDisplayPixelsWide() trueblnr
+#define MyCGDisplayPixelsWide CGDisplayPixelsWide
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef size_t
+(*CGDisplayPixelsHighProcPtr) (CGDirectDisplayID display);
+LOCALVAR CGDisplayPixelsHighProcPtr MyCGDisplayPixelsHigh = NULL;
+LOCALVAR blnr DidCGDisplayPixelsHigh = falseblnr;
+
+LOCALFUNC blnr HaveMyCGDisplayPixelsHigh(void)
+{
+	if (! DidCGDisplayPixelsHigh) {
+		if (HaveApplicationServicesBun()) {
+			MyCGDisplayPixelsHigh =
+				(CGDisplayPixelsHighProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGDisplayPixelsHigh"));
+		}
+		DidCGDisplayPixelsHigh = trueblnr;
+	}
+	return (MyCGDisplayPixelsHigh != NULL);
+}
+
+#else
+
+#define HaveMyCGDisplayPixelsHigh() trueblnr
+#define MyCGDisplayPixelsHigh CGDisplayPixelsHigh
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef CGDisplayErr
+(*CGDisplayHideCursorProcPtr) (CGDirectDisplayID display);
+LOCALVAR CGDisplayHideCursorProcPtr MyCGDisplayHideCursor = NULL;
+LOCALVAR blnr DidCGDisplayHideCursor = falseblnr;
+
+LOCALFUNC blnr HaveMyCGDisplayHideCursor(void)
+{
+	if (! DidCGDisplayHideCursor) {
+		if (HaveApplicationServicesBun()) {
+			MyCGDisplayHideCursor =
+				(CGDisplayHideCursorProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGDisplayHideCursor"));
+		}
+		DidCGDisplayHideCursor = trueblnr;
+	}
+	return (MyCGDisplayHideCursor != NULL);
+}
+
+#else
+
+#define HaveMyCGDisplayHideCursor() trueblnr
+#define MyCGDisplayHideCursor CGDisplayHideCursor
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef CGDisplayErr
+(*CGDisplayShowCursorProcPtr) (CGDirectDisplayID display);
+LOCALVAR CGDisplayShowCursorProcPtr MyCGDisplayShowCursor = NULL;
+LOCALVAR blnr DidCGDisplayShowCursor = falseblnr;
+
+LOCALFUNC blnr HaveMyCGDisplayShowCursor(void)
+{
+	if (! DidCGDisplayShowCursor) {
+		if (HaveApplicationServicesBun()) {
+			MyCGDisplayShowCursor =
+				(CGDisplayShowCursorProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGDisplayShowCursor"));
+		}
+		DidCGDisplayShowCursor = trueblnr;
+	}
+	return (MyCGDisplayShowCursor != NULL);
+}
+
+#else
+
+#define HaveMyCGDisplayShowCursor() trueblnr
+#define MyCGDisplayShowCursor CGDisplayShowCursor
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef CGEventErr
+(*CGWarpMouseCursorPositionProcPtr) (CGPoint newCursorPosition);
+LOCALVAR CGWarpMouseCursorPositionProcPtr MyCGWarpMouseCursorPosition = NULL;
+LOCALVAR blnr DidCGWarpMouseCursorPosition = falseblnr;
+
+LOCALFUNC blnr HaveMyCGWarpMouseCursorPosition(void)
+{
+	if (! DidCGWarpMouseCursorPosition) {
+		if (HaveApplicationServicesBun()) {
+			MyCGWarpMouseCursorPosition =
+				(CGWarpMouseCursorPositionProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGWarpMouseCursorPosition"));
+		}
+		DidCGWarpMouseCursorPosition = trueblnr;
+	}
+	return (MyCGWarpMouseCursorPosition != NULL);
+}
+
+#else
+
+#define HaveMyCGWarpMouseCursorPosition() trueblnr
+#define MyCGWarpMouseCursorPosition CGWarpMouseCursorPosition
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef CGEventErr
+(*CGSetLocalEventsSuppressionIntervalProcPtr) (CFTimeInterval seconds);
+LOCALVAR CGSetLocalEventsSuppressionIntervalProcPtr MyCGSetLocalEventsSuppressionInterval = NULL;
+LOCALVAR blnr DidCGSetLocalEventsSuppressionInterval = falseblnr;
+
+LOCALFUNC blnr HaveMyCGSetLocalEventsSuppressionInterval(void)
+{
+	if (! DidCGSetLocalEventsSuppressionInterval) {
+		if (HaveApplicationServicesBun()) {
+			MyCGSetLocalEventsSuppressionInterval =
+				(CGSetLocalEventsSuppressionIntervalProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AppServBunRef, CFSTR("CGSetLocalEventsSuppressionInterval"));
+		}
+		DidCGSetLocalEventsSuppressionInterval = trueblnr;
+	}
+	return (MyCGSetLocalEventsSuppressionInterval != NULL);
+}
+
+#else
+
+#define HaveMyCGSetLocalEventsSuppressionInterval() trueblnr
+#define MyCGSetLocalEventsSuppressionInterval CGSetLocalEventsSuppressionInterval
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef OSStatus (*CreateStandardAlertProcPtr) (
+	AlertType alertType,
+	CFStringRef error,
+	CFStringRef explanation,
+	const AlertStdCFStringAlertParamRec * param,
+	DialogRef * outAlert
+);
+LOCALVAR CreateStandardAlertProcPtr MyCreateStandardAlert = NULL;
+LOCALVAR blnr DidCreateStandardAlert = falseblnr;
+
+LOCALFUNC blnr HaveMyCreateStandardAlert(void)
+{
+	if (! DidCreateStandardAlert) {
+		if (HaveHIToolboxBunRef()) {
+			MyCreateStandardAlert =
+				(CreateStandardAlertProcPtr)
+				CFBundleGetFunctionPointerForName(
+					HIToolboxBunRef, CFSTR("CreateStandardAlert"));
+		}
+		DidCreateStandardAlert = trueblnr;
+	}
+	return (MyCreateStandardAlert != NULL);
+}
+
+#else
+
+#define HaveMyCreateStandardAlert() trueblnr
+#define MyCreateStandardAlert CreateStandardAlert
+
+#endif /* ! UsingCarbonLib */
+
+
+#if UsingCarbonLib
+
+typedef OSStatus (*RunStandardAlertProcPtr) (
+	DialogRef inAlert,
+	ModalFilterUPP filterProc,
+	DialogItemIndex * outItemHit
+);
+LOCALVAR RunStandardAlertProcPtr MyRunStandardAlert = NULL;
+LOCALVAR blnr DidRunStandardAlert = falseblnr;
+
+LOCALFUNC blnr HaveMyRunStandardAlert(void)
+{
+	if (! DidRunStandardAlert) {
+		if (HaveHIToolboxBunRef()) {
+			MyRunStandardAlert =
+				(RunStandardAlertProcPtr)
+				CFBundleGetFunctionPointerForName(
+					HIToolboxBunRef, CFSTR("RunStandardAlert"));
+		}
+		DidRunStandardAlert = trueblnr;
+	}
+	return (MyRunStandardAlert != NULL);
+}
+
+#else
+
+#define HaveMyRunStandardAlert() trueblnr
+#define MyRunStandardAlert RunStandardAlert
+
+#endif /* ! UsingCarbonLib */
+
+
 /*--- display utilities ---*/
 
 /* DoForEachDisplay adapted from Apple Technical Q&A QA1168 */
@@ -135,10 +460,10 @@ LOCALPROC DoForEachDisplay0(CGDisplayCount dspCount,
 {
 	int i;
 
-	if (noErr == CGGetActiveDisplayList(dspCount,
+	if (noErr == MyCGGetActiveDisplayList(dspCount,
 		displays, &dspCount))
 	{
-		for (i = 0; i < dspCount; i++) {
+		for (i = 0; i < dspCount; ++i) {
 			p(displays[i]);
 		}
 	}
@@ -148,7 +473,9 @@ LOCALPROC DoForEachDisplay(ForEachDisplayProcPtr p)
 {
 	CGDisplayCount dspCount = 0;
 
-	if (noErr == CGGetActiveDisplayList(0, NULL, &dspCount)) {
+	if (HaveMyCGGetActiveDisplayList()
+		&& (noErr == MyCGGetActiveDisplayList(0, NULL, &dspCount)))
+	{
 		if (dspCount <= 2) {
 			CGDirectDisplayID displays[2];
 			DoForEachDisplay0(dspCount, displays, p);
@@ -184,6 +511,10 @@ LOCALFUNC blnr HaveMyCGMainDisplayID(void)
 	return (MyCGMainDisplayID != NULL);
 }
 
+#ifndef kCGNullDirectDisplay /* not in MPW Headers */
+#define kCGNullDirectDisplay ((CGDirectDisplayID)0)
+#endif
+
 LOCALPROC MyMainDisplayIDProc(CGDirectDisplayID display)
 {
 	CGDirectDisplayID *p = (CGDirectDisplayID *)datp;
@@ -212,12 +543,14 @@ LOCALFUNC CGDirectDisplayID MyMainDisplayID(void)
 
 LOCALPROC MyGetScreenBitsBounds(Rect *r)
 {
-	CGRect cgr = CGDisplayBounds(MyMainDisplayID());
+	if (HaveMyCGDisplayBounds()) {
+		CGRect cgr = MyCGDisplayBounds(MyMainDisplayID());
 
-	r->left = cgr.origin.x;
-	r->top = cgr.origin.y;
-	r->right = cgr.origin.x + cgr.size.width;
-	r->bottom = cgr.origin.y + cgr.size.height;
+		r->left = cgr.origin.x;
+		r->top = cgr.origin.y;
+		r->right = cgr.origin.x + cgr.size.width;
+		r->bottom = cgr.origin.y + cgr.size.height;
+	}
 }
 
 LOCALPROC InvalWholeWindow(WindowRef mw)
@@ -263,7 +596,7 @@ GLOBALVAR FILE *DumpFile = NULL;
 LOCALFUNC blnr StartDump(void)
 {
 	DumpFile = fopen("DumpFile", "w");
-	if (DumpFile == NULL) {
+	if (NULL == DumpFile) {
 		return falseblnr;
 	} else {
 		fprintf(DumpFile, "Dump File\n");
@@ -379,7 +712,7 @@ LOCALVAR CGrafPtr GrabbedPort = NULL;
 LOCALPROC AdjustMainScreenGrab(void)
 {
 	if (GrabMachine) {
-		if (GrabbedPort == NULL) {
+		if (NULL == GrabbedPort) {
 			/* CGDisplayCapture(MyMainDisplayID()); */
 			CGCaptureAllDisplays();
 			/* CGDisplayHideCursor( MyMainDisplayID() ); */
@@ -566,32 +899,6 @@ LOCALPROC MyAdjustGLforSize(int h, int v)
 LOCALVAR AGLPixelFormat window_fmt = NULL;
 LOCALVAR AGLContext window_ctx = NULL;
 
-LOCALPROC CloseMainWindow(void)
-{
-	if (ctx != NULL) {
-		if (GL_TRUE != aglSetCurrentContext(NULL)) {
-			/* err = aglReportError() */
-		}
-		ctx = NULL;
-	}
-
-	if (window_ctx != NULL) {
-		if (GL_TRUE != aglDestroyContext(window_ctx)) {
-			/* err = aglReportError() */
-		}
-		window_ctx = NULL;
-	}
-	if (window_fmt != NULL) {
-		aglDestroyPixelFormat(window_fmt);
-		window_fmt = NULL;
-	}
-
-	if (gMyMainWindow != NULL) {
-		DisposeWindow(gMyMainWindow);
-		gMyMainWindow = NULL;
-	}
-}
-
 #ifndef UseAGLfullscreen
 #define UseAGLfullscreen 0
 #endif
@@ -604,7 +911,10 @@ LOCALVAR AGLContext fullscreen_ctx = NULL;
 #if UseAGLfullscreen
 LOCALPROC MaybeFullScreen(void)
 {
-	if (UseFullScreen && (fullscreen_ctx == NULL)) {
+	if (UseFullScreen && (NULL == fullscreen_ctx)
+		&& HaveMyCGDisplayPixelsWide()
+		&& HaveMyCGDisplayPixelsHigh())
+	{
 		static const GLint fullscreen_attrib[] = {AGL_RGBA,
 			AGL_NO_RECOVERY,
 			AGL_FULLSCREEN,
@@ -632,8 +942,8 @@ LOCALPROC MaybeFullScreen(void)
 				} else {
 					Rect r;
 
-					int h = CGDisplayPixelsWide(CurMainDisplayID);
-					int v = CGDisplayPixelsHigh(CurMainDisplayID);
+					int h = MyCGDisplayPixelsWide(CurMainDisplayID);
+					int v = MyCGDisplayPixelsHigh(CurMainDisplayID);
 
 					GetWindowBounds(gMyMainWindow, kWindowContentRgn, &r);
 
@@ -671,10 +981,6 @@ LOCALPROC NoFullScreen(void)
 
 		h = r.right - r.left;
 		v = r.bottom - r.top;
-
-		if (GL_TRUE != aglSetCurrentContext(window_ctx)) {
-			/* err = aglReportError() */
-		}
 
 		GLhOffset = hOffset;
 		GLvOffset = v - vOffset;
@@ -714,26 +1020,6 @@ LOCALPROC AdjustOpenGLGrab(void)
 
 LOCALVAR UInt32 SavedModifiers = 0;
 
-LOCALPROC InitKeyCodes(void)
-{
-	theKeys[0] = 0;
-	theKeys[1] = 0;
-	theKeys[2] = 0;
-	theKeys[3] = 0;
-
-	Keyboard_UpdateKeyMap(MKC_Control, ControlKeyPressed);
-
-	SavedModifiers = GetCurrentKeyModifiers();
-		/*
-			Perhaps should use GetCurrentEventKeyModifiers,
-			but not available in old os x versions.
-		*/
-
-	if ((alphaLock & SavedModifiers) != 0) {
-		Keyboard_UpdateKeyMap(MKC_CapsLock, trueblnr);
-	}
-}
-
 LOCALPROC MyUpdateKeyboardModifiers(UInt32 theModifiers)
 {
 	UInt32 ChangedModifiers = theModifiers ^ SavedModifiers;
@@ -756,6 +1042,35 @@ LOCALPROC MyUpdateKeyboardModifiers(UInt32 theModifiers)
 	SavedModifiers = theModifiers;
 }
 
+LOCALVAR blnr WantCmdOptOnReconnect = falseblnr;
+
+LOCALPROC ReconnectKeyCodes3(void)
+{
+	UInt32 theModifiers = GetCurrentKeyModifiers();
+	UInt32 ChangedModifiers = theModifiers ^ SavedModifiers;
+
+	if (ChangedModifiers & alphaLock) {
+		Keyboard_UpdateKeyMap2(MKC_CapsLock, (alphaLock & theModifiers) != 0);
+	}
+
+	/* ignore changes to other modifiers */
+	/* except for command/option on receive drop */
+
+	if (WantCmdOptOnReconnect) {
+		WantCmdOptOnReconnect = falseblnr;
+
+		if ((optionKey & theModifiers) != 0) {
+			Keyboard_UpdateKeyMap2(MKC_Option, trueblnr);
+		}
+
+		if ((cmdKey & theModifiers) != 0) {
+			Keyboard_UpdateKeyMap2(MKC_Command, trueblnr);
+		}
+	}
+
+	SavedModifiers = theModifiers;
+}
+
 /*--- cursor hiding ---*/
 
 #if 0
@@ -771,8 +1086,10 @@ LOCALPROC MyShowCursor(void)
 	/* ShowCursor(); deprecated */
 	DoForEachDisplay(MyShowCursorProc);
 #endif
-	(void) CGDisplayShowCursor(MyMainDisplayID());
-		/* documentation now claims argument ignored */
+	if (HaveMyCGDisplayShowCursor()) {
+		(void) MyCGDisplayShowCursor(MyMainDisplayID());
+			/* documentation now claims argument ignored */
+	}
 }
 
 #if 0
@@ -788,8 +1105,10 @@ LOCALPROC MyHideCursor(void)
 	/* HideCursor(); deprecated */
 	DoForEachDisplay(MyHideCursorProc);
 #endif
-	(void) CGDisplayHideCursor(MyMainDisplayID());
-		/* documentation now claims argument ignored */
+	if (HaveMyCGDisplayHideCursor()) {
+		(void) MyCGDisplayHideCursor(MyMainDisplayID());
+			/* documentation now claims argument ignored */
+	}
 }
 
 LOCALVAR blnr HaveCursorHidden = falseblnr;
@@ -809,66 +1128,6 @@ LOCALPROC SetCursorArrow(void)
 {
 	SetThemeCursor(kThemeArrowCursor);
 }
-
-#if EnableMouseMotion && EnableFullScreen
-
-#if UsingCarbonLib
-
-typedef CGEventErr
-(*CGWarpMouseCursorPositionProcPtr) (CGPoint newCursorPosition);
-LOCALVAR CGWarpMouseCursorPositionProcPtr MyCGWarpMouseCursorPosition = NULL;
-LOCALVAR blnr DidCGWarpMouseCursorPosition = falseblnr;
-
-LOCALFUNC blnr HaveMyCGWarpMouseCursorPosition(void)
-{
-	if (! DidCGWarpMouseCursorPosition) {
-		if (HaveApplicationServicesBun()) {
-			MyCGWarpMouseCursorPosition =
-				(CGWarpMouseCursorPositionProcPtr)
-				CFBundleGetFunctionPointerForName(
-					AppServBunRef, CFSTR("CGWarpMouseCursorPosition"));
-		}
-		DidCGWarpMouseCursorPosition = trueblnr;
-	}
-	return (MyCGWarpMouseCursorPosition != NULL);
-}
-
-#else
-
-#define HaveMyCGWarpMouseCursorPosition() trueblnr
-#define MyCGWarpMouseCursorPosition CGWarpMouseCursorPosition
-
-#endif /* ! UsingCarbonLib */
-
-#if UsingCarbonLib
-
-typedef CGEventErr
-(*CGSetLocalEventsSuppressionIntervalProcPtr) (CFTimeInterval seconds);
-LOCALVAR CGSetLocalEventsSuppressionIntervalProcPtr MyCGSetLocalEventsSuppressionInterval = NULL;
-LOCALVAR blnr DidCGSetLocalEventsSuppressionInterval = falseblnr;
-
-LOCALFUNC blnr HaveMyCGSetLocalEventsSuppressionInterval(void)
-{
-	if (! DidCGSetLocalEventsSuppressionInterval) {
-		if (HaveApplicationServicesBun()) {
-			MyCGSetLocalEventsSuppressionInterval =
-				(CGSetLocalEventsSuppressionIntervalProcPtr)
-				CFBundleGetFunctionPointerForName(
-					AppServBunRef, CFSTR("CGSetLocalEventsSuppressionInterval"));
-		}
-		DidCGSetLocalEventsSuppressionInterval = trueblnr;
-	}
-	return (MyCGSetLocalEventsSuppressionInterval != NULL);
-}
-
-#else
-
-#define HaveMyCGSetLocalEventsSuppressionInterval() trueblnr
-#define MyCGSetLocalEventsSuppressionInterval CGSetLocalEventsSuppressionInterval
-
-#endif /* ! UsingCarbonLib */
-
-#endif /* EnableMouseMotion && EnableFullScreen */
 
 #if 0
 
@@ -1101,6 +1360,14 @@ LOCALFUNC blnr InitMousePosition(void)
 }
 #endif
 
+LOCALPROC DisconnectKeyCodes3(void)
+{
+	DisconnectKeyCodes2();
+
+	CurMouseButton = falseblnr;
+
+	ForceShowCursor();
+}
 
 /*--- time, date, location ---*/
 
@@ -1116,6 +1383,12 @@ LOCALVAR EventTime NextTickChangeTime;
 
 #define MyTickDuration (kEventDurationSecond / 60.14742)
 
+#include "DATE2SEC.h"
+
+/* LOCALVAR EventTime ETimeBase; */
+LOCALVAR CFAbsoluteTime ATimeBase;
+LOCALVAR ui5b TimeSecBase;
+
 LOCALFUNC blnr InitLocationDat(void)
 {
 	MachineLocation loc;
@@ -1124,6 +1397,23 @@ LOCALFUNC blnr InitLocationDat(void)
 	CurMacLatitude = (ui5b)loc.latitude;
 	CurMacLongitude = (ui5b)loc.longitude;
 	CurMacDelta = (ui5b)loc.u.gmtDelta;
+
+	{
+		CFTimeZoneRef tz = CFTimeZoneCopySystem();
+		if (tz) {
+			/* CFAbsoluteTime */ ATimeBase = CFAbsoluteTimeGetCurrent();
+			/* ETimeBase = GetCurrentEventTime(); */
+			{
+				CFGregorianDate d = CFAbsoluteTimeGetGregorianDate(ATimeBase, tz);
+				double floorsec = floor(d.second);
+				ATimeBase -= (d.second - floorsec);
+				/* ETimeBase -= (d.second - floorsec); */
+				TimeSecBase = Date2MacSeconds(floorsec, d.minute, d.hour,
+					d.day, d.month, d.year);
+			}
+			CFRelease(tz);
+		}
+	}
 
 	return trueblnr;
 }
@@ -1155,7 +1445,9 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 
 LOCALFUNC blnr CheckDateTime(void)
 {
-	ui5b NewMacDateInSecond = ((ui5b)(CFAbsoluteTimeGetCurrent()))  + 3061137600UL;
+	ui5b NewMacDateInSecond = TimeSecBase + (ui5b)(CFAbsoluteTimeGetCurrent() - ATimeBase);
+	/* ui5b NewMacDateInSecond = TimeSecBase + (ui5b)(GetCurrentEventTime() - ETimeBase); */
+	/* ui5b NewMacDateInSecond = ((ui5b)(CFAbsoluteTimeGetCurrent()))  + 3061137600UL; */
 
 	if (CurMacDateInSeconds != NewMacDateInSecond) {
 		CurMacDateInSeconds = NewMacDateInSecond;
@@ -1261,7 +1553,7 @@ LOCALPROC RampSound(ui3p p, int n, ui3b BeginVal, ui3b EndVal)
 			perChanInfoPtr->MinFilledSoundBuffs = FilledSoundBuffs;
 		}
 
-		if (FilledSoundBuffs == 0) {
+		if (0 == FilledSoundBuffs) {
 			/* out of sound to play. play a bit of silence */
 			perChanInfoPtr->soundHeader.samplePtr = (Ptr)perChanInfoPtr->dbhBufferPtr + (CurPlayOffset & kBufferMask);
 			FillWithSilence((ui3p)perChanInfoPtr->soundHeader.samplePtr, My_Sound_Len,
@@ -1293,7 +1585,7 @@ LOCALVAR SndChannelPtr sndChannel = NULL; /* our sound channel */
 
 LOCALPROC MySound_Start(void)
 {
-	if (sndChannel == NULL) {
+	if (NULL == sndChannel) {
 		SndChannelPtr  chan = NULL;
 		SndCommand     callBack;
 
@@ -1331,7 +1623,7 @@ LOCALPROC MySound_Stop(void)
 			TheperChanInfoPtr->stopping = trueblnr;
 			r.scChannelBusy = falseblnr;
 			do {
-				if (0 == SndChannelStatus(sndChannel,
+				if (noErr == SndChannelStatus(sndChannel,
 					sizeof(SCStatus), &r))
 				{
 					busy = r.scChannelBusy;
@@ -1422,7 +1714,7 @@ LOCALPROC MySound_UnInit(void)
 
 GLOBALFUNC ui3p GetCurSoundOutBuff(void)
 {
-	if (sndChannel == NULL) {
+	if (NULL == sndChannel) {
 		return nullpr;
 	} else {
 		ui4b CurFillOffset = TheperChanInfoPtr->CurFillOffset;
@@ -1505,6 +1797,14 @@ LOCALPROC AdjustMachineGrab(void)
 }
 #endif
 
+#if EnableFullScreen
+LOCALPROC UngrabMachine(void)
+{
+	GrabMachine = falseblnr;
+	AdjustMachineGrab();
+}
+#endif
+
 /*--- basic dialogs ---*/
 
 LOCALFUNC CFStringRef UnicodeStrFromCStr(char *s, blnr AddEllipsis)
@@ -1534,86 +1834,18 @@ LOCALVAR blnr ADialogIsUp = falseblnr;
 
 LOCALPROC MyBeginDialog(void)
 {
-	Keyboard_UpdateControlKey(falseblnr);
-
-	KeyBoardAttachedToEm = falseblnr;
+	DisconnectKeyCodes3();
 	ADialogIsUp = trueblnr;
 #if EnableFullScreen
-	GrabMachine = falseblnr;
-	AdjustMachineGrab();
+	UngrabMachine();
 #endif
-	ForceShowCursor();
 }
 
 LOCALPROC MyEndDialog(void)
 {
 	ADialogIsUp = falseblnr;
+	ReconnectKeyCodes3();
 }
-
-
-#if UsingCarbonLib
-
-typedef OSStatus (*CreateStandardAlertProcPtr) (
-	AlertType alertType,
-	CFStringRef error,
-	CFStringRef explanation,
-	const AlertStdCFStringAlertParamRec * param,
-	DialogRef * outAlert
-);
-LOCALVAR CreateStandardAlertProcPtr MyCreateStandardAlert = NULL;
-LOCALVAR blnr DidCreateStandardAlert = falseblnr;
-
-LOCALFUNC blnr HaveMyCreateStandardAlert(void)
-{
-	if (! DidCreateStandardAlert) {
-		if (HaveHIToolboxBunRef()) {
-			MyCreateStandardAlert =
-				(CreateStandardAlertProcPtr)
-				CFBundleGetFunctionPointerForName(
-					HIToolboxBunRef, CFSTR("CreateStandardAlert"));
-		}
-		DidCreateStandardAlert = trueblnr;
-	}
-	return (MyCreateStandardAlert != NULL);
-}
-
-#else
-
-#define HaveMyCreateStandardAlert() trueblnr
-#define MyCreateStandardAlert CreateStandardAlert
-
-#endif /* ! UsingCarbonLib */
-
-#if UsingCarbonLib
-
-typedef OSStatus (*RunStandardAlertProcPtr) (
-	DialogRef inAlert,
-	ModalFilterUPP filterProc,
-	DialogItemIndex * outItemHit
-);
-LOCALVAR RunStandardAlertProcPtr MyRunStandardAlert = NULL;
-LOCALVAR blnr DidRunStandardAlert = falseblnr;
-
-LOCALFUNC blnr HaveMyRunStandardAlert(void)
-{
-	if (! DidRunStandardAlert) {
-		if (HaveHIToolboxBunRef()) {
-			MyRunStandardAlert =
-				(RunStandardAlertProcPtr)
-				CFBundleGetFunctionPointerForName(
-					HIToolboxBunRef, CFSTR("RunStandardAlert"));
-		}
-		DidRunStandardAlert = trueblnr;
-	}
-	return (MyRunStandardAlert != NULL);
-}
-
-#else
-
-#define HaveMyRunStandardAlert() trueblnr
-#define MyRunStandardAlert RunStandardAlert
-
-#endif /* ! UsingCarbonLib */
 
 #define kMyStandardAlert 128
 
@@ -1631,7 +1863,7 @@ LOCALPROC CheckSavedMacMsg(void)
 						(SavedFatalMsg) ? kAlertStopAlert : kAlertCautionAlert,
 						briefMsgu, longMsgu, NULL,
 						&TheAlert);
-					if (err == noErr) {
+					if (noErr == err) {
 						err = MyRunStandardAlert(TheAlert, NULL, NULL);
 					}
 					CFRelease(longMsgu);
@@ -2060,7 +2292,7 @@ LOCALFUNC blnr MyMakeFSRefC(FSRef *ParentRef, char *fileName,
 	err = FSMakeFSRefUnicode(ParentRef,
 		L, x, kTextEncodingUnknown,
 		ChildRef);
-	if (err == fnfErr) {
+	if (fnfErr == err) {
 		*Exists = falseblnr;
 		return trueblnr;
 	} else if (noErr == err) {
@@ -2356,7 +2588,7 @@ LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 LOCALFUNC blnr AllocateMacROM(void)
 {
 	ROM = (ui4b *)calloc(1, kROM_Size);
-	if (ROM == NULL) {
+	if (NULL == ROM) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	} else {
@@ -2378,25 +2610,6 @@ LOCALFUNC blnr FindNamedChildRef(FSRef *ParentRef,
 	return falseblnr;
 }
 
-typedef OSStatus (*LSCopyDisplayNameForRefProcPtr)
-	(const FSRef *inRef, CFStringRef *outDisplayName);
-LOCALVAR LSCopyDisplayNameForRefProcPtr MyLSCopyDisplayNameForRef = NULL;
-LOCALVAR blnr DidLSCopyDisplayNameForRef = falseblnr;
-
-LOCALFUNC blnr HaveMyLSCopyDisplayNameForRef(void)
-{
-	if (! DidLSCopyDisplayNameForRef) {
-		if (HaveApplicationServicesBun()) {
-			MyLSCopyDisplayNameForRef =
-				(LSCopyDisplayNameForRefProcPtr)
-				CFBundleGetFunctionPointerForName(
-					AppServBunRef, CFSTR("LSCopyDisplayNameForRef"));
-		}
-		DidLSCopyDisplayNameForRef = trueblnr;
-	}
-	return (MyLSCopyDisplayNameForRef != NULL);
-}
-
 LOCALVAR FSRef MyDatDirRef;
 
 LOCALVAR CFStringRef MyAppName = NULL;
@@ -2414,9 +2627,9 @@ LOCALFUNC blnr InitMyApplInfo(void)
 	FSRef fsRef;
 	FSRef parentRef;
 
-	if (0 == GetProcessBundleLocation(&currentProcess,
+	if (noErr == GetProcessBundleLocation(&currentProcess,
 		&fsRef))
-	if (0 == FSGetCatalogInfo(&fsRef, kFSCatInfoNone,
+	if (noErr == FSGetCatalogInfo(&fsRef, kFSCatInfoNone,
 		NULL, NULL, NULL, &parentRef))
 	{
 		FSRef ContentsRef;
@@ -2518,7 +2731,7 @@ LOCALFUNC blnr LoadInitialImages(void)
 LOCALFUNC blnr AllocateMacRAM(void)
 {
 	RAM = (ui4b *)calloc(1, kRAM_Size + RAMSafetyMarginFudge);
-	if (RAM == NULL) {
+	if (NULL == RAM) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	} else {
@@ -2537,9 +2750,9 @@ LOCALFUNC blnr GotRequiredParams(AppleEvent *theAppleEvent)
 
 	theErr = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
 				typeWildCard, &typeCode, NULL, 0, &actualSize);
-	if (theErr == errAEDescNotFound) { /* No more required params. */
+	if (errAEDescNotFound == theErr) { /* No more required params. */
 		return trueblnr;
-	} else if (theErr == noErr) { /* More required params! */
+	} else if (noErr == theErr) { /* More required params! */
 		return /* CheckSysCode(errAEEventNotHandled) */ falseblnr;
 	} else { /* Unexpected Error! */
 		return /* CheckSysCode(theErr) */ falseblnr;
@@ -2554,9 +2767,9 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 
 	theErr = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
 				typeWildCard, &typeCode, NULL, 0, &actualSize);
-	if (theErr == errAEDescNotFound) { /* No more required params. */
+	if (errAEDescNotFound == theErr) { /* No more required params. */
 		return trueblnr;
-	} else if (theErr == noErr) { /* More required params! */
+	} else if (noErr == theErr) { /* More required params! */
 		return trueblnr; /* errAEEventNotHandled; */ /*^*/
 	} else { /* Unexpected Error! */
 		return /* CheckSysCode(theErr) */ falseblnr;
@@ -2573,7 +2786,7 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 	/* put the direct parameter (a list of descriptors) into docList */
 	if (noErr == (AEGetParamDesc(theAppleEvent, keyDirectObject, typeAEList, &docList))) {
 		if (GotRequiredParams0(theAppleEvent)) { /* Check for missing required parameters */
-			/* printIt = (aRefCon == openPrint) */
+			/* printIt = (openPrint == aRefCon) */
 			InsertDisksFromDocList(&docList);
 		}
 		/* vCheckSysCode */ (void) (AEDisposeDesc(&docList));
@@ -2605,14 +2818,14 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 LOCALFUNC blnr MyInstallEventHandler(AEEventClass theAEEventClass, AEEventID theAEEventID,
 						ProcPtr p, long handlerRefcon, blnr isSysHandler)
 {
-	return 0 == (AEInstallEventHandler(theAEEventClass, theAEEventID,
+	return noErr == (AEInstallEventHandler(theAEEventClass, theAEEventID,
 			NewAEEventHandlerUPP((AEEventHandlerProcPtr)p),
 			handlerRefcon, isSysHandler));
 }
 
 LOCALPROC InstallAppleEventHandlers(void)
 {
-	if (AESetInteractionAllowed(kAEInteractWithLocal) == 0)
+	if (noErr == AESetInteractionAllowed(kAEInteractWithLocal))
 	if (MyInstallEventHandler(kCoreEventClass, kAEOpenApplication, (ProcPtr)DoOpenEvent, 0, falseblnr))
 	if (MyInstallEventHandler(kCoreEventClass, kAEOpenDocuments, (ProcPtr)OpenOrPrintFiles, openOnly, falseblnr))
 	if (MyInstallEventHandler(kCoreEventClass, kAEPrintDocuments, (ProcPtr)OpenOrPrintFiles, openPrint, falseblnr))
@@ -2621,12 +2834,12 @@ LOCALPROC InstallAppleEventHandlers(void)
 	}
 }
 
-static pascal OSErr GlobalTrackingHandler(short message, WindowRef pWindow, void *handlerRefCon, DragReference theDragRef)
+static pascal OSErr GlobalTrackingHandler(DragTrackingMessage message, WindowRef theWindow, void *handlerRefCon, DragReference theDragRef)
 {
 	RgnHandle hilightRgn;
 	Rect Bounds;
 
-	UnusedParam(pWindow);
+	UnusedParam(theWindow);
 	UnusedParam(handlerRefCon);
 	switch(message) {
 		case kDragTrackingEnterWindow:
@@ -2644,7 +2857,6 @@ static pascal OSErr GlobalTrackingHandler(short message, WindowRef pWindow, void
 	}
 
 	return noErr;
-
 }
 
 LOCALFUNC OSErr InsertADiskOrAliasFromFSRef(FSRef *theRef)
@@ -2674,8 +2886,6 @@ LOCALFUNC OSErr InsertADiskOrAliasFromSpec(FSSpec *spec)
 	return theErr;
 }
 
-static DragTrackingHandlerUPP gGlobalTrackingHandler = NULL;
-
 static pascal OSErr GlobalReceiveHandler(WindowRef pWindow, void *handlerRefCon, DragReference theDragRef)
 {
 	unsigned short items;
@@ -2687,48 +2897,69 @@ static pascal OSErr GlobalReceiveHandler(WindowRef pWindow, void *handlerRefCon,
 	UnusedParam(pWindow);
 	UnusedParam(handlerRefCon);
 
-	CountDragItems(theDragRef, &items);
-	for (index = 1; index <= items; index++) {
-		GetDragItemReferenceNumber(theDragRef, index, &theItem);
-		if (GetFlavorDataSize(theDragRef, theItem, flavorTypeHFS, &SentSize) == noErr) {
-			if (SentSize == sizeof(HFSFlavor)) {
-				GetFlavorData(theDragRef, theItem, flavorTypeHFS, (Ptr)&r, &SentSize, 0);
-				if (noErr != InsertADiskOrAliasFromSpec(&r.fileSpec)) {
-				}
+	if (noErr == CountDragItems(theDragRef, &items)) {
+		for (index = 1; index <= items; ++index) {
+			if (noErr == GetDragItemReferenceNumber(theDragRef, index, &theItem))
+			if (noErr == GetFlavorDataSize(theDragRef, theItem, flavorTypeHFS, &SentSize))
+				/*
+					On very old macs SentSize might only be big enough to hold the actual
+					file name. Have not seen this in OS X, but still leave the check
+					as '<=' instead of '=='.
+				*/
+			if (SentSize <= sizeof(HFSFlavor))
+			if (noErr == GetFlavorData(theDragRef, theItem, flavorTypeHFS,
+				(Ptr)&r, &SentSize, 0))
+			if (noErr == InsertADiskOrAliasFromSpec(&r.fileSpec))
+			{
 			}
 		}
-	}
 
-	{
-		ProcessSerialNumber currentProcess = {0, kCurrentProcess};
+		if (gTrueBackgroundFlag) {
+			ProcessSerialNumber currentProcess = {0, kCurrentProcess};
 
-		(void) SetFrontProcess(&currentProcess);
+			(void) SetFrontProcess(&currentProcess);
+
+			WantCmdOptOnReconnect = trueblnr;
+		}
 	}
 
 	return noErr;
 }
 
-static DragReceiveHandlerUPP gGlobalReceiveHandler = NULL;
+LOCALVAR DragTrackingHandlerUPP gGlobalTrackingHandler = NULL;
+LOCALVAR DragReceiveHandlerUPP gGlobalReceiveHandler = NULL;
 
-LOCALPROC PrepareForDragging(void)
+LOCALPROC UnPrepareForDragging(void)
 {
+	if (NULL != gGlobalReceiveHandler) {
+		RemoveReceiveHandler(gGlobalReceiveHandler, gMyMainWindow);
+		DisposeDragReceiveHandlerUPP(gGlobalReceiveHandler);
+		gGlobalReceiveHandler = NULL;
+	}
+	if (NULL != gGlobalTrackingHandler) {
+		RemoveTrackingHandler(gGlobalTrackingHandler, gMyMainWindow);
+		DisposeDragTrackingHandlerUPP(gGlobalTrackingHandler);
+		gGlobalTrackingHandler = NULL;
+	}
+}
+
+LOCALFUNC blnr PrepareForDragging(void)
+{
+	blnr IsOk = falseblnr;
+
 	gGlobalTrackingHandler = NewDragTrackingHandlerUPP(GlobalTrackingHandler);
 	if (gGlobalTrackingHandler != NULL) {
 		gGlobalReceiveHandler = NewDragReceiveHandlerUPP(GlobalReceiveHandler);
 		if (gGlobalReceiveHandler != NULL) {
-			if (InstallTrackingHandler(gGlobalTrackingHandler, nil, nil) == 0) {
-				if (InstallReceiveHandler(gGlobalReceiveHandler, nil, nil) == 0) {
-					return;
-					/* RemoveReceiveHandler(gGlobalReceiveHandler, nil); */
+			if (noErr == InstallTrackingHandler(gGlobalTrackingHandler, gMyMainWindow, nil)) {
+				if (noErr == InstallReceiveHandler(gGlobalReceiveHandler, gMyMainWindow, nil)) {
+					IsOk = trueblnr;
 				}
-				RemoveTrackingHandler(gGlobalTrackingHandler, nil);
 			}
-			DisposeDragReceiveHandlerUPP(gGlobalReceiveHandler);
-			gGlobalReceiveHandler = NULL;
 		}
-		DisposeDragTrackingHandlerUPP(gGlobalTrackingHandler);
-		gGlobalTrackingHandler = NULL;
 	}
+
+	return IsOk;
 }
 
 LOCALVAR EventRef EventForMyLowPriority = nil;
@@ -2825,7 +3056,7 @@ static pascal OSStatus windowEventHandler(EventHandlerCallRef nextHandler,
 LOCALFUNC blnr AllocateScreenCompare(void)
 {
 	screencomparebuff = malloc(vMacScreenNumBytes);
-	if (screencomparebuff == NULL) {
+	if (NULL == screencomparebuff) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	}
@@ -2833,7 +3064,7 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 
 #if UseControlKeys
 	CntrlDisplayBuff = malloc(vMacScreenNumBytes);
-	if (CntrlDisplayBuff == NULL) {
+	if (NULL == CntrlDisplayBuff) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	}
@@ -2843,7 +3074,7 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 		ScaleBuffSzMult < 8 ? 8 :
 		ScaleBuffSzMult
 		));
-	if (ScalingBuff == NULL) {
+	if (NULL == ScalingBuff) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	}
@@ -2900,6 +3131,53 @@ LOCALFUNC blnr MyCreateNewWindow(Rect *Bounds, WindowPtr *theWindow)
 	return IsOk;
 }
 
+LOCALPROC ZapMyWState(void)
+{
+	gMyMainWindow = NULL;
+	window_fmt = NULL;
+	window_ctx = NULL;
+	gGlobalReceiveHandler = NULL;
+	gGlobalTrackingHandler = NULL;
+}
+
+LOCALPROC CloseAglCurrentContext(void)
+{
+	if (ctx != NULL) {
+		/*
+			Only because MyDrawWithOpenGL doesn't
+			bother to do this. No one
+			uses the CurrentContext
+			without settting it first.
+		*/
+		if (GL_TRUE != aglSetCurrentContext(NULL)) {
+			/* err = aglReportError() */
+		}
+		ctx = NULL;
+	}
+}
+
+LOCALPROC CloseMainWindow(void)
+{
+	UnPrepareForDragging();
+
+	if (window_ctx != NULL) {
+		if (GL_TRUE != aglDestroyContext(window_ctx)) {
+			/* err = aglReportError() */
+		}
+		window_ctx = NULL;
+	}
+
+	if (window_fmt != NULL) {
+		aglDestroyPixelFormat(window_fmt);
+		window_fmt = NULL;
+	}
+
+	if (gMyMainWindow != NULL) {
+		DisposeWindow(gMyMainWindow);
+		gMyMainWindow = NULL;
+	}
+}
+
 enum {
 	kMagStateNormal,
 #if EnableMagnify
@@ -2924,6 +3202,7 @@ LOCALFUNC blnr CreateMainWindow(void)
 	short topPos;
 	short NewWindowHeight = vMacScreenHeight;
 	short NewWindowWidth = vMacScreenWidth;
+	blnr IsOk = falseblnr;
 
 #if EnableFullScreen
 	UseFullScreen = WantFullScreen;
@@ -3061,47 +3340,82 @@ LOCALFUNC blnr CreateMainWindow(void)
 						}
 					}
 
-					return trueblnr;
+					(void) PrepareForDragging();
+
+					IsOk = trueblnr;
 
 				}
-
-				if (GL_TRUE != aglDestroyContext(window_ctx)) {
-					/* err = aglReportError() */
-				}
-				window_ctx = NULL;
 			}
-			aglDestroyPixelFormat (window_fmt);
-			window_fmt = NULL;
 		}
-		DisposeWindow(gMyMainWindow);
-		gMyMainWindow = NULL;
 	}
 
-	return falseblnr;
+	return IsOk;
+}
+
+struct MyWState {
+	WindowPtr f_MainWindow;
+	AGLPixelFormat f_fmt;
+	AGLContext f_ctx;
+	short f_hOffset;
+	short f_vOffset;
+	blnr f_UseFullScreen;
+	blnr f_UseMagnify;
+	int f_CurWinIndx;
+	short f_GLhOffset;
+	short f_GLvOffset;
+	DragTrackingHandlerUPP f_gGlobalTrackingHandler;
+	DragReceiveHandlerUPP f_gGlobalReceiveHandler;
+};
+typedef struct MyWState MyWState;
+
+LOCALPROC GetMyWState(MyWState *r)
+{
+	r->f_MainWindow = gMyMainWindow;
+	r->f_fmt = window_fmt;
+	r->f_ctx = window_ctx;
+	r->f_hOffset = hOffset;
+	r->f_vOffset = vOffset;
+	r->f_UseFullScreen = UseFullScreen;
+	r->f_UseMagnify = UseMagnify;
+	r->f_CurWinIndx = CurWinIndx;
+	r->f_GLhOffset = GLhOffset;
+	r->f_GLvOffset = GLvOffset;
+	r->f_gGlobalTrackingHandler = gGlobalTrackingHandler;
+	r->f_gGlobalReceiveHandler = gGlobalReceiveHandler;
+}
+
+LOCALPROC SetMyWState(MyWState *r)
+{
+	gMyMainWindow = r->f_MainWindow;
+	window_fmt = r->f_fmt;
+	window_ctx = r->f_ctx;
+	hOffset = r->f_hOffset;
+	vOffset = r->f_vOffset;
+	UseFullScreen = r->f_UseFullScreen;
+	UseMagnify = r->f_UseMagnify;
+	CurWinIndx = r->f_CurWinIndx;
+	GLhOffset = r->f_GLhOffset;
+	GLvOffset = r->f_GLvOffset;
+	gGlobalTrackingHandler = r->f_gGlobalTrackingHandler;
+	gGlobalReceiveHandler = r->f_gGlobalReceiveHandler;
+
+	ctx = window_ctx;
 }
 
 LOCALFUNC blnr ReCreateMainWindow(void)
 {
-	WindowPtr OldMainWindow = gMyMainWindow;
-	AGLPixelFormat old_fmt = window_fmt;
-	AGLContext old_ctx = window_ctx;
-	short old_hOffset = hOffset;
-	short old_vOffset = vOffset;
-	blnr old_UseFullScreen = UseFullScreen;
-	blnr old_UseMagnify = UseMagnify;
-	int old_CurWinIndx = CurWinIndx;
-	short old_GLhOffset = GLhOffset;
-	short old_GLvOffset = GLvOffset;
+	MyWState old_state;
+	MyWState new_state;
 
 #if EnableFullScreen
 	if (! UseFullScreen)
 #endif
 	{
 		/* save old position */
-		if (OldMainWindow != NULL) {
+		if (gMyMainWindow != NULL) {
 			Rect r;
 
-			if (MyGetWindowContBounds(OldMainWindow, &r)) {
+			if (MyGetWindowContBounds(gMyMainWindow, &r)) {
 				WinPositionWins[CurWinIndx].h = r.left;
 				WinPositionWins[CurWinIndx].v = r.top;
 			}
@@ -3109,25 +3423,18 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	}
 
 #if EnableFullScreen
-	GrabMachine = falseblnr;
-	AdjustMachineGrab();
+	UngrabMachine();
 #endif
 
-	gMyMainWindow = NULL;
-	window_fmt = NULL;
-	window_ctx = NULL;
+	CloseAglCurrentContext();
+
+	GetMyWState(&old_state);
+
+	ZapMyWState();
 
 	if (! CreateMainWindow()) {
-		CurWinIndx = old_CurWinIndx;
-		UseFullScreen = old_UseFullScreen;
-		UseMagnify = old_UseMagnify;
-		hOffset = old_hOffset;
-		vOffset = old_vOffset;
-		window_fmt = old_fmt;
-		window_ctx = old_ctx;
-		gMyMainWindow = OldMainWindow;
-		GLhOffset = old_GLhOffset;
-		GLvOffset = old_GLvOffset;
+		CloseMainWindow();
+		SetMyWState(&old_state);
 
 #if EnableFullScreen
 		if (UseFullScreen) {
@@ -3139,19 +3446,10 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 
 		return falseblnr;
 	} else {
-		if (OldMainWindow != NULL) {
-			DisposeWindow(OldMainWindow);
-		}
-
-		if (old_ctx != NULL) {
-			if (GL_TRUE != aglDestroyContext(old_ctx)) {
-				/* err = aglReportError() */
-			}
-		}
-
-		if (old_fmt != NULL) {
-			aglDestroyPixelFormat(old_fmt);
-		}
+		GetMyWState(&new_state);
+		SetMyWState(&old_state);
+		CloseMainWindow();
+		SetMyWState(&new_state);
 
 #if EnableMouseMotion && EnableFullScreen
 		if (HaveCursorHidden) {
@@ -3211,14 +3509,17 @@ LOCALPROC ToggleWantFullScreen(void)
 		int NewMagState = WinMagStates[NewWinState];
 		WinMagStates[OldWinState] = OldMagState;
 		if (kMagStateAuto != NewMagState) {
-			WantMagnify = (NewMagState == kMagStateMagnifgy);
+			WantMagnify = (kMagStateMagnifgy == NewMagState);
 		} else {
 			WantMagnify = falseblnr;
-			if (WantFullScreen) {
+			if (WantFullScreen
+				&& HaveMyCGDisplayPixelsWide()
+				&& HaveMyCGDisplayPixelsHigh())
+			{
 				CGDirectDisplayID CurMainDisplayID = MyMainDisplayID();
 
-				if ((CGDisplayPixelsWide(CurMainDisplayID) >= vMacScreenWidth * MyWindowScale)
-					&& (CGDisplayPixelsHigh(CurMainDisplayID) >= vMacScreenHeight * MyWindowScale)
+				if ((MyCGDisplayPixelsWide(CurMainDisplayID) >= vMacScreenWidth * MyWindowScale)
+					&& (MyCGDisplayPixelsHigh(CurMainDisplayID) >= vMacScreenHeight * MyWindowScale)
 					)
 				{
 					WantMagnify = trueblnr;
@@ -3234,13 +3535,13 @@ LOCALVAR EventLoopTimerRef MyTimerRef;
 
 LOCALPROC LeaveBackground(void)
 {
+	ReconnectKeyCodes3();
 	SetCursorArrow();
 }
 
 LOCALPROC EnterBackground(void)
 {
-	KeyBoardAttachedToEm = falseblnr;
-	Keyboard_UpdateControlKey(falseblnr);
+	DisconnectKeyCodes3();
 
 #if EnableFullScreen
 	if (WantFullScreen) {
@@ -3321,15 +3622,6 @@ LOCALPROC CheckStateAfterEvents(void)
 		MacMsgDisplayOn();
 	}
 
-	if (KeyBoardAttachedToEm != (! (MacMsgDisplayed || LastControlKey
-		|| gTrueBackgroundFlag || ADialogIsUp)))
-	{
-		KeyBoardAttachedToEm = ! KeyBoardAttachedToEm;
-		if (KeyBoardAttachedToEm) {
-			InitKeyCodes();
-		}
-	}
-
 	if (NeedWholeScreenDraw) {
 		NeedWholeScreenDraw = falseblnr;
 		HaveChangedScreenBuff(0, 0, vMacScreenHeight, vMacScreenWidth);
@@ -3368,10 +3660,6 @@ LOCALPROC CheckStateAfterEvents(void)
 		}
 
 		/* CheckSavedMacMsg(); */
-	}
-
-	if (ControlKeyPressed != Keyboard_TestKeyMap(MKC_Control)) {
-		Keyboard_UpdateKeyMap(MKC_Control, ControlKeyPressed);
 	}
 }
 
@@ -3765,7 +4053,7 @@ LOCALPROC RemoveCommandKeysInMenu(MenuRef theMenu)
 	int i;
 	UInt16 n = CountMenuItems(theMenu);
 
-	for (i = 1; i <= n; i++) {
+	for (i = 1; i <= n; ++i) {
 		SetItemCmd(theMenu, i, 0);
 		if (noErr == GetMenuItemHierarchicalMenu(
 			theMenu, i, &outHierMenu)
@@ -3856,8 +4144,6 @@ LOCALFUNC blnr InstallOurEventHandlers(void)
 
 	InstallAppleEventHandlers();
 
-	PrepareForDragging();
-
 	/* (void) SetMouseCoalescingEnabled(false, NULL); */
 
 	return trueblnr;
@@ -3869,11 +4155,11 @@ LOCALPROC ZapOSGLUVars(void)
 	{
 		int i;
 
-		for (i = 0; i < kNumMagStates; i++) {
+		for (i = 0; i < kNumMagStates; ++i) {
 			HavePositionWins[i] = falseblnr;
 		}
 #if EnableFullScreen && EnableMagnify
-		for (i = 0; i < kNumWinStates; i++) {
+		for (i = 0; i < kNumWinStates; ++i) {
 			WinMagStates[i] = kMagStateAuto;
 		}
 #endif
@@ -3926,9 +4212,10 @@ LOCALPROC UnInitOSGLU(void)
 	}
 
 #if EnableFullScreen
-	GrabMachine = falseblnr;
-	AdjustMachineGrab();
+	UngrabMachine();
 #endif
+
+	CloseAglCurrentContext();
 	CloseMainWindow();
 #if MySoundEnabled && (! MySoundFullScreenOnly)
 	MySound_Stop();
@@ -3945,13 +4232,6 @@ LOCALPROC UnInitOSGLU(void)
 	EndDump();
 #endif
 
-	if (NULL != gGlobalReceiveHandler) {
-		RemoveReceiveHandler(gGlobalReceiveHandler, nil);
-	}
-	if (NULL != gGlobalTrackingHandler) {
-		RemoveTrackingHandler(gGlobalTrackingHandler, nil);
-	}
-
 	UnInitMyApplInfo();
 
 #if IncludePbufs
@@ -3960,14 +4240,6 @@ LOCALPROC UnInitOSGLU(void)
 	UnInitDrives();
 
 	ForceShowCursor();
-
-/*
-	we're relying on the operating
-	system to take care of disposing
-	our window, and any memory allocated
-	should disappear with the applications
-	heap.
-*/
 }
 
 int main(void)

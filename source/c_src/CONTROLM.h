@@ -1,7 +1,7 @@
 /*
 	CONTROLM.h
 
-	Copyright (C) 2006 Paul C. Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -22,6 +22,74 @@
 #error "header already included"
 #else
 #define CONTROLM_H
+#endif
+
+LOCALPROC Keyboard_UpdateKeyMap(int key, blnr down)
+{
+	ui3b *kp = (ui3b *)theKeys;
+
+	if (key >= 0 && key < 128) {
+		int bit = 1 << (key & 7);
+		if (down) {
+			kp[key / 8] |= bit;
+		} else {
+			kp[key / 8] &= ~ bit;
+		}
+	}
+}
+
+#if 0
+#define Keyboard_TestKeyMap(key) ((((ui3b *)theKeys)[(key) / 8] & (1 << ((key) & 7))) != 0)
+#endif
+
+LOCALPROC InitKeyCodes(void)
+{
+	theKeys[0] = 0;
+	theKeys[1] = 0;
+	theKeys[2] = 0;
+	theKeys[3] = 0;
+}
+
+#define kKeepMaskControl  (1 << 0)
+#define kKeepMaskCapsLock (1 << 1)
+#define kKeepMaskCommand  (1 << 2)
+
+LOCALPROC DisconnectKeyCodes(ui5b KeepMask)
+{
+	/*
+		Called when may miss key ups,
+		so act is if all pressed keys have been released,
+		except maybe for control, caps lock, and command.
+	*/
+	ui5b KeysMask[4] = {0, 0, 0, 0};
+
+	if (0 != (KeepMask & kKeepMaskControl)) {
+		((ui3b *)KeysMask)[MKC_Control / 8] |= (1 << (MKC_Control & 7));
+	}
+
+	if (0 != (KeepMask & kKeepMaskCapsLock)) {
+		((ui3b *)KeysMask)[MKC_CapsLock / 8] |= (1 << (MKC_CapsLock & 7));
+	}
+
+	if (0 != (KeepMask & kKeepMaskCommand)) {
+		((ui3b *)KeysMask)[MKC_Command / 8] |= (1 << (MKC_Command & 7));
+	}
+
+	theKeys[0] &= KeysMask[0];
+	theKeys[1] &= KeysMask[1];
+	theKeys[2] &= KeysMask[2];
+	theKeys[3] &= KeysMask[3];
+}
+
+#ifndef EnableAltKeysMode
+#define EnableAltKeysMode 0
+#endif
+
+#if EnableAltKeysMode
+#include "ALTKEYSM.h"
+#else
+#define Keyboard_UpdateKeyMap1 Keyboard_UpdateKeyMap
+#define DisconnectKeyCodes1 DisconnectKeyCodes
 #endif
 
 LOCALVAR blnr SpeedStopped = falseblnr;
@@ -1813,8 +1881,6 @@ LOCALPROC ClStrFromSubstCStr(int *L, ui3b *r, char *s)
 
 LOCALVAR blnr NeedWholeScreenDraw = falseblnr;
 
-LOCALVAR blnr KeyBoardAttachedToEm = falseblnr;
-
 LOCALVAR char *SavedBriefMsg = nullpr;
 LOCALVAR char *SavedLongMsg;
 LOCALVAR blnr SavedFatalMsg;
@@ -1887,7 +1953,7 @@ LOCALPROC DoEnterControlMode(void)
 	CurControlMode = kCntrlModeBase;
 	ControlMessage = kCntrlMsgBaseStart;
 	NeedWholeScreenDraw = trueblnr;
-	KeyBoardAttachedToEm = falseblnr;
+	DisconnectKeyCodes1(kKeepMaskControl | kKeepMaskCapsLock);
 }
 
 LOCALPROC DoLeaveControlMode(void)
@@ -1916,6 +1982,7 @@ LOCALPROC DoControlModeKey(int key)
 				case MKC_K:
 					ControlKeyPressed = ! ControlKeyPressed;
 					ControlMessage = kCntrlMsgEmCntrl;
+					Keyboard_UpdateKeyMap1(MKC_Control, ControlKeyPressed);
 					break;
 				case MKC_S:
 					CurControlMode = kCntrlModeSpeedControl;
@@ -2018,7 +2085,7 @@ LOCALPROC DoControlModeKey(int key)
 					CurControlMode = kCntrlModeBase;
 					ControlMessage = kCntrlMsgNewRunInBack;
 					break;
-				case MKC_S:
+				case MKC_D:
 					SpeedStopped = ! SpeedStopped;
 					CurControlMode = kCntrlModeBase;
 					ControlMessage = kCntrlMsgNewStopped;
@@ -2270,7 +2337,7 @@ LOCALPROC DrawCellsControlMessage(void)
 			DrawCellsKeyCommand("5", "32x");
 			DrawCellsKeyCommand("A", kStrSpeedAllOut);
 			DrawCellsBlankLine();
-			DrawCellsKeyCommand("S", kStrSpeedStopped);
+			DrawCellsKeyCommand("D", kStrSpeedStopped);
 			DrawCellsKeyCommand("B", kStrSpeedBackToggle);
 			DrawCellsBlankLine();
 			DrawCellsKeyCommand("E", kStrSpeedExit);
@@ -2414,24 +2481,8 @@ LOCALPROC MacMsgDisplayOn(void)
 	CurControlMode = kCntrlModeMsg;
 	ControlMessage = kCntrlMsgMsg;
 	NeedWholeScreenDraw = trueblnr;
-	KeyBoardAttachedToEm = falseblnr;
+	DisconnectKeyCodes1(kKeepMaskControl | kKeepMaskCapsLock); /* command */
 }
-
-LOCALPROC Keyboard_UpdateKeyMap(int key, blnr down)
-{
-	ui3b *kp = (ui3b *)theKeys;
-
-	if (key >= 0 && key < 128) {
-		int bit = 1 << (key & 7);
-		if (down) {
-			kp[key / 8] |= bit;
-		} else {
-			kp[key / 8] &= ~ bit;
-		}
-	}
-}
-
-#define Keyboard_TestKeyMap(key) ((((ui3b *)theKeys)[(key) / 8] & (1 << ((key) & 7))) != 0)
 
 LOCALPROC Keyboard_UpdateControlKey(blnr down)
 {
@@ -2508,27 +2559,39 @@ LOCALPROC Keyboard_UpdateKeyMap2(int key, blnr down)
 	}
 
 
-	if (MacMsgDisplayed) {
-		if (down) {
-			if (MKC_C == key) {
-				MacMsgDisplayOff();
-			} else if (MKC_Control == key) {
+	if (MKC_Control == key) {
+		if (MacMsgDisplayed) {
+			if (down) {
 				MacMsgDisplayOff();
 				LastControlKey = down;
 				DoEnterControlMode();
 			}
-		}
-	} else if (MKC_Control == key) {
-		Keyboard_UpdateControlKey(down);
-	} else {
-		if (LastControlKey) {
-			if (down) {
-				DoControlModeKey(key);
-			}
 		} else {
-			Keyboard_UpdateKeyMap(key, down);
+			Keyboard_UpdateControlKey(down);
 		}
+	} else if (MKC_CapsLock == key) {
+		/* always pass through CapsLock */
+		Keyboard_UpdateKeyMap1(key, down);
+	} else if (MacMsgDisplayed) {
+		if (down) {
+			if (MKC_C == key) {
+				MacMsgDisplayOff();
+			}
+		}
+	} else if (LastControlKey) {
+		if (down) {
+			DoControlModeKey(key);
+		}
+	} else {
+		/* pass through */
+		Keyboard_UpdateKeyMap1(key, down);
 	}
+}
+
+LOCALPROC DisconnectKeyCodes2(void)
+{
+	DisconnectKeyCodes1(kKeepMaskControl | kKeepMaskCapsLock);
+	Keyboard_UpdateControlKey(falseblnr);
 }
 
 LOCALPROC MacMsgOverride(char *briefMsg, char *longMsg)

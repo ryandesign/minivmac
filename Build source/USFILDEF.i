@@ -1,6 +1,6 @@
 /*
 	USFILDEF.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -326,7 +326,7 @@ LOCALPROC WriteCFilesList(void)
 
 LOCALPROC Write_tmachoShell(void)
 {
-	WriteRmDir(Write_machobun_d_ToDestFile);
+	WriteRmDir(WriteAppNamePath);
 	WriteRmDir(Write_tmachobun_d_ToDestFile);
 	WriteMkDir(Write_tmachobun_d_ToDestFile);
 	WriteMkDir(Write_tmachocontents_d_ToDestFile);
@@ -337,7 +337,7 @@ LOCALPROC Write_tmachoShell(void)
 	WriteCopyFile(WriteInfoPlistFilePath, Write_tmachocontents_d_ToDestFile);
 	WriteEchoToNewFile(Write_tmachoLangDummyContents, Write_tmachoLangDummyPath, trueblnr);
 	WriteEchoToNewFile(Write_tmachoPkgInfoContents, Write_tmachoPkgInfoPath, falseblnr);
-	WriteMoveDir(Write_tmachobun_d_ToDestFile, Write_machobun_d_ToDestFile);
+	WriteMoveDir(Write_tmachobun_d_ToDestFile, WriteAppNamePath);
 }
 
 LOCALPROC Write_tmachoShellDeps(void)

@@ -1,6 +1,6 @@
 /*
 	WRMW8FLS.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -553,11 +553,11 @@ static void WriteMetrowerksSpecificFiles(void)
 			WriteBlankLineToDestFile();
 			if (cur_targ == gbk_targ_wx86) {
 				WriteMWSettingsPanelComment("x86 Project");
-				WriteXMLtagSettingNameProcVal("MWProject_X86_outfile", WriteWinAppNameStr);
+				WriteXMLtagSettingNameProcVal("MWProject_X86_outfile", WriteAppNameStr);
 			} else if (cur_targ == gbk_targ_mach) {
 				WriteMWSettingsPanelComment("PPC Mac OS X Project");
 				WriteXMLtagSettingNameVal("MWProject_MacOSX_type", "ApplicationPackage");
-				WriteXMLtagSettingNameProcVal("MWProject_MacOSX_outfile", WriteMachoAppNameStr);
+				WriteXMLtagSettingNameProcVal("MWProject_MacOSX_outfile", WriteAppNameStr);
 				WriteXMLtagSettingNameVal("MWProject_MacOSX_filecreator", kMacCreatorSig);
 				WriteXMLtagSettingNameVal("MWProject_MacOSX_filetype", "APPL");
 				WriteXMLtagSettingNameVal("MWProject_MacOSX_vmaddress", "0");

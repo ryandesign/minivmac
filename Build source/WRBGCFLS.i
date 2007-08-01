@@ -1,6 +1,6 @@
 /*
 	WRBGCFLS.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -60,6 +60,48 @@ LOCALPROC DoSrcFileBgcMakeObjects(void)
 	WriteEndDestFileLn();
 }
 
+LOCALPROC WriteXCDcallgcc(void)
+{
+#if 0
+	if ((cur_ide == gbk_ide_xcd) && (ide_vers >= 2100) && (ide_vers < 2200)) {
+		/*
+			This doesn't seem to make any difference in default
+			Xcode 2.1 install. Current guess is that default
+			headers don't support MACOSX_DEPLOYMENT_TARGET,
+			but the ide is supporting 10.4 sdk that is
+			included but not installed by default.
+		*/
+		WriteCStrToDestFile("export MACOSX_DEPLOYMENT_TARGET=10.");
+		if (gbo_cpufam == gbk_cpufam_x86) {
+			WriteCStrToDestFile("4");
+		} else {
+			WriteCStrToDestFile("1");
+		}
+		WriteCStrToDestFile(" ; ");
+	}
+#endif
+	WriteCStrToDestFile("gcc");
+}
+
+LOCALPROC WriteXCDBgcCompileLinkCommonOptions(void)
+{
+	if (ide_vers >= 2100) {
+		if (gbo_cpufam == gbk_cpufam_x86) {
+			WriteCStrToDestFile(" -arch i386");
+		} else {
+			WriteCStrToDestFile(" -arch ppc");
+		}
+	}
+	if (ide_vers >= 2200) {
+		if (gbo_cpufam == gbk_cpufam_x86) {
+			WriteCStrToDestFile(" -mmacosx-version-min=10.4");
+		} else {
+			WriteCStrToDestFile(" -mmacosx-version-min=10.1");
+		}
+		WriteCStrToDestFile(" -isysroot /Developer/SDKs/MacOSX10.4u.sdk");
+	}
+}
+
 static void WriteBgcCOptions(blnr fast)
 {
 	WriteCStrToDestFile(" -c -Wall -Wmissing-prototypes -Wstrict-prototypes -Wno-uninitialized");
@@ -68,16 +110,7 @@ static void WriteBgcCOptions(blnr fast)
 #if UseAlignMac68k
 		WriteCStrToDestFile(" -malign-mac68k");
 #endif
-		/* if (CrossCompile) */ {
-			if (gbo_cpufam == gbk_cpufam_x86) {
-				WriteCStrToDestFile(" -arch i386");
-				WriteCStrToDestFile(" -mmacosx-version-min=10.4");
-			} else {
-				WriteCStrToDestFile(" -arch ppc");
-				WriteCStrToDestFile(" -mmacosx-version-min=10.1");
-			}
-			WriteCStrToDestFile(" -isysroot /Developer/SDKs/MacOSX10.4u.sdk");
-		}
+		WriteXCDBgcCompileLinkCommonOptions();
 	}
 	if (gbo_dbg != gbk_dbg_on) {
 		if (fast) {
@@ -98,11 +131,8 @@ static void WriteBgcCOptions(blnr fast)
 
 LOCALPROC DoFrameWorkBGCaddFile(void)
 {
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("-framework ");
+	WriteCStrToDestFile(" -framework ");
 	WriteCStrToDestFile(DoFrameWork_gd()->s);
-	WriteCStrToDestFile(" \\");
-	WriteEndDestFileLn();
 }
 
 LOCALPROC Write_machoRsrcBgcDeps(void)
@@ -146,7 +176,7 @@ static void WriteBashGccSpecificFiles(void)
 		WriteBgnDestFileLn();
 		WriteCStrToDestFile("mk_AOptions = -c");
 		if (cur_ide == gbk_ide_xcd) {
-			/* if (CrossCompile) */ {
+			if (ide_vers >= 2100) {
 				if (gbo_cpufam == gbk_cpufam_x86) {
 					WriteDestFileLn(" -arch i386");
 				} else {
@@ -156,7 +186,11 @@ static void WriteBashGccSpecificFiles(void)
 		}
 		WriteEndDestFileLn();
 	}
-	WriteDestFileLn("mk_CallC = gcc");
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("mk_CallC = ");
+	WriteXCDcallgcc();
+	WriteEndDestFileLn();
+
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("mk_COptions =");
 	WriteBgcCOptions(falseblnr);
@@ -164,8 +198,12 @@ static void WriteBashGccSpecificFiles(void)
 	WriteBlankLineToDestFile();
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("TheApplication : ");
-	Write_machobinpath_ToDestFile();
+	WriteCStrToDestFile("TheDefaultOutput : ");
+	if (CurPackageOut) {
+		WriteAppBinTgzPath();
+	} else {
+		Write_machobinpath_ToDestFile();
+	}
 	if (HaveMacRrscs) {
 		WriteCStrToDestFile(" ");
 		Write_machoRsrcPath();
@@ -198,35 +236,38 @@ static void WriteBashGccSpecificFiles(void)
 	}
 	WriteEndDestFileLn();
 	++DestFileIndent;
-		WriteDestFileLn("gcc \\");
+		WriteBgnDestFileLn();
+		WriteXCDcallgcc();
+		WriteCStrToDestFile(" \\");
+		WriteEndDestFileLn();
 		++DestFileIndent;
 			WriteBgnDestFileLn();
-			WriteCStrToDestFile("-o \"");
+			WriteCStrToDestFile("-o ");
+			WriteQuoteToDestFile();
 			Write_machobinpath_ToDestFile();
-			WriteCStrToDestFile("\" \\");
-			WriteEndDestFileLn();
+			WriteQuoteToDestFile();
 
 			if (HaveMacBundleApp) {
 				DoAllFrameWorksWithSetup(DoFrameWorkBGCaddFile);
 			} else {
-				WriteBgnDestFileLn();
-				WriteCStrToDestFile("-L/usr/X11R6/lib -lXext -lX11");
+				WriteCStrToDestFile(" -L/usr/X11R6/lib -lXext -lX11");
+				switch (cur_targ) {
+					case gbk_targ_slrs:
+					case gbk_targ_sl86:
+						WriteCStrToDestFile(" -lposix4");
+						break;
+					default:
+						break;
+				}
 				if (MySoundEnabled) {
 					WriteCStrToDestFile(" -lasound");
 				}
-				WriteCStrToDestFile(" \\");
-				WriteEndDestFileLn();
 			}
-			if (/* CrossCompile && */ cur_ide == gbk_ide_xcd) {
-				if (gbo_cpufam == gbk_cpufam_x86) {
-					WriteDestFileLn("-arch i386 \\");
-					WriteDestFileLn("-mmacosx-version-min=10.4 \\");
-				} else {
-					WriteDestFileLn("-arch ppc \\");
-					WriteDestFileLn("-mmacosx-version-min=10.1 \\");
-				}
-				WriteDestFileLn("-isysroot /Developer/SDKs/MacOSX10.4u.sdk \\");
+			if (cur_ide == gbk_ide_xcd) {
+				WriteXCDBgcCompileLinkCommonOptions();
 			}
+			WriteCStrToDestFile(" \\");
+			WriteEndDestFileLn();
 			WriteDestFileLn("$(ObjFiles)");
 		--DestFileIndent;
 		if (gbo_dbg == gbk_dbg_off) {
@@ -247,15 +288,17 @@ static void WriteBashGccSpecificFiles(void)
 			Write_machoRsrcBgcBuild);
 	}
 
-	if (/* CrossCompile && */ HaveMacBundleApp) {
+#if 0
+	if (HaveMacBundleApp && (cur_ide == gbk_ide_xcd) && (ide_vers >= 2100)) {
 		WriteBlankLineToDestFile();
-		WriteDestFileLn("universal : TheApplication");
+		WriteDestFileLn("universal : ");
+		Write_machobinpath_ToDestFile()
 		++DestFileIndent;
 			WriteRmDir(Write_umachobun_d_ToDestFile);
 
 			WriteBgnDestFileLn();
 			WriteCStrToDestFile("ditto \"");
-			Write_machobun_d_ToDestFile();
+			WriteAppNamePath();
 			WriteCStrToDestFile("\" \"");
 			Write_umachobun_d_ToDestFile();
 			WriteCStrToDestFile("\"");
@@ -272,19 +315,76 @@ static void WriteBashGccSpecificFiles(void)
 			WriteEndDestFileLn();
 		--DestFileIndent;
 	}
+#endif
+
+	if (CurPackageOut) {
+		WriteBlankLineToDestFile();
+		WriteBgnDestFileLn();
+		WriteAppBinTgzPath();
+		WriteCStrToDestFile(" : ");
+		Write_machobinpath_ToDestFile();
+		WriteEndDestFileLn();
+		++DestFileIndent;
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("touch -am -r README.txt `find");
+			WritePathArgInMakeCmnd(WriteAppNamePath);
+			WriteCStrToDestFile(" -print`");
+			WriteEndDestFileLn();
+
+			if (HaveMacBundleApp) {
+				WriteMoveDir(WriteAppNamePath, WriteAppUnabrevPath);
+			}
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("tar -cf");
+			WritePathArgInMakeCmnd(WriteAppBinTarPath);
+			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
+			WriteEndDestFileLn();
+
+			if (HaveMacBundleApp) {
+				WriteMoveDir(WriteAppUnabrevPath, WriteAppNamePath);
+			}
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("touch -am -r README.txt");
+			WritePathArgInMakeCmnd(WriteAppBinTarPath);
+			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("gzip <");
+			WritePathArgInMakeCmnd(WriteAppBinTarPath);
+			WriteCStrToDestFile(" >");
+			WritePathArgInMakeCmnd(WriteAppBinTgzPath);
+			WriteEndDestFileLn();
+
+			WriteRmFile(WriteAppBinTarPath);
+
+			WriteBgnDestFileLn();
+			if (cur_ide == gbk_ide_xcd) {
+				WriteCStrToDestFile("md5 -r");
+			} else {
+				WriteCStrToDestFile("md5sum");
+			}
+			WritePathArgInMakeCmnd(WriteAppBinTgzPath);
+			WriteCStrToDestFile(" >");
+			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
+			WriteEndDestFileLn();
+		--DestFileIndent;
+	}
 
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("clean :");
 	++DestFileIndent;
 		WriteDestFileLn("rm -f $(ObjFiles)");
 		if (HaveMacBundleApp) {
-			WriteRmDir(Write_machobun_d_ToDestFile);
+			WriteRmDir(WriteAppNamePath);
 		} else {
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("rm -f \"");
-			WriteStrAppAbbrev();
-			WriteCStrToDestFile("\"");
-			WriteEndDestFileLn();
+			WriteRmFile(WriteAppNamePath);
+		}
+
+		if (CurPackageOut) {
+			WriteRmFile(WriteAppBinTgzPath);
+			WriteRmFile(WriteCheckSumFilePath);
 		}
 	--DestFileIndent;
 

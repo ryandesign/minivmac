@@ -1,6 +1,6 @@
 /*
 	BLDUTIL4.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -74,7 +74,8 @@ LOCALFUNC blnr WriteMakeOutputDirectories(void)
 		&OutputDirR, "COPYING", ".txt"))
 	{
 		if ((cur_ide == gbk_ide_xcd) && (! UseCmndLine)) {
-			IsOk = MakeSubDirectory(&ProjDirR, &OutputDirR, kStrAppAbbrev, ".pbproj");
+			IsOk = MakeSubDirectory(&ProjDirR, &OutputDirR, kStrAppAbbrev,
+				(ide_vers >= 2100) ? ".xcodeproj" : ".pbproj");
 		} else if (cur_ide != gbk_ide_mw8) {
 			if (MakeSubDirectory(&ObjDirR, &OutputDirR, "obj", "")) {
 				if (WriteOpenDestFile(&ObjDirR, "dummy", "")) { /* Dummy */

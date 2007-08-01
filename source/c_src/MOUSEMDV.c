@@ -43,10 +43,11 @@ GLOBALPROC Mouse_Update(void)
 	if (Mouse_Enabled()) {
 #if EnableMouseMotion
 		if (HaveMouseMotion) {
-			if ((MouseMotionH != 0) || (MouseMotionV != 0)) {
-				CurMouseV = get_ram_word(0x082C);
-				CurMouseH = get_ram_word(0x082E);
+			/* tell platform specific code where the mouse went */
+			CurMouseV = get_ram_word(0x082C);
+			CurMouseH = get_ram_word(0x082E);
 
+			if ((MouseMotionH != 0) || (MouseMotionV != 0)) {
 				put_ram_word(0x0828, get_ram_word(0x0828) + MouseMotionV);
 				put_ram_word(0x082A, get_ram_word(0x082A) + MouseMotionH);
 				put_ram_byte(0x08CE, get_ram_byte(0x08CF));

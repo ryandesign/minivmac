@@ -1,6 +1,6 @@
 /*
 	WRCNFGGL.i
-	Copyright (C) 2007 Paul Pratt
+	Copyright (C) 2007 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -43,6 +43,10 @@ LOCALPROC WriteCheckPreNDef(char *s)
 	WriteDestFileLn("#endif");
 }
 
+#ifndef NeedIntFormatInfo
+#define NeedIntFormatInfo 0
+#endif
+
 LOCALPROC WriteCommonCNFGGLOB(void)
 {
 	if (WriteOpenDestFile(&SrcDirR, "CNFGGLOB", ".h")) { /* C Configuration file */
@@ -73,6 +77,7 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 
 	WriteBlankLineToDestFile();
 
+#if NeedIntFormatInfo
 	if ((gbo_cpufam == gbk_cpufam_68k) || (gbo_cpufam == gbk_cpufam_ppc)) {
 		WriteDestFileLn("#define MostSigByteFirst 1");
 	}
@@ -82,6 +87,7 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 	if ((gbo_cpufam == gbk_cpufam_68k) || (gbo_cpufam == gbk_cpufam_ppc) || (gbo_cpufam == gbk_cpufam_x86)) {
 		WriteDestFileLn("#define TwosCompSigned 1");
 	}
+#endif
 	if ((gbo_cpufam == gbk_cpufam_68k) || (gbo_cpufam == gbk_cpufam_ppc)) {
 		WriteDestFileLn("#define BigEndianUnaligned 1");
 	}
