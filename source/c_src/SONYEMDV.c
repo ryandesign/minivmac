@@ -228,6 +228,7 @@ GLOBALPROC Sony_Update (void)
 	}
 }
 
+#if IncludePbufs
 LOCALFUNC si4b CheckPbuf(ui4b Pbuf_No)
 {
 	si4b result;
@@ -242,6 +243,7 @@ LOCALFUNC si4b CheckPbuf(ui4b Pbuf_No)
 
 	return result;
 }
+#endif
 
 LOCALFUNC si4b CheckReadableDrive(ui4b Drive_No)
 {

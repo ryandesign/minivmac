@@ -373,8 +373,6 @@ EXPORTVAR(ui5b, theKeys[4])
 #define MKC_F11 0x67
 #define MKC_F12 0x6f
 
-#define MKC_Help 0x72
-
 #define MKC_Home 0x73
 #define MKC_End 0x77
 #define MKC_PageUp 0x74

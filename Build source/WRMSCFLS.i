@@ -330,8 +330,8 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 		WriteDestFileLn("# PROP Use_Debug_Libraries 0");
 	}
 
-	WriteMSVCQuotedProp("Output_Dir", "obj");
-	WriteMSVCQuotedProp("Intermediate_Dir", "obj");
+	WriteMSVCQuotedProp("Output_Dir", obj_d_name);
+	WriteMSVCQuotedProp("Intermediate_Dir", obj_d_name);
 
 	WriteDestFileLn("# PROP Ignore_Export_Lib 0");
 

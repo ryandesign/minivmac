@@ -33,19 +33,39 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteUnsignedToOutput(cur_numdrives);
 	WriteEndDestFileLn();
 
-	if (WantInitFullScreen != nanblnr) {
-		if (WantInitFullScreen) {
-			WriteDestFileLn("#define WantInitFullScreen 1");
-		}
+	if (WantInitFullScreen) {
+		WriteDestFileLn("#define WantInitFullScreen 1");
 	}
 
-	if (WantInitMagnify != nanblnr) {
-		if (WantInitMagnify) {
-			WriteDestFileLn("#define WantInitMagnify 1");
+	if (WantInitMagnify) {
+		WriteDestFileLn("#define WantInitMagnify 1");
+	}
+
+	if (WantInitBackground) {
+		WriteDestFileLn("#define WantInitRunInBackground 1");
+	}
+
+	if (CurInitSpeed != gbk_speed_8X) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define WantInitSpeedValue ");
+		if (gbk_speed_AllOut == CurInitSpeed) {
+			WriteCStrToDestFile("-1");
+		} else {
+			WriteUnsignedToOutput(CurInitSpeed - 1);
 		}
+		WriteEndDestFileLn();
 	}
 
 	if (WantCmndOptSwap) {
 		WriteDestFileLn("#define SwapCommandControl 1");
+	}
+
+	if (WantMinExtn) {
+		WriteDestFileLn("#define IncludePbufs 0");
+		WriteDestFileLn("#define IncludeSonyRawMode 0");
+		WriteDestFileLn("#define IncludeSonyGetName 0");
+		WriteDestFileLn("#define IncludeSonyNew 0");
+		WriteDestFileLn("#define IncludeSonyNameNew 0");
+		WriteDestFileLn("#define IncludeHostTextClipExchange 0");
 	}
 }

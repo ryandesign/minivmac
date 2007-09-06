@@ -203,7 +203,14 @@ LOCALFUNC blnr TryAsInitFullScreenNot(void)
 	return BooleanTryAsOptionNot("-fullscreen", &WantInitFullScreen);
 }
 
-/* option: sound */
+LOCALPROC ChooseInitFullScreen(void)
+{
+	if (nanblnr == WantInitFullScreen) {
+		WantInitFullScreen = falseblnr;
+	}
+}
+
+/* option: Initial Magnify */
 
 LOCALVAR blnr WantInitMagnify;
 
@@ -215,6 +222,13 @@ LOCALPROC ResetInitMagnify(void)
 LOCALFUNC blnr TryAsInitMagnifyNot(void)
 {
 	return BooleanTryAsOptionNot("-magnify", &WantInitMagnify);
+}
+
+LOCALPROC ChooseInitMagnify(void)
+{
+	if (nanblnr == WantInitMagnify) {
+		WantInitMagnify = falseblnr;
+	}
 }
 
 /* option: Alternate Keyboard Mode */
@@ -245,6 +259,106 @@ LOCALFUNC blnr TryAsCmndOptSwapNot(void)
 	return FlagTryAsOptionNot("-ccs", &WantCmndOptSwap);
 }
 
+/* option: Initial Run In Background */
+
+LOCALVAR blnr WantInitBackground;
+
+LOCALPROC ResetInitBackground(void)
+{
+	WantInitBackground = nanblnr;
+}
+
+LOCALFUNC blnr TryAsInitBackgroundNot(void)
+{
+	return BooleanTryAsOptionNot("-bg", &WantInitBackground);
+}
+
+LOCALPROC ChooseInitBackground(void)
+{
+	if (nanblnr == WantInitBackground) {
+		WantInitBackground = falseblnr;
+	}
+}
+
+/* option: initial speed */
+
+enum {
+	gbk_speed_AllOut,
+	gbk_speed_1X,
+	gbk_speed_2X,
+	gbk_speed_4X,
+	gbk_speed_8X,
+	gbk_speed_16X,
+	gbk_speed_32X,
+	kNumSpeeds
+};
+
+LOCALVAR int CurInitSpeed;
+
+LOCALPROC ResetInitSpeedOption(void)
+{
+	CurInitSpeed = kListOptionAuto;
+}
+
+LOCALFUNC char * GetInitSpeedName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_speed_AllOut:
+			s = "a";
+			break;
+		case gbk_speed_1X:
+			s = "z";
+			break;
+		case gbk_speed_2X:
+			s = "1";
+			break;
+		case gbk_speed_4X:
+			s = "2";
+			break;
+		case gbk_speed_8X:
+			s = "3";
+			break;
+		case gbk_speed_16X:
+			s = "4";
+			break;
+		case gbk_speed_32X:
+			s = "5";
+			break;
+		default:
+			s = "(unknown Speed)";
+			break;
+	}
+	return s;
+}
+
+LOCALPROC ChooseInitSpeed(void)
+{
+	if (CurInitSpeed == kListOptionAuto) {
+		CurInitSpeed = gbk_speed_8X;
+	}
+}
+
+LOCALFUNC blnr TryAsInitSpeedOptionNot(void)
+{
+	return FindNamedOption("-speed", kNumSpeeds, GetInitSpeedName, &CurInitSpeed);
+}
+
+/* option: Alternate Keyboard Mode */
+
+LOCALVAR blnr WantMinExtn;
+
+LOCALPROC ResetWantMinExtn(void)
+{
+	WantMinExtn = falseblnr;
+}
+
+LOCALFUNC blnr TryAsWantMinExtnNot(void)
+{
+	return FlagTryAsOptionNot("-min-extn", &WantMinExtn);
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -258,6 +372,9 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetInitMagnify();
 	ResetAltKeysMode();
 	ResetCmndOptSwap();
+	ResetInitBackground();
+	ResetInitSpeedOption();
+	ResetWantMinExtn();
 }
 
 LOCALFUNC blnr TryAsSPOptionNot(void)
@@ -271,6 +388,9 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsInitMagnifyNot())
 	if (TryAsAltKeysModeNot())
 	if (TryAsCmndOptSwapNot())
+	if (TryAsInitBackgroundNot())
+	if (TryAsInitSpeedOptionNot())
+	if (TryAsWantMinExtnNot())
 	{
 		return trueblnr;
 	}
@@ -284,6 +404,10 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 	if (ChooseNumDrives())
 	{
 		ChooseEmCpuVers();
+		ChooseInitFullScreen();
+		ChooseInitMagnify();
+		ChooseInitBackground();
+		ChooseInitSpeed();
 		return trueblnr;
 	}
 

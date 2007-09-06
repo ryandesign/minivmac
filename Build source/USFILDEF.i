@@ -200,7 +200,9 @@ LOCALPROC DoAllDocTypesWithSetupProc(char *ShortName,
 LOCALPROC DoAppAndAllDocTypes(tWriteOneDocType p)
 {
 	p("App", "APPL", "Application", NULL);
-	DoAllDocTypes(p);
+	if (WantIconMaster) {
+		DoAllDocTypes(p);
+	}
 }
 
 LOCALPROC DoAllDocTypesWithSetup(MyProc p)

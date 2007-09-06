@@ -119,7 +119,10 @@ static void WriteLccW32SpecificFiles(void)
 			break;
 	}
 
-	WriteDestFileLn("Libraries=shell32.lib winmm.lib ole32.lib uuid.lib");
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("Libraries=");
+	WriteCStrToDestFile("shell32.lib ole32.lib uuid.lib winmm.lib");
+	WriteEndDestFileLn();
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("ErrorFile=");

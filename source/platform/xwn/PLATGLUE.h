@@ -246,6 +246,26 @@ GLOBALPROC PbufTransfer(void *Buffer,
 
 /*--- text translation ---*/
 
+/* this is table for Windows, any changes needed for X? */
+LOCALVAR const ui3b Native2MacRomanTab[] = {
+	0xAD, 0xB0, 0xE2, 0xC4, 0xE3, 0xC9, 0xA0, 0xE0,
+	0xF6, 0xE4, 0xB6, 0xDC, 0xCE, 0xB2, 0xB3, 0xB7,
+	0xB8, 0xD4, 0xD5, 0xD2, 0xD3, 0xA5, 0xD0, 0xD1,
+	0xF7, 0xAA, 0xC5, 0xDD, 0xCF, 0xB9, 0xC3, 0xD9,
+	0xCA, 0xC1, 0xA2, 0xA3, 0xDB, 0xB4, 0xBA, 0xA4,
+	0xAC, 0xA9, 0xBB, 0xC7, 0xC2, 0xBD, 0xA8, 0xF8,
+	0xA1, 0xB1, 0xC6, 0xD7, 0xAB, 0xB5, 0xA6, 0xE1,
+	0xFC, 0xDA, 0xBC, 0xC8, 0xDE, 0xDF, 0xF0, 0xC0,
+	0xCB, 0xE7, 0xE5, 0xCC, 0x80, 0x81, 0xAE, 0x82,
+	0xE9, 0x83, 0xE6, 0xE8, 0xED, 0xEA, 0xEB, 0xEC,
+	0xF5, 0x84, 0xF1, 0xEE, 0xEF, 0xCD, 0x85, 0xF9,
+	0xAF, 0xF4, 0xF2, 0xF3, 0x86, 0xFA, 0xFB, 0xA7,
+	0x88, 0x87, 0x89, 0x8B, 0x8A, 0x8C, 0xBE, 0x8D,
+	0x8F, 0x8E, 0x90, 0x91, 0x93, 0x92, 0x94, 0x95,
+	0xFD, 0x96, 0x98, 0x97, 0x99, 0x9B, 0x9A, 0xD6,
+	0xBF, 0x9D, 0x9C, 0x9E, 0x9F, 0xFE, 0xFF, 0xD8
+};
+
 LOCALFUNC si4b NativeTextToMacRomanPbuf(char *x, ui4b *r)
 {
 	if (NULL == x) {
@@ -264,7 +284,9 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(char *x, ui4b *r)
 
 			for (i = L; --i >= 0; ) {
 				ui3b v = *p0++;
-				if (10 == v) {
+				if (v >= 128) {
+					v = Native2MacRomanTab[v - 128];
+				} else if (10 == v) {
 					v = 13;
 				}
 				*p1++ = v;
@@ -274,6 +296,26 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(char *x, ui4b *r)
 		}
 	}
 }
+
+/* this is table for Windows, any changes needed for X? */
+LOCALVAR const ui3b MacRoman2NativeTab[] = {
+	0xC4, 0xC5, 0xC7, 0xC9, 0xD1, 0xD6, 0xDC, 0xE1,
+	0xE0, 0xE2, 0xE4, 0xE3, 0xE5, 0xE7, 0xE9, 0xE8,
+	0xEA, 0xEB, 0xED, 0xEC, 0xEE, 0xEF, 0xF1, 0xF3,
+	0xF2, 0xF4, 0xF6, 0xF5, 0xFA, 0xF9, 0xFB, 0xFC,
+	0x86, 0xB0, 0xA2, 0xA3, 0xA7, 0x95, 0xB6, 0xDF,
+	0xAE, 0xA9, 0x99, 0xB4, 0xA8, 0x80, 0xC6, 0xD8,
+	0x81, 0xB1, 0x8D, 0x8E, 0xA5, 0xB5, 0x8A, 0x8F,
+	0x90, 0x9D, 0xA6, 0xAA, 0xBA, 0xAD, 0xE6, 0xF8,
+	0xBF, 0xA1, 0xAC, 0x9E, 0x83, 0x9A, 0xB2, 0xAB,
+	0xBB, 0x85, 0xA0, 0xC0, 0xC3, 0xD5, 0x8C, 0x9C,
+	0x96, 0x97, 0x93, 0x94, 0x91, 0x92, 0xF7, 0xB3,
+	0xFF, 0x9F, 0xB9, 0xA4, 0x8B, 0x9B, 0xBC, 0xBD,
+	0x87, 0xB7, 0x82, 0x84, 0x89, 0xC2, 0xCA, 0xC1,
+	0xCB, 0xC8, 0xCD, 0xCE, 0xCF, 0xCC, 0xD3, 0xD4,
+	0xBE, 0xD2, 0xDA, 0xDB, 0xD9, 0xD0, 0x88, 0x98,
+	0xAF, 0xD7, 0xDD, 0xDE, 0xB8, 0xF0, 0xFD, 0xFE
+};
 
 LOCALFUNC blnr MacRomanTextToNativePtr(ui4b i, blnr IsFileName,
 	ui3p *r)
@@ -291,25 +333,33 @@ LOCALFUNC blnr MacRomanTextToNativePtr(ui4b i, blnr IsFileName,
 		if (IsFileName) {
 			for (j = L; --j >= 0; ) {
 				ui3b x = *p0++;
-				switch (x) {
-					case 13:
-					case '/':
-					case '<':
-					case '>':
-					case '|':
-						x = '?';
-					default:
-						break;
+				if (x < 32) {
+					x = '-';
+				} else if (x >= 128) {
+					x = MacRoman2NativeTab[x - 128];
+				} else {
+					switch (x) {
+						case '/':
+						case '<':
+						case '>':
+						case '|':
+						case ':':
+							x = '-';
+						default:
+							break;
+					}
 				}
 				*p1++ = x;
 			}
 			if ('.' == p[0]) {
-				p[0] = '?';
+				p[0] = '-';
 			}
 		} else {
 			for (j = L; --j >= 0; ) {
 				ui3b x = *p0++;
-				if (13 == x) {
+				if (x >= 128) {
+					x = MacRoman2NativeTab[x - 128];
+				} else if (13 == x) {
 					x = '\n';
 				}
 				*p1++ = x;
@@ -1582,94 +1632,169 @@ LOCALFUNC blnr CheckDateTime(void)
 #define kSoundBuffers (1 << kLn2SoundBuffers)
 #define kSoundBuffMask (kSoundBuffers - 1)
 
-#define DesiredMinFilledSoundBuffs 3
+#define DesiredMinFilledSoundBuffs 4
 	/*
 		if too big then sound lags behind emulation.
 		if too small then sound will have pauses.
 	*/
 
-#define dbhBufferSize (kSoundBuffers * SOUND_LEN)
+#define kLn2BuffLen 9
+#define kLnBuffSz (kLn2SoundBuffers + kLn2BuffLen)
+#define My_Sound_Len (1UL << kLn2BuffLen)
+#define kBufferSize (1UL << kLnBuffSz)
+#define kBufferMask (kBufferSize - 1)
+#define dbhBufferSize (kBufferSize + SOUND_LEN)
+
+#define desired_alsa_buffer_size kBufferSize
+#define desired_alsa_period_size My_Sound_Len
 
 LOCALVAR char *alsadev_name = NULL;
 
 LOCALVAR snd_pcm_t *pcm_handle = NULL;
-LOCALVAR snd_async_handler_t *pcm_ahandler;
 LOCALVAR snd_pcm_uframes_t buffer_size;
 LOCALVAR snd_pcm_uframes_t period_size;
 
 LOCALVAR ui3p MyBuffer = NULL;
 
-LOCALVAR ui4b CurPlayBuffer;
-LOCALVAR ui4b CurFillBuffer;
 LOCALVAR ui4b MinFilledSoundBuffs;
+LOCALVAR ui4b CurPlayOffset;
+LOCALVAR ui4b CurFillOffset;
 
-LOCALPROC FillWithSilence(ui3p p, int n)
+/*
+	The elaborate private buffer is mostly
+	redundant since alsa has its own ring
+	buffer. But using it keeps the code
+	closer to the other ports. And anyway
+	there is no guarantee just what size
+	buffer you'll get from alsa.
+*/
+
+LOCALPROC FillWithSilence(ui3p p, int n, ui3b v)
 {
 	int i;
 
 	for (i = n; --i >= 0; ) {
-		*p++ = 0x80 /* 0 */;
+		*p++ = v;
 	}
 }
 
-/* call back */
-LOCALPROC MySound_CallBack(snd_async_handler_t *ahandler)
+LOCALPROC MySound_WriteOut(void)
 {
-	if (pcm_handle != NULL) {
+	int retry_count = 32;
+
+label_retry:
+	if (--retry_count > 0) {
 		snd_pcm_sframes_t avail;
-		avail = snd_pcm_avail_update(pcm_handle);
-		if (avail < 0) {
-			avail = snd_pcm_prepare(pcm_handle);
-			if (avail < 0) {
-				fprintf(stderr, "pcm reset error: %s\n",
-					snd_strerror(avail));
-				return;
-			}
-			avail = snd_pcm_avail_update(pcm_handle);
-			if (avail < 0) {
-				fprintf(stderr, "pcm update error: %s\n",
-					snd_strerror(avail));
-				return;
-			}
-		}
-		while (avail >= SOUND_LEN) {
-			ui5b NextPlayOffset;
-			ui4b CurPlayBuff = CurPlayBuffer;
-			ui4b NextPlayBuffer = CurPlayBuff + 1;
-			ui4b FilledSoundBuffs = CurFillBuffer - NextPlayBuffer;
-			ui3p NextPlayPtr;
-			int err;
+		snd_pcm_sframes_t delayp;
+		int err;
+		ui4b ToPlaySize = CurFillOffset - CurPlayOffset;
+		snd_pcm_state_t cur_state = snd_pcm_state(pcm_handle);
 
-			if (FilledSoundBuffs < MinFilledSoundBuffs) {
-				MinFilledSoundBuffs = FilledSoundBuffs;
-			}
-			if (0 == FilledSoundBuffs) {
-				/* out of sound to play. play a bit of silence */
-				NextPlayOffset = (CurPlayBuff & kSoundBuffMask) * SOUND_LEN;
-				NextPlayPtr = MyBuffer + NextPlayOffset;
-				FillWithSilence(NextPlayPtr, SOUND_LEN);
+		if (SND_PCM_STATE_RUNNING != cur_state) {
+			if ((ToPlaySize >> kLn2BuffLen) < 12) {
+				/* just wait */
 			} else {
-				NextPlayOffset = (NextPlayBuffer & kSoundBuffMask) * SOUND_LEN;
-				CurPlayBuffer = NextPlayBuffer;
-				NextPlayPtr = MyBuffer + NextPlayOffset;
+				switch (cur_state) {
+					case SND_PCM_STATE_SETUP:
+					case SND_PCM_STATE_XRUN:
+						err = snd_pcm_prepare(pcm_handle);
+						if (err < 0) {
+							fprintf(stderr, "pcm prepare error: %s\n",
+								snd_strerror(avail));
+						} else {
+							/* fprintf(stderr, "prepare succeeded\n"); */
+							goto label_retry;
+						}
+						break;
+					case SND_PCM_STATE_PREPARED:
+						if ((err = snd_pcm_start(pcm_handle)) < 0) {
+							fprintf(stderr, "pcm start error: %s\n",
+								snd_strerror(err));
+						} else {
+							/* fprintf(stderr, "start succeeded\n"); */
+							goto label_retry;
+						}
+						break;
+					case SND_PCM_STATE_SUSPENDED:
+						err = snd_pcm_resume(pcm_handle);
+						if (err < 0) {
+							fprintf(stderr, "pcm resume error: %s\n",
+								snd_strerror(avail));
+						} else {
+							/* fprintf(stderr, "resume succeeded\n"); */
+							goto label_retry;
+						}
+						break;
+					case SND_PCM_STATE_DISCONNECTED:
+						/* just abort ? */
+						break;
+					default:
+						fprintf(stderr, "unknown alsa pcm state\n");
+						break;
+				}
+			}
+		} else if ((err = snd_pcm_delay(pcm_handle, &delayp)) < 0) {
+			fprintf(stderr, "snd_pcm_delay error: %s\n",
+				snd_strerror(err));
+		} else if ((avail = snd_pcm_avail_update(pcm_handle)) < 0) {
+			fprintf(stderr, "pcm update error: %s\n",
+				snd_strerror(avail));
+		} else {
+			ui3p NextPlayPtr;
+			ui4b PlayNowSize = 0;
+			ui4b MaskedFillOffset = CurPlayOffset & (My_Sound_Len - 1);
+			ui4b TotPendBuffs = delayp >> kLn2BuffLen;
+
+			if (TotPendBuffs < MinFilledSoundBuffs) {
+				MinFilledSoundBuffs = TotPendBuffs;
 			}
 
-			if ((err = snd_pcm_writei (pcm_handle, NextPlayPtr, SOUND_LEN)) < 0) {
-				fprintf(stderr, "pcm write error: %s\n",
-					snd_strerror(err));
-				return;
-			}
-			else if (err != SOUND_LEN) {
-				fprintf(stderr, "pcm write error: written %i expected %i\n",
-					err, SOUND_LEN);
-				return;
+			if (MaskedFillOffset != 0) {
+				/* take care of left overs */
+				PlayNowSize = My_Sound_Len - MaskedFillOffset;
+				NextPlayPtr = MyBuffer + (CurPlayOffset & kBufferMask);
+			} else if (0 != (ToPlaySize >> kLn2BuffLen)) {
+				PlayNowSize = My_Sound_Len;
+				NextPlayPtr = MyBuffer + (CurPlayOffset & kBufferMask);
+			} else {
+				if (delayp < 1024) {
+					/* low on sound to play. play a bit of silence */
+					CurPlayOffset -= My_Sound_Len;
+					NextPlayPtr = MyBuffer + (CurPlayOffset & kBufferMask);
+					PlayNowSize = My_Sound_Len;
+					FillWithSilence(NextPlayPtr, My_Sound_Len,
+						/* 0x80 */ *((ui3p)NextPlayPtr + My_Sound_Len - 1));
+					/* fprintf(stderr, "need silence\n"); */
+				}
 			}
 
-			avail = snd_pcm_avail_update(pcm_handle);
-			if (avail < 0) {
-				fprintf(stderr, "pcm update error: %s\n",
-					snd_strerror(avail));
-				return;
+			if (PlayNowSize > avail) {
+				/*
+					This isn't supposed to be needed with nonblock
+					mode. But in Ubuntu 7.04 running in Parallels,
+					snd_pcm_writei seemed to block anyway.
+				*/
+				PlayNowSize = avail;
+			}
+
+			if (0 != PlayNowSize) {
+				err = snd_pcm_writei(pcm_handle, NextPlayPtr, PlayNowSize);
+				if (err < 0) {
+					if ((- EAGAIN == err) || (- ESTRPIPE == err)) {
+						/* buffer full, try again later */
+						/* fprintf(stderr, "pcm write: EAGAIN\n"); */
+					} else if (- EPIPE == err) {
+						/* buffer seems to have emptied */
+						/* fprintf(stderr, "pcm write emptied\n"); */
+						goto label_retry;
+					} else {
+						fprintf(stderr, "pcm write error: %s\n",
+							snd_strerror(err));
+					}
+				} else {
+					CurPlayOffset += err;
+					goto label_retry;
+				}
 			}
 		}
 	}
@@ -1677,172 +1802,14 @@ LOCALPROC MySound_CallBack(snd_async_handler_t *ahandler)
 
 LOCALPROC MySound_Start(void)
 {
-	if (NULL == pcm_handle) {
-		snd_pcm_hw_params_t *hw_params = NULL;
-		snd_pcm_sw_params_t *sw_params = NULL;
-		unsigned int rrate = SOUND_SAMPLERATE;
-		int err;
-
-		buffer_size = dbhBufferSize;
-		period_size = SOUND_LEN;
-
+	if (pcm_handle != NULL) {
 		/* Fill buffer with silence */
-		FillWithSilence(MyBuffer, dbhBufferSize);
+		FillWithSilence(MyBuffer, dbhBufferSize, 0x80);
 
 		/* Reset variables */
-		CurPlayBuffer = 0;
-		CurFillBuffer = kSoundBuffers - 1;
+		CurPlayOffset = 0;
+		CurFillOffset = 0;
 		MinFilledSoundBuffs = kSoundBuffers;
-
-		pcm_ahandler = NULL;
-
-		/* Open the sound device */
-		if (NULL == alsadev_name) {
-			alsadev_name = getenv("AUDIODEV");
-			if (NULL == alsadev_name) {
-				alsadev_name = strdup("default");
-			}
-		}
-
-		if ((err = snd_pcm_open(&pcm_handle, alsadev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
-			fprintf(stderr, "cannot open audio device %s (%s)\n",
-				alsadev_name, snd_strerror(err));
-			pcm_handle = NULL;
-		} else
-		/* Set some hardware parameters */
-		if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
-			fprintf(stderr, "cannot allocate hardware parameter structure (%s)\n",
-				snd_strerror(err));
-			hw_params = NULL;
-		} else
-		if ((err = snd_pcm_hw_params_any(pcm_handle, hw_params)) < 0) {
-			fprintf(stderr, "cannot initialize hardware parameter structure (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params_set_access(pcm_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
-			fprintf(stderr, "cannot set access type (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params_set_format(pcm_handle, hw_params, SND_PCM_FORMAT_U8)) < 0) {
-			fprintf(stderr, "cannot set sample format (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params_set_rate_near(pcm_handle, hw_params, &rrate, NULL)) < 0) {
-			fprintf(stderr, "cannot set sample rate (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params_set_channels(pcm_handle, hw_params, 1)) < 0) {
-			fprintf(stderr, "cannot set channel count (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params_set_buffer_size_near(pcm_handle, hw_params, &buffer_size)) < 0) {
-			fprintf(stderr, "cannot set buffer size count (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params_set_period_size_near(pcm_handle, hw_params, &period_size, NULL)) < 0) {
-			fprintf(stderr, "cannot set period size count (%s)\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_hw_params(pcm_handle, hw_params)) < 0) {
-			fprintf(stderr, "cannot set parameters (%s)\n",
-				snd_strerror(err));
-		} else
-		{
-			if (rrate != SOUND_SAMPLERATE) {
-				fprintf(stderr, "Warning: sample rate is off by %i Hz\n",
-					SOUND_SAMPLERATE - rrate);
-			}
-
-			if (buffer_size != dbhBufferSize) {
-				fprintf(stderr, "Warning: buffer size is off by %li\n",
-					dbhBufferSize - buffer_size);
-			}
-
-			if (period_size != SOUND_LEN) {
-				fprintf(stderr, "Warning: period size is off by %li\n",
-					SOUND_LEN - period_size);
-			}
-
-			snd_pcm_hw_params_free(hw_params);
-			hw_params = NULL;
-
-			snd_pcm_nonblock(pcm_handle, 0);
-
-			/* Set some software parameters */
-			if ((err = snd_pcm_sw_params_malloc(&sw_params)) < 0) {
-				fprintf(stderr, "cannot allocate software parameter structure (%s)\n",
-					snd_strerror(err));
-				sw_params = NULL;
-			} else
-			if ((err = snd_pcm_sw_params_current(pcm_handle, sw_params)) < 0) {
-				fprintf(stderr, "Unable to determine current sw_params for playback: %s\n",
-					snd_strerror(err));
-			} else
-			if ((snd_pcm_sw_params_set_start_threshold(pcm_handle, sw_params, buffer_size - period_size)) < 0) {
-				fprintf(stderr, "Unable to set start threshold mode for playback: %s\n",
-					snd_strerror(err));
-			} else
-			if ((err = snd_pcm_sw_params_set_avail_min(pcm_handle, sw_params, period_size)) < 0) {
-				fprintf(stderr, "Unable to set avail min for playback: %s\n",
-					snd_strerror(err));
-			} else
-			/* Setting this to SOUND_LEN sounds like a better idea,
-				but it breaks occasionally (my onboard chip). */
-			if ((err = snd_pcm_sw_params_set_xfer_align(pcm_handle, sw_params, 1)) < 0) {
-				fprintf(stderr, "Unable to set transfer align for playback: %s\n",
-					snd_strerror(err));
-			} else
-			if ((err = snd_pcm_sw_params(pcm_handle, sw_params)) < 0) {
-				fprintf(stderr, "Unable to set sw params for playback: %s\n",
-					snd_strerror(err));
-			} else
-			{
-				snd_pcm_sw_params_free(sw_params);
-				sw_params = NULL;
-
-				/* Prepare */
-				if ((err = snd_pcm_prepare(pcm_handle)) < 0) {
-					fprintf(stderr, "cannot prepare audio interface for use (%s)\n",
-						snd_strerror(err));
-				} else
-				if ((err = snd_async_add_pcm_handler(&pcm_ahandler, pcm_handle, MySound_CallBack, NULL)) < 0) {
-					fprintf(stderr, "unable to register async pcm handler (%s)\n",
-						snd_strerror(err));
-					pcm_ahandler = NULL;
-				} else
-				/* Fill alsa buffer with silence */
-				if ((err = snd_pcm_writei(pcm_handle, MyBuffer, 2 * period_size)) < 0) {
-					fprintf(stderr, "Initial pcm write error: %s\n", snd_strerror(err));
-				} else
-				if (err != 2 * period_size) {
-					fprintf(stderr, "Initial pcm write error: written %i expected %li\n", err, 2 * period_size);
-				} else
-				/* Start playback */
-				if ((err = snd_pcm_start(pcm_handle)) < 0) {
-					fprintf(stderr, "pcm start error: %s\n",
-						snd_strerror(err));
-				} else
-				{
-					return; /* success */
-				}
-			}
-		}
-
-		/* clean up after failure */
-
-		if (pcm_ahandler != NULL) {
-			snd_async_del_handler(pcm_ahandler);
-		}
-		if (sw_params != NULL) {
-			snd_pcm_sw_params_free(sw_params);
-		}
-		if (hw_params != NULL) {
-			snd_pcm_hw_params_free(hw_params);
-		}
-		if (pcm_handle != NULL) {
-			snd_pcm_close(pcm_handle);
-			pcm_handle = NULL;
-		}
 	}
 }
 
@@ -1850,7 +1817,136 @@ LOCALPROC MySound_Stop(void)
 {
 	if (pcm_handle != NULL) {
 		snd_pcm_drop(pcm_handle);
-		snd_async_del_handler(pcm_ahandler);
+	}
+}
+
+LOCALPROC MySound_Init0(void)
+{
+	snd_pcm_hw_params_t *hw_params = NULL;
+	snd_pcm_sw_params_t *sw_params = NULL;
+	unsigned int rrate = SOUND_SAMPLERATE;
+	int err;
+
+	buffer_size = desired_alsa_buffer_size;
+	period_size = desired_alsa_period_size;
+
+	/* Open the sound device */
+	if (NULL == alsadev_name) {
+		alsadev_name = getenv("AUDIODEV");
+		if (NULL == alsadev_name) {
+			alsadev_name = strdup("default");
+		}
+	}
+
+	if ((err = snd_pcm_open(&pcm_handle, alsadev_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
+		fprintf(stderr, "cannot open audio device %s (%s)\n",
+			alsadev_name, snd_strerror(err));
+		pcm_handle = NULL;
+	} else
+	/* Set some hardware parameters */
+	if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
+		fprintf(stderr, "cannot allocate hardware parameter structure (%s)\n",
+			snd_strerror(err));
+		hw_params = NULL;
+	} else
+	if ((err = snd_pcm_hw_params_any(pcm_handle, hw_params)) < 0) {
+		fprintf(stderr, "cannot initialize hardware parameter structure (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params_set_access(pcm_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
+		fprintf(stderr, "cannot set access type (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params_set_format(pcm_handle, hw_params, SND_PCM_FORMAT_U8)) < 0) {
+		fprintf(stderr, "cannot set sample format (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params_set_rate_near(pcm_handle, hw_params, &rrate, NULL)) < 0) {
+		fprintf(stderr, "cannot set sample rate (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params_set_channels(pcm_handle, hw_params, 1)) < 0) {
+		fprintf(stderr, "cannot set channel count (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params_set_buffer_size_near(pcm_handle, hw_params, &buffer_size)) < 0) {
+		fprintf(stderr, "cannot set buffer size count (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params_set_period_size_near(pcm_handle, hw_params, &period_size, NULL)) < 0) {
+		fprintf(stderr, "cannot set period size count (%s)\n",
+			snd_strerror(err));
+	} else
+	if ((err = snd_pcm_hw_params(pcm_handle, hw_params)) < 0) {
+		fprintf(stderr, "cannot set parameters (%s)\n",
+			snd_strerror(err));
+	} else
+	{
+		if (rrate != SOUND_SAMPLERATE) {
+			fprintf(stderr, "Warning: sample rate is off by %i Hz\n",
+				SOUND_SAMPLERATE - rrate);
+		}
+
+#if 0
+		if (buffer_size != desired_alsa_buffer_size) {
+			fprintf(stderr, "Warning: buffer size is off, desired %li, actual %li\n",
+				desired_alsa_buffer_size, buffer_size);
+		}
+
+		if (period_size != desired_alsa_period_size) {
+			fprintf(stderr, "Warning: period size is off, desired %li, actual %li\n",
+				desired_alsa_period_size, period_size);
+		}
+#endif
+
+		snd_pcm_hw_params_free(hw_params);
+		hw_params = NULL;
+
+		/* Set some software parameters */
+		if ((err = snd_pcm_sw_params_malloc(&sw_params)) < 0) {
+			fprintf(stderr, "cannot allocate software parameter structure (%s)\n",
+				snd_strerror(err));
+			sw_params = NULL;
+		} else
+		if ((err = snd_pcm_sw_params_current(pcm_handle, sw_params)) < 0) {
+			fprintf(stderr, "Unable to determine current sw_params for playback: %s\n",
+				snd_strerror(err));
+		} else
+		if ((snd_pcm_sw_params_set_start_threshold(pcm_handle, sw_params, buffer_size - period_size)) < 0) {
+			fprintf(stderr, "Unable to set start threshold mode for playback: %s\n",
+				snd_strerror(err));
+		} else
+		if ((err = snd_pcm_sw_params_set_avail_min(pcm_handle, sw_params, period_size)) < 0) {
+			fprintf(stderr, "Unable to set avail min for playback: %s\n",
+				snd_strerror(err));
+		} else
+		if ((err = snd_pcm_sw_params_set_xfer_align(pcm_handle, sw_params, 1)) < 0) {
+			fprintf(stderr, "Unable to set transfer align for playback: %s\n",
+				snd_strerror(err));
+		} else
+		if ((err = snd_pcm_sw_params(pcm_handle, sw_params)) < 0) {
+			fprintf(stderr, "Unable to set sw params for playback: %s\n",
+				snd_strerror(err));
+		} else
+		{
+			snd_pcm_sw_params_free(sw_params);
+			sw_params = NULL;
+
+			snd_pcm_nonblock(pcm_handle, 0);
+
+			return; /* success */
+		}
+	}
+
+	/* clean up after failure */
+
+	if (sw_params != NULL) {
+		snd_pcm_sw_params_free(sw_params);
+	}
+	if (hw_params != NULL) {
+		snd_pcm_hw_params_free(hw_params);
+	}
+	if (pcm_handle != NULL) {
 		snd_pcm_close(pcm_handle);
 		pcm_handle = NULL;
 	}
@@ -1861,12 +1957,18 @@ LOCALFUNC blnr MySound_Init(void)
 	MyBuffer = (ui3p)malloc(dbhBufferSize);
 	if (NULL == MyBuffer) {
 		return falseblnr;
+	} else {
+		MySound_Init0();
+		return trueblnr;
 	}
-	return trueblnr;
 }
 
 LOCALPROC MySound_UnInit(void)
 {
+	if (pcm_handle != NULL) {
+		snd_pcm_close(pcm_handle);
+		pcm_handle = NULL;
+	}
 	if (MyBuffer != NULL) {
 		free(MyBuffer);
 	}
@@ -1877,15 +1979,25 @@ GLOBALFUNC ui3p GetCurSoundOutBuff(void)
 	if (NULL == pcm_handle) {
 		return nullpr;
 	} else {
-		ui4b CurFillBuff = CurFillBuffer;
-		ui4b NextFillBuffer = CurFillBuff + 1;
-		ui4b FilledSoundBuffs = NextFillBuffer - CurPlayBuffer;
+		ui4b NextFillOffset = CurFillOffset + SOUND_LEN;
+		ui4b ToPlaySize = NextFillOffset - CurPlayOffset;
 
-		if (FilledSoundBuffs < kSoundBuffers) {
-			CurFillBuffer = NextFillBuffer;
+		if (ToPlaySize < kBufferSize) {
+			ui4b CurFillSeq = CurFillOffset >> kLnBuffSz;
+			ui4b NextFillSeq = NextFillOffset >> kLnBuffSz;
+
+			if (CurFillSeq != NextFillSeq) {
+				MyMoveBytes((anyp)(MyBuffer + kBufferSize),
+					(anyp)MyBuffer,
+					NextFillOffset & kBufferMask);
+			}
+
+			CurFillOffset = NextFillOffset;
 		}
 
-		return MyBuffer + (CurFillBuffer & kSoundBuffMask) * SOUND_LEN;
+		MySound_WriteOut();
+
+		return MyBuffer + (CurFillOffset & kBufferMask);
 	}
 }
 

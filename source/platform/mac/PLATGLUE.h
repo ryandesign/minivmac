@@ -2891,7 +2891,7 @@ static pascal OSErr GlobalReceiveHandler(WindowRef pWindow, void *handlerRefCon,
 	if (! ADialogIsUp)
 	if (noErr == CountDragItems(theDragRef, &items))
 	{
-		for (index = 1; index <= items; index++) {
+		for (index = 1; index <= items; ++index) {
 			if (noErr == GetDragItemReferenceNumber(theDragRef, index, &theItem))
 			if (noErr == GetFlavorDataSize(theDragRef, theItem, flavorTypeHFS, &SentSize))
 				/*

@@ -311,6 +311,13 @@ static void WriteMPWSpecificFiles(void)
 			WriteCStrToDestFile(" >");
 			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
 			WriteEndDestFileLn();
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("Echo -n \" ");
+			WriteAppBinZipName();
+			WriteCStrToDestFile("\" >>");
+			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
+			WriteEndDestFileLn();
 		--DestFileIndent;
 	}
 

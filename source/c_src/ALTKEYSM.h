@@ -27,6 +27,8 @@
 LOCALVAR blnr AltKeysTempMode = falseblnr;
 LOCALVAR blnr AltKeysLockMode = falseblnr;
 LOCALVAR blnr AltKeysTrueCmnd = falseblnr;
+LOCALVAR blnr AltKeysTrueOption = falseblnr;
+LOCALVAR blnr AltKeysTrueShift = falseblnr;
 LOCALVAR blnr AltKeysModeOn = falseblnr;
 
 LOCALPROC CheckAltKeyUseMode(void)
@@ -34,9 +36,10 @@ LOCALPROC CheckAltKeyUseMode(void)
 	blnr NewAltKeyUseMode = (AltKeysTempMode | AltKeysLockMode)
 		&& (! AltKeysTrueCmnd);
 	if (NewAltKeyUseMode != AltKeysModeOn) {
-		DisconnectKeyCodes(AltKeysTrueCmnd
-				? (kKeepMaskControl | kKeepMaskCapsLock | kKeepMaskCommand)
-				: (kKeepMaskControl | kKeepMaskCapsLock));
+		DisconnectKeyCodes(kKeepMaskControl | kKeepMaskCapsLock
+			| (AltKeysTrueCmnd ? kKeepMaskCommand : 0)
+			| (AltKeysTrueOption ? kKeepMaskOption : 0)
+			| (AltKeysTrueShift ? kKeepMaskShift : 0));
 		AltKeysModeOn = NewAltKeyUseMode;
 	}
 }
@@ -49,6 +52,12 @@ LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 	} else if (MKC_Command == key) {
 		AltKeysTrueCmnd = down;
 		CheckAltKeyUseMode();
+		Keyboard_UpdateKeyMap(key, down);
+	} else if (MKC_Option == key) {
+		AltKeysTrueOption = down;
+		Keyboard_UpdateKeyMap(key, down);
+	} else if (MKC_Shift == key) {
+		AltKeysTrueShift = down;
 		Keyboard_UpdateKeyMap(key, down);
 	} else if (! AltKeysModeOn) {
 		Keyboard_UpdateKeyMap(key, down);
@@ -153,14 +162,18 @@ LOCALPROC DisconnectKeyCodes1(ui5b KeepMask)
 {
 	DisconnectKeyCodes(KeepMask);
 
-#if EnableAltKeysMode
 	AltKeysTempMode = falseblnr;
 	if (! (0 != (KeepMask & kKeepMaskCommand))) {
 		AltKeysTrueCmnd = falseblnr;
+	}
+	if (! (0 != (KeepMask & kKeepMaskOption))) {
+		AltKeysTrueOption = falseblnr;
+	}
+	if (! (0 != (KeepMask & kKeepMaskShift))) {
+		AltKeysTrueShift = falseblnr;
 	}
 
 	if (AltKeysLockMode != AltKeysModeOn) {
 		AltKeysModeOn = AltKeysLockMode;
 	}
-#endif
 }

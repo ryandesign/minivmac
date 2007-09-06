@@ -77,7 +77,7 @@ LOCALFUNC blnr WriteMakeOutputDirectories(void)
 			IsOk = MakeSubDirectory(&ProjDirR, &OutputDirR, kStrAppAbbrev,
 				(ide_vers >= 2100) ? ".xcodeproj" : ".pbproj");
 		} else if (cur_ide != gbk_ide_mw8) {
-			if (MakeSubDirectory(&ObjDirR, &OutputDirR, "obj", "")) {
+			if (MakeSubDirectory(&ObjDirR, &OutputDirR, obj_d_name, "")) {
 				if (WriteOpenDestFile(&ObjDirR, "dummy", "")) { /* Dummy */
 					WriteDestFileLn("This file is here because some archive extraction");
 					WriteDestFileLn("software will not create an empty directory.");
@@ -243,6 +243,25 @@ LOCALFUNC blnr ProcessCommandLineArguments(void)
 	return trueblnr;
 }
 
+LOCALPROC DoDocTypeAddToMainRC(void)
+{
+	WriteBgnDestFileLn();
+	WriteUnsignedToOutput(256 + DocTypeCounter);
+	WriteCStrToDestFile("                     ICON    DISCARDABLE     ");
+	WriteQuoteToDestFile();
+	WriteDocTypeIconFileName();
+	WriteQuoteToDestFile();
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteWinMainRC(void)
+{
+	if (WriteOpenDestFile(&SrcDirR, "main", ".rc")) { /* Resource Configuration file */
+		DoAllDocTypesWithSetup(DoDocTypeAddToMainRC);
+		WriteCloseDestFile();
+	}
+}
+
 LOCALPROC WriteConfigFiles(void)
 {
 	WriteCommonCNFGGLOB();
@@ -251,14 +270,16 @@ LOCALPROC WriteConfigFiles(void)
 	if (HaveMacRrscs) {
 		WriteCommonCNFGRSRC();
 	}
+	if (gbk_apifam_win == gbo_apifam) {
+		WriteWinMainRC();
+	}
 }
 
 LOCALVAR MyDir_R SourceDirR;
 LOCALVAR MyDir_R C_srcDirR;
-LOCALVAR MyDir_R A_srcDirR;
-LOCALVAR MyDir_R LanguageDirR;
+LOCALVAR MyDir_R AltSrcDirR;
+LOCALVAR MyDir_R AsmFrmDirR;
 LOCALVAR MyDir_R LangDirR;
-LOCALVAR MyDir_R PlatformDirR;
 LOCALVAR MyDir_R PlatDirR;
 
 LOCALPROC DoSrcFileAddToSrcDir(void)
@@ -270,20 +291,11 @@ LOCALPROC DoSrcFileAddToSrcDir(void)
 			&SrcDirR, DoSrcFile_gd()->s, ".h"))
 	{
 		if (IsAltFile) {
-			MyDir_R AltSrcDirR;
-			if (FindSubDirectory(&AltSrcDirR, &SourceDirR, "alt_src", ""))
 			if (rConverTextInThingXtn(&AltSrcDirR,
 					&SrcDirR, DoSrcFile_gd()->s, ".c"))
 			{
 			}
 		} else if (IsAsmFile) {
-			MyDir_R AsmCpuDirR;
-			MyDir_R AsmFrmDirR;
-			if (FindSubDirectory(&AsmCpuDirR, &A_srcDirR, "ppc", ""))
-			if (FindSubDirectory(&AsmFrmDirR, &AsmCpuDirR,
-				(cur_targ == gbk_targ_mach) ?
-					"as" : "ppcasm",
-				""))
 			if (rConverTextInThingXtn(&AsmFrmDirR,
 					&SrcDirR, DoSrcFile_gd()->s, ".s"))
 			{
@@ -360,16 +372,81 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 	}
 }
 
+LOCALFUNC blnr MayFindAsmDirectory(void)
+{
+	if (! HaveAsm) {
+		return trueblnr;
+	} else {
+		MyDir_R A_srcDirR;
+		MyDir_R AsmCpuDirR;
+
+		if (FindSubDirectory(&A_srcDirR, &SourceDirR, "a_src", ""))
+		if (FindSubDirectory(&AsmCpuDirR, &A_srcDirR, "ppc", ""))
+		if (FindSubDirectory(&AsmFrmDirR, &AsmCpuDirR,
+			(cur_targ == gbk_targ_mach) ?
+				"as" : "ppcasm",
+			""))
+		{
+			return trueblnr;
+		}
+		return falseblnr;
+	}
+}
+
+LOCALFUNC blnr MayFindLanguageDirectory(void)
+{
+	if (! HaveLanguage) {
+		return trueblnr;
+	} else {
+		MyDir_R LanguageDirR;
+
+		if (FindSubDirectory(&LanguageDirR, &SourceDirR, "language", ""))
+		if (FindSubDirectory(&LangDirR, &LanguageDirR, GetLangName(gbo_lang), ""))
+		{
+			return trueblnr;
+		}
+		return falseblnr;
+	}
+}
+
+LOCALFUNC blnr MayFindPlatformDirectory(void)
+{
+	if (! HavePlatform) {
+		return trueblnr;
+	} else {
+		MyDir_R PlatformDirR;
+
+		if (FindSubDirectory(&PlatformDirR, &SourceDirR, "platform", ""))
+		if (FindSubDirectory(&PlatDirR, &PlatformDirR, GetPlatformDirName(), ""))
+		{
+			return trueblnr;
+		}
+		return falseblnr;
+	}
+}
+
+LOCALFUNC blnr MayFindAltSrcDirectory(void)
+{
+	if (! HaveAltSrc) {
+		return trueblnr;
+	} else {
+		if (FindSubDirectory(&AltSrcDirR, &SourceDirR, "alt_src", ""))
+		{
+			return trueblnr;
+		}
+		return falseblnr;
+	}
+}
+
 LOCALFUNC blnr MakeSrcFolder(void)
 {
 	if (FindSubDirectory(&SourceDirR, &BaseDirR, "source", ""))
 	if (FindSubDirectory(&C_srcDirR, &SourceDirR, "c_src", ""))
-	if (FindSubDirectory(&A_srcDirR, &SourceDirR, "a_src", ""))
-	if (FindSubDirectory(&LanguageDirR, &SourceDirR, "language", ""))
-	if (FindSubDirectory(&LangDirR, &LanguageDirR, GetLangName(gbo_lang), ""))
-	if (FindSubDirectory(&PlatformDirR, &SourceDirR, "platform", ""))
-	if (FindSubDirectory(&PlatDirR, &PlatformDirR, GetPlatformDirName(), ""))
-	if (MakeSubDirectory(&SrcDirR, &OutputDirR, "src", ""))
+	if (MayFindAsmDirectory())
+	if (MayFindLanguageDirectory())
+	if (MayFindPlatformDirectory())
+	if (MayFindAltSrcDirectory())
+	if (MakeSubDirectory(&SrcDirR, &OutputDirR, src_d_name, ""))
 	{
 		DoAllSrcFilesWithSetup(DoSrcFileAddToSrcDir);
 		DoAllExtraHeaders(DoExtraHeaderFileAddToSrcDir);
@@ -381,18 +458,62 @@ LOCALFUNC blnr MakeSrcFolder(void)
 				{
 				}
 				break;
+#if 0
 			case gbk_apifam_win:
 				if (rConverTextInThingXtn(&PlatDirR,
 					&SrcDirR, "main", ".rc"))
 				{
 				}
 				break;
+#endif
 			default:
 				break;
 		}
 		return trueblnr;
 	}
 	return falseblnr;
+}
+
+LOCALPROC DoSrcFileScanSettings(void)
+{
+	blnr IsAsmFile = ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
+	blnr IsAltFile = ((DoSrcFile_gd()->Flgm & kCSrcFlgmAltSrc) != 0);
+
+	HaveAsm |= IsAsmFile;
+	HaveAltSrc |= IsAltFile;
+}
+
+LOCALPROC DoExtraHeaderFileScanSettings(int DepDir,
+	char *s)
+{
+#pragma unused(s)
+	switch (DepDir) {
+		case kDepDirCSrc:
+			break;
+		case kDepDirPlat:
+			HavePlatform = trueblnr;
+			break;
+		case kDepDirLang:
+			HaveLanguage = trueblnr;
+			break;
+		case kDepDirCnfg:
+			break;
+	}
+}
+
+LOCALFUNC blnr ScanSourceSettings(void)
+{
+	HaveAsm = falseblnr;
+	HaveAltSrc = falseblnr;
+	HaveLanguage = falseblnr;
+	HavePlatform = falseblnr;
+
+	DoAllSrcFilesWithSetup(DoSrcFileScanSettings);
+	DoAllExtraHeaders(DoExtraHeaderFileScanSettings);
+
+	HaveAsm &= AsmPossible;
+
+	return trueblnr;
 }
 
 LOCALPROC DoTheCommand(void)
@@ -409,6 +530,7 @@ LOCALPROC DoTheCommand(void)
 #ifdef Have_SPBLDOPT
 	if (AutoChooseSPSettings())
 #endif
+	if (ScanSourceSettings())
 	if (WriteMakeOutputDirectories())
 	if (MakeSrcFolder())
 	{

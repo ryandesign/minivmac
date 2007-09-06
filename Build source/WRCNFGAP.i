@@ -47,6 +47,10 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 #if UseOpenGLinOSX
 		WriteDestFileLn("#include <AGL/agl.h>");
 #endif
+#if UseMachinOSX
+		WriteDestFileLn("#include <mach/mach_interface.h>");
+		WriteDestFileLn("#include <mach/mach_port.h>");
+#endif
 	} else if (gbo_apifam == gbk_apifam_xwn) {
 		WriteDestFileLn("#include <stdio.h>");
 		WriteDestFileLn("#include <stdlib.h>");
@@ -163,6 +167,11 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 
 	if (HaveMacBundleApp) {
 		WriteDestFileLn("#define MyAppIsBundle 1");
+	}
+	if (gbo_apifam == gbk_apifam_win) {
+		if (WantIconMaster) {
+			WriteDestFileLn("#define InstallFileIcons 1");
+		}
 	}
 	if ((gbo_apifam == gbk_apifam_mac) || (gbo_apifam == gbk_apifam_osx)) {
 		WriteBlankLineToDestFile();

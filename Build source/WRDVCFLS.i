@@ -86,12 +86,15 @@ static void WriteDevCSpecificFiles(void)
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("IsCpp=0");
-	WriteDestFileLn("ObjectOutput=obj");
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("ObjectOutput=");
+	Write_obj_d_ToDestFile();
+	WriteEndDestFileLn();
 	WriteDestFileLn("OverrideOutput=1");
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("OverrideOutputName=");
-	WriteAppNameStr();
+	WriteAppNamePath();
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("IncludeVersionInfo=0");

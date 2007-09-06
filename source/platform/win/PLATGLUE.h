@@ -28,11 +28,17 @@
 	The main entry point 'WinMain' is at the end of this file.
 */
 
+#ifndef InstallFileIcons
+#define InstallFileIcons 0
+#endif
+
 /* Resource Ids */
 
 #define IDI_VMAC                        256
-#define IDI_DISK                        257
-#define IDI_ROM                         258
+#if InstallFileIcons
+#define IDI_ROM                         257
+#define IDI_DISK                        258
+#endif
 
 /*--- some simple utilities ---*/
 
@@ -2123,12 +2129,36 @@ GLOBALPROC PbufTransfer(void *Buffer,
 }
 #endif
 
+LOCALVAR const ui3b Native2MacRomanTab[] = {
+	0xAD, 0xB0, 0xE2, 0xC4, 0xE3, 0xC9, 0xA0, 0xE0,
+	0xF6, 0xE4, 0xB6, 0xDC, 0xCE, 0xB2, 0xB3, 0xB7,
+	0xB8, 0xD4, 0xD5, 0xD2, 0xD3, 0xA5, 0xD0, 0xD1,
+	0xF7, 0xAA, 0xC5, 0xDD, 0xCF, 0xB9, 0xC3, 0xD9,
+	0xCA, 0xC1, 0xA2, 0xA3, 0xDB, 0xB4, 0xBA, 0xA4,
+	0xAC, 0xA9, 0xBB, 0xC7, 0xC2, 0xBD, 0xA8, 0xF8,
+	0xA1, 0xB1, 0xC6, 0xD7, 0xAB, 0xB5, 0xA6, 0xE1,
+	0xFC, 0xDA, 0xBC, 0xC8, 0xDE, 0xDF, 0xF0, 0xC0,
+	0xCB, 0xE7, 0xE5, 0xCC, 0x80, 0x81, 0xAE, 0x82,
+	0xE9, 0x83, 0xE6, 0xE8, 0xED, 0xEA, 0xEB, 0xEC,
+	0xF5, 0x84, 0xF1, 0xEE, 0xEF, 0xCD, 0x85, 0xF9,
+	0xAF, 0xF4, 0xF2, 0xF3, 0x86, 0xFA, 0xFB, 0xA7,
+	0x88, 0x87, 0x89, 0x8B, 0x8A, 0x8C, 0xBE, 0x8D,
+	0x8F, 0x8E, 0x90, 0x91, 0x93, 0x92, 0x94, 0x95,
+	0xFD, 0x96, 0x98, 0x97, 0x99, 0x9B, 0x9A, 0xD6,
+	0xBF, 0x9D, 0x9C, 0x9E, 0x9F, 0xFE, 0xFF, 0xD8
+};
+
 LOCALFUNC si4b NativeTextToMacRomanPbuf(HGLOBAL x, ui4b *r)
 {
+#if MyUseUni
+#define MyUnsignedChar ui4b
+#else
+#define MyUnsignedChar ui3b
+#endif
 	HGLOBAL h;
 	LPTSTR p1;
 	ui5b n;
-	TCHAR v;
+	MyUnsignedChar v;
 	si4b err = -1;
 
 	p1 = GlobalLock(x);
@@ -2147,8 +2177,14 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(HGLOBAL x, ui4b *r)
 			if (p1 != NULL) {
 				ui3b *p2 = GlobalLock(h);
 				if (p2 != NULL) {
-					while ((v = *p1++) != 0) {
-						if (v != 10) {
+					while ((v = (MyUnsignedChar)*p1++) != 0) {
+						if (v >= 128) {
+							*p2++ = Native2MacRomanTab[v & 0x7F];
+								/*
+									if MyUseUni, then for gives
+									garbage for v > 256.
+								*/
+						} else if (v != 10) {
 							*p2++ = v;
 						}
 					}
@@ -2170,6 +2206,25 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(HGLOBAL x, ui4b *r)
 
 	return err;
 }
+
+LOCALVAR const ui3b MacRoman2NativeTab[] = {
+	0xC4, 0xC5, 0xC7, 0xC9, 0xD1, 0xD6, 0xDC, 0xE1,
+	0xE0, 0xE2, 0xE4, 0xE3, 0xE5, 0xE7, 0xE9, 0xE8,
+	0xEA, 0xEB, 0xED, 0xEC, 0xEE, 0xEF, 0xF1, 0xF3,
+	0xF2, 0xF4, 0xF6, 0xF5, 0xFA, 0xF9, 0xFB, 0xFC,
+	0x86, 0xB0, 0xA2, 0xA3, 0xA7, 0x95, 0xB6, 0xDF,
+	0xAE, 0xA9, 0x99, 0xB4, 0xA8, 0x80, 0xC6, 0xD8,
+	0x81, 0xB1, 0x8D, 0x8E, 0xA5, 0xB5, 0x8A, 0x8F,
+	0x90, 0x9D, 0xA6, 0xAA, 0xBA, 0xAD, 0xE6, 0xF8,
+	0xBF, 0xA1, 0xAC, 0x9E, 0x83, 0x9A, 0xB2, 0xAB,
+	0xBB, 0x85, 0xA0, 0xC0, 0xC3, 0xD5, 0x8C, 0x9C,
+	0x96, 0x97, 0x93, 0x94, 0x91, 0x92, 0xF7, 0xB3,
+	0xFF, 0x9F, 0xB9, 0xA4, 0x8B, 0x9B, 0xBC, 0xBD,
+	0x87, 0xB7, 0x82, 0x84, 0x89, 0xC2, 0xCA, 0xC1,
+	0xCB, 0xC8, 0xCD, 0xCE, 0xCF, 0xCC, 0xD3, 0xD4,
+	0xBE, 0xD2, 0xDA, 0xDB, 0xD9, 0xD0, 0x88, 0x98,
+	0xAF, 0xD7, 0xDD, 0xDE, 0xB8, 0xF0, 0xFD, 0xFE
+};
 
 LOCALFUNC blnr MacRomanTextToNativeHand(ui4b Pbuf_no, blnr IsFileName, HGLOBAL *r)
 {
@@ -2203,11 +2258,33 @@ LOCALFUNC blnr MacRomanTextToNativeHand(ui4b Pbuf_no, blnr IsFileName, HGLOBAL *
 			LPTSTR p1 = GlobalLock(h);
 			if (p1 != NULL) {
 				for (i = 0; i < L; ++i) {
+					TCHAR y;
 					ui3b x = ((ui3b *)Buffer)[i];
-					*p1++ = x;
-					if (x == 13) {
-						*p1++ = IsFileName ? (TCHAR)('?') : (TCHAR)(10);
+					if (x >= 128) {
+						y = (TCHAR)MacRoman2NativeTab[x - 128];
+					} else {
+						if (IsFileName) {
+							if ((x < 32)
+								|| ('\\' == x) || ('/' == x)
+								|| (':' == x) || ('*' == x)
+								|| ('?' == x) || ('"' == x)
+								|| ('<' == x) || ('>' == x)
+								|| ('|' == x))
+							{
+								y = (TCHAR)('-');
+							} else {
+								y = (TCHAR)x;
+							}
+						} else {
+							if (13 == x) {
+								*p1++ = (TCHAR)(13);
+								y = (TCHAR)(10);
+							} else {
+								y = (TCHAR)x;
+							}
+						}
 					}
+					*p1++ = y;
 				}
 				*p1++ = (TCHAR) 0; /* null character */
 
@@ -2749,7 +2826,7 @@ LOCALPROC InsertADisk0(void)
 
 	szDirName[0] = (TCHAR)('\0');
 	szFile[0] = (TCHAR)('\0');
-	_tcscpy(szFilter, TEXT("Disk images|*.DSK;*.HF?;*.IMG;*.IMA;*.IMAGE|All files (*.*)|*.*|\0"));
+	_tcscpy(szFilter, TEXT("Disk images|*.dsk;*.HF?;*.IMG;*.IMA;*.IMAGE|All files (*.*)|*.*|\0"));
 
 	cbString = _tcslen(szFilter);
 
@@ -2907,19 +2984,6 @@ LOCALPROC MakeNewDisk(ui5b L, HGLOBAL NewDiskNameDat)
 
 	memset(&ofn, 0, sizeof(OPENFILENAME));
 
-#if 0
-	if (DDfileType == DDFileTypeDataFile) {
-		ofn.lpstrDefExt = "dsk";
-		ofn.lpstrFilter = "Datafile\0*.dsk\0";
-	} else if (DDfileType == DDFileTypeShoe) {
-		ofn.lpstrDefExt = "sho";
-		ofn.lpstrFilter = "Interchange\0*.sho\0";
-	} else {
-		ofn.lpstrDefExt = "txt";
-		ofn.lpstrFilter = "Text\0*.txt\0";
-	}
-#endif
-
 #if IncludeSonyGetName
 	if (NewDiskNameDat != NULL) {
 		LPTSTR p = GlobalLock(NewDiskNameDat);
@@ -3075,6 +3139,65 @@ LOCALFUNC blnr AllocateMacRAM(void)
 		return trueblnr;
 	}
 }
+
+#if InstallFileIcons
+LOCALPROC MySetRegKey(HKEY hKeyRoot, LPTSTR strRegKey, LPTSTR strRegValue)
+{
+	HKEY RegKey;
+	DWORD dwDisposition;
+
+	if (ERROR_SUCCESS == RegCreateKeyEx(hKeyRoot, strRegKey, 0, NULL,
+		REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS,
+		NULL, &RegKey, &dwDisposition))
+	{
+		RegSetValueEx(RegKey, NULL, 0, REG_SZ,
+			(CONST BYTE *)strRegValue,
+			(_tcslen(strRegValue) + 1) * sizeof(TCHAR));
+		RegCloseKey(RegKey);
+	}
+}
+
+LOCALPROC RegisterShellFileType (LPTSTR AppPath, LPTSTR strFilterExt,
+	LPTSTR strFileTypeId, LPTSTR strFileTypeName,
+	LPTSTR strIconId, blnr CanOpen)
+{
+	TCHAR strRegKey[_MAX_PATH];
+	TCHAR strRegValue[_MAX_PATH + 2]; /* extra room for ","{strIconId} */
+
+	MySetRegKey(HKEY_CLASSES_ROOT, strFileTypeId, strFileTypeName);
+	MySetRegKey(HKEY_CLASSES_ROOT, strFilterExt, strFileTypeId);
+
+	_tcscpy(strRegKey, strFileTypeId);
+	_tcscat(strRegKey, TEXT("\\DefaultIcon"));
+	_tcscpy(strRegValue, AppPath);
+	_tcscat(strRegValue, TEXT(","));
+	_tcscat(strRegValue, strIconId);
+	MySetRegKey(HKEY_CLASSES_ROOT, strRegKey, strRegValue);
+
+	if (CanOpen) {
+		_tcscpy(strRegKey, strFileTypeId);
+		_tcscat(strRegKey, TEXT("\\shell\\open\\command"));
+		_tcscpy(strRegValue, AppPath);
+		_tcscat(strRegValue, TEXT(" \"%1\""));
+		MySetRegKey(HKEY_CLASSES_ROOT, strRegKey, strRegValue);
+	}
+}
+
+LOCALFUNC blnr RegisterInRegistry(void)
+{
+	TCHAR AppPath[_MAX_PATH];
+
+	GetModuleFileName(NULL, AppPath, _MAX_PATH);
+	GetShortPathName(AppPath, AppPath, _MAX_PATH);
+
+	RegisterShellFileType(AppPath, TEXT(".rom"), TEXT("minivmac.rom"),
+		TEXT("Mini vMac ROM Image"), TEXT("1"), falseblnr);
+	RegisterShellFileType(AppPath, TEXT(".dsk"), TEXT("minivmac.dsk"),
+		TEXT("Mini vMac Disk Image"), TEXT("2"), trueblnr);
+
+	return trueblnr;
+}
+#endif
 
 LOCALVAR LPTSTR CommandLine;
 
@@ -3790,7 +3913,7 @@ LOCALFUNC blnr InitHotKeys(void)
 		if (! procUndergisterFunc) {
 			MacMsg ("Fatal", "Could not get UnregisterFunc1 procedure", trueblnr);
 		} else {
-			for (i = 0xc1; i <= 0xcf; i++) {
+			for (i = 0xc1; i <= 0xcf; ++i) {
 				procUndergisterFunc(MOD_WIN, i);
 				RegisterHotKey(MainWnd, i, MOD_WIN, i);
 			}
@@ -3834,6 +3957,9 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (RegisterOurClass())
 	if (LoadInitialImages())
 	if (ScanCommandLine())
+#if InstallFileIcons
+	if (RegisterInRegistry())
+#endif
 	if (AllocateMacROM())
 	if (LoadMacRom())
 #if MySoundEnabled

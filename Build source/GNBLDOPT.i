@@ -27,6 +27,10 @@
 #define UseOpenGLinOSX 0
 #endif
 
+#ifndef UseMachinOSX
+#define UseMachinOSX 0
+#endif
+
 #ifndef OSXplatsep
 #define OSXplatsep 1
 #endif
@@ -829,22 +833,6 @@ LOCALPROC ChooseHomePage(void)
 	}
 }
 
-/* derived option: have assembly */
-
-LOCALVAR blnr HaveAsm;
-
-LOCALPROC ChooseHaveAsm(void)
-{
-	HaveAsm = falseblnr;
-	if (gbo_cpufam == gbk_cpufam_ppc) {
-		if (! ((cur_ide == gbk_ide_mw8) && (cur_targ == gbk_targ_mach)))
-		if (! ((cur_ide == gbk_ide_xcd) && (! UseCmndLine) && (ide_vers < 1500)))
-		{
-			HaveAsm = trueblnr;
-		}
-	}
-}
-
 /* derived option: application is os x bundle (folder) */
 
 LOCALVAR blnr HaveMacBundleApp;
@@ -897,6 +885,59 @@ LOCALPROC ChooseVariationName(void)
 	}
 }
 
+/* option: IconMaster */
+
+LOCALVAR blnr WantIconMaster;
+
+LOCALPROC ResetIconMaster(void)
+{
+	WantIconMaster = nanblnr;
+}
+
+LOCALFUNC blnr TryAsIconMasterNot(void)
+{
+	return BooleanTryAsOptionNot("-im", &WantIconMaster);
+}
+
+LOCALPROC ChooseIconMaster(void)
+{
+	if (nanblnr == WantIconMaster) {
+		WantIconMaster = falseblnr;
+	}
+}
+
+/* option: NoAsm */
+
+LOCALVAR blnr WantNoAsm;
+
+LOCALPROC ResetNoAsm(void)
+{
+	WantNoAsm = falseblnr;
+}
+
+LOCALFUNC blnr TryAsNoAsmNot(void)
+{
+	return FlagTryAsOptionNot("-no-asm", &WantNoAsm);
+}
+
+/* derived option: AsmPossible */
+
+LOCALVAR blnr AsmPossible;
+
+LOCALPROC ChooseAsmPossible(void)
+{
+	AsmPossible = falseblnr;
+	if (! WantNoAsm) {
+		if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (! ((cur_ide == gbk_ide_mw8) && (cur_targ == gbk_targ_mach)))
+			if (! ((cur_ide == gbk_ide_xcd) && (! UseCmndLine) && (ide_vers < 1500)))
+			{
+				AsmPossible = trueblnr;
+			}
+		}
+	}
+}
+
 
 /* --- end of default definition of options --- */
 
@@ -916,6 +957,8 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetMaintainerName();
 	ResetHomePage();
 	ResetVariationName();
+	ResetIconMaster();
+	ResetNoAsm();
 }
 
 LOCALFUNC blnr TryAsGNOptionNot(void)
@@ -934,6 +977,8 @@ LOCALFUNC blnr TryAsGNOptionNot(void)
 	if (TryAsHomePageOptionNot())
 	if (TryAsListOptionNot())
 	if (TryAsVariationNameOptionNot())
+	if (TryAsIconMasterNot())
+	if (TryAsNoAsmNot())
 	{
 		return trueblnr;
 	}
@@ -953,12 +998,13 @@ LOCALFUNC blnr AutoChooseGNSettings(void)
 		ChooseLangOption();
 		ChooseEOL();
 		ChooseArc();
-		ChooseHaveAsm();
 		ChooseMaintainerName();
 		ChooseHomePage();
 		ChooseHaveMacBundleApp();
 		ChooseHaveMacRrscs();
 		ChooseVariationName();
+		ChooseIconMaster();
+		ChooseAsmPossible();
 		return trueblnr;
 	}
 

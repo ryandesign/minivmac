@@ -53,13 +53,16 @@ LOCALPROC InitKeyCodes(void)
 #define kKeepMaskControl  (1 << 0)
 #define kKeepMaskCapsLock (1 << 1)
 #define kKeepMaskCommand  (1 << 2)
+#define kKeepMaskOption   (1 << 3)
+#define kKeepMaskShift    (1 << 4)
 
 LOCALPROC DisconnectKeyCodes(ui5b KeepMask)
 {
 	/*
 		Called when may miss key ups,
 		so act is if all pressed keys have been released,
-		except maybe for control, caps lock, and command.
+		except maybe for control, caps lock, command,
+		option and shift.
 	*/
 	ui5b KeysMask[4] = {0, 0, 0, 0};
 
@@ -73,6 +76,12 @@ LOCALPROC DisconnectKeyCodes(ui5b KeepMask)
 
 	if (0 != (KeepMask & kKeepMaskCommand)) {
 		((ui3b *)KeysMask)[MKC_Command / 8] |= (1 << (MKC_Command & 7));
+	}
+	if (0 != (KeepMask & kKeepMaskOption)) {
+		((ui3b *)KeysMask)[MKC_Option / 8] |= (1 << (MKC_Option & 7));
+	}
+	if (0 != (KeepMask & kKeepMaskShift)) {
+		((ui3b *)KeysMask)[MKC_Shift / 8] |= (1 << (MKC_Shift & 7));
 	}
 
 	theKeys[0] &= KeysMask[0];

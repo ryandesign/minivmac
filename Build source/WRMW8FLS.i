@@ -72,6 +72,9 @@ static void WriteMWLibs(tWriteMWLib p)
 		p("ole32.lib");
 		p("uuid.lib");
 		p("winmm.lib");
+		if (WantIconMaster) {
+			p("advapi32.lib");
+		}
 		p("MSL_All_x86.lib");
 	} else if ((cur_targ == gbk_targ_mach) || (cur_targ == gbk_targ_imch)) {
 		p("crt1.o");

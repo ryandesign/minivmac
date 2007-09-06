@@ -18,12 +18,22 @@
 */
 
 
+#define src_d_name "src"
+
+#define obj_d_name "bld"
+	/* not "obj", so as to work in freebsd make */
+
 LOCALVAR MyDir_R BaseDirR;
 LOCALVAR MyDir_R OutputDir0R;
 LOCALVAR MyDir_R OutputDirR;
 LOCALVAR MyDir_R ProjDirR;
 LOCALVAR MyDir_R ObjDirR;
 LOCALVAR MyDir_R SrcDirR;
+
+LOCALVAR blnr HaveAsm;
+LOCALVAR blnr HaveLanguage;
+LOCALVAR blnr HavePlatform;
+LOCALVAR blnr HaveAltSrc;
 
 LOCALPROC WritepDtString(void)
 {
@@ -230,7 +240,7 @@ LOCALPROC Write_toplevel_d_ToDestFile(MyProc ps)
 
 LOCALPROC Write_src_d_Name(void)
 {
-	WriteCStrToDestFile("src");
+	WriteCStrToDestFile(src_d_name);
 }
 
 LOCALPROC Write_src_d_ToDestFile(void)
@@ -240,7 +250,7 @@ LOCALPROC Write_src_d_ToDestFile(void)
 
 LOCALPROC Write_obj_d_Name(void)
 {
-	WriteCStrToDestFile("obj");
+	WriteCStrToDestFile(obj_d_name);
 }
 
 LOCALPROC Write_obj_d_ToDestFile(void)

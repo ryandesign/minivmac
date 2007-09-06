@@ -48,10 +48,6 @@ typedef unsigned char flagtype;
 #define Use68020 0
 #endif
 
-#ifndef AccurateIllegal
-#define AccurateIllegal 0
-#endif
-
 LOCALVAR struct regstruct
 {
 	ui5b regs[16]; /* Data and Address registers */
