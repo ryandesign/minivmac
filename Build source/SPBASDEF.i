@@ -22,7 +22,7 @@
 #define kStrAppAbbrev "minivmac" /* [a-z0-9_]{1,8} */
 #define kMajorVersion "3"
 #define kMinorVersion "0"
-#define kMinorSubVersion "3"
+#define kMinorSubVersion "4"
 #define kStrCopyrightYear "2007"
 #define kMacCreatorSig "MnvM"
 #define kBundleIdentifier "com.gryphel.minivmac"

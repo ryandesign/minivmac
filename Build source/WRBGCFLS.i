@@ -360,15 +360,37 @@ static void WriteBashGccSpecificFiles(void)
 			WriteRmFile(WriteAppBinTarPath);
 
 			WriteBgnDestFileLn();
-			if (cur_ide == gbk_ide_xcd) {
-				WriteCStrToDestFile("md5 -r");
-			} else {
-				WriteCStrToDestFile("md5sum");
+			switch (cur_targ) {
+				case gbk_targ_slrs:
+				case gbk_targ_sl86:
+					WriteCStrToDestFile("digest -a md5");
+					break;
+				default:
+					if (cur_ide == gbk_ide_xcd) {
+						WriteCStrToDestFile("md5 -r");
+					} else {
+						WriteCStrToDestFile("md5sum");
+					}
+					break;
 			}
 			WritePathArgInMakeCmnd(WriteAppBinTgzPath);
 			WriteCStrToDestFile(" >");
 			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
 			WriteEndDestFileLn();
+
+			switch (cur_targ) {
+				case gbk_targ_slrs:
+				case gbk_targ_sl86:
+					WriteBgnDestFileLn();
+					WriteCStrToDestFile("echo \" ");
+					WriteAppBinTgzName();
+					WriteCStrToDestFile("\" >>");
+					WritePathArgInMakeCmnd(WriteCheckSumFilePath);
+					WriteEndDestFileLn();
+					break;
+				default:
+					break;
+			}
 		--DestFileIndent;
 	}
 

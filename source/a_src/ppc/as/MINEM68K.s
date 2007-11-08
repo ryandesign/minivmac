@@ -325,7 +325,7 @@ _m68k_go_nInstructions:
 	mflr	r0
 	stmw	rPC_p, -76(sp)
 	stw	r0, 8(sp)
-	stwu	sp, -80(sp)
+	stwu	sp, -144(sp)
 
 	bl	.MyEmulatorEntry
 
@@ -360,8 +360,8 @@ _m68k_go_nInstructions:
 	bne	cr0,.B2LP_9657
 	bl	.MyEmulatorExit
 
-	lwz	r0, 88(sp)
-	addi	sp, sp, 80
+	lwz	r0, 152(sp)
+	addi	sp, sp, 144
 	mtlr	r0
 	lmw	rPC_p, -76(sp)
 	blr
@@ -3630,7 +3630,7 @@ _DiskInsertedPsuedoException:
 	mflr	r0
 	stmw	rPC_p, -76(sp)
 	stw	r0, 8(sp)
-	stwu	sp, -80(sp)
+	stwu	sp, -144(sp)
 
 	bl	.MyEmulatorEntry
 
@@ -3643,8 +3643,8 @@ _DiskInsertedPsuedoException:
 	bl	.put_long
 	bl	.MyEmulatorExit
 
-	lwz	r0, 88(sp)
-	addi	sp, sp, 80
+	lwz	r0, 152(sp)
+	addi	sp, sp, 144
 	mtlr	r0
 	lmw	rPC_p, -76(sp)
 	blr
@@ -3655,7 +3655,7 @@ _m68k_reset:
 	mflr	r0
 	stmw	rPC_p, -76(sp)
 	stw	r0, 8(sp)
-	stwu	sp, -80(sp)
+	stwu	sp, -144(sp)
 
 	bl	.MyEmulatorEntry
 
@@ -3682,8 +3682,8 @@ _m68k_reset:
 .B2LEP9962:
 	bl	.MyEmulatorExit
 
-	lwz	r0, 88(sp)
-	addi	sp, sp, 80
+	lwz	r0, 152(sp)
+	addi	sp, sp, 144
 	mtlr	r0
 	lmw	rPC_p, -76(sp)
 	blr

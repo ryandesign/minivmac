@@ -330,7 +330,7 @@ x_b2S9977: equ $-.Dispatches[RW]
 	mflr	r0
 	stmw	rPC_p, -76(sp)
 	stw	r0, 8(sp)
-	stwu	sp, -80(sp)
+	stwu	sp, -144(sp)
 
 	bl	.MyEmulatorEntry
 
@@ -365,8 +365,8 @@ x_b2S9977: equ $-.Dispatches[RW]
 	bne	cr0,.B2LP_9657
 	bl	.MyEmulatorExit
 
-	lwz	r0, 88(sp)
-	addi	sp, sp, 80
+	lwz	r0, 152(sp)
+	addi	sp, sp, 144
 	mtlr	r0
 	lmw	rPC_p, -76(sp)
 	blr
@@ -3644,7 +3644,7 @@ x_b2S9977: equ $-.Dispatches[RW]
 	mflr	r0
 	stmw	rPC_p, -76(sp)
 	stw	r0, 8(sp)
-	stwu	sp, -80(sp)
+	stwu	sp, -144(sp)
 
 	bl	.MyEmulatorEntry
 
@@ -3657,8 +3657,8 @@ x_b2S9977: equ $-.Dispatches[RW]
 	bl	.put_long
 	bl	.MyEmulatorExit
 
-	lwz	r0, 88(sp)
-	addi	sp, sp, 80
+	lwz	r0, 152(sp)
+	addi	sp, sp, 144
 	mtlr	r0
 	lmw	rPC_p, -76(sp)
 	blr
@@ -3671,7 +3671,7 @@ x_b2S9977: equ $-.Dispatches[RW]
 	mflr	r0
 	stmw	rPC_p, -76(sp)
 	stw	r0, 8(sp)
-	stwu	sp, -80(sp)
+	stwu	sp, -144(sp)
 
 	bl	.MyEmulatorEntry
 
@@ -3698,8 +3698,8 @@ x_b2S9977: equ $-.Dispatches[RW]
 .B2LEP9962:
 	bl	.MyEmulatorExit
 
-	lwz	r0, 88(sp)
-	addi	sp, sp, 80
+	lwz	r0, 152(sp)
+	addi	sp, sp, 144
 	mtlr	r0
 	lmw	rPC_p, -76(sp)
 	blr
