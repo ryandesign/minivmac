@@ -84,6 +84,8 @@
 #endif
 #include "WRCNFGAP.i"
 
+#include "SPWROASM.i"
+
 #if support_ide_mpw
 #include "WRMPWFLS.i"
 #endif
@@ -91,6 +93,7 @@
 #include "WRMW8FLS.i"
 #endif
 #include "WRBGCFLS.i"
+#include "WRSNCFLS.i"
 #if SupportWinIDE
 #include "WRMSCFLS.i"
 #include "WRLCCFLS.i"

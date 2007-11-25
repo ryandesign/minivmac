@@ -30,21 +30,36 @@ LOCALPROC WriteMSVCQuotedDefine(char *s)
 
 LOCALPROC WriteCLexeFlags(void)
 {
+	blnr WinCE = ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ));
 	WriteCStrToDestFile("/nologo");
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteCStrToDestFile(" /Od");
 	} else {
 		WriteCStrToDestFile(" /O1");
 	}
-	WriteMSVCQuotedDefine("WIN32");
+	if (WinCE) {
+		WriteCStrToDestFile(" /D _WIN32_WCE=$(CEVersion) /D \"$(CePlatform)\" /D UNDER_CE=$(CEVersion)");
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			WriteCStrToDestFile(" /D \"ARM\" /D \"_ARM_\" /D \"ARMV4\"");
+		} else {
+			WriteCStrToDestFile(" /D \"_i386_\" /D \"_X86_\" /D \"x86\" /D \"i_386_\"");
+		}
+	} else {
+		WriteMSVCQuotedDefine("WIN32");
+		WriteMSVCQuotedDefine("_WINDOWS");
+	}
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteMSVCQuotedDefine("_DEBUG");
 	} else {
 		WriteMSVCQuotedDefine("NDEBUG");
 	}
-	WriteMSVCQuotedDefine("_WINDOWS");
-	if (ide_vers >= 6000) {
-		WriteMSVCQuotedDefine("_MBCS");
+	if (WinCE) {
+		WriteMSVCQuotedDefine("UNICODE");
+		WriteMSVCQuotedDefine("_UNICODE");
+	} else {
+		if (ide_vers >= 6000) {
+			WriteMSVCQuotedDefine("_MBCS");
+		}
 	}
 
 	if (gbo_dbg == gbk_dbg_on) {
@@ -52,6 +67,13 @@ LOCALPROC WriteCLexeFlags(void)
 	}
 
 	/* WriteCStrToDestFile(" /GX"); enable exception handling */
+
+	if (WinCE) {
+		if (gbk_cpufam_x86 == gbo_cpufam) {
+			WriteCStrToDestFile(" /Gs8192");
+				/* in the default template. why? */
+		}
+	}
 
 	if (gbo_dbg == gbk_dbg_on) {
 		if (ide_vers >= 8000) {
@@ -63,17 +85,31 @@ LOCALPROC WriteCLexeFlags(void)
 		WriteCStrToDestFile(" /GF"); /* string pooling */
 	}
 
-	if (gbo_dbg == gbk_dbg_on) {
-		if (ide_vers >= 8000) {
-			WriteCStrToDestFile(" /MTd");
-		} else {
-			WriteCStrToDestFile(" /MLd");
+	if (WinCE) {
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			if (gbo_dbg == gbk_dbg_on) {
+				WriteCStrToDestFile(" /M$(CECrtMTDebug)");
+			} else {
+				WriteCStrToDestFile(" /M$(CECrtMT)");
+			}
 		}
+		/*
+			default template doesn't do this for
+			x86. why not?
+		*/
 	} else {
-		if (ide_vers >= 8000) {
-			WriteCStrToDestFile(" /MT");
+		if (gbo_dbg == gbk_dbg_on) {
+			if (ide_vers >= 8000) {
+				WriteCStrToDestFile(" /MTd");
+			} else {
+				WriteCStrToDestFile(" /MLd");
+			}
 		} else {
-			WriteCStrToDestFile(" /ML");
+			if (ide_vers >= 8000) {
+				WriteCStrToDestFile(" /MT");
+			} else {
+				WriteCStrToDestFile(" /ML");
+			}
 		}
 	}
 
@@ -86,12 +122,18 @@ LOCALPROC WriteCLexeFlags(void)
 	}
 
 	if (gbo_dbg == gbk_dbg_on) {
-		WriteCStrToDestFile(" /ZI");
+		if (WinCE) {
+			WriteCStrToDestFile(" /Zi");
+		} else {
+			WriteCStrToDestFile(" /ZI");
+		}
 	}
 }
 
 LOCALPROC WriteRCexeFlags(void)
 {
+	blnr WinCE = ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ));
+
 	WriteCStrToDestFile("/l 0x409 /d ");
 	WriteQuoteToDestFile();
 	if (gbo_dbg == gbk_dbg_on) {
@@ -100,6 +142,14 @@ LOCALPROC WriteRCexeFlags(void)
 		WriteCStrToDestFile("NDEBUG");
 	}
 	WriteQuoteToDestFile();
+	if (WinCE) {
+		WriteCStrToDestFile(" /d UNDER_CE=$(CEVersion) /d _WIN32_WCE=$(CEVersion) /d \"UNICODE\" /d \"_UNICODE\" /d \"$(CePlatform)\" /r");
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			WriteCStrToDestFile(" /d \"ARM\" /d \"_ARM_\" /d \"ARMV4\"");
+		} else {
+			WriteCStrToDestFile(" /d \"_i386_\" /d \"_X86_\" /d \"x86\"");
+		}
+	}
 }
 
 LOCALPROC WriteFileToMSVCSource(MyProc p)
@@ -144,12 +194,56 @@ LOCALPROC WriteMSVCEndGroup(void)
 	WriteDestFileLn("# End Group");
 }
 
+LOCALPROC WriteMSVCdbgLevelName(void)
+{
+	char *s;
+
+	switch (gbo_dbg) {
+		case gbk_dbg_on:
+			s = "Debug";
+			break;
+		case gbk_dbg_test:
+			s = "Test";
+			break;
+		case gbk_dbg_off:
+			s = "Release";
+			break;
+		default:
+			s = "(unknown Debug Level)";
+			break;
+	}
+
+	WriteCStrToDestFile(s);
+}
+
+LOCALPROC WriteMSVCTargetName00(void)
+{
+	blnr WinCE = ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ));
+	WriteCStrToDestFile("Win32");
+	if (WinCE) {
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			WriteCStrToDestFile(" (WCE ARMV4)");
+		} else {
+			WriteCStrToDestFile(" (WCE emulator)");
+		}
+	} else {
+		WriteCStrToDestFile(" (x86)");
+	}
+}
+
+LOCALPROC WriteMSVCTargetName0(void)
+{
+	WriteCStrToDestFile(kStrAppAbbrev);
+	WriteCStrToDestFile(" - ");
+	WriteMSVCTargetName00();
+	WriteCStrToDestFile(" ");
+	WriteMSVCdbgLevelName();
+}
+
 LOCALPROC WriteMSVCTargetName(void)
 {
 	WriteQuoteToDestFile();
-	WriteCStrToDestFile(kStrAppAbbrev);
-	WriteCStrToDestFile(" - Win32");
-	/* WriteAppVariationStr(); */
+	WriteMSVCTargetName0();
 	WriteQuoteToDestFile();
 }
 
@@ -157,7 +251,11 @@ LOCALPROC WriteMSVCMakefileName(void)
 {
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(kStrAppAbbrev);
-	WriteCStrToDestFile(".mak");
+	if ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ)) {
+		WriteCStrToDestFile(".vcn");
+	} else {
+		WriteCStrToDestFile(".mak");
+	}
 	WriteQuoteToDestFile();
 }
 
@@ -191,10 +289,51 @@ LOCALPROC DoSrcFileMSVCAddFile(void)
 	WriteDestFileLn("# End Source File");
 }
 
+LOCALPROC DoSrcFileMSVCAddHeader(void)
+{
+	WriteDestFileLn("# Begin Source File");
+	WriteBlankLineToDestFile();
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("SOURCE=");
+	WriteSrcFileHeaderPath();
+	WriteEndDestFileLn();
+	WriteDestFileLn("# End Source File");
+}
+
+LOCALPROC DoExtraHeaderMSVCAdd(void)
+{
+	WriteDestFileLn("# Begin Source File");
+	WriteBlankLineToDestFile();
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("SOURCE=");
+	WriteExtraHeaderFilePath();
+	WriteEndDestFileLn();
+	WriteDestFileLn("# End Source File");
+}
+
+LOCALFUNC char * MSVCWorkspaceExt(void)
+{
+	return ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ))
+		? ".vcw" : ".dsw";
+}
+
+LOCALFUNC char * MSVCProjectExt(void)
+{
+	return ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ))
+		? ".vcp" : ".dsp";
+}
+
 LOCALPROC WriteMSVCSpecificFiles(void)
 {
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".dsw")) { /* workspace file */
-	WriteDestFileLn("Microsoft Developer Studio Workspace File, Format Version 6.00");
+	blnr WinCE = ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ));
+	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, MSVCWorkspaceExt()))
+	{ /* workspace file */
+
+	if (WinCE) {
+		WriteDestFileLn("Microsoft eMbedded Visual Tools Workspace File, Format Version 4.00");
+	} else {
+		WriteDestFileLn("Microsoft Developer Studio Workspace File, Format Version 6.00");
+	}
 	WriteDestFileLn("# WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!");
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("###############################################################################");
@@ -208,7 +347,8 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteCStrToDestFile("=.");
 	WriteBackSlashToDestFile();
 	WriteCStrToDestFile(kStrAppAbbrev);
-	WriteCStrToDestFile(".dsp - Package Owner=<4>");
+	WriteCStrToDestFile(MSVCProjectExt());
+	WriteCStrToDestFile(" - Package Owner=<4>");
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -238,26 +378,46 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteCloseDestFile();
 	}
 
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".dsp")) { /* project file */
+	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, MSVCProjectExt()))
+	{ /* project file */
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("# Microsoft Developer Studio Project File - Name=");
+	WriteCStrToDestFile("# Microsoft ");
+	if (WinCE) {
+		WriteCStrToDestFile("eMbedded Visual Tools");
+	} else {
+		WriteCStrToDestFile("Developer Studio");
+	}
+	WriteCStrToDestFile(" Project File - Name=");
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(kStrAppAbbrev);
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(" - Package Owner=<4>");
 	WriteEndDestFileLn();
 
-	WriteDestFileLn("# Microsoft Developer Studio Generated Build File, Format Version 6.00");
+	if (WinCE) {
+		WriteDestFileLn("# Microsoft eMbedded Visual Tools Generated Build File, Format Version 6.02");
+	} else {
+		WriteDestFileLn("# Microsoft Developer Studio Generated Build File, Format Version 6.00");
+	}
 	WriteDestFileLn("# ** DO NOT EDIT **");
 	WriteBlankLineToDestFile();
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# TARGTYPE ");
 	WriteQuoteToDestFile();
-	WriteCStrToDestFile("Win32 (x86) Application");
+	WriteMSVCTargetName00();
+	WriteCStrToDestFile(" Application");
 	WriteQuoteToDestFile();
-	WriteCStrToDestFile(" 0x0101");
+	if (WinCE) {
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			WriteCStrToDestFile(" 0xa301");
+		} else {
+			WriteCStrToDestFile(" 0xa601");
+		}
+	} else {
+		WriteCStrToDestFile(" 0x0101");
+	}
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -265,8 +425,7 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("CFG=");
 	/* WriteAppVariationStr(); */
-	WriteCStrToDestFile(kStrAppAbbrev);
-	WriteCStrToDestFile(" - Win32");
+	WriteMSVCTargetName0();
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("!MESSAGE This is not a valid makefile. To build this project using NMAKE,");
@@ -300,7 +459,8 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteMSVCTargetName();
 	WriteCStrToDestFile(" (based on ");
 	WriteQuoteToDestFile();
-	WriteCStrToDestFile("Win32 (x86) Application");
+	WriteMSVCTargetName00();
+	WriteCStrToDestFile(" Application");
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(")");
 	WriteEndDestFileLn();
@@ -313,7 +473,15 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteMSVCQuotedProp("Scc_ProjName", "");
 	WriteMSVCQuotedProp("Scc_LocalPath", "");
 
-	WriteDestFileLn("CPP=cl.exe");
+	if (WinCE) {
+		WriteDestFileLn("# PROP ATL_Project 2"); /* not needed ? */
+	}
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("CPP=");
+	WriteCompileCExec();
+	WriteEndDestFileLn();
+
 	WriteDestFileLn("MTL=midl.exe");
 	WriteDestFileLn("RSC=rc.exe");
 	WriteDestFileLn("# PROP BASE Use_MFC 0");
@@ -337,24 +505,17 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 
 	WriteMSVCQuotedProp("Target_Dir", "");
 
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("# ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od");
-	WriteMSVCQuotedDefine("WIN32");
-	WriteMSVCQuotedDefine("_DEBUG");
-	WriteMSVCQuotedDefine("_WINDOWS");
-	WriteMSVCQuotedDefine("_MBCS");
-	WriteCStrToDestFile(" /YX /FD /GZ /c");
-	WriteEndDestFileLn();
+	WriteDestFileLn("# ADD BASE CPP");
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# ADD CPP ");
 	WriteCLexeFlags();
-	WriteCStrToDestFile(" /FD");
+	if (! WinCE) {
+		WriteCStrToDestFile(" /FD");
+	}
 	WriteEndDestFileLn();
 
-	WriteDestFileLn("# SUBTRACT CPP /YX /Yc /Yu");
-
-	WriteDestFileLn("# ADD BASE MTL /nologo /D \"_DEBUG\" /mktyplib203 /win32");
+	WriteDestFileLn("# ADD BASE MTL");
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# ADD MTL /nologo /D ");
@@ -366,9 +527,12 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	}
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(" /mktyplib203 /win32");
+	if (WinCE) {
+		WriteCStrToDestFile(" /o \"NUL\"");
+	}
 	WriteEndDestFileLn();
 
-	WriteDestFileLn("# ADD BASE RSC /l 0x409 /d \"_DEBUG\"");
+	WriteDestFileLn("# ADD BASE RSC");
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# ADD RSC ");
@@ -376,30 +540,63 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("BSC32=bscmake.exe");
-	WriteDestFileLn("# ADD BASE BSC32 /nologo");
+	WriteDestFileLn("# ADD BASE BSC32");
 	WriteDestFileLn("# ADD BSC32 /nologo");
 	WriteDestFileLn("LINK32=link.exe");
-	WriteDestFileLn("# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept");
+	WriteDestFileLn("# ADD BASE LINK32");
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib winmm.lib /nologo /subsystem:windows");
+	WriteCStrToDestFile("# ADD LINK32");
+	if (WinCE) {
+		WriteCStrToDestFile(" commctrl.lib coredll.lib aygshell.lib Mmtimer.lib");
+	} else {
+		WriteCStrToDestFile(" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib winmm.lib");
+	}
+	WriteCStrToDestFile(" /nologo");
+	if (WinCE) {
+		WriteCStrToDestFile(" /base:\"0x00010000\" /stack:0x10000,0x1000 /entry:\"WinMainCRTStartup\" /nodefaultlib:\"$(CENoDefaultLib)\"");
+	}
+
+	WriteCStrToDestFile(" /subsystem:");
+	if (WinCE) {
+		WriteCStrToDestFile("$(CESubsystem)");
+	} else {
+		WriteCStrToDestFile("windows");
+	}
+
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteCStrToDestFile(" /debug");
 	} else {
 		WriteCStrToDestFile(" /incremental:no");
 	}
-	WriteCStrToDestFile(" /machine:I386 /out:");
+	WriteCStrToDestFile(" /machine:");
+	if (gbk_cpufam_arm == gbo_cpufam) {
+		WriteCStrToDestFile("ARM");
+	} else {
+		if (WinCE) {
+			WriteCStrToDestFile("IX86");
+		} else {
+			WriteCStrToDestFile("I386"); /* maybe should be IX86 ? */
+		}
+	}
+
+	WriteCStrToDestFile(" /out:");
 	WriteQuoteToDestFile();
 	WriteAppNameStr();
 	WriteQuoteToDestFile();
+	if (WinCE) {
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			WriteCStrToDestFile(" /align:\"4096\"");
+				/* is this really needed ? */
+		} else {
+			WriteCStrToDestFile(" $(CEx86Corelibc) /nodefaultlib:\"OLDNAMES.lib\"");
+		}
+	}
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteCStrToDestFile(" /pdbtype:sept");
 	}
 	WriteEndDestFileLn();
 
-	if (gbo_dbg != gbk_dbg_on) {
-		WriteDestFileLn("# SUBTRACT LINK32 /debug /pdbtype:<none>");
-	}
 	WriteDestFileLn("# Begin Target");
 	WriteBlankLineToDestFile();
 
@@ -414,12 +611,15 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteMSVCEndGroup();
 
 	WriteMSVCBeginGroup("Header Files", "h;hpp;hxx;hm;inl");
-		WriteFileToMSVCSource(WriteCNFGGLOBPath);
-		WriteFileToMSVCSource(WriteCNFGRAPIPath);
+		DoAllSrcFilesWithSetup(DoSrcFileMSVCAddHeader);
 	WriteMSVCEndGroup();
 
 	WriteMSVCBeginGroup("Resource Files", "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe");
 		DoAllDocTypesWithSetup(WriteDocTypeMSVCresource);
+	WriteMSVCEndGroup();
+
+	WriteMSVCBeginGroup("Include Files", "h;hpp;hxx;hm;inl");
+		DoAllExtraHeaders2WithSetup(DoExtraHeaderMSVCAdd);
 	WriteMSVCEndGroup();
 
 	WriteDestFileLn("# End Target");
@@ -480,14 +680,14 @@ LOCALPROC WriteXMLQuotedProp(char *s, MyProc p)
 	WriteEndDestFileLn();
 }
 
-LOCALPROC WriteMSVCXMLPlatformName(void)
+LOCALPROC WriteMSVCPlatformName(void)
 {
 	WriteCStrToDestFile("Win32");
 }
 
 LOCALPROC WriteMSVCXMLPlatformProps(void)
 {
-	WriteXMLQuotedProp("Name", WriteMSVCXMLPlatformName);
+	WriteXMLQuotedProp("Name", WriteMSVCPlatformName);
 }
 
 LOCALPROC WriteMSVCXMLPlatforms(void)
@@ -497,26 +697,9 @@ LOCALPROC WriteMSVCXMLPlatforms(void)
 
 LOCALPROC WriteMSVCXMLConfigurationName(void)
 {
-	char *s;
-
-	switch (gbo_dbg) {
-		case gbk_dbg_on:
-			s = "Debug";
-			break;
-		case gbk_dbg_test:
-			s = "Test";
-			break;
-		case gbk_dbg_off:
-			s = "Release";
-			break;
-		default:
-			s = "(unknown Debug Level)";
-			break;
-	}
-
-	WriteCStrToDestFile(s);
+	WriteMSVCdbgLevelName();
 	WriteCStrToDestFile("|");
-	WriteMSVCXMLPlatformName();
+	WriteMSVCPlatformName();
 }
 
 LOCALPROC WriteMSVCXMLConfigurationProps(void)
@@ -806,22 +989,6 @@ LOCALPROC WriteMSVCXMLSpecificFiles(void)
 	}
 }
 
-LOCALPROC DoSrcFileNMakeAddSrcFileBody(void)
-{
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("$(mk_CallC) \"");
-	WriteSrcFileFilePath();
-	WriteCStrToDestFile("\" $(mk_COptions)");
-	WriteEndDestFileLn();
-}
-
-LOCALPROC DoSrcFileNMakeAddSrcFile(void)
-{
-	WriteMakeRule(WriteSrcFileObjPath,
-		DoSrcFileMakeCompileDeps,
-		DoSrcFileNMakeAddSrcFileBody);
-}
-
 LOCALPROC DoSrcFileNMakeAddObjFile(void)
 {
 	WriteBgnDestFileLn();
@@ -869,7 +1036,6 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
-	WriteDestFileLn("mk_CallC=cl.exe");
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("mk_COptions=");
@@ -894,7 +1060,7 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	WriteEndDestFileLn();
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
-	DoAllSrcFilesWithSetup(DoSrcFileNMakeAddSrcFile);
+	DoAllSrcFilesWithSetup(DoSrcFileMakeCompile);
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("ObjFiles= \\");
 	++DestFileIndent;

@@ -373,3 +373,21 @@ LOCALPROC DoSrcFileMakeCompileDeps(void)
 		WriteMakeDependFile(WriteCNFGGLOBPath);
 	}
 }
+
+LOCALPROC DoSrcFileMakeCompileBody(void)
+{
+	blnr IsAsmFile = HaveAsm && ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
+
+	if (IsAsmFile) {
+		WriteCompileAsm(WriteSrcFileFilePath, WriteSrcFileObjPath);
+	} else {
+		WriteCompileC(WriteSrcFileFilePath, WriteSrcFileObjPath);
+	}
+}
+
+LOCALPROC DoSrcFileMakeCompile(void)
+{
+	WriteMakeRule(WriteSrcFileObjPath,
+		DoSrcFileMakeCompileDeps,
+		DoSrcFileMakeCompileBody);
+}

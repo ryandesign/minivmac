@@ -48,9 +48,9 @@ static void DoAllSrcFiles(tDoOneCFile p)
 	p("GLOBGLUE", kCSrcFlgmNone, nullpr);
 	p("ADDRSPAC", kCSrcFlgmNone, nullpr);
 	p("PROGMAIN", kCSrcFlgmNone, nullpr);
+	p("M68KITAB", kCSrcFlgmNone, nullpr);
 	p("MINEM68K",
-		WantAltCpu ? kCSrcFlgmAltSrc :
-			((em_cpu_vers != 0) ? kCSrcFlgmNone :
+		((em_cpu_vers != 0) ? kCSrcFlgmNone :
 			kCSrcFlgmAsmAvail),
 		nullpr);
 	p("VIAEMDEV", kCSrcFlgmNone, nullpr);

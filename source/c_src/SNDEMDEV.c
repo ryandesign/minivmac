@@ -77,16 +77,16 @@ GLOBALPROC MacSound_SubTick(int SubTick)
 	}
 
 	if (TheCurSoundBuff != nullpr) {
-		int i;
+		ui4r i;
 		ui4b SoundInvertTime = GetSoundInvertTime();
 		ui5b StartOffset = SubTick_offset[SubTick];
-		ui5b n = SubTick_offset[SubTick + 1] - StartOffset;
+		ui4r n = SubTick_offset[SubTick + 1] - StartOffset;
 		unsigned long addy =
 #ifdef SoundBuffer
 			(SoundBuffer == 0) ? kSnd_Alt_Buffer :
 #endif
 			kSnd_Main_Buffer;
-		ui3p addr = addy + (2 * StartOffset) + (ui3p)RAM;
+		ui3p addr = addy + (2 * StartOffset) + RAM;
 		ui3p p = StartOffset + TheCurSoundBuff;
 
 		if (SoundDisable && (SoundInvertTime == 0)) {

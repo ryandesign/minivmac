@@ -172,6 +172,9 @@ enum {
 	gbk_targ_lx86, /* X11 for linux on x86 */
 	gbk_targ_slrs, /* Solaris SPARC */
 	gbk_targ_sl86, /* Solaris Intel */
+	gbk_targ_wcar, /* Windows CE on ARM */
+	gbk_targ_wc86, /* Windows CE (emulator) on x86 */
+	gbk_targ_lppc, /* X11 for linux on PowerPC */
 	kNumTargets
 };
 
@@ -223,6 +226,15 @@ LOCALFUNC char * GetTargetName(int i)
 		case gbk_targ_sl86:
 			s = "sl86";
 			break;
+		case gbk_targ_wcar:
+			s = "wcar";
+			break;
+		case gbk_targ_wc86:
+			s = "wc86";
+			break;
+		case gbk_targ_lppc:
+			s = "lppc";
+			break;
 		default:
 			s = "(unknown Target)";
 			break;
@@ -251,6 +263,7 @@ enum {
 	gbk_ide_mpw, /* Macintosh Programmers Workshop */
 	gbk_ide_mw8, /* Metrowerks CodeWarrior */
 	gbk_ide_bgc, /* Gnu tools */
+	gbk_ide_snc, /* Sun tools */
 #if SupportWinIDE
 	gbk_ide_msv, /* Microsoft Visual C++ */
 	gbk_ide_lcc, /* lcc-win32 - Jacob Navia */
@@ -281,6 +294,9 @@ LOCALFUNC char * GetIdeName(int i)
 			break;
 		case gbk_ide_bgc:
 			s = "bgc";
+			break;
+		case gbk_ide_snc:
+			s = "snc";
 			break;
 #if SupportWinIDE
 		case gbk_ide_msv:
@@ -325,9 +341,12 @@ LOCALPROC ChooseIde(void)
 				cur_ide = gbk_ide_mpw;
 				break;
 			case gbk_targ_wx86:
+			case gbk_targ_wcar:
+			case gbk_targ_wc86:
 				cur_ide = gbk_ide_msv;
 				break;
 			case gbk_targ_lx86:
+			case gbk_targ_lppc:
 			case gbk_targ_slrs:
 			case gbk_targ_sl86:
 			default:
@@ -412,6 +431,7 @@ enum {
 	gbk_cpufam_ppc, /* PowerPC */
 	gbk_cpufam_x86, /* Intel 80x86 */
 	gbk_cpufam_spr, /* SPARC */
+	gbk_cpufam_arm, /* ARM */
 	kNumCPUFamilies
 };
 
@@ -428,9 +448,11 @@ LOCALPROC ChooseCPUFam(void)
 		case gbk_targ_carb:
 		case gbk_targ_mach:
 		case gbk_targ_mx11:
+		case gbk_targ_lppc:
 			gbo_cpufam = gbk_cpufam_ppc;
 			break;
 		case gbk_targ_wx86:
+		case gbk_targ_wc86:
 		case gbk_targ_lx86:
 		case gbk_targ_sl86:
 		case gbk_targ_imch:
@@ -439,6 +461,9 @@ LOCALPROC ChooseCPUFam(void)
 			break;
 		case gbk_targ_slrs:
 			gbo_cpufam = gbk_cpufam_spr;
+			break;
+		case gbk_targ_wcar:
+			gbo_cpufam = gbk_cpufam_arm;
 			break;
 	}
 }
@@ -469,9 +494,12 @@ LOCALPROC ChooseAPIFam(void)
 			gbo_apifam = gbk_apifam_osx;
 			break;
 		case gbk_targ_wx86:
+		case gbk_targ_wcar:
+		case gbk_targ_wc86:
 			gbo_apifam = gbk_apifam_win;
 			break;
 		case gbk_targ_lx86:
+		case gbk_targ_lppc:
 		case gbk_targ_slrs:
 		case gbk_targ_sl86:
 		case gbk_targ_mx11:
@@ -689,6 +717,7 @@ LOCALPROC ChooseEOL(void)
 					break;
 				case gbk_ide_bgc:
 				case gbk_ide_xcd:
+				case gbk_ide_snc:
 					cur_eol = gbk_eol_unx;
 					break;
 #if SupportWinIDE
@@ -759,6 +788,7 @@ LOCALPROC ChooseArc(void)
 				break;
 			case gbk_ide_bgc:
 			case gbk_ide_xcd:
+			case gbk_ide_snc:
 				cur_arc = gbk_arc_tar;
 				break;
 #if SupportWinIDE

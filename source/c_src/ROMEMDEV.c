@@ -574,7 +574,7 @@ LOCALVAR const ui4b sony_driver[] = {
 LOCALPROC Sony_Install(void)
 {
 	int i;
-	ui3p pto = Sony_DriverBase + (ui3p)ROM;
+	ui3p pto = Sony_DriverBase + ROM;
 	ui4b *pfrom = (ui4b *)sony_driver;
 
 	for (i = sizeof(sony_driver) / 2; --i >= 0; ) {
@@ -589,7 +589,7 @@ LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
 {
 	long int i;
 	ui5b CheckSum2 = 0;
-	ui3p p = 4 + (ui3p)ROM;
+	ui3p p = 4 + ROM;
 
 	for (i = (kTrueROM_Size - 4) >> 1; --i >= 0; ) {
 		CheckSum2 += do_get_mem_word(p);
@@ -600,7 +600,7 @@ LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
 
 GLOBALFUNC blnr ROM_Init(void)
 {
-	ui5b CheckSum = do_get_mem_long((ui3p)ROM);
+	ui5b CheckSum = do_get_mem_long(ROM);
 
 	if (! Check_Checksum(CheckSum)) {
 		WarnMsgCorruptedROM();
@@ -637,30 +637,30 @@ GLOBALFUNC blnr ROM_Init(void)
 
 /* skip the rom checksum */
 #if CurEmu <= kEmu512K
-	do_put_mem_word(226 + (ui3p)ROM, 0x6004);
+	do_put_mem_word(226 + ROM, 0x6004);
 #elif CurEmu <= kEmuPlus
-	do_put_mem_word(3450 + (ui3p)ROM, 0x6022);
+	do_put_mem_word(3450 + ROM, 0x6022);
 #elif CurEmu <= kEmuClassic
-	do_put_mem_word(7272 + (ui3p)ROM, 0x6008);
+	do_put_mem_word(7272 + ROM, 0x6008);
 #endif
 
 #if CurEmu <= kEmu512K
 #elif CurEmu <= kEmuPlus
-	do_put_mem_word(3752 + (ui3p)ROM, 0x4E71); /* shorten the ram check read */
-	do_put_mem_word(3728 + (ui3p)ROM, 0x4E71); /* shorten the ram check write*/
+	do_put_mem_word(3752 + ROM, 0x4E71); /* shorten the ram check read */
+	do_put_mem_word(3728 + ROM, 0x4E71); /* shorten the ram check write*/
 #elif CurEmu <= kEmuClassic
-	do_put_mem_word(134 + (ui3p)ROM, 0x6002);
-	do_put_mem_word(286 + (ui3p)ROM, 0x6002);
+	do_put_mem_word(134 + ROM, 0x6002);
+	do_put_mem_word(286 + ROM, 0x6002);
 #endif
 
-	/* do_put_mem_word(862 + (ui3p)ROM, 0x4E71); */ /* shorten set memory*/
+	/* do_put_mem_word(862 + ROM, 0x4E71); */ /* shorten set memory*/
 
 #if CurEmu <= kEmuClassic
 	Sony_Install();
 #endif
 
 #if CurEmu <= kEmu512K
-	MyMoveBytes((ui3p)ROM, kTrueROM_Size + (ui3p)ROM, kTrueROM_Size);
+	MyMoveBytes(ROM, kTrueROM_Size + ROM, kTrueROM_Size);
 #endif
 
 	return trueblnr;

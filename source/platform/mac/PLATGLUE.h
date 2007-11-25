@@ -1768,19 +1768,19 @@ LOCALVAR Handle PbufDat[NumPbufs];
 #endif
 
 #if IncludePbufs
-LOCALFUNC si4b PbufNewFromHandle(Handle h, ui5b count, ui4b *r)
+LOCALFUNC tMacErr PbufNewFromHandle(Handle h, ui5b count, tPbuf *r)
 {
-	ui4b i;
-	OSErr err;
+	tPbuf i;
+	tMacErr err;
 
 	if (! FirstFreePbuf(&i)) {
 		DisposeHandle(h);
-		err = -1;
+		err = mnvm_miscErr;
 	} else {
 		*r = i;
 		PbufDat[i] = h;
 		PbufNewNotify(i, count);
-		err = noErr;
+		err = mnvm_noErr;
 	}
 
 	return err;
@@ -1788,10 +1788,10 @@ LOCALFUNC si4b PbufNewFromHandle(Handle h, ui5b count, ui4b *r)
 #endif
 
 #if IncludePbufs
-GLOBALFUNC si4b PbufNew(ui5b count, ui4b *r)
+GLOBALFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
 {
 	Handle h;
-	si4b err = -1;
+	tMacErr err = mnvm_miscErr;
 
 	h = NewHandleClear(count);
 	if (h != NULL) {
@@ -1803,7 +1803,7 @@ GLOBALFUNC si4b PbufNew(ui5b count, ui4b *r)
 #endif
 
 #if IncludePbufs
-GLOBALPROC PbufDispose(ui4b i)
+GLOBALPROC PbufDispose(tPbuf i)
 {
 	DisposeHandle(PbufDat[i]);
 	PbufDisposeNotify(i);
@@ -1813,7 +1813,7 @@ GLOBALPROC PbufDispose(ui4b i)
 #if IncludePbufs
 LOCALPROC UnInitPbufs(void)
 {
-	si4b i;
+	tPbuf i;
 
 	for (i = 0; i < NumPbufs; ++i) {
 		if (PbufIsAllocated(i)) {
@@ -1824,8 +1824,8 @@ LOCALPROC UnInitPbufs(void)
 #endif
 
 #if IncludePbufs
-GLOBALPROC PbufTransfer(void *Buffer,
-	ui4b i, ui5b offset, ui5b count, blnr IsWrite)
+GLOBALPROC PbufTransfer(ui3p Buffer,
+	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
 {
 	Handle h = PbufDat[i];
 
@@ -1843,7 +1843,7 @@ GLOBALPROC PbufTransfer(void *Buffer,
 #endif
 
 #if IncludeHostTextClipExchange
-GLOBALFUNC si4b HTCEexport(ui4b i)
+GLOBALFUNC tMacErr HTCEexport(tPbuf i)
 {
 	OSErr err;
 
@@ -1858,17 +1858,17 @@ GLOBALFUNC si4b HTCEexport(ui4b i)
 
 	PbufDispose(i);
 
-	return err;
+	return (tMacErr)err;
 }
 #endif
 
 #if IncludeHostTextClipExchange
-GLOBALFUNC si4b HTCEimport(ui4b *r)
+GLOBALFUNC tMacErr HTCEimport(tPbuf *r)
 {
 	long off;
 	long v;
 	Handle h;
-	OSErr err = -1;
+	OSErr err = (OSErr)mnvm_miscErr;
 
 	h = NewHandle(0);
 	if (h != NULL) {
@@ -1876,7 +1876,7 @@ GLOBALFUNC si4b HTCEimport(ui4b *r)
 		if (v < 0) {
 			err = v;
 		} else {
-			err = PbufNewFromHandle(h, v, r);
+			err = (OSErr)PbufNewFromHandle(h, v, r);
 			h = NULL;
 		}
 		if (NULL != h) {
@@ -1884,7 +1884,7 @@ GLOBALFUNC si4b HTCEimport(ui4b *r)
 		}
 	}
 
-	return err;
+	return (tMacErr)err;
 }
 #endif
 
@@ -1903,7 +1903,7 @@ LOCALPROC InitDrives(void)
 		This isn't really needed, Drives[i] and DriveNames[i]
 		need not have valid values when not vSonyIsInserted[i].
 	*/
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
@@ -1913,34 +1913,34 @@ LOCALPROC InitDrives(void)
 	}
 }
 
-GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyRead(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count)
 {
-	si4b result;
+	OSErr result;
 
 	result = SetFPos(Drives[Drive_No], fsFromStart, Sony_Start);
 	if (noErr == result) {
 		result = FSRead(Drives[Drive_No], (long *)Sony_Count, Buffer);
 	}
-	return result;
+	return (tMacErr)result;
 }
 
-GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyWrite(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count)
 {
-	si4b result;
+	OSErr result;
 
 	result = SetFPos(Drives[Drive_No], fsFromStart, Sony_Start);
 	if (noErr == result) {
 		result = FSWrite(Drives[Drive_No], (long *)Sony_Count, Buffer);
 	}
-	return result;
+	return (tMacErr)result;
 }
 
-GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyGetSize(tDrive Drive_No, ui5r *Sony_Count)
 {
 	return GetEOF(Drives[Drive_No], (long *)Sony_Count);
 }
 
-LOCALFUNC si4b vSonyEject0(ui4b Drive_No)
+LOCALFUNC OSErr vSonyEject0(tDrive Drive_No)
 {
 	short refnum = Drives[Drive_No];
 	Drives[Drive_No] = NotAfileRef; /* not really needed */
@@ -1960,7 +1960,7 @@ LOCALFUNC si4b vSonyEject0(ui4b Drive_No)
 	return FSClose(refnum);
 }
 
-GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
+GLOBALFUNC tMacErr vSonyEject(tDrive Drive_No)
 {
 	OSErr result;
 	short vRefNum;
@@ -1978,11 +1978,11 @@ GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
 		result = vSonyEject0(Drive_No);
 	}
 
-	return result;
+	return (tMacErr)result;
 }
 
 #if IncludeSonyNew
-GLOBALFUNC si4b vSonyEjectDelete(ui4b Drive_No)
+GLOBALFUNC tMacErr vSonyEjectDelete(tDrive Drive_No)
 {
 	OSErr result;
 	Str255 s;
@@ -2028,13 +2028,13 @@ GLOBALFUNC si4b vSonyEjectDelete(ui4b Drive_No)
 		(void) vSonyEject0(Drive_No);
 	}
 
-	return result;
+	return (tMacErr)result;
 }
 #endif
 
 LOCALPROC UnInitDrives(void)
 {
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (vSonyIsInserted(i)) {
@@ -2044,11 +2044,11 @@ LOCALPROC UnInitDrives(void)
 }
 
 #if IncludeSonyGetName
-GLOBALFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r)
+GLOBALFUNC tMacErr vSonyGetName(tDrive Drive_No, tPbuf *r)
 {
 	FCBPBRec b;
 	Str255 s;
-	OSErr err = -1;
+	OSErr err = (OSErr)mnvm_miscErr;
 
 #if HaveCPUfamM68K
 	if (! MyEnvrAttrFSSpecCallsAvail) {
@@ -2072,17 +2072,17 @@ GLOBALFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r)
 		Handle h;
 		err = PStrToHand(s, &h);
 		if (noErr == err) {
-			err = PbufNewFromHandle(h, s[0], r);
+			err = (OSErr)PbufNewFromHandle(h, s[0], r);
 		}
 	}
 
-	return err;
+	return (tMacErr)err;
 }
 #endif
 
 LOCALFUNC OSErr Sony_Insert0(short refnum, blnr locked, ps3p s)
 {
-	ui4b Drive_No;
+	tDrive Drive_No;
 
 #if ! ((IncludeSonyGetName || IncludeSonyNew) && HaveCPUfamM68K)
 	UnusedParam(s);
@@ -2593,7 +2593,7 @@ LOCALPROC MakeNewDisk(ui5b L, Handle NewDiskName)
 
 LOCALFUNC blnr AllocateMacROM(void)
 {
-	ROM = (ui4b *)NewPtr(kROM_Size);
+	ROM = (ui3p)NewPtr(kROM_Size);
 	if (NULL == ROM) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
@@ -2734,7 +2734,7 @@ LOCALFUNC blnr LoadInitialImages(void)
 
 LOCALFUNC blnr AllocateMacRAM (void)
 {
-	RAM = (ui4b *)NewPtr(kRAM_Size + RAMSafetyMarginFudge);
+	RAM = (ui3p)NewPtr(kRAM_Size + RAMSafetyMarginFudge);
 	if (NULL == RAM) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;

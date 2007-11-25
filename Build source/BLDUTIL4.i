@@ -111,6 +111,9 @@ LOCALPROC WriteIdeSpecificFiles(void)
 		case gbk_ide_bgc:
 			WriteBashGccSpecificFiles();
 			break;
+		case gbk_ide_snc:
+			WriteSncSpecificFiles();
+			break;
 #if SupportWinIDE
 		case gbk_ide_msv:
 			if (UseCmndLine) {
@@ -124,7 +127,11 @@ LOCALPROC WriteIdeSpecificFiles(void)
 			}
 			break;
 		case gbk_ide_lcc:
-			WriteLccW32SpecificFiles();
+			if (UseCmndLine) {
+				WriteLccW32clSpecificFiles();
+			} else {
+				WriteLccW32SpecificFiles();
+			}
 			break;
 		case gbk_ide_dvc:
 			WriteDevCSpecificFiles();
@@ -273,12 +280,12 @@ LOCALPROC WriteConfigFiles(void)
 	if (gbk_apifam_win == gbo_apifam) {
 		WriteWinMainRC();
 	}
+	WritePPCasmMINEM68K();
 }
 
 LOCALVAR MyDir_R SourceDirR;
 LOCALVAR MyDir_R C_srcDirR;
 LOCALVAR MyDir_R AltSrcDirR;
-LOCALVAR MyDir_R AsmFrmDirR;
 LOCALVAR MyDir_R LangDirR;
 LOCALVAR MyDir_R PlatDirR;
 
@@ -296,10 +303,7 @@ LOCALPROC DoSrcFileAddToSrcDir(void)
 			{
 			}
 		} else if (IsAsmFile) {
-			if (rConverTextInThingXtn(&AsmFrmDirR,
-					&SrcDirR, DoSrcFile_gd()->s, ".s"))
-			{
-			}
+			/* must be generated */
 		} else {
 			if (rConverTextInThingXtn(&C_srcDirR,
 					&SrcDirR, DoSrcFile_gd()->s, ".c"))
@@ -372,27 +376,6 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 	}
 }
 
-LOCALFUNC blnr MayFindAsmDirectory(void)
-{
-	if (! HaveAsm) {
-		return trueblnr;
-	} else {
-		MyDir_R A_srcDirR;
-		MyDir_R AsmCpuDirR;
-
-		if (FindSubDirectory(&A_srcDirR, &SourceDirR, "a_src", ""))
-		if (FindSubDirectory(&AsmCpuDirR, &A_srcDirR, "ppc", ""))
-		if (FindSubDirectory(&AsmFrmDirR, &AsmCpuDirR,
-			(cur_targ == gbk_targ_mach) ?
-				"as" : "ppcasm",
-			""))
-		{
-			return trueblnr;
-		}
-		return falseblnr;
-	}
-}
-
 LOCALFUNC blnr MayFindLanguageDirectory(void)
 {
 	if (! HaveLanguage) {
@@ -442,7 +425,6 @@ LOCALFUNC blnr MakeSrcFolder(void)
 {
 	if (FindSubDirectory(&SourceDirR, &BaseDirR, "source", ""))
 	if (FindSubDirectory(&C_srcDirR, &SourceDirR, "c_src", ""))
-	if (MayFindAsmDirectory())
 	if (MayFindLanguageDirectory())
 	if (MayFindPlatformDirectory())
 	if (MayFindAltSrcDirectory())

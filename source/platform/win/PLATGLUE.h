@@ -104,13 +104,28 @@ LOCALVAR blnr UseMagnify = falseblnr;
 #endif
 
 #if UseWinCE
+/* This cheesy workaround is needed because XDest - hOffset is always >= 3 (why?) */
 #define hOffsetFudge 3
-	/* where does this come from? */
 #endif
 
 #if EnableFullScreen || UseWinCE
 LOCALVAR short hOffset;
 LOCALVAR short vOffset;
+#endif
+
+#if UseWinCE
+/* Number of pre-calculated screen offsets for this device */
+LOCALVAR unsigned char numHOffsets;
+LOCALVAR unsigned char numVOffsets;
+/* Pre-calculated screen offsets */
+LOCALVAR short *hOffsetsList;
+LOCALVAR short *vOffsetsList;
+/* Indices of current offsets */
+LOCALVAR unsigned char curHOffset;
+LOCALVAR unsigned char curVOffset;
+/* Screen resolution, in pixels; values will be changed upon initialization (see Init_ChangeOrientation) */
+LOCALVAR short hRes = vMacScreenWidth;
+LOCALVAR short vRes = vMacScreenHeight;
 #endif
 
 #if UseWinCE
@@ -1393,6 +1408,7 @@ LOCALVAR int CurWinIndx;
 LOCALVAR blnr HavePositionWins[kNumMagStates];
 LOCALVAR POINT WinPositionWins[kNumMagStates];
 
+#if ! UseWinCE
 LOCALPROC MyAppendConvertMenuItem(HMENU hMenu,
 	UINT uIDNewItem, char *s, blnr AddEllipsis)
 {
@@ -1403,7 +1419,9 @@ LOCALPROC MyAppendConvertMenuItem(HMENU hMenu,
 	(void) AppendMenu(hMenu, MF_ENABLED + MF_STRING,
 		uIDNewItem, ts);
 }
+#endif
 
+#if ! UseWinCE
 LOCALPROC MyAppendSubmenuConvertName(HMENU hMenu,
 	HMENU hSubMenu, char *s)
 {
@@ -1425,9 +1443,10 @@ LOCALPROC MyAppendSubmenuConvertName(HMENU hMenu,
 	mii.hSubMenu = hSubMenu;
 	mii.dwTypeData = ts;
 	mii.cch = (UINT)_tcslen(ts);
-	(void) InsertMenuItem(hMenu, -1, TRUE,
+	(void) InsertMenuItem(hMenu, (UINT) -1, TRUE,
 		&mii);
 }
+#endif
 
 #ifndef kStrMenuFile_win
 #define kStrMenuFile_win kStrMenuFile
@@ -1479,8 +1498,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #if EnableFullScreen
 	if (WantFullScreen) {
 #if UseWinCE
-		XSize = 320; /* ScreenX; */
-		YSize = 214; /* ScreenY; */
+		XSize = hRes; /* 320 */ /* ScreenX; */
+		YSize = vRes; /* 214 */ /* ScreenY; */
 #else
 		XSize = ScreenX;
 		YSize = ScreenY;
@@ -1698,6 +1717,57 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	}
 
 #if UseWinCE
+	/* Create and set logical palette for this window */
+	{
+		HPALETTE hpal;
+		LOGPALETTE *lppal = (LOGPALETTE*)malloc(sizeof(LOGPALETTE) +
+			sizeof(PALETTEENTRY) * 2);
+
+		if (! lppal)
+		{
+			MacMsg("CreateWindow failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr);
+			return falseblnr;
+		}
+
+		lppal->palNumEntries = 2;
+		lppal->palVersion = 0x0300;
+		lppal->palPalEntry[0].peRed   = 255;
+		lppal->palPalEntry[0].peGreen = 255;
+		lppal->palPalEntry[0].peBlue  = 255;
+		lppal->palPalEntry[0].peFlags = 0;
+		lppal->palPalEntry[1].peRed   = 0;
+		lppal->palPalEntry[1].peGreen = 0;
+		lppal->palPalEntry[1].peBlue  = 0;
+		lppal->palPalEntry[1].peFlags = 0;
+
+		hpal = CreatePalette(lppal);
+
+		if (hpal == NULL)
+		{
+			free(lppal);
+			MacMsg("CreateWindow failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr);
+			return falseblnr;
+		}
+
+		if (SelectPalette(MainWndDC, hpal, FALSE) == NULL)
+		{
+			free(lppal);
+			MacMsg("CreateWindow failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr);
+			return falseblnr;
+		}
+
+		if (RealizePalette(MainWndDC) == GDI_ERROR)
+		{
+			free(lppal);
+			MacMsg("CreateWindow failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr);
+			return falseblnr;
+		}
+
+		free(lppal);
+	}
+#endif
+
+#if UseWinCE
 	/* Hide the taskbar */
 	SHFullScreen(MainWnd, SHFS_HIDETASKBAR);
 #endif
@@ -1808,6 +1878,7 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 	bmh.bmi.biYPelsPerMeter = 0;
 	bmh.bmi.biClrUsed = 0;
 	bmh.bmi.biClrImportant = 0;
+#if ! UseWinCE
 	bmh.colors[0].rgbRed = 255;
 	bmh.colors[0].rgbGreen = 255;
 	bmh.colors[0].rgbBlue = 255;
@@ -1816,6 +1887,8 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 	bmh.colors[1].rgbGreen = 0;
 	bmh.colors[1].rgbBlue = 0;
 	bmh.colors[1].rgbReserved = 0;
+#endif
+
 #if EnableMagnify
 	if (UseMagnify) {
 #if EnableScalingBuff
@@ -1874,7 +1947,11 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 				(bottom - top) * MyWindowScale, /* number of scan lines */
 				(CONST VOID *)ScalingBuff, /* address of array with DIB bits */
 				(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
 				DIB_RGB_COLORS /* RGB or palette indices */
+#else
+				DIB_PAL_COLORS /* palette indices */
+#endif
 			) == 0) {
 				/* ReportWinLastError(); */
 			}
@@ -1892,7 +1969,11 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 			(bottom - top), /* source rectangle height */
 			(CONST VOID *)p, /* address of array with DIB bits */
 			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
 			DIB_RGB_COLORS, /* RGB or palette indices */
+#else
+			DIB_PAL_COLORS, /* palette indices */
+#endif
 			SRCCOPY
 		) == 0) {
 			/* ReportWinLastError(); */
@@ -1906,15 +1987,19 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 			MainWndDC, /* handle of device context */
 			XDest, /* x-coordinate of upper-left corner of dest. rect. */
 			YDest, /* y-coordinate of upper-left corner of dest. rect. */
-			320, /* dest. rectangle width */
-			214, /* dest. rectangle height */
+			hRes, /* dest. rectangle width */
+			vRes, /* dest. rectangle height */
 			0, /* x-coordinate of lower-left corner of source rect. */
 			0, /* y-coordinate of lower-left corner of source rect. */
 			vMacScreenWidth, /* source rectangle width */
 			bottom, /* source rectangle height */
 			(CONST VOID *)p, /* address of array with DIB bits */
 			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
 			DIB_RGB_COLORS, /* RGB or palette indices */
+#else
+			DIB_PAL_COLORS, /* palette indices */
+#endif
 			SRCCOPY
 		) == 0) {
 			/* ReportWinLastError(); */
@@ -1939,7 +2024,11 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 			(bottom - top), /* number of scan lines */
 			(CONST VOID *)p, /* address of array with DIB bits */
 			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
 			DIB_RGB_COLORS /* RGB or palette indices */
+#else
+			DIB_PAL_COLORS /* palette indices */
+#endif
 		) == 0) {
 			/* ReportWinLastError(); */
 		}
@@ -1948,7 +2037,15 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 
 LOCALPROC Screen_DrawAll(void)
 {
+#if UseWinCE
+	/*
+	HaveChangedScreenBuff should figure out for itself
+	what part it really needs to draw.
+	*/
+	HaveChangedScreenBuff(vOffset, 0, vRes + vOffset, hRes + hOffset);
+#else
 	HaveChangedScreenBuff(0, 0, vMacScreenHeight, vMacScreenWidth);
+#endif
 }
 
 LOCALFUNC blnr InitTheCursor(void)
@@ -2055,19 +2152,19 @@ LOCALVAR HGLOBAL PbufDat[NumPbufs];
 #endif
 
 #if IncludePbufs
-LOCALFUNC si4b PbufNewFromHandle(HGLOBAL h, ui5b count, ui4b *r)
+LOCALFUNC tMacErr PbufNewFromHandle(HGLOBAL h, ui5b count, tPbuf *r)
 {
-	ui4b i;
-	si4b err;
+	tPbuf i;
+	tMacErr err;
 
 	if (! FirstFreePbuf(&i)) {
 		(void) GlobalFree(h);
-		err = -1;
+		err = mnvm_miscErr;
 	} else {
 		*r = i;
 		PbufDat[i] = h;
 		PbufNewNotify(i, count);
-		err = 0;
+		err = mnvm_noErr;
 	}
 
 	return err;
@@ -2075,10 +2172,10 @@ LOCALFUNC si4b PbufNewFromHandle(HGLOBAL h, ui5b count, ui4b *r)
 #endif
 
 #if IncludePbufs
-GLOBALFUNC si4b PbufNew(ui5b count, ui4b *r)
+GLOBALFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
 {
 	HGLOBAL h;
-	si4b err = -1;
+	tMacErr err = mnvm_miscErr;
 
 	h = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, count);
 	if (h != NULL) {
@@ -2091,7 +2188,7 @@ GLOBALFUNC si4b PbufNew(ui5b count, ui4b *r)
 #endif
 
 #if IncludePbufs
-GLOBALPROC PbufDispose(ui4b i)
+GLOBALPROC PbufDispose(tPbuf i)
 {
 	(void) GlobalFree(PbufDat[i]);
 	PbufDisposeNotify(i);
@@ -2101,7 +2198,7 @@ GLOBALPROC PbufDispose(ui4b i)
 #if IncludePbufs
 LOCALPROC UnInitPbufs(void)
 {
-	si4b i;
+	tPbuf i;
 
 	for (i = 0; i < NumPbufs; ++i) {
 		if (PbufIsAllocated(i)) {
@@ -2112,8 +2209,8 @@ LOCALPROC UnInitPbufs(void)
 #endif
 
 #if IncludePbufs
-GLOBALPROC PbufTransfer(void *Buffer,
-	ui4b i, ui5b offset, ui5b count, blnr IsWrite)
+GLOBALPROC PbufTransfer(ui3p Buffer,
+	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
 {
 	HGLOBAL h = PbufDat[i];
 	ui3p p0 = GlobalLock(h);
@@ -2148,7 +2245,7 @@ LOCALVAR const ui3b Native2MacRomanTab[] = {
 	0xBF, 0x9D, 0x9C, 0x9E, 0x9F, 0xFE, 0xFF, 0xD8
 };
 
-LOCALFUNC si4b NativeTextToMacRomanPbuf(HGLOBAL x, ui4b *r)
+LOCALFUNC tMacErr NativeTextToMacRomanPbuf(HGLOBAL x, tPbuf *r)
 {
 #if MyUseUni
 #define MyUnsignedChar ui4b
@@ -2159,7 +2256,7 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(HGLOBAL x, ui4b *r)
 	LPTSTR p1;
 	ui5b n;
 	MyUnsignedChar v;
-	si4b err = -1;
+	tMacErr err = mnvm_miscErr;
 
 	p1 = GlobalLock(x);
 	if (p1 != NULL) {
@@ -2189,14 +2286,14 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(HGLOBAL x, ui4b *r)
 						}
 					}
 
-					err = 0;
+					err = mnvm_noErr;
 
 					(void) GlobalUnlock(h);
 				}
 				(void) GlobalUnlock(x);
 			}
 
-			if (0 != err) {
+			if (mnvm_noErr != err) {
 				(void) GlobalFree(h);
 			} else {
 				err = PbufNewFromHandle(h, n, r);
@@ -2226,14 +2323,14 @@ LOCALVAR const ui3b MacRoman2NativeTab[] = {
 	0xAF, 0xD7, 0xDD, 0xDE, 0xB8, 0xF0, 0xFD, 0xFE
 };
 
-LOCALFUNC blnr MacRomanTextToNativeHand(ui4b Pbuf_no, blnr IsFileName, HGLOBAL *r)
+LOCALFUNC blnr MacRomanTextToNativeHand(tPbuf Pbuf_no, blnr IsFileName, HGLOBAL *r)
 {
 	HGLOBAL h;
 	ui5b i;
 	ui5b rn = 0;
 	HGLOBAL bh = PbufDat[Pbuf_no];
 	ui5b L = PbufSize[Pbuf_no];
-	si4b IsOk = falseblnr;
+	blnr IsOk = falseblnr;
 
 	if (IsFileName) {
 		if (L > 255) {
@@ -2304,10 +2401,10 @@ LOCALFUNC blnr MacRomanTextToNativeHand(ui4b Pbuf_no, blnr IsFileName, HGLOBAL *
 }
 
 #if IncludeHostTextClipExchange
-GLOBALFUNC si4b HTCEexport(ui4b i)
+GLOBALFUNC tMacErr HTCEexport(tPbuf i)
 {
 	HGLOBAL h;
-	si4b err = 1;
+	tMacErr err = mnvm_miscErr;
 
 	if (MacRomanTextToNativeHand(i, falseblnr, &h)) {
 		if (! OpenClipboard(MainWnd)) {
@@ -2319,7 +2416,7 @@ GLOBALFUNC si4b HTCEexport(ui4b i)
 			if (SetClipboardData(CF_TEXT, h) == NULL) {
 				/* ReportGetLastError(); */
 			} else {
-				err = 0;
+				err = mnvm_noErr;
 			}
 			h = NULL;
 			if (! CloseClipboard()) {
@@ -2338,9 +2435,9 @@ GLOBALFUNC si4b HTCEexport(ui4b i)
 #endif
 
 #if IncludeHostTextClipExchange
-GLOBALFUNC si4b HTCEimport(ui4b *r)
+GLOBALFUNC tMacErr HTCEimport(tPbuf *r)
 {
-	si4b err = -1;
+	tMacErr err = mnvm_miscErr;
 
 	if (IsClipboardFormatAvailable(CF_TEXT)) {
 		if (! OpenClipboard(MainWnd)) {
@@ -2383,7 +2480,7 @@ LOCALPROC InitDrives(void)
 		This isn't really needed, Drives[i] and DriveNames[i]
 		need not have valid values when not vSonyIsInserted[i].
 	*/
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
@@ -2393,9 +2490,9 @@ LOCALPROC InitDrives(void)
 	}
 }
 
-GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyRead(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count)
 {
-	si4b result;
+	tMacErr result;
 	HANDLE refnum;
 	DWORD newL;
 	DWORD BytesRead = 0;
@@ -2408,10 +2505,10 @@ GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *So
 		FILE_BEGIN /* how to move */
 	);
 	if (newL == 0xFFFFFFFF) {
-		result = -1; /*& figure out what really to return &*/
+		result = mnvm_miscErr; /*& figure out what really to return &*/
 	} else if (Sony_Start != (ui5b)newL) {
 		/* not supposed to get here */
-		result = -1; /*& figure out what really to return &*/
+		result = mnvm_miscErr; /*& figure out what really to return &*/
 	} else {
 		if (! ReadFile(refnum, /* handle of file to read */
 			(LPVOID)Buffer, /* address of buffer that receives data */
@@ -2419,20 +2516,20 @@ GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *So
 			&BytesRead, /* address of number of bytes read */
 			nullpr)) /* address of structure for data */
 		{
-			result = -1; /*& figure out what really to return &*/
+			result = mnvm_miscErr; /*& figure out what really to return &*/
 		} else if ((ui5b)BytesRead != *Sony_Count) {
-			result = -1; /*& figure out what really to return &*/
+			result = mnvm_miscErr; /*& figure out what really to return &*/
 		} else {
-			result = 0;
+			result = mnvm_noErr;
 		}
 	}
 	*Sony_Count = BytesRead;
 	return result;
 }
 
-GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyWrite(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count)
 {
-	si4b result;
+	tMacErr result;
 	HANDLE refnum;
 	DWORD newL;
 	DWORD BytesWritten = 0;
@@ -2445,10 +2542,10 @@ GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *S
 		FILE_BEGIN /* how to move */
 	);
 	if (newL == 0xFFFFFFFF) {
-		result = -1; /*& figure out what really to return &*/
+		result = mnvm_miscErr; /*& figure out what really to return &*/
 	} else if (Sony_Start != (ui5b)newL) {
 		/* not supposed to get here */
-		result = -1; /*& figure out what really to return &*/
+		result = mnvm_miscErr; /*& figure out what really to return &*/
 	} else {
 		if (! WriteFile(refnum, /* handle of file to read */
 			(LPVOID)Buffer, /* address of buffer that receives data */
@@ -2456,33 +2553,33 @@ GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *S
 			&BytesWritten, /* address of number of bytes read */
 			nullpr)) /* address of structure for data */
 		{
-			result = -1; /*& figure out what really to return &*/
+			result = mnvm_miscErr; /*& figure out what really to return &*/
 		} else if ((ui5b)BytesWritten != *Sony_Count) {
-			result = -1; /*& figure out what really to return &*/
+			result = mnvm_miscErr; /*& figure out what really to return &*/
 		} else {
-			result = 0;
+			result = mnvm_noErr;
 		}
 	}
 	*Sony_Count = BytesWritten;
 	return result;
 }
 
-GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyGetSize(tDrive Drive_No, ui5r *Sony_Count)
 {
-	si4b result;
+	tMacErr result;
 	DWORD L;
 
 	L = GetFileSize (Drives[Drive_No], nullpr);
 	if (L == 0xFFFFFFFF) {
-		result = -1; /*& figure out what really to return &*/
+		result = mnvm_miscErr; /*& figure out what really to return &*/
 	} else {
 		*Sony_Count = L;
-		result = 0;
+		result = mnvm_noErr;
 	}
 	return result;
 }
 
-LOCALFUNC si4b vSonyEject0(ui4b Drive_No, blnr deleteit)
+LOCALFUNC tMacErr vSonyEject0(tDrive Drive_No, blnr deleteit)
 {
 	HANDLE refnum = Drives[Drive_No];
 	Drives[Drive_No] = NotAfileRef; /* not really needed */
@@ -2509,16 +2606,16 @@ LOCALFUNC si4b vSonyEject0(ui4b Drive_No, blnr deleteit)
 	}
 #endif
 
-	return 0x0000;
+	return mnvm_noErr;
 }
 
-GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
+GLOBALFUNC tMacErr vSonyEject(tDrive Drive_No)
 {
 	return vSonyEject0(Drive_No, falseblnr);
 }
 
 #if IncludeSonyNew
-GLOBALFUNC si4b vSonyEjectDelete(ui4b Drive_No)
+GLOBALFUNC tMacErr vSonyEjectDelete(tDrive Drive_No)
 {
 	return vSonyEject0(Drive_No, trueblnr);
 }
@@ -2526,7 +2623,7 @@ GLOBALFUNC si4b vSonyEjectDelete(ui4b Drive_No)
 
 LOCALPROC UnInitDrives(void)
 {
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (vSonyIsInserted(i)) {
@@ -2562,10 +2659,10 @@ LOCALFUNC blnr LPTSTRtoHand(LPTSTR s, HGLOBAL *r)
 #endif
 
 #if IncludeSonyGetName
-GLOBALFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r)
+GLOBALFUNC tMacErr vSonyGetName(tDrive Drive_No, tPbuf *r)
 {
 	WIN32_FIND_DATA fd;
-	si4b err = -1;
+	tMacErr err = mnvm_miscErr;
 	HGLOBAL ph = DriveNames[Drive_No];
 	if (NULL != ph) {
 		LPTSTR drivepath = GlobalLock(ph);
@@ -2589,7 +2686,7 @@ GLOBALFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r)
 
 LOCALFUNC blnr Sony_Insert0(HANDLE refnum, blnr locked, LPTSTR drivepath)
 {
-	ui4b Drive_No;
+	tDrive Drive_No;
 
 	if (! FirstFreeDisk(&Drive_No)) {
 		(void) CloseHandle(refnum);
@@ -3057,7 +3154,7 @@ LOCALPROC MakeNewDisk(ui5b L, HGLOBAL NewDiskNameDat)
 
 LOCALFUNC blnr AllocateMacROM(void)
 {
-	ROM = (ui4b *)GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, kROM_Size);
+	ROM = (ui3p)GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, kROM_Size);
 	if (ROM == NULL) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
@@ -3131,7 +3228,7 @@ LOCALFUNC blnr LoadMacRom(void)
 
 LOCALFUNC blnr AllocateMacRAM(void)
 {
-	RAM = (ui4b *)GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, kRAM_Size + RAMSafetyMarginFudge);
+	RAM = (ui3p)GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, kRAM_Size + RAMSafetyMarginFudge);
 	if (RAM == NULL) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
@@ -3531,7 +3628,11 @@ LOCALPROC CheckForSavedTasks(void)
 
 	if (NeedWholeScreenDraw) {
 		NeedWholeScreenDraw = falseblnr;
+#if UseWinCE
+		HaveChangedScreenBuff(vOffset, 0, vRes + vOffset, hRes + hOffset);
+#else
 		HaveChangedScreenBuff(0, 0, vMacScreenHeight, vMacScreenWidth);
+#endif
 	}
 }
 
@@ -3649,16 +3750,32 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd, UINT uMessage, WPARAM wparam, LPARAM lpa
 			{
 				switch (wparam) {
 					case VK_LEFT:
-						hOffset = 0 - hOffsetFudge;
+						if (curHOffset > 0)
+						{
+							--curHOffset;
+							hOffset = hOffsetsList[curHOffset];
+						}
 						break;
 					case VK_UP:
-						vOffset = 0;
+						if (curVOffset > 0)
+						{
+							--curVOffset;
+							vOffset = vOffsetsList[curVOffset];
+						}
 						break;
 					case VK_RIGHT:
-						hOffset = 192 - hOffsetFudge;
+						if (curHOffset < numHOffsets - 1)
+						{
+							++curHOffset;
+							hOffset = hOffsetsList[curHOffset];
+						}
 						break;
 					case VK_DOWN:
-						vOffset = 102;
+						if (curVOffset < numVOffsets - 1)
+						{
+							++curVOffset;
+							vOffset = vOffsetsList[curVOffset];
+						}
 						break;
 				}
 				Screen_DrawAll();
@@ -3858,13 +3975,86 @@ LOCALFUNC blnr Init_ChangeOrientation(void)
 	SipShowIM(SIPF_OFF);
 	SipOn = falseblnr;
 
-	/* Switch to Landscape mode */
+	/* Switch to Landscape mode if possible */
 	dm.dmOrientation = DMORIENT_LANDSCAPE;
 	dm.dmDisplayOrientation = DMDO_90;
 	dm.dmFields = DM_ORIENTATION | DM_DISPLAYORIENTATION;
-	if (ChangeDisplaySettingsEx(NULL, &dm, NULL, 0, 0) != DISP_CHANGE_SUCCESSFUL) {
+	/*if (*/ChangeDisplaySettingsEx(NULL, &dm, NULL, 0, 0)/* != DISP_CHANGE_SUCCESSFUL) {
 		MacMsg ("warning", "Couldn't switch to Landscape mode.", falseblnr);
+	}*/;
+
+	/* Save screen caps */
+	hRes = GetDeviceCaps(GetDC(NULL), HORZRES);
+	vRes = GetDeviceCaps(GetDC(NULL), VERTRES);
+
+	/* Pre-calculate screen offsets for this device */
+	hOffsetsList = NULL;
+	vOffsetsList = NULL;
+
+	curHOffset = 0;
+	curVOffset = 0;
+
+	switch (hRes)
+	{
+	case 320: /* 320x240 */
+		numHOffsets = 2;
+		hOffsetsList = (short*)malloc(numHOffsets * sizeof(short));
+		hOffsetsList[0] = -3;
+		hOffsetsList[1] = 189;
+		break;
+
+	case 240: /* 240x320 and 240x240 */
+		numHOffsets = 3;
+		hOffsetsList = (short*)malloc(numHOffsets * sizeof(short));
+		hOffsetsList[0] = -3;
+		hOffsetsList[1] = 135;
+		hOffsetsList[2] = 269;
+		break;
+
+	default: /* VGA devices */
+		numHOffsets = 1;
+		hOffsetsList = (short*)malloc(numHOffsets * sizeof(short));
+		hOffsetsList[0] = 0;
+		break;
 	}
+
+	switch (vRes)
+	{
+	case 320: /* 240x320 */
+		numVOffsets = 2;
+		vOffsetsList = (short*)malloc(numVOffsets * sizeof(short));
+		vOffsetsList[0] = 0;
+		vOffsetsList[1] = 22;
+		break;
+
+	case 240: /* 320x240 and 240x240 */
+		numVOffsets = 2;
+		vOffsetsList = (short*)malloc(numVOffsets * sizeof(short));
+		vOffsetsList[0] = 0;
+		vOffsetsList[1] = 102;
+		break;
+
+	default: /* VGA devices */
+		numVOffsets = 1;
+		vOffsetsList = (short*)malloc(numVOffsets * sizeof(short));
+		vOffsetsList[0] = 0;
+		break;
+	}
+
+	hOffset = hOffsetsList[0];
+	vOffset = vOffsetsList[0];
+
+#ifdef DEBUG
+	/* DEBUG: print out device screen info */
+	{
+		TCHAR szDbg[256];
+		wsprintf(szDbg, _T("Caps: %dx%d.\nNumber of horizontal offsets: %d.\nOffsets: %d, %d, %d."),
+			hRes, vRes, numHOffsets, hOffsetsList[0],
+			(numHOffsets > 1)? hOffsetsList[1] : -1,
+			(numHOffsets > 2)? hOffsetsList[2] : -1);
+		MessageBox(GetActiveWindow(), szDbg, _T("DEBUG"), MB_ICONINFORMATION);
+	}
+#endif
 
 	return trueblnr;
 }
@@ -3886,6 +4076,14 @@ LOCALPROC Uninit_ChangeOrientation(void)
 	dm.dmFields = DM_ORIENTATION | DM_DISPLAYORIENTATION;
 
 	ChangeDisplaySettingsEx(NULL, &dm, 0, 0, 0);
+
+	/* Deallocate pre-calculated offsets */
+	if (hOffsetsList) {
+		free(hOffsetsList);
+	}
+	if (vOffsetsList) {
+		free(vOffsetsList);
+	}
 }
 #endif
 
@@ -4055,28 +4253,13 @@ LOCALPROC UnInitOSGLU(void)
 #endif
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-#if UseWinCE
-	LPTSTR
-#else
-	LPSTR
-#endif
-		lpCmdLine,
-	int nCmdShow)
+int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+	LPTSTR lpCmdLine, int nCmdShow)
 {
-#if MyUseUni && ! UseWinCE
-	UnusedParam(lpCmdLine);
-#endif
 	UnusedParam(hPrevInstance);
 	AppInstance = hInstance;
 	CmdShow = nCmdShow;
-	CommandLine =
-#if MyUseUni && ! UseWinCE
-		GetCommandLine()
-#else
-		lpCmdLine
-#endif
-		;
+	CommandLine = lpCmdLine;
 
 	GetWndTitle();
 #if UseWinCE

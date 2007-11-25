@@ -147,3 +147,115 @@ static void WriteLccW32SpecificFiles(void)
 	WriteCloseDestFile();
 	}
 }
+
+
+LOCALPROC DoSrcFileWriteLccW32clAddObjFile(void)
+{
+	WriteBgnDestFileLn();
+	WriteSrcFileObjPath();
+	WriteCStrToDestFile(" \\");
+	WriteEndDestFileLn();
+}
+
+LOCALPROC DoSrcFileLccW32clEraseFile(void)
+{
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("del ");
+	WriteSrcFileObjPath();
+	WriteCStrToDestFile("");
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteMainRsrcObjLccbuild(void)
+{
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("lrc.exe -fo");
+	WriteMainRsrcObjPath();
+	WriteCStrToDestFile(" ");
+	WriteMainRsrcSrcPath();
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteLccW32clSpecificFiles(void)
+{
+	if (WriteOpenDestFile(&OutputDirR, "Makefile", "")) { /* Make file */
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("# Wedit Makefile");
+	WriteEndDestFileLn();
+
+	WriteBlankLineToDestFile();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("mk_COptions= -c");
+	if (gbo_dbg != gbk_dbg_on) {
+		WriteCStrToDestFile(" -O");
+	} else {
+		WriteCStrToDestFile(" -g4");
+	}
+	WriteCStrToDestFile(" -A");
+	WriteEndDestFileLn();
+
+	WriteBlankLineToDestFile();
+	WriteBlankLineToDestFile();
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("TheDefaultOutput:");
+	if (CurPackageOut) {
+		WriteMakeDependFile(WriteAppBinZipPath);
+	} else {
+		WriteMakeDependFile(WriteAppNamePath);
+	}
+	WriteEndDestFileLn();
+	WriteBlankLineToDestFile();
+	WriteBlankLineToDestFile();
+	DoAllSrcFilesWithSetup(DoSrcFileMakeCompile);
+	WriteBlankLineToDestFile();
+	WriteDestFileLn("ObjFiles=\\");
+	++DestFileIndent;
+		DoAllSrcFilesWithSetup(DoSrcFileWriteLccW32clAddObjFile);
+	--DestFileIndent;
+	WriteBlankLineToDestFile();
+	WriteBlankLineToDestFile();
+	WriteBlankLineToDestFile();
+	WriteMakeRule(WriteMainRsrcObjPath,
+		WriteMainRsrcObjMSCdeps, WriteMainRsrcObjLccbuild);
+	WriteBlankLineToDestFile();
+	WriteBlankLineToDestFile();
+	WriteBgnDestFileLn();
+	WriteAppNamePath();
+	WriteCStrToDestFile(": $(ObjFiles) ");
+	WriteMainRsrcObjPath();
+	WriteEndDestFileLn();
+	++DestFileIndent;
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("lcclnk.exe");
+		if (gbo_dbg == gbk_dbg_off) {
+			WriteCStrToDestFile(" -s");
+		}
+		WriteCStrToDestFile(" -subsystem windows -o ");
+		WriteAppNamePath();
+		WriteCStrToDestFile(" $(ObjFiles) ");
+		WriteMainRsrcObjPath();
+		WriteCStrToDestFile(" \\");
+		WriteEndDestFileLn();
+		++DestFileIndent;
+			WriteDestFileLn("shell32.lib winmm.lib ole32.lib uuid.lib");
+		--DestFileIndent;
+	--DestFileIndent;
+	WriteBlankLineToDestFile();
+
+	WriteBlankLineToDestFile();
+	WriteDestFileLn("clean:");
+	++DestFileIndent;
+		DoAllSrcFilesWithSetup(DoSrcFileLccW32clEraseFile);
+		WriteRmFile(WriteMainRsrcObjPath);
+		WriteRmFile(WriteAppNamePath);
+		if (CurPackageOut) {
+			WriteRmFile(WriteAppBinZipPath);
+			WriteRmFile(WriteCheckSumFilePath);
+		}
+	--DestFileIndent;
+
+	WriteCloseDestFile();
+	}
+}

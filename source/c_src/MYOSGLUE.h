@@ -98,7 +98,7 @@ EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 #endif
 
 #define RAMSafetyMarginFudge 4
-EXPORTVAR(ui4b, *RAM)
+EXPORTVAR(ui3p, RAM)
 	/*
 		allocated by MYOSGLUE to be at least kRAM_Size + RAMSafetyMarginFudge
 		bytes. Because of shortcuts taken in ADDRSPAC.c, it is in theory
@@ -132,7 +132,19 @@ EXPORTVAR(ui4b, *RAM)
 #endif
 #endif
 
-EXPORTVAR(ui4b, *ROM)
+EXPORTVAR(ui3p, ROM)
+
+
+#define tMacErr ui4r
+
+#define mnvm_noErr      ((tMacErr) 0)   /* 0x0000 - No Error */
+#define mnvm_miscErr    ((tMacErr) - 1)  /* 0xFFFF - Should probably replace these */
+#define mnvm_controlErr ((tMacErr) - 17) /* 0xFFEF - I/O System Errors */
+#define mnvm_eofErr     ((tMacErr) - 39) /* 0xFFD9 - End of file */
+#define mnvm_vLckdErr   ((tMacErr) - 46) /* 0xFFD2 - volume is locked */
+#define mnvm_nsDrvErr   ((tMacErr) - 56) /* 0xFFC8 - No Such Drive */
+#define mnvm_offLinErr  ((tMacErr) - 65) /* 0xFFBF - off-line drive */
+
 
 #ifndef IncludePbufs
 #define IncludePbufs 1
@@ -144,19 +156,23 @@ EXPORTVAR(ui4b, *ROM)
 #define NumPbufs 4
 #endif
 
-#define NotAPbuf ((ui4b)0xFFFF)
+#define tPbuf ui4r
+
+#define NotAPbuf ((tPbuf)(-1))
 
 EXPORTVAR(ui5b, PbufAllocatedMask)
 EXPORTVAR(ui5b, PbufSize[NumPbufs])
 
 #define PbufIsAllocated(i) ((PbufAllocatedMask & ((ui5b)1 << (i))) != 0)
 
-EXPORTFUNC si4b PbufNew(ui5b count, ui4b *r);
-EXPORTPROC PbufDispose(ui4b i);
-EXPORTPROC PbufTransfer(void *Buffer,
-	ui4b i, ui5b offset, ui5b count, blnr IsWrite);
+EXPORTFUNC tMacErr PbufNew(ui5b count, tPbuf *r);
+EXPORTPROC PbufDispose(tPbuf i);
+EXPORTPROC PbufTransfer(ui3p Buffer,
+	tPbuf i, ui5r offset, ui5r count, blnr IsWrite);
 
 #endif
+
+#define tDrive ui4r
 
 EXPORTVAR(ui5b, vSonyWritableMask)
 EXPORTVAR(ui5b, vSonyInsertedMask)
@@ -165,10 +181,10 @@ EXPORTVAR(ui5b, vSonyMountedMask)
 #define vSonyIsInserted(Drive_No) ((vSonyInsertedMask & ((ui5b)1 << (Drive_No))) != 0)
 #define vSonyIsMounted(Drive_No) ((vSonyMountedMask & ((ui5b)1 << (Drive_No))) != 0)
 
-EXPORTFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count);
-EXPORTFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count);
-EXPORTFUNC si4b vSonyEject(ui4b Drive_No);
-EXPORTFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count);
+EXPORTFUNC tMacErr vSonyRead(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count);
+EXPORTFUNC tMacErr vSonyWrite(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count);
+EXPORTFUNC tMacErr vSonyEject(tDrive Drive_No);
+EXPORTFUNC tMacErr vSonyGetSize(tDrive Drive_No, ui5r *Sony_Count);
 
 EXPORTFUNC blnr AnyDiskInserted(void);
 
@@ -191,7 +207,7 @@ EXPORTVAR(blnr, vSonyRawMode)
 #if IncludeSonyNew
 EXPORTVAR(blnr, vSonyNewDiskWanted)
 EXPORTVAR(ui5b, vSonyNewDiskSize)
-EXPORTFUNC si4b vSonyEjectDelete(ui4b Drive_No);
+EXPORTFUNC tMacErr vSonyEjectDelete(tDrive Drive_No);
 #endif
 
 #ifndef IncludeSonyNameNew
@@ -199,11 +215,11 @@ EXPORTFUNC si4b vSonyEjectDelete(ui4b Drive_No);
 #endif
 
 #if IncludeSonyNameNew
-EXPORTVAR(ui4b, vSonyNewDiskName)
+EXPORTVAR(tPbuf, vSonyNewDiskName)
 #endif
 
 #if IncludeSonyGetName
-EXPORTFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r);
+EXPORTFUNC tMacErr vSonyGetName(tDrive Drive_No, tPbuf *r);
 #endif
 
 EXPORTVAR(ui5b, CurMacDateInSeconds)
@@ -262,8 +278,8 @@ EXPORTFUNC ui3p GetCurSoundOutBuff(void);
 #endif
 
 #if IncludeHostTextClipExchange
-EXPORTFUNC si4b HTCEexport(ui4b i);
-EXPORTFUNC si4b HTCEimport(ui4b *r);
+EXPORTFUNC tMacErr HTCEexport(tPbuf i);
+EXPORTFUNC tMacErr HTCEimport(tPbuf *r);
 #endif
 
 EXPORTVAR(ui5b, theKeys[4])

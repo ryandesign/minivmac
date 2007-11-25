@@ -27,4 +27,10 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("#define EnableAltKeysMode 1");
 	}
+	if ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ)) {
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("#define EnableShellLinks 0");
+		WriteDestFileLn("#define EnableDragDrop 0");
+		WriteDestFileLn("#define UseTimerThread 0");
+	}
 }

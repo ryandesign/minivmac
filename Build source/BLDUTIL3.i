@@ -190,6 +190,7 @@ LOCALPROC WritePathInDirToDestFile0(MyProc p, MyProc ps,
 			break;
 		case gbk_ide_bgc:
 		case gbk_ide_xcd:
+		case gbk_ide_snc:
 			if (p != NULL) {
 				p();
 			}
@@ -207,7 +208,9 @@ LOCALPROC WritePathInDirToDestFile0(MyProc p, MyProc ps,
 				WriteBackSlashToDestFile();
 			} else {
 				if (gbk_ide_lcc == cur_ide) {
-					WriteCStrToDestFile("c:\\output\\");
+					if (! UseCmndLine) {
+						WriteCStrToDestFile("c:\\output\\");
+					}
 				} else if ((gbk_ide_msv == cur_ide) && (ide_vers >= 8000)) {
 					WriteCStrToDestFile(".\\");
 				}
@@ -481,10 +484,19 @@ LOCALPROC Write_tmachoPkgInfoPath(void)
 	WriteFileInDirToDestFile0(Write_tmachocontents_d_ToDestFile, Write_tmachoPkgInfoName);
 }
 
+LOCALPROC Write_MacCreatorSigOrGeneric(void)
+{
+	if (WantIconMaster) {
+		WriteCStrToDestFile(kMacCreatorSig);
+	} else {
+		WriteCStrToDestFile("????");
+	}
+}
+
 LOCALPROC Write_tmachoPkgInfoContents(void)
 {
 	WriteCStrToDestFile("APPL");
-	WriteCStrToDestFile(kMacCreatorSig);
+	Write_MacCreatorSigOrGeneric();
 }
 
 LOCALPROC Write_machoRsrcName(void)
@@ -539,6 +551,7 @@ LOCALPROC WriteMainRsrcObjName(void)
 	switch (cur_ide) {
 #if SupportWinIDE
 		case gbk_ide_msv:
+		case gbk_ide_lcc:
 			WriteCStrToDestFile("main.res");
 			break;
 #endif
@@ -633,15 +646,109 @@ LOCALPROC WritePathArgInMakeCmnd(MyProc p)
 	switch (cur_ide) {
 		case gbk_ide_mpw:
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_msv:
 			WriteCStrToDestFile(" \"");
 			p();
 			WriteCStrToDestFile("\"");
 			break;
+		case gbk_ide_lcc:
+			WriteCStrToDestFile(" ");
+			/* saw some glitches with quotes */
+			p();
+			break;
 		default:
 			break;
 	}
+}
+
+LOCALPROC WriteMakeVar(char *s)
+{
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteCStrToDestFile("{");
+			WriteCStrToDestFile(s);
+			WriteCStrToDestFile("}");
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_snc:
+		case gbk_ide_xcd:
+		case gbk_ide_msv:
+		case gbk_ide_lcc:
+			WriteCStrToDestFile("$(");
+			WriteCStrToDestFile(s);
+			WriteCStrToDestFile(")");
+			break;
+		default:
+			break;
+	}
+}
+
+LOCALPROC WriteMakeDependFile(MyProc p)
+{
+	switch (cur_ide) {
+#if SupportWinIDE
+		case gbk_ide_msv:
+#endif
+		case gbk_ide_mpw:
+			WriteCStrToDestFile(" ");
+			WriteQuoteToDestFile();
+			p();
+			WriteQuoteToDestFile();
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_snc:
+		case gbk_ide_xcd:
+		case gbk_ide_lcc:
+			WriteCStrToDestFile(" ");
+			p();
+			break;
+		default:
+			break;
+	}
+}
+
+LOCALPROC WriteMakeRule(MyProc ptarg,
+	MyProc pdeps, MyProc pbody)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			WriteQuoteToDestFile();
+			ptarg();
+			WriteQuoteToDestFile();
+			WriteCStrToDestFile(" \304");
+			pdeps();
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_snc:
+		case gbk_ide_xcd:
+			ptarg();
+			WriteCStrToDestFile(" :");
+			pdeps();
+			break;
+#if SupportWinIDE
+		case gbk_ide_msv:
+			WriteQuoteToDestFile();
+			ptarg();
+			WriteQuoteToDestFile();
+			WriteCStrToDestFile(" :");
+			pdeps();
+			break;
+		case gbk_ide_lcc:
+			ptarg();
+			WriteCStrToDestFile(":");
+			pdeps();
+			break;
+#endif
+		default:
+			break;
+	}
+	WriteEndDestFileLn();
+	++DestFileIndent;
+		pbody();
+	--DestFileIndent;
 }
 
 LOCALPROC WriteMkDir(MyProc p)
@@ -652,6 +759,7 @@ LOCALPROC WriteMkDir(MyProc p)
 			WriteCStrToDestFile("NewFolder");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("mkdir");
 			break;
@@ -670,6 +778,7 @@ LOCALPROC WriteRmDir(MyProc p)
 			WriteCStrToDestFile("Delete -i -y");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("rm -fr");
 			break;
@@ -688,12 +797,18 @@ LOCALPROC WriteRmFile(MyProc p)
 			WriteCStrToDestFile("Delete -i");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("rm -f");
 			break;
+#if SupportWinIDE
 		case gbk_ide_msv:
 			WriteCStrToDestFile("-@erase");
 			break;
+		case gbk_ide_lcc:
+			WriteCStrToDestFile("del");
+			break;
+#endif
 		default:
 			break;
 	}
@@ -709,6 +824,7 @@ LOCALPROC WriteCopyFile(MyProc pfrom, MyProc pto)
 			WriteCStrToDestFile("Duplicate");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("cp");
 			break;
@@ -728,6 +844,7 @@ LOCALPROC WriteMoveDir(MyProc pfrom, MyProc pto)
 			WriteCStrToDestFile("Move");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("mv");
 			break;
@@ -755,6 +872,7 @@ LOCALPROC WriteEchoToNewFile(MyProc ptext, MyProc pto, blnr newline)
 			break;
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_snc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("echo");
 			if (! newline) {
@@ -771,60 +889,96 @@ LOCALPROC WriteEchoToNewFile(MyProc ptext, MyProc pto, blnr newline)
 	WriteEndDestFileLn();
 }
 
-LOCALPROC WriteMakeDependFile(MyProc p)
+LOCALPROC WriteCompileCExec(void)
 {
 	switch (cur_ide) {
-#if SupportWinIDE
-		case gbk_ide_msv:
-#endif
 		case gbk_ide_mpw:
-			WriteCStrToDestFile(" ");
-			WriteQuoteToDestFile();
-			p();
-			WriteQuoteToDestFile();
+			if (gbk_cpufam_68k == gbo_cpufam) {
+				WriteCStrToDestFile("SC");
+			} else if (gbk_cpufam_ppc == gbo_cpufam) {
+				WriteCStrToDestFile("MrC");
+			}
 			break;
 		case gbk_ide_bgc:
 		case gbk_ide_xcd:
-			WriteCStrToDestFile(" ");
-			p();
+			WriteCStrToDestFile("gcc");
+			break;
+		case gbk_ide_snc:
+			WriteCStrToDestFile("cc");
+			break;
+		case gbk_ide_msv:
+			if (gbk_cpufam_arm == gbo_cpufam) {
+				WriteCStrToDestFile("clarm.exe");
+			} else {
+				WriteCStrToDestFile("cl.exe");
+			}
+			break;
+		case gbk_ide_lcc:
+			WriteCStrToDestFile("lcc.exe");
 			break;
 		default:
 			break;
 	}
 }
 
-LOCALPROC WriteMakeRule(MyProc ptarg,
-	MyProc pdeps, MyProc pbody)
+LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj)
 {
 	WriteBgnDestFileLn();
 	switch (cur_ide) {
 		case gbk_ide_mpw:
-			WriteQuoteToDestFile();
-			ptarg();
-			WriteQuoteToDestFile();
-			WriteCStrToDestFile(" \304");
-			pdeps();
-			break;
 		case gbk_ide_bgc:
 		case gbk_ide_xcd:
-			ptarg();
-			WriteCStrToDestFile(" :");
-			pdeps();
+		case gbk_ide_snc:
+			WriteCompileCExec();
+			WritePathArgInMakeCmnd(psrc);
+			WriteCStrToDestFile(" -o");
+			WritePathArgInMakeCmnd(pobj);
+			WriteCStrToDestFile(" ");
+			WriteMakeVar("mk_COptions");
 			break;
-#if SupportWinIDE
 		case gbk_ide_msv:
-			WriteQuoteToDestFile();
-			ptarg();
-			WriteQuoteToDestFile();
-			WriteCStrToDestFile(" :");
-			pdeps();
+			WriteCompileCExec();
+			WritePathArgInMakeCmnd(psrc);
+			WriteCStrToDestFile(" ");
+			WriteMakeVar("mk_COptions");
 			break;
-#endif
+		case gbk_ide_lcc:
+			WriteCompileCExec();
+			WritePathArgInMakeCmnd(psrc);
+			WriteCStrToDestFile(" -Fo");
+			pobj();
+			WriteCStrToDestFile(" ");
+			WriteMakeVar("mk_COptions");
+			break;
 		default:
 			break;
 	}
 	WriteEndDestFileLn();
-	++DestFileIndent;
-		pbody();
-	--DestFileIndent;
+}
+
+LOCALPROC WriteCompileAsm(MyProc psrc, MyProc obj)
+{
+	WriteBgnDestFileLn();
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+			if (gbo_cpufam == gbk_cpufam_68k) {
+				WriteCStrToDestFile("Asm");
+			} else if (gbo_cpufam == gbk_cpufam_ppc) {
+				WriteCStrToDestFile("PPCAsm");
+			}
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_snc:
+		case gbk_ide_xcd:
+			WriteCStrToDestFile("gcc");
+			break;
+		default:
+			break;
+	}
+	WritePathArgInMakeCmnd(psrc);
+	WriteCStrToDestFile(" -o");
+	WritePathArgInMakeCmnd(obj);
+	WriteCStrToDestFile(" ");
+	WriteMakeVar("mk_AOptions");
+	WriteEndDestFileLn();
 }

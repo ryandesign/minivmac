@@ -174,7 +174,7 @@ LOCALVAR ui3b *BankWritAddr[NumMemBanks];
 
 LOCALPROC SetPtrVecToNULL(ui3b **x, ui5b n)
 {
-	int i;
+	ui5b i;
 
 	for (i = 0; i < n; i++) {
 		*x++ = nullpr;
@@ -190,11 +190,11 @@ LOCALPROC SetUpMemBanks(void)
 LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 {
 	ui3b **CurBanks = WriteMem ? BankWritAddr : BankReadAddr;
-	ui3b *ba0 = CurBanks[bi];
+	ui3p ba0 = CurBanks[bi];
 
 	if (ba0 == nullpr) {
 		ui5b vMask = 0;
-		ui3b *RealStart = nullpr;
+		ui3p RealStart = nullpr;
 		ui5b iAddr = bi << ln2BytesPerMemBank;
 		if ((iAddr >> 22) == (kRAM_Base >> 22)) {
 			if (MemOverlay) {
@@ -203,20 +203,20 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 				} else if ((iAddr & Overlay_ROM_CmpZeroMask) != 0) {
 					/* fail */
 				} else {
-					RealStart = (ui3b *)ROM;
+					RealStart = ROM;
 					vMask = Overlay_ROMmem_mask;
 				}
 			} else {
 #if kRAM_Size == 0x00280000
 				if (iAddr >= 0x00200000) {
-					RealStart = 0x00200000 + (ui3b *)RAM;
+					RealStart = 0x00200000 + RAM;
 					vMask = 0x00080000 - 1;
 				} else {
-					RealStart = (ui3b *)RAM;
+					RealStart = RAM;
 					vMask = 0x00200000 - 1;
 				}
 #else
-				RealStart = (ui3b *)RAM;
+				RealStart = RAM;
 				vMask = RAMmem_mask;
 #endif
 			}
@@ -233,13 +233,13 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 			} else if ((iAddr & ROM_CmpZeroMask) != 0) {
 				/* fail */
 			} else {
-				RealStart = (ui3b *)ROM;
+				RealStart = ROM;
 				vMask = ROMmem_mask;
 			}
 		} else
 		if ((iAddr >> 19) == (kRAM_Overlay_Base >> 19)) {
 			if (MemOverlay) {
-				RealStart = Overlay_RAMmem_offset + (ui3b *)RAM;
+				RealStart = Overlay_RAMmem_offset + RAM;
 				vMask = Overlay_RAMmem_mask;
 			}
 		} else
@@ -346,7 +346,7 @@ GLOBALFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 		}
 	} else
 	{
-		ui3b *ba;
+		ui3p ba;
 
 		if (GetBankAddr(bankindex(mAddressBus), WriteMem, &ba)) {
 			ui3p m = (mAddressBus & MemBankAddrMask) + ba;
@@ -384,23 +384,23 @@ GLOBALPROC MemOverlay_ChangeNtfy(void)
 	and back out of the current instruction.
 */
 
-GLOBALFUNC ui3b *get_real_address(ui5b L, blnr WritableMem, CPTR addr)
+GLOBALFUNC ui3p get_real_address(ui5b L, blnr WritableMem, CPTR addr)
 {
 	ui5b bi = bankindex(addr);
-	ui3b *ba;
+	ui3p ba;
 
 	if (! GetBankAddr(bi, WritableMem, &ba)) {
 		ReportAbnormal("get_real_address fails");
 		return nullpr;
 	} else {
 		ui5b bankoffset = addr & MemBankAddrMask;
-		ui3b *p = (ui3b *)(bankoffset + ba);
+		ui3p p = (ui3p)(bankoffset + ba);
 		ui5b bankleft = BytesPerMemBank - bankoffset;
 label_1:
 		if (bankleft >= L) {
 			return p; /* ok */
 		} else {
-			ui3b *bankend = (ui3b *)(BytesPerMemBank + ba);
+			ui3p bankend = (ui3p)(BytesPerMemBank + ba);
 
 			bi = (bi + 1) & MemBanksMask;
 			if ((! GetBankAddr(bi, WritableMem, &ba))

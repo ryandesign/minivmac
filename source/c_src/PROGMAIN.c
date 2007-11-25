@@ -35,7 +35,7 @@
 
 LOCALPROC vSonyEjectAllDisks(void)
 {
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (vSonyIsInserted(i)) {

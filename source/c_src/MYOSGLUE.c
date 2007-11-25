@@ -31,9 +31,9 @@ IMPORTPROC DoEmulateExtraTime(void);
 
 GLOBALVAR char *screencomparebuff = nullpr;
 
-GLOBALVAR ui4b *RAM = nullpr;
+GLOBALVAR ui3p RAM = nullpr;
 
-GLOBALVAR ui4b *ROM = nullpr;
+GLOBALVAR ui3p ROM = nullpr;
 
 GLOBALVAR ui4b CurMouseV = 0;
 GLOBALVAR ui4b CurMouseH = 0;
@@ -92,7 +92,7 @@ GLOBALVAR ui5b vSonyNewDiskSize;
 #endif
 
 #if IncludeSonyNameNew
-GLOBALVAR ui4b vSonyNewDiskName = NotAPbuf;
+GLOBALVAR tPbuf vSonyNewDiskName = NotAPbuf;
 #endif
 
 GLOBALVAR ui5b CurMacDateInSeconds = 0;
@@ -101,9 +101,9 @@ GLOBALVAR ui5b CurMacLongitude = 0;
 GLOBALVAR ui5b CurMacDelta = 0;
 
 #if IncludePbufs
-LOCALFUNC blnr FirstFreePbuf(ui4b *r)
+LOCALFUNC blnr FirstFreePbuf(tPbuf *r)
 {
-	si4b i;
+	tPbuf i;
 
 	for (i = 0; i < NumPbufs; ++i) {
 		if (! PbufIsAllocated(i)) {
@@ -116,7 +116,7 @@ LOCALFUNC blnr FirstFreePbuf(ui4b *r)
 #endif
 
 #if IncludePbufs
-LOCALPROC PbufNewNotify(ui4b Pbuf_No, ui5b count)
+LOCALPROC PbufNewNotify(tPbuf Pbuf_No, ui5b count)
 {
 	PbufSize[Pbuf_No] = count;
 	PbufAllocatedMask |= ((ui5b)1 << Pbuf_No);
@@ -124,15 +124,15 @@ LOCALPROC PbufNewNotify(ui4b Pbuf_No, ui5b count)
 #endif
 
 #if IncludePbufs
-LOCALPROC PbufDisposeNotify(ui4b Pbuf_No)
+LOCALPROC PbufDisposeNotify(tPbuf Pbuf_No)
 {
 	PbufAllocatedMask &= ~ ((ui5b)1 << Pbuf_No);
 }
 #endif
 
-LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
+LOCALFUNC blnr FirstFreeDisk(tDrive *Drive_No)
 {
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (! vSonyIsInserted(i)) {
@@ -145,7 +145,7 @@ LOCALFUNC blnr FirstFreeDisk(ui4b *Drive_No)
 
 GLOBALFUNC blnr AnyDiskInserted(void)
 {
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (vSonyIsInserted(i)) {
@@ -155,7 +155,7 @@ GLOBALFUNC blnr AnyDiskInserted(void)
 	return falseblnr;
 }
 
-LOCALPROC DiskInsertNotify(ui4b Drive_No, blnr locked)
+LOCALPROC DiskInsertNotify(tDrive Drive_No, blnr locked)
 {
 	vSonyInsertedMask |= ((ui5b)1 << Drive_No);
 	if (! locked) {
@@ -163,7 +163,7 @@ LOCALPROC DiskInsertNotify(ui4b Drive_No, blnr locked)
 	}
 }
 
-LOCALPROC DiskEjectedNotify(ui4b Drive_No)
+LOCALPROC DiskEjectedNotify(tDrive Drive_No)
 {
 	vSonyWritableMask &= ~ ((ui5b)1 << Drive_No);
 	vSonyInsertedMask &= ~ ((ui5b)1 << Drive_No);

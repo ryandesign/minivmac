@@ -152,20 +152,6 @@ LOCALFUNC blnr ChooseNumDrives(void)
 	return trueblnr;
 }
 
-/* option: Alternative Cpu */
-
-LOCALVAR blnr WantAltCpu;
-
-LOCALPROC ResetAltCpu(void)
-{
-	WantAltCpu = falseblnr;
-}
-
-LOCALFUNC blnr TryAsAltCpuNot(void)
-{
-	return FlagTryAsOptionNot("-alt-cpu", &WantAltCpu);
-}
-
 /* option: Emulated CPU version */
 
 LOCALVAR uimr em_cpu_vers;
@@ -366,7 +352,6 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetModelOption();
 	ResetNumDrivesOption();
 	ResetSoundOption();
-	ResetAltCpu();
 	ResetEmCpuVersOption();
 	ResetInitFullScreen();
 	ResetInitMagnify();
@@ -382,7 +367,6 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsModelOptionNot())
 	if (TryAsNumDrivesOptionNot())
 	if (TryAsSoundOptionNot())
-	if (TryAsAltCpuNot())
 	if (TryAsEmCpuVersOptionNot())
 	if (TryAsInitFullScreenNot())
 	if (TryAsInitMagnifyNot())

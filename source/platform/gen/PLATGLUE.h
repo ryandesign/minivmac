@@ -130,19 +130,19 @@ LOCALVAR void *PbufDat[NumPbufs];
 #endif
 
 #if IncludePbufs && UseStdCLibs
-LOCALFUNC si4b PbufNewFromPtr(void *p, ui5b count, ui4b *r)
+LOCALFUNC tMacErr PbufNewFromPtr(void *p, ui5b count, tPbuf *r)
 {
-	ui4b i;
-	si4b err;
+	tPbuf i;
+	tMacErr err;
 
 	if (! FirstFreePbuf(&i)) {
 		free(p);
-		err = -1;
+		err = mnvm_miscErr;
 	} else {
 		*r = i;
 		PbufDat[i] = p;
 		PbufNewNotify(i, count);
-		err = 0;
+		err = mnvm_noErr;
 	}
 
 	return err;
@@ -150,9 +150,9 @@ LOCALFUNC si4b PbufNewFromPtr(void *p, ui5b count, ui4b *r)
 #endif
 
 #if IncludePbufs
-GLOBALFUNC si4b PbufNew(ui5b count, ui4b *r)
+GLOBALFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
 {
-	si4b err = -1;
+	tMacErr err = mnvm_miscErr;
 
 #if UseStdCLibs
 	void *p = calloc(1, count);
@@ -166,7 +166,7 @@ GLOBALFUNC si4b PbufNew(ui5b count, ui4b *r)
 #endif
 
 #if IncludePbufs
-GLOBALPROC PbufDispose(ui4b i)
+GLOBALPROC PbufDispose(tPbuf i)
 {
 #if UseStdCLibs
 	free(PbufDat[i]);
@@ -178,7 +178,7 @@ GLOBALPROC PbufDispose(ui4b i)
 #if IncludePbufs
 LOCALPROC UnInitPbufs(void)
 {
-	si4b i;
+	tPbuf i;
 
 	for (i = 0; i < NumPbufs; ++i) {
 		if (PbufIsAllocated(i)) {
@@ -189,8 +189,8 @@ LOCALPROC UnInitPbufs(void)
 #endif
 
 #if IncludePbufs
-GLOBALPROC PbufTransfer(void *Buffer,
-	ui4b i, ui5b offset, ui5b count, blnr IsWrite)
+GLOBALPROC PbufTransfer(ui3p Buffer,
+	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
 {
 #if UseStdCLibs
 	void *p = ((ui3p)PbufDat[i]) + offset;
@@ -205,18 +205,18 @@ GLOBALPROC PbufTransfer(void *Buffer,
 
 /*--- text translation ---*/
 
-LOCALFUNC si4b NativeTextToMacRomanPbuf(char *x, ui4b *r)
+LOCALFUNC tMacErr NativeTextToMacRomanPbuf(char *x, tPbuf *r)
 {
 #if UseStdCLibs
 	if (NULL == x) {
-		return -1;
+		return mnvm_miscErr;
 	} else {
 		ui3p p;
 		ui5b L = strlen(x);
 
 		p = (ui3p)malloc(L);
 		if (NULL == p) {
-			return -1;
+			return mnvm_miscErr;
 		} else {
 			ui3b *p0 = (ui3b *)x;
 			ui3b *p1 = (ui3b *)p;
@@ -234,11 +234,11 @@ LOCALFUNC si4b NativeTextToMacRomanPbuf(char *x, ui4b *r)
 		}
 	}
 #else
-	return -1;
+	return mnvm_miscErr;
 #endif
 }
 
-LOCALFUNC blnr MacRomanTextToNativePtr(ui4b i, blnr IsFileName,
+LOCALFUNC blnr MacRomanTextToNativePtr(tPbuf i, blnr IsFileName,
 	ui3p *r)
 {
 	ui3p p;
@@ -336,7 +336,7 @@ LOCALPROC InitDrives(void)
 		This isn't really needed, Drives[i] and DriveNames[i]
 		need not have valid values when not vSonyIsInserted[i].
 	*/
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
@@ -346,12 +346,12 @@ LOCALPROC InitDrives(void)
 	}
 }
 
-GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyRead(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count)
 {
 #if UseStdCLibs
 	fseek(Drives[Drive_No], Sony_Start, SEEK_SET);
 	fread(Buffer, 1, *Sony_Count, Drives[Drive_No]);
-	return 0;
+	return mnvm_noErr;
 #else
 	/*
 		IMPLEMENT ME
@@ -366,16 +366,16 @@ GLOBALFUNC si4b vSonyRead(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *So
 	UnusedParam(Drive_No);
 	UnusedParam(Sony_Start);
 	UnusedParam(Sony_Count);
-	return -1;
+	return mnvm_miscErr;
 #endif
 }
 
-GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyWrite(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count)
 {
 #if UseStdCLibs
 	fseek(Drives[Drive_No], Sony_Start, SEEK_SET);
 	fwrite(Buffer, 1, *Sony_Count, Drives[Drive_No]);
-	return 0;
+	return mnvm_noErr;
 #else
 	/*
 		IMPLEMENT ME
@@ -390,16 +390,16 @@ GLOBALFUNC si4b vSonyWrite(void *Buffer, ui4b Drive_No, ui5b Sony_Start, ui5b *S
 	UnusedParam(Drive_No);
 	UnusedParam(Sony_Start);
 	UnusedParam(Sony_Count);
-	return -1;
+	return mnvm_miscErr;
 #endif
 }
 
-GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
+GLOBALFUNC tMacErr vSonyGetSize(tDrive Drive_No, ui5r *Sony_Count)
 {
 #if UseStdCLibs
 	fseek(Drives[Drive_No], 0, SEEK_END);
 	*Sony_Count = ftell(Drives[Drive_No]);
-	return 0;
+	return mnvm_noErr;
 #else
 	/*
 		IMPLEMENT ME
@@ -411,11 +411,11 @@ GLOBALFUNC si4b vSonyGetSize(ui4b Drive_No, ui5b *Sony_Count)
 	*/
 	UnusedParam(Drive_No);
 	UnusedParam(Sony_Count);
-	return -1;
+	return mnvm_miscErr;
 #endif
 }
 
-LOCALFUNC si4b vSonyEject0(ui4b Drive_No, blnr deleteit)
+LOCALFUNC tMacErr vSonyEject0(tDrive Drive_No, blnr deleteit)
 {
 	DiskEjectedNotify(Drive_No);
 
@@ -446,16 +446,16 @@ LOCALFUNC si4b vSonyEject0(ui4b Drive_No, blnr deleteit)
 	}
 #endif
 
-	return 0x0000;
+	return mnvm_noErr;
 }
 
-GLOBALFUNC si4b vSonyEject(ui4b Drive_No)
+GLOBALFUNC tMacErr vSonyEject(tDrive Drive_No)
 {
 	return vSonyEject0(Drive_No, falseblnr);
 }
 
 #if IncludeSonyNew
-GLOBALFUNC si4b vSonyEjectDelete(ui4b Drive_No)
+GLOBALFUNC tMacErr vSonyEjectDelete(tDrive Drive_No)
 {
 	return vSonyEject0(Drive_No, trueblnr);
 }
@@ -463,7 +463,7 @@ GLOBALFUNC si4b vSonyEjectDelete(ui4b Drive_No)
 
 LOCALPROC UnInitDrives(void)
 {
-	si4b i;
+	tDrive i;
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (vSonyIsInserted(i)) {
@@ -473,12 +473,12 @@ LOCALPROC UnInitDrives(void)
 }
 
 #if IncludeSonyGetName
-GLOBALFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r)
+GLOBALFUNC tMacErr vSonyGetName(tDrive Drive_No, tPbuf *r)
 {
 #if UseStdCLibs
 	char *drivepath = DriveNames[Drive_No];
 	if (NULL == drivepath) {
-		return -1;
+		return mnvm_miscErr;
 	} else {
 		char *s = strrchr(drivepath, '/');
 		if (s == NULL) {
@@ -489,7 +489,7 @@ GLOBALFUNC si4b vSonyGetName(ui4b Drive_No, ui4b *r)
 		return NativeTextToMacRomanPbuf(s, r);
 	}
 #else
-	return -1;
+	return mnvm_miscErr;
 #endif
 }
 #endif
@@ -503,7 +503,7 @@ LOCALFUNC blnr Sony_Insert0(OpenFileRef refnum, blnr locked,
 		it as a locked disk.
 	*/
 
-	ui4b Drive_No;
+	tDrive Drive_No;
 
 	if (! FirstFreeDisk(&Drive_No)) {
 #if UseStdCLibs
@@ -632,7 +632,7 @@ LOCALPROC MakeNewDiskAtDefault(ui5b L)
 LOCALFUNC blnr AllocateMacROM(void)
 {
 #if UseStdCLibs
-	ROM = (ui4b *)calloc(1, kROM_Size);
+	ROM = (ui3p)calloc(1, kROM_Size);
 	if (ROM == NULL) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
@@ -703,7 +703,7 @@ LOCALFUNC blnr LoadMacRom(void)
 LOCALFUNC blnr AllocateMacRAM(void)
 {
 #if UseStdCLibs
-	RAM = (ui4b *)calloc(1, kRAM_Size + RAMSafetyMarginFudge);
+	RAM = (ui3p)calloc(1, kRAM_Size + RAMSafetyMarginFudge);
 	if (RAM == NULL) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
@@ -1341,7 +1341,7 @@ LOCALPROC CheckSavedMacMsg(void)
 */
 
 #if IncludeHostTextClipExchange
-GLOBALFUNC si4b HTCEexport(ui4b i)
+GLOBALFUNC tMacErr HTCEexport(tPbuf i)
 {
 	/*
 		IMPLEMENT ME sometime
@@ -1361,12 +1361,12 @@ GLOBALFUNC si4b HTCEexport(ui4b i)
 
 	PbufDispose(i);
 
-	return -1;
+	return mnvm_miscErr;
 }
 #endif
 
 #if IncludeHostTextClipExchange
-GLOBALFUNC si4b HTCEimport(ui4b *r)
+GLOBALFUNC tMacErr HTCEimport(tPbuf *r)
 {
 	/*
 		IMPLEMENT ME sometime
@@ -1379,7 +1379,7 @@ GLOBALFUNC si4b HTCEimport(ui4b *r)
 		will do) on failure.
 	*/
 
-	return -1;
+	return mnvm_miscErr;
 }
 #endif
 

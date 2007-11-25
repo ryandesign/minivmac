@@ -191,6 +191,14 @@ LOCALPROC WriteOneCFBundleDocumentType(void)
 	}
 }
 
+LOCALPROC WriteTheBundleIdentifier(void)
+{
+	WriteCStrToDestFile(kBundleIdentifier);
+	if (WantIconMaster) {
+		WriteCStrToDestFile(".im");
+	}
+}
+
 LOCALPROC WriteMyInfoPListContents(void)
 {
 	WritePListBeginDict();
@@ -212,12 +220,12 @@ LOCALPROC WriteMyInfoPListContents(void)
 		WritePListKeyString("CFBundleExecutable", kStrAppAbbrev);
 		WritePListKeyProcString("CFBundleGetInfoString", WriteGetInfoString);
 		WritePListKeyString("CFBundleIconFile", "AppIcon.icns");
-		WritePListKeyString("CFBundleIdentifier", kBundleIdentifier);
+		WritePListKeyProcString("CFBundleIdentifier", WriteTheBundleIdentifier);
 		WritePListKeyString("CFBundleInfoDictionaryVersion", "6.0");
 		WritePListKeyString("CFBundleName", kStrAppName);
 		WritePListKeyString("CFBundlePackageType", "APPL");
 		WritePListKeyProcString("CFBundleShortVersionString", WriteVersionStr);
-		WritePListKeyString("CFBundleSignature", kMacCreatorSig);
+		WritePListKeyProcString("CFBundleSignature", Write_MacCreatorSigOrGeneric);
 		WritePListKeyProcString("CFBundleVersion", WriteVersionStr);
 		WritePListKeyString("LSRequiresCarbon", "true/");
 

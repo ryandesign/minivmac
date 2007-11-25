@@ -20,36 +20,6 @@
 
 #pragma segment MPWSupport
 
-LOCALPROC DoSrcFileMPWMakeCompileBody(void)
-{
-	blnr IsAsmFile = HaveAsm && ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
-
-	WriteBgnDestFileLn();
-	if (IsAsmFile) {
-		WriteCStrToDestFile("{mk_CallA} ");
-	} else {
-		WriteCStrToDestFile("{mk_CallC} ");
-	}
-	WriteQuoteToDestFile();
-	WriteSrcFileFilePath();
-	WriteQuoteToDestFile();
-	WriteCStrToDestFile(" -o ");
-	WriteQuoteToDestFile();
-	WriteSrcFileObjPath();
-	WriteQuoteToDestFile();
-	if (! IsAsmFile) {
-		WriteCStrToDestFile(" {mk_COptions}");
-	}
-	WriteEndDestFileLn();
-}
-
-static void DoSrcFileMPWMakeCompile(void)
-{
-	WriteMakeRule(WriteSrcFileObjPath,
-		DoSrcFileMakeCompileDeps,
-		DoSrcFileMPWMakeCompileBody);
-}
-
 LOCALPROC DoSrcFileMPWMakeObjects(void)
 {
 	WriteBgnDestFileLn();
@@ -123,13 +93,7 @@ static void WriteMPWSpecificFiles(void)
 
 	WriteBlankLineToDestFile();
 	if (HaveAsm) {
-		WriteDestFileLn("mk_CallA = PPCAsm");
 		WriteDestFileLn("mk_AOptions = ");
-	}
-	if (gbo_cpufam == gbk_cpufam_68k) {
-		WriteDestFileLn("mk_CallC = SC");
-	} else if (gbo_cpufam == gbk_cpufam_ppc) {
-		WriteDestFileLn("mk_CallC = MrC");
 	}
 
 	WriteBgnDestFileLn();
@@ -149,7 +113,7 @@ static void WriteMPWSpecificFiles(void)
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
-	DoAllSrcFilesWithSetup(DoSrcFileMPWMakeCompile);
+	DoAllSrcFilesWithSetup(DoSrcFileMakeCompile);
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("ObjFiles = \266");
 	++DestFileIndent;

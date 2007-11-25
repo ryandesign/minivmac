@@ -82,7 +82,7 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 #endif
 		}
 		WriteDestFileLn("#define UsingCarbonLib 1");
-	} else if (cur_targ == gbk_targ_wx86) {
+	} else if (gbo_apifam == gbk_apifam_win) {
 #if support_ide_mw8
 		if (cur_ide == gbk_ide_mw8) {
 			WriteDestFileLn("#include <Win32Headers.h>");
@@ -100,6 +100,10 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 		}
 		WriteDestFileLn("#include <shlobj.h>");
 		WriteDestFileLn("#include <tchar.h>");
+		if ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ)) {
+			WriteDestFileLn("#include <aygshell.h>");
+			WriteDestFileLn("#include <commdlg.h>");
+		}
 	} else {
 #if support_ide_mw8
 		if (cur_ide == gbk_ide_mw8) {

@@ -32,17 +32,17 @@
 
 #include "SCRNEMDV.h"
 
-LOCALFUNC blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
-					long L, long *j)
+LOCALFUNC blnr FindFirstChangeInLVecs(ui5b *ptr1, ui5b *ptr2,
+					uimr L, uimr *j)
 {
 /*
 	find index of first difference
 */
-	long *p1 = ptr1;
-	long *p2 = ptr2;
-	long i;
+	ui5b *p1 = ptr1;
+	ui5b *p2 = ptr2;
+	uimr i;
 
-	for (i = L; --i >= 0; ) {
+	for (i = L; i != 0; --i) {
 		if (*p1++ != *p2++) {
 			--p1;
 			*j = p1 - ptr1;
@@ -52,17 +52,17 @@ LOCALFUNC blnr FindFirstChangeInLVecs(long *ptr1, long *ptr2,
 	return falseblnr;
 }
 
-LOCALFUNC blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
-					long L, long *j)
+LOCALFUNC blnr FindLastChangeInLVecs(ui5b *ptr1, ui5b *ptr2,
+					uimr L, uimr *j)
 {
 /*
 	find index of last difference
 */
-	long *p1 = ptr1 + L;
-	long *p2 = ptr2 + L;
-	long i;
+	ui5b *p1 = ptr1 + L;
+	ui5b *p2 = ptr2 + L;
+	uimr i;
 
-	for (i = L; --i >= 0; ) {
+	for (i = L; i != 0; --i) {
 		if (*--p1 != *--p2) {
 			*j = p1 - ptr1;
 			return trueblnr;
@@ -76,19 +76,19 @@ LOCALFUNC blnr FindLastChangeInLVecs(long *ptr1, long *ptr2,
 #define kMain_Buffer      (kRAM_Size - kMain_Offset)
 #define kAlternate_Buffer (kRAM_Size - kAlternate_Offset)
 
-LOCALVAR unsigned long NextDrawRow = 0;
+LOCALVAR uimr NextDrawRow = 0;
 
 GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
 	si4b *top, si4b *left, si4b *bottom, si4b *right)
 {
 	char *screencurrentbuff;
-	long j0;
-	long j1;
-	long copysize;
-	long copyoffset;
-	long copyrows;
-	unsigned long LimitDrawRow;
-	unsigned long MaxRowsDrawnPerTick;
+	uimr j0;
+	uimr j1;
+	uimr copysize;
+	uimr copyoffset;
+	uimr copyrows;
+	uimr LimitDrawRow;
+	uimr MaxRowsDrawnPerTick;
 
 	if (TimeAdjust < 4) {
 		MaxRowsDrawnPerTick = vMacScreenHeight;
@@ -104,9 +104,9 @@ GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
 		screencurrentbuff = (char *) get_ram_address(kAlternate_Buffer);
 	}
 
-	if (! FindFirstChangeInLVecs((long *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
-			(long *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),
-			((long)(vMacScreenHeight - NextDrawRow) * (long)vMacScreenWidth) / 32, &j0))
+	if (! FindFirstChangeInLVecs((ui5b *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
+			(ui5b *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),
+			((uimr)(vMacScreenHeight - NextDrawRow) * (uimr)vMacScreenWidth) / 32, &j0))
 	{
 		NextDrawRow = 0;
 		return falseblnr;
@@ -120,9 +120,9 @@ GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
 	} else {
 		NextDrawRow = LimitDrawRow;
 	}
-	if (! FindLastChangeInLVecs((long *)screencurrentbuff,
-		(long *)screencomparebuff,
-		((long)LimitDrawRow * (long)vMacScreenWidth) / 32, &j1))
+	if (! FindLastChangeInLVecs((ui5b *)screencurrentbuff,
+		(ui5b *)screencomparebuff,
+		((uimr)LimitDrawRow * (uimr)vMacScreenWidth) / 32, &j1))
 	{
 		return falseblnr;
 	} else {

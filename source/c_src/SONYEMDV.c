@@ -27,8 +27,8 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
-#include "MINEM68K.h"
 #include "ADDRSPAC.h"
+#include "MINEM68K.h"
 #endif
 
 #include "SONYEMDV.h"
@@ -135,39 +135,39 @@ enum {
 #define MinTicksBetweenInsert 60
 	/* if call PostEvent too frequently, insert events seem to get lost */
 
-LOCALVAR ui4b DelayUntilNextInsert;
+LOCALVAR ui4r DelayUntilNextInsert;
 
 #define vSonyIsLocked(Drive_No) ((vSonyWritableMask & ((ui5b)1 << (Drive_No))) == 0)
 
-LOCALVAR ui5b ImageOffset[NumDrives]; /* size of any header in disk image file */
-LOCALVAR ui5b ImageSize[NumDrives]; /* size of disk image file contents */
+LOCALVAR ui5r ImageOffset[NumDrives]; /* size of any header in disk image file */
+LOCALVAR ui5r ImageSize[NumDrives]; /* size of disk image file contents */
 
 #define checkheaderoffset 1024
 #define checkheadersize 128
 
 LOCALVAR CPTR MountCallBack = 0;
 
-LOCALFUNC ui4b vSonyNextPendingInsert(ui4b *Drive_No)
+LOCALFUNC tMacErr vSonyNextPendingInsert(tDrive *Drive_No)
 {
 	ui5b MountPending = vSonyInsertedMask & (~ vSonyMountedMask);
 	if (MountPending != 0) {
-		int i;
+		tDrive i;
 		for (i = 0; i < NumDrives; ++i) {
 			if ((MountPending & ((ui5b)1 << i)) != 0) {
-				si4b result;
-				ui5b L;
-				ui5b offset = 0;
+				tMacErr result;
+				ui5r L;
+				ui5r offset = 0;
 
 				result = vSonyGetSize(i, &L);
-				if (0 == result) {
+				if (mnvm_noErr == result) {
 #if IncludeSonyRawMode
 					if (! vSonyRawMode)
 #endif
 					{
 						ui3b Temp[checkheadersize];
-						ui5b Sony_Count = checkheadersize;
-						result = vSonyRead((void *)&Temp, i, checkheaderoffset, &Sony_Count);
-						if (result == 0) {
+						ui5r Sony_Count = checkheadersize;
+						result = vSonyRead(Temp, i, checkheaderoffset, &Sony_Count);
+						if (mnvm_noErr == result) {
 							if ((Temp[0] == 0x42) && (Temp[1] == 0x44)) {
 								/* hfs */
 							} else if ((Temp[0] == 0xD2) && (Temp[1] == 0xD7)) {
@@ -185,7 +185,7 @@ LOCALFUNC ui4b vSonyNextPendingInsert(ui4b *Drive_No)
 					}
 				}
 
-				if (0 != result) {
+				if (mnvm_noErr != result) {
 					(void) vSonyEject(i);
 				} else {
 					vSonyMountedMask |= ((ui5b)1 << i);
@@ -201,7 +201,7 @@ LOCALFUNC ui4b vSonyNextPendingInsert(ui4b *Drive_No)
 		}
 	}
 
-	return 0xFFC8; /* No Such Drive (-56) */
+	return mnvm_nsDrvErr;
 }
 
 /* This checks to see if a disk (image) has been inserted */
@@ -211,9 +211,9 @@ GLOBALPROC Sony_Update (void)
 		--DelayUntilNextInsert;
 	} else {
 		if (MountCallBack != 0) {
-			ui4b i;
+			tDrive i;
 
-			if (0 == vSonyNextPendingInsert(&i)) {
+			if (mnvm_noErr == vSonyNextPendingInsert(&i)) {
 				ui5b data = i;
 
 				if (vSonyIsLocked(i)) {
@@ -229,49 +229,49 @@ GLOBALPROC Sony_Update (void)
 }
 
 #if IncludePbufs
-LOCALFUNC si4b CheckPbuf(ui4b Pbuf_No)
+LOCALFUNC tMacErr CheckPbuf(tPbuf Pbuf_No)
 {
-	si4b result;
+	tMacErr result;
 
 	if (Pbuf_No >= NumPbufs) {
-		result = 0xFFC8; /* No Such Drive (-56) */
+		result = mnvm_nsDrvErr;
 	} else if (! PbufIsAllocated(Pbuf_No)) {
-		result = 0xFFBF; /* Say it's offline (-65) */
+		result = mnvm_offLinErr;
 	} else {
-		result = 0;
+		result = mnvm_noErr;
 	}
 
 	return result;
 }
 #endif
 
-LOCALFUNC si4b CheckReadableDrive(ui4b Drive_No)
+LOCALFUNC tMacErr CheckReadableDrive(tDrive Drive_No)
 {
-	si4b result;
+	tMacErr result;
 
 	if (Drive_No >= NumDrives) {
-		result = 0xFFC8; /* No Such Drive (-56) */
+		result = mnvm_nsDrvErr;
 	} else if (! vSonyIsMounted(Drive_No)) {
-		result = 0xFFBF; /* Say it's offline (-65) */
+		result = mnvm_offLinErr;
 	} else {
-		result = 0;
+		result = mnvm_noErr;
 	}
 
 	return result;
 }
 
-LOCALFUNC si4b CheckWriteableDrive(ui4b Drive_No)
+LOCALFUNC tMacErr CheckWriteableDrive(tDrive Drive_No)
 {
-	si4b result;
+	tMacErr result;
 
 	if (Drive_No >= NumDrives) {
-		result = 0xFFC8; /* No Such Drive (-56) */
+		result = mnvm_nsDrvErr;
 	} else if (! vSonyIsMounted(Drive_No)) {
-		result = 0xFFBF; /* Say it's offline (-65) */
+		result = mnvm_offLinErr;
 	} else if (vSonyIsLocked(Drive_No)) {
-		result = 0xFFD2; /* volume is locked (-46) */
+		result = mnvm_vLckdErr;
 	} else {
-		result = 0;
+		result = mnvm_noErr;
 	}
 
 	return result;
@@ -293,7 +293,7 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 				if (p != nullpr)
 				if (do_get_mem_word(p + DSKDat_checkval) == kcom_callcheck)
 				{
-					si4b result = 0xFFEF;
+					tMacErr result = mnvm_controlErr;
 					ui4b extn_id = do_get_mem_word(p + DSKDat_extension);
 					ui4b command = do_get_mem_word(p + DSKDat_commnd);
 
@@ -302,7 +302,7 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 							switch (command) {
 								case kCmndVersion:
 									do_put_mem_word(p + kParamVersion, 1);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndFindExtnFind:
 									{
@@ -310,23 +310,23 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 
 										if (extn == kDiskDriverExtension) {
 											do_put_mem_word(p + kParamFindExtnTheId, kExtnDisk);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 #if IncludePbufs
 										if (extn == kHostParamBuffersExtension) {
 											do_put_mem_word(p + kParamFindExtnTheId, kExtnParamBuffers);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 #endif
 #if IncludeHostTextClipExchange
 										if (extn == kHostClipExchangeExtension) {
 											do_put_mem_word(p + kParamFindExtnTheId, kExtnHostTextClipExchange);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 #endif
 										if (extn == kFindExtnExtension) {
 											do_put_mem_word(p + kParamFindExtnTheId, kExtnFindExtn);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 										{
 											/* not found */
@@ -339,23 +339,23 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 
 										if (extn == kExtnDisk) {
 											do_put_mem_long(p + kParamFindExtnTheExtn, kDiskDriverExtension);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 #if IncludePbufs
 										if (extn == kExtnParamBuffers) {
 											do_put_mem_long(p + kParamFindExtnTheExtn, kHostParamBuffersExtension);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 #endif
 #if IncludeHostTextClipExchange
 										if (extn == kExtnHostTextClipExchange) {
 											do_put_mem_long(p + kParamFindExtnTheExtn, kHostClipExchangeExtension);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 #endif
 										if (extn == kExtnFindExtn) {
 											do_put_mem_long(p + kParamFindExtnTheExtn, kFindExtnExtension);
-											result = 0x0000;
+											result = mnvm_noErr;
 										} else
 										{
 											/* not found */
@@ -364,7 +364,7 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 								case kCmndFindExtnCount:
 									do_put_mem_word(p + kParamFindExtnTheId, kNumExtns);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 							}
 							break;
@@ -373,15 +373,15 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 							switch (command) {
 								case kCmndVersion:
 									do_put_mem_word(p + kParamVersion, 1);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndPbufFeatures:
 									do_put_mem_long(p + DSKDat_params + 0, 0);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndPbufNew:
 									{
-										ui4b Pbuf_No;
+										tPbuf Pbuf_No;
 										ui5b count = do_get_mem_long(p + DSKDat_params + 4);
 										/* reserved word at offset 2, should be zero */
 										result = PbufNew(count, &Pbuf_No);
@@ -390,44 +390,44 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 								case kCmndPbufDispose:
 									{
-										ui4b Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
+										tPbuf Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
 										/* reserved word at offset 2, should be zero */
 										result = CheckPbuf(Pbuf_No);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											PbufDispose(Pbuf_No);
 										}
 									}
 									break;
 								case kCmndPbufGetSize:
 									{
-										ui4b Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
+										tPbuf Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
 										/* reserved word at offset 2, should be zero */
 
 										result = CheckPbuf(Pbuf_No);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											do_put_mem_long(p + DSKDat_params + 4, PbufSize[Pbuf_No]);
 										}
 									}
 									break;
 								case kCmndPbufTransfer:
 									{
-										ui4b Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
+										tPbuf Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
 										/* reserved word at offset 2, should be zero */
-										ui5b offset = do_get_mem_long(p + DSKDat_params + 4);
-										ui5b count = do_get_mem_long(p + DSKDat_params + 8);
+										ui5r offset = do_get_mem_long(p + DSKDat_params + 4);
+										ui5r count = do_get_mem_long(p + DSKDat_params + 8);
 										CPTR Buffera = do_get_mem_long(p + DSKDat_params + 12);
 										blnr IsWrite = (do_get_mem_word(p + DSKDat_params + 16) != 0);
 										result = CheckPbuf(Pbuf_No);
-										if (0 == result) {
-											ui5b endoff = offset + count;
+										if (mnvm_noErr == result) {
+											ui5r endoff = offset + count;
 											if ((endoff < offset) /* overflow */
 												|| (endoff > PbufSize[Pbuf_No]))
 											{
-												result = 0xFFD9; /* End of file (-39) */
+												result = mnvm_eofErr;
 											} else {
-												void *Buffer = (void*)get_real_address(count, trueblnr, Buffera);
+												ui3p Buffer = get_real_address(count, trueblnr, Buffera);
 												if (Buffer == nullpr) {
-													result = -1;
+													result = mnvm_miscErr;
 												} else {
 													PbufTransfer(Buffer, Pbuf_No, offset, count,
 														IsWrite);
@@ -444,25 +444,25 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 							switch (command) {
 								case kCmndVersion:
 									do_put_mem_word(p + kParamVersion, 1);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndHTCEFeatures:
 									do_put_mem_long(p + DSKDat_params + 0, 0);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndHTCEExport:
 									{
-										ui4b Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
+										tPbuf Pbuf_No = do_get_mem_word(p + DSKDat_params + 0);
 
 										result = CheckPbuf(Pbuf_No);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											result = HTCEexport(Pbuf_No);
 										}
 									}
 									break;
 								case kCmndHTCEImport:
 									{
-										ui4b Pbuf_No;
+										tPbuf Pbuf_No;
 										result = HTCEimport(&Pbuf_No);
 										do_put_mem_word(p + DSKDat_params + 0, Pbuf_No);
 									}
@@ -474,30 +474,30 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 							switch (command) {
 								case kCmndVersion:
 									do_put_mem_word(p + kParamVersion, 2);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskNDrives: /* count drives */
 									do_put_mem_word(p + kParamDiskNumDrives, NumDrives);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskRead:
 									{
-										ui5b NewSony_Count = 0;
-										ui4b Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
+										ui5r NewSony_Count = 0;
+										tDrive Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
 										result = CheckReadableDrive(Drive_No);
-										if (0 == result) {
-											ui5b Sony_Start = do_get_mem_long(p + kParamDiskStart);
-											ui5b Sony_Count = do_get_mem_long(p + kParamDiskCount);
-											ui5b Sony_End = Sony_Start + Sony_Count;
+										if (mnvm_noErr == result) {
+											ui5r Sony_Start = do_get_mem_long(p + kParamDiskStart);
+											ui5r Sony_Count = do_get_mem_long(p + kParamDiskCount);
+											ui5r Sony_End = Sony_Start + Sony_Count;
 											if ((Sony_End < Sony_Start) /* overflow */
 												|| (Sony_End > ImageSize[Drive_No]))
 											{
-												result = 0xFFD9; /* End of file (-39) */
+												result = mnvm_eofErr;
 											} else {
 												CPTR Buffera = do_get_mem_long(p + kParamDiskBuffer);
-												void *Buffer = (void*)get_real_address(Sony_Count, trueblnr, Buffera);
+												ui3p Buffer = get_real_address(Sony_Count, trueblnr, Buffera);
 												if (Buffer == nullpr) {
-													result = -1;
+													result = mnvm_miscErr;
 												} else {
 													result = vSonyRead(Buffer, Drive_No, ImageOffset[Drive_No] + Sony_Start, &Sony_Count);
 													NewSony_Count = Sony_Count;
@@ -509,22 +509,22 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 								case kCmndDiskWrite:
 									{
-										ui5b NewSony_Count = 0;
-										ui4b Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
+										ui5r NewSony_Count = 0;
+										tDrive Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
 										result = CheckWriteableDrive(Drive_No);
-										if (0 == result) {
-											ui5b Sony_Start = do_get_mem_long(p + kParamDiskStart);
-											ui5b Sony_Count = do_get_mem_long(p + kParamDiskCount);
-											ui5b Sony_End = Sony_Start + Sony_Count;
+										if (mnvm_noErr == result) {
+											ui5r Sony_Start = do_get_mem_long(p + kParamDiskStart);
+											ui5r Sony_Count = do_get_mem_long(p + kParamDiskCount);
+											ui5r Sony_End = Sony_Start + Sony_Count;
 											if ((Sony_End < Sony_Start) /* overflow */
 												|| (Sony_End > ImageSize[Drive_No]))
 											{
-												result = 0xFFD9; /* End of file (-39) */
+												result = mnvm_eofErr;
 											} else {
 												CPTR Buffera = do_get_mem_long(p + kParamDiskBuffer);
-												void *Buffer = (void*)get_real_address(Sony_Count, falseblnr, Buffera);
+												ui3p Buffer = get_real_address(Sony_Count, falseblnr, Buffera);
 												if (Buffer == nullpr) {
-													result = -1;
+													result = mnvm_miscErr;
 												} else {
 													result = vSonyWrite(Buffer, Drive_No, ImageOffset[Drive_No] + Sony_Start, &Sony_Count);
 													NewSony_Count = Sony_Count;
@@ -536,9 +536,9 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 								case kCmndDiskEject:
 									{
-										ui4b Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
+										tDrive Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
 										result = CheckReadableDrive(Drive_No);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											result = vSonyEject(Drive_No);
 											if (QuitOnEject != 0) {
 												if (! AnyDiskInserted()) {
@@ -550,26 +550,26 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 								case kCmndDiskGetSize:
 									{
-										ui4b Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
+										tDrive Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
 
 										result = CheckReadableDrive(Drive_No);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											do_put_mem_long(p + kParamDiskCount, ImageSize[Drive_No]);
-											result = 0;
+											result = mnvm_noErr;
 										}
 									}
 									break;
 								case kCmndDiskGetCallBack:
 									do_put_mem_long(p + kParamDiskBuffer, MountCallBack);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskSetCallBack:
 									MountCallBack = do_get_mem_long(p + kParamDiskBuffer);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskQuitOnEject:
 									QuitOnEject = trueblnr;
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskFeatures:
 									{
@@ -589,15 +589,15 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 											);
 
 										do_put_mem_long(p + DSKDat_params + 0, v);
-										result = 0x0000;
+										result = mnvm_noErr;
 									}
 									break;
 								case kCmndDiskNextPendingInsert:
 									{
-										ui4b i;
+										tDrive i;
 
 										result = vSonyNextPendingInsert(&i);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											do_put_mem_word(p + kParamDiskDrive_No, i);
 										}
 									}
@@ -605,26 +605,26 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 #if IncludeSonyRawMode
 								case kCmndDiskGetRawMode:
 									do_put_mem_word(p + kParamDiskBuffer, vSonyRawMode);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskSetRawMode:
 									vSonyRawMode = do_get_mem_word(p + kParamDiskBuffer);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 #endif
 #if IncludeSonyNew
 								case kCmndDiskNew:
 									{
 										ui5b count = do_get_mem_long(p + DSKDat_params + 0);
-										ui4b Pbuf_No = do_get_mem_word(p + DSKDat_params + 4);
+										tPbuf Pbuf_No = do_get_mem_word(p + DSKDat_params + 4);
 										/* reserved word at offset 6, should be zero */
 
-										result = 0x0000;
+										result = mnvm_noErr;
 
 #if IncludePbufs
 										if (Pbuf_No != NotAPbuf) {
 											result = CheckPbuf(Pbuf_No);
-											if (0 == result) {
+											if (mnvm_noErr == result) {
 												vSonyNewDiskWanted = trueblnr;
 												vSonyNewDiskSize = count;
 #if IncludeSonyNameNew
@@ -646,13 +646,13 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 								case kCmndDiskGetNewWanted:
 									do_put_mem_word(p + kParamDiskBuffer, vSonyNewDiskWanted);
-									result = 0x0000;
+									result = mnvm_noErr;
 									break;
 								case kCmndDiskEjectDelete:
 									{
-										ui4b Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
+										tDrive Drive_No = do_get_mem_word(p + kParamDiskDrive_No);
 										result = CheckWriteableDrive(Drive_No);
-										if (0 == result) {
+										if (mnvm_noErr == result) {
 											result = vSonyEjectDelete(Drive_No);
 										}
 									}
@@ -661,11 +661,11 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 #if IncludeSonyGetName
 								case kCmndDiskGetName:
 									{
-										ui4b Drive_No = do_get_mem_word(p + DSKDat_params + 0);
+										tDrive Drive_No = do_get_mem_word(p + DSKDat_params + 0);
 										/* reserved word at offset 2, should be zero */
 										result = CheckReadableDrive(Drive_No);
-										if (0 == result) {
-											ui4b Pbuf_No;
+										if (mnvm_noErr == result) {
+											tPbuf Pbuf_No;
 											result = vSonyGetName(Drive_No, &Pbuf_No);
 											do_put_mem_word(p + DSKDat_params + 4, Pbuf_No);
 										}
@@ -678,7 +678,7 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 
 					do_put_mem_word(p + DSKDat_result, result);
 					do_put_mem_word(p + DSKDat_checkval, 0);
-					ParamAddrHi = -1;
+					ParamAddrHi = (ui4b) - 1;
 				}
 			}
 			break;
@@ -694,5 +694,5 @@ GLOBALPROC Sony_Reset(void)
 	DelayUntilNextInsert = 0;
 	QuitOnEject = falseblnr;
 	MountCallBack = 0;
-	ParamAddrHi = -1;
+	ParamAddrHi = (ui4b) - 1;
 }

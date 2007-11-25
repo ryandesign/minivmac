@@ -19,38 +19,6 @@
 
 #pragma segment BashGccSupport
 
-LOCALPROC DoSrcFileBgcMakeCompileBody(void)
-{
-	blnr IsAsmFile = HaveAsm && ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
-
-	WriteBgnDestFileLn();
-	if (IsAsmFile) {
-		WriteCStrToDestFile("$(mk_CallA) ");
-	} else {
-		WriteCStrToDestFile("$(mk_CallC) ");
-	}
-	WriteQuoteToDestFile();
-	WriteSrcFileFilePath();
-	WriteQuoteToDestFile();
-	WriteCStrToDestFile(" -o ");
-	WriteQuoteToDestFile();
-	WriteSrcFileObjPath();
-	WriteQuoteToDestFile();
-	if (IsAsmFile) {
-		WriteCStrToDestFile(" $(mk_AOptions)");
-	} else {
-		WriteCStrToDestFile(" $(mk_COptions)");
-	}
-	WriteEndDestFileLn();
-}
-
-LOCALPROC DoSrcFileBgcMakeCompile(void)
-{
-	WriteMakeRule(WriteSrcFileObjPath,
-		DoSrcFileMakeCompileDeps,
-		DoSrcFileBgcMakeCompileBody);
-}
-
 LOCALPROC DoSrcFileBgcMakeObjects(void)
 {
 	WriteBgnDestFileLn();
@@ -172,7 +140,6 @@ static void WriteBashGccSpecificFiles(void)
 
 	WriteBlankLineToDestFile();
 	if (HaveAsm) {
-		WriteDestFileLn("mk_CallA = gcc");
 		WriteBgnDestFileLn();
 		WriteCStrToDestFile("mk_AOptions = -c");
 		if (cur_ide == gbk_ide_xcd) {
@@ -186,10 +153,6 @@ static void WriteBashGccSpecificFiles(void)
 		}
 		WriteEndDestFileLn();
 	}
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("mk_CallC = ");
-	WriteXCDcallgcc();
-	WriteEndDestFileLn();
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("mk_COptions =");
@@ -211,7 +174,7 @@ static void WriteBashGccSpecificFiles(void)
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
-	DoAllSrcFilesWithSetup(DoSrcFileBgcMakeCompile);
+	DoAllSrcFilesWithSetup(DoSrcFileMakeCompile);
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("ObjFiles = ");

@@ -96,7 +96,7 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 		WriteDestFileLn("#define HaveCPUfamM68K 1");
 	}
 
-	if ((cur_ide == gbk_ide_bgc) || (cur_ide == gbk_ide_xcd)) {
+	if ((cur_ide == gbk_ide_bgc) || (cur_ide == gbk_ide_xcd) || (cur_ide == gbk_ide_snc)) {
 		WriteDestFileLn("#define MayInline inline");
 	} else
 #if support_ide_mw8
@@ -205,7 +205,7 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 		WriteDestFileLn("#pragma warning(disable : 4244 4761 4018 4245 4024 4305)");
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("/* ignore unused inline warning */");
-		WriteDestFileLn("#pragma warning(disable : 4514)");
+		WriteDestFileLn("#pragma warning(disable : 4514 4714)");
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("/* ignore type redefinition warning */");
 		WriteDestFileLn("#pragma warning(disable : 4142)");
