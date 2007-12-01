@@ -1,7 +1,7 @@
 /*
 	ROMEMDEV.c
 
-	Copyright (C) 2006 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2007 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -570,6 +570,9 @@ LOCALVAR const ui4b sony_driver[] = {
 #define Sony_DriverBase 0x34680
 #endif
 
+#define kVidMem_Base 0x00540000
+#define kROM_Base 0x00400000
+
 #if CurEmu <= kEmuClassic
 LOCALPROC Sony_Install(void)
 {
@@ -582,6 +585,14 @@ LOCALPROC Sony_Install(void)
 		pfrom++;
 		pto += 2;
 	}
+
+#if IncludeVidMem
+	{
+		ui3p patchp = pto;
+
+#include "SCRNHACK.h"
+	}
+#endif
 }
 #endif
 

@@ -345,6 +345,94 @@ LOCALFUNC blnr TryAsWantMinExtnNot(void)
 	return FlagTryAsOptionNot("-min-extn", &WantMinExtn);
 }
 
+/* option: horizontal resolution */
+
+LOCALVAR uimr cur_hres;
+LOCALVAR blnr have_hres;
+
+LOCALPROC ResetHResOption(void)
+{
+	have_hres = falseblnr;
+}
+
+LOCALFUNC blnr TryAsHResOptionNot(void)
+{
+	return NumberTryAsOptionNot("-hres", (int *)&cur_hres, &have_hres);
+}
+
+LOCALVAR uimr dflt_hres;
+
+LOCALFUNC blnr ChooseHRes(void)
+{
+	dflt_hres = 512;
+	if (! have_hres) {
+		cur_hres = dflt_hres;
+		have_hres = trueblnr;
+	} else {
+		if ((cur_hres & 0x1F) != 0) {
+			ReportParseFailure("-hres must be a multiple of 32");
+			return falseblnr;
+		} else if (cur_hres < 128) {
+			ReportParseFailure("-hres must be >= 128");
+			return falseblnr;
+		} else if (cur_hres >= (uimr)32 * 1024) {
+			ReportParseFailure("-hres must be < 32k");
+			return falseblnr;
+		}
+	}
+	return trueblnr;
+}
+
+/* option: vertical resolution */
+
+LOCALVAR uimr cur_vres;
+LOCALVAR blnr have_vres;
+
+LOCALPROC ResetVResOption(void)
+{
+	have_vres = falseblnr;
+}
+
+LOCALFUNC blnr TryAsVResOptionNot(void)
+{
+	return NumberTryAsOptionNot("-vres", (int *)&cur_vres, &have_vres);
+}
+
+LOCALVAR uimr dflt_vres;
+
+LOCALFUNC blnr ChooseVRes(void)
+{
+	dflt_vres = 342;
+	if (! have_vres) {
+		cur_vres = dflt_vres;
+		have_vres = trueblnr;
+	} else {
+		if (cur_vres < 128) {
+			ReportParseFailure("-vres must be >= 128");
+			return falseblnr;
+		} else if (cur_vres >= (uimr)32 * 1024) {
+			ReportParseFailure("-vres must be < 32k");
+			return falseblnr;
+		}
+	}
+	return trueblnr;
+}
+
+/* ------ */
+
+LOCALVAR blnr NeedScrnHack;
+
+LOCALFUNC blnr ChooseScreenOpts(void)
+{
+	if (cur_hres * cur_vres > (uimr)2 * 1024 * 1024) {
+		ReportParseFailure("-hres and -vres multiplied must be < 2M");
+		return falseblnr;
+	}
+	NeedScrnHack = (cur_hres != dflt_hres)
+		|| (cur_vres != dflt_vres);
+	return trueblnr;
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -360,6 +448,8 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetInitBackground();
 	ResetInitSpeedOption();
 	ResetWantMinExtn();
+	ResetHResOption();
+	ResetVResOption();
 }
 
 LOCALFUNC blnr TryAsSPOptionNot(void)
@@ -375,6 +465,8 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsInitBackgroundNot())
 	if (TryAsInitSpeedOptionNot())
 	if (TryAsWantMinExtnNot())
+	if (TryAsHResOptionNot())
+	if (TryAsVResOptionNot())
 	{
 		return trueblnr;
 	}
@@ -386,6 +478,9 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 	ChooseSoundEnabled();
 	ChooseModel();
 	if (ChooseNumDrives())
+	if (ChooseHRes())
+	if (ChooseVRes())
+	if (ChooseScreenOpts())
 	{
 		ChooseEmCpuVers();
 		ChooseInitFullScreen();

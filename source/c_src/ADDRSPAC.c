@@ -94,6 +94,11 @@ IMPORTPROC SCC_Reset(void);
 #define kROM_Base 0x00400000
 #define kROM_Top  0x00500000
 
+#if IncludeVidMem
+#define kVidMem_Base 0x00540000
+#define kVidMem_Top  0x00580000
+#endif
+
 #define kSCSI_Block_Base 0x00580000
 #define kSCSI_Block_Top  0x00600000
 
@@ -221,6 +226,12 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 #endif
 			}
 		} else
+#if IncludeVidMem
+		if ((iAddr >> 18) == (kVidMem_Base >> 18)) {
+			RealStart = VidMem;
+			vMask = kVidMemRAM_Size - 1;
+		} else
+#endif
 		if ((iAddr >> 20) == (kROM_Base >> 20)) {
 #if CurEmu >= kEmuSE1M
 			if (MemOverlay != 0) {

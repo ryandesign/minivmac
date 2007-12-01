@@ -288,6 +288,9 @@ LOCALVAR MyDir_R C_srcDirR;
 LOCALVAR MyDir_R AltSrcDirR;
 LOCALVAR MyDir_R LangDirR;
 LOCALVAR MyDir_R PlatDirR;
+#if ! OSXplatsep
+LOCALVAR MyDir_R IconDirR;
+#endif
 
 LOCALPROC DoSrcFileAddToSrcDir(void)
 {
@@ -355,14 +358,14 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 			}
 			break;
 		case gbk_apifam_osx:
-#if OSXplatsep
 			PStrApndCStr(s, "Icon.icns");
-			if (duplib_WriteFile(&PlatDirR, s,
-						&SrcDirR, s))
+#if OSXplatsep
+			if (duplib_WriteFile(&PlatDirR, s, &SrcDirR, s))
+#else
+			if (duplib_WriteFile(&IconDirR, s, &SrcDirR, s))
+#endif
 			{
 			}
-#else
-#endif
 			break;
 		case gbk_apifam_win:
 			PStrApndCStr(s, "Icon.ico");
@@ -394,13 +397,19 @@ LOCALFUNC blnr MayFindLanguageDirectory(void)
 
 LOCALFUNC blnr MayFindPlatformDirectory(void)
 {
+#if 0 /* still need icons */
 	if (! HavePlatform) {
 		return trueblnr;
-	} else {
+	} else
+#endif
+	{
 		MyDir_R PlatformDirR;
 
 		if (FindSubDirectory(&PlatformDirR, &SourceDirR, "platform", ""))
 		if (FindSubDirectory(&PlatDirR, &PlatformDirR, GetPlatformDirName(), ""))
+#if ! OSXplatsep
+		if ((gbk_apifam_osx != gbo_apifam) || FindSubDirectory(&IconDirR, &PlatDirR, "osx", ""))
+#endif
 		{
 			return trueblnr;
 		}
@@ -435,6 +444,8 @@ LOCALFUNC blnr MakeSrcFolder(void)
 		DoAllDocTypesWithSetup(DoDocTypeAddToSrcDir);
 		switch (gbo_apifam) {
 			case gbk_apifam_mac:
+			case gbk_apifam_osx:
+				if (HaveMacRrscs)
 				if (rConverTextInThingXtn(&PlatDirR,
 					&SrcDirR, "main", ".r"))
 				{

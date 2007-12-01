@@ -81,7 +81,7 @@ LOCALVAR uimr NextDrawRow = 0;
 GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
 	si4b *top, si4b *left, si4b *bottom, si4b *right)
 {
-	char *screencurrentbuff;
+	ui3p screencurrentbuff;
 	uimr j0;
 	uimr j1;
 	uimr copysize;
@@ -98,11 +98,15 @@ GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
 		MaxRowsDrawnPerTick = vMacScreenHeight / 4;
 	}
 
+#if IncludeVidMem
+	screencurrentbuff = VidMem;
+#else
 	if (SCRNvPage2 == 1) {
-		screencurrentbuff = (char *) get_ram_address(kMain_Buffer);
+		screencurrentbuff = get_ram_address(kMain_Buffer);
 	} else {
-		screencurrentbuff = (char *) get_ram_address(kAlternate_Buffer);
+		screencurrentbuff = get_ram_address(kAlternate_Buffer);
 	}
+#endif
 
 	if (! FindFirstChangeInLVecs((ui5b *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
 			(ui5b *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),

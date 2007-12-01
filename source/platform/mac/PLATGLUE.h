@@ -2987,6 +2987,15 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 	}
 	SetLongs((ui5b *)screencomparebuff, vMacScreenNumBytes / 4);
 
+#if IncludeVidMem
+	VidMem = NewPtr(kVidMemRAM_Size + RAMSafetyMarginFudge);
+	if (NULL == VidMem) {
+		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
+		return falseblnr;
+	}
+	SetLongs((ui5b *)VidMem, (kVidMemRAM_Size + RAMSafetyMarginFudge) / 4);
+#endif
+
 #if UseControlKeys
 	CntrlDisplayBuff = NewPtr(vMacScreenNumBytes);
 	if (NULL == CntrlDisplayBuff) {

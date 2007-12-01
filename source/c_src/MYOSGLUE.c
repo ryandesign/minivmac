@@ -31,6 +31,10 @@ IMPORTPROC DoEmulateExtraTime(void);
 
 GLOBALVAR char *screencomparebuff = nullpr;
 
+#if IncludeVidMem
+GLOBALVAR ui3p VidMem = nullpr;
+#endif
+
 GLOBALVAR ui3p RAM = nullpr;
 
 GLOBALVAR ui3p ROM = nullpr;

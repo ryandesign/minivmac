@@ -1804,6 +1804,16 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 		return falseblnr;
 	}
 	SetLongs((ui5b *)screencomparebuff, vMacScreenNumBytes / 4);
+
+#if IncludeVidMem
+	VidMem = (ui3p)GlobalAlloc(GMEM_FIXED, kVidMemRAM_Size + RAMSafetyMarginFudge);
+	if (VidMem == NULL) {
+		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
+		return falseblnr;
+	}
+	SetLongs((ui5b *)VidMem, (kVidMemRAM_Size + RAMSafetyMarginFudge) / 4);
+#endif
+
 #if UseControlKeys
 	CntrlDisplayBuff = (char *)GlobalAlloc(GMEM_FIXED, vMacScreenNumBytes);
 	if (CntrlDisplayBuff == NULL) {
@@ -4234,6 +4244,13 @@ LOCALPROC UnInitOSGLU(void)
 			MacMsg("error", "GlobalFree failed", falseblnr);
 		}
 	}
+#if IncludeVidMem
+	if (VidMem != NULL) {
+		if (GlobalFree(VidMem) != NULL) {
+			MacMsg("error", "GlobalFree failed", falseblnr);
+		}
+	}
+#endif
 #if UseControlKeys
 	if (CntrlDisplayBuff != NULL) {
 		if (GlobalFree(CntrlDisplayBuff) != NULL) {

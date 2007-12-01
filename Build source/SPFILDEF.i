@@ -32,6 +32,9 @@ static void DoAllExtraHeaders(tDoOneExtraHeader p)
 		p(kDepDirCSrc, "ALTKEYSM.h");
 	}
 	p(kDepDirCSrc, "CONTROLM.h");
+	if (NeedScrnHack) {
+		p(kDepDirCSrc, "SCRNHACK.h");
+	}
 }
 
 static void DoMYOSGLUEdepends(tDoOneDepends p)

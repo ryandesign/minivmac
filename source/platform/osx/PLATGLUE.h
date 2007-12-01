@@ -770,8 +770,8 @@ LOCALPROC UpdateLuminanceCopy(si4b top, si4b left, si4b bottom, si4b right)
 	int i;
 	int j;
 	int k;
-	ui3b *p1 = (ui3b *)GetCurDrawBuff() + vMacScreenWidth / 8 * top;
-	ui3b *p2 = (ui3b *)ScalingBuff + vMacScreenWidth * top;
+	ui3b *p1 = (ui3b *)GetCurDrawBuff() + (ui5r)vMacScreenWidth / 8 * top;
+	ui3b *p2 = (ui3b *)ScalingBuff + (ui5r)vMacScreenWidth * top;
 	ui5b t0;
 
 	UnusedParam(left);
@@ -3061,6 +3061,15 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 		return falseblnr;
 	}
 	SetLongs((ui5b *)screencomparebuff, vMacScreenNumBytes / 4);
+
+#if IncludeVidMem
+	VidMem = (ui3p)malloc(kVidMemRAM_Size + RAMSafetyMarginFudge);
+	if (NULL == VidMem) {
+		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
+		return falseblnr;
+	}
+	SetLongs((ui5b *)VidMem, (kVidMemRAM_Size + RAMSafetyMarginFudge) / 4);
+#endif
 
 #if UseControlKeys
 	CntrlDisplayBuff = malloc(vMacScreenNumBytes);

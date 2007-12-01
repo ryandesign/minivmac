@@ -33,6 +33,21 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteUnsignedToOutput(cur_numdrives);
 	WriteEndDestFileLn();
 
+	if (NeedScrnHack) {
+		WriteDestFileLn("#define IncludeVidMem 1");
+		WriteDestFileLn("#define kVidMemRAM_Size 0x00040000");
+	}
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define vMacScreenHeight ");
+	WriteUnsignedToOutput(cur_vres);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define vMacScreenWidth ");
+	WriteUnsignedToOutput(cur_hres);
+	WriteEndDestFileLn();
+
 	if (WantInitFullScreen) {
 		WriteDestFileLn("#define WantInitFullScreen 1");
 	}

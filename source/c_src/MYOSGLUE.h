@@ -227,13 +227,20 @@ EXPORTVAR(ui5b, CurMacLatitude)
 EXPORTVAR(ui5b, CurMacLongitude)
 EXPORTVAR(ui5b, CurMacDelta) /* (dlsDelta << 24) | (gmtDelta & 0x00FFFFFF) */
 
-#define vMacScreenHeight 342
-#define vMacScreenWidth 512
+
 #define vMacScreenNumBits ((long)vMacScreenHeight * (long)vMacScreenWidth)
 #define vMacScreenNumBytes (vMacScreenNumBits / 8)
 #define vMacScreenByteWidth (vMacScreenWidth / 8)
 
 EXPORTVAR(char, *screencomparebuff)
+
+#ifndef IncludeVidMem
+#define IncludeVidMem 0
+#endif
+
+#if IncludeVidMem
+EXPORTVAR(ui3p, VidMem)
+#endif
 
 EXPORTVAR(blnr, ForceMacOff)
 

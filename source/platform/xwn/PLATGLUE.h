@@ -2716,6 +2716,15 @@ LOCALFUNC blnr Screen_Init(void)
 		return falseblnr;
 	}
 
+#if IncludeVidMem
+	VidMem = (ui3p)malloc(kVidMemRAM_Size + RAMSafetyMarginFudge);
+	if (NULL == VidMem) {
+		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
+		return falseblnr;
+	}
+	SetLongs((ui5b *)VidMem, (kVidMemRAM_Size + RAMSafetyMarginFudge) / 4);
+#endif
+
 	image_Mem1 = (char *)calloc(1, vMacScreenNumBytes);
 	if (NULL == image_Mem1) {
 		fprintf(stderr, "calloc failed.\n");

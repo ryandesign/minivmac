@@ -167,10 +167,6 @@ static void WriteBashGccSpecificFiles(void)
 	} else {
 		Write_machobinpath_ToDestFile();
 	}
-	if (HaveMacRrscs) {
-		WriteCStrToDestFile(" ");
-		Write_machoRsrcPath();
-	}
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -196,6 +192,9 @@ static void WriteBashGccSpecificFiles(void)
 	WriteCStrToDestFile(" : $(ObjFiles)");
 	if (HaveMacBundleApp) {
 		WriteMakeDependFile(Write_machoAppIconPath);
+	}
+	if (HaveMacRrscs) {
+		WriteMakeDependFile(Write_machoRsrcPath);
 	}
 	WriteEndDestFileLn();
 	++DestFileIndent;
