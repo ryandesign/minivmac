@@ -3593,6 +3593,11 @@ LOCALPROC UnInitOSGLU(void)
 	if (x_display != NULL) {
 		XCloseDisplay(x_display);
 	}
+#if IncludeVidMem
+	if (NULL != VidMem) {
+		free((char *)VidMem);
+	}
+#endif
 
 	DeallocateMacRAM();
 	DeallocateMacROM();

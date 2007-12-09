@@ -575,8 +575,8 @@ GLOBALPROC MINEM68K_Init(ui3b **BankReadAddr, ui3b **BankWritAddr,
 LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 {
 	ui4b dp = nextiword();
-	int reg = (dp >> 12) & 0x0F;
-	si5b regd = regs.regs[reg];
+	int regno = (dp >> 12) & 0x0F;
+	si5b regd = regs.regs[regno];
 	if ((dp & 0x0800) == 0) {
 		regd = (si5b)(si4b)regd;
 	}
@@ -665,8 +665,6 @@ LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 }
 
 LOCALVAR ui5b opsize;
-
-LOCALPROC op_illg(void);
 
 #define AKMemory 0
 #define AKRegister 1
@@ -2670,6 +2668,48 @@ LOCALPROCUSEDONCE DoCodeTas(void)
 LOCALPROCUSEDONCE DoCodeF(void)
 {
 	/* ReportAbnormal("DoCodeF"); */
+#if 0 && Use68020
+	if (0 == rg9) {
+		/*
+			Emulate enough of MMU for System 7.5.5 universal
+			to boot on Mac Plus 68020. There is one
+			spurious "PMOVE TC, (A0)".
+			And implement a few more PMOVE operations seen
+			when running Disk Copy 6.3.3 and MacsBug.
+		*/
+		if (opcode == 0xF010) {
+			ui4b ew = (int)nextiword();
+			if (ew == 0x4200) {
+				/* PMOVE TC, (A0) */
+				/* fprintf(stderr, "0xF010 0x4200\n"); */
+				opsize = 4;
+				DecodeModeRegister(mode, reg);
+				SetArgValue(0);
+				return;
+			} else if ((ew == 0x4E00) || (ew == 0x4A00)) {
+				/* PMOVE CRP, (A0) and PMOVE SRP, (A0) */
+				/* fprintf(stderr, "0xF010 %x\n", ew); */
+				opsize = 4;
+				DecodeModeRegister(mode, reg);
+				SetArgValue(0x7FFF0001);
+				ArgAddr.mem += 4;
+				SetArgValue(0);
+				return;
+			} else if (ew == 0x6200) {
+				/* PMOVE MMUSR, (A0) */
+				/* fprintf(stderr, "0xF010 %x\n", ew); */
+				opsize = 2;
+				DecodeModeRegister(mode, reg);
+				SetArgValue(0);
+				return;
+			}
+			/* fprintf(stderr, "extensions %x\n", ew); */
+			BackupPC();
+		}
+		/* fprintf(stderr, "opcode %x\n", (int)opcode); */
+		ReportAbnormal("MMU op");
+	}
+#endif
 	BackupPC();
 	Exception(0xB);
 }
@@ -3344,7 +3384,7 @@ LOCALPROCUSEDONCE DoCodeDivL(void)
 	opsize = 4;
 	/* DIVU 0100110001mmmrrr 0rrr0s0000000rrr */
 	/* DIVS 0100110001mmmrrr 0rrr1s0000000rrr */
-	ReportAbnormal("DIVS/DIVU long");
+	/* ReportAbnormal("DIVS/DIVU long"); */
 	DoDivL();
 }
 #endif
@@ -3496,8 +3536,9 @@ LOCALPROC DoBitField(void)
 		? m68k_dreg(extra & 7)
 		: extra;
 
-	ReportAbnormal("Bit Field operator");
-	width = ((width - 1) & 0x1f) + 1; /* 0 -> 32 */
+	/* ReportAbnormal("Bit Field operator"); */
+	/* width = ((width - 1) & 0x1f) + 1; */ /* 0 -> 32 */
+	width &= 0x001F; /* except width == 0 really means 32 */
 	if (mode == 0) {
 		bf0 = m68k_dreg(dstreg);
 		offset &= 0x1f;
@@ -3517,7 +3558,9 @@ LOCALPROC DoBitField(void)
 	}
 
 	NFLG = ((si5b)tmp) < 0;
-	tmp >>= (32 - width);
+	if (width != 0) {
+		tmp >>= (32 - width);
+	}
 	ZFLG = tmp == 0;
 	VFLG = 0;
 	CFLG = 0;
@@ -3532,12 +3575,15 @@ LOCALPROC DoBitField(void)
 			m68k_dreg((extra >> 12) & 7) = tmp;
 			break;
 		case 2: /* BFCHG */
-			newtmp = (~ newtmp) & ((1 << width) - 1);
+			newtmp = ~ newtmp;
+			if (width != 0) {
+				newtmp &= ((1 << width) - 1);
+			}
 			break;
 		case 3: /* BFEXTS */
 			if (NFLG) {
 				m68k_dreg((extra >> 12) & 7) = tmp
-					| ((width == 32) ? 0 : (-1 << width));
+					| ((width == 0) ? 0 : (-1 << width));
 			} else {
 				m68k_dreg((extra >> 12) & 7) = tmp;
 			}
@@ -3547,7 +3593,7 @@ LOCALPROC DoBitField(void)
 			break;
 		case 5: /* BFFFO */
 			{
-				ui5b mask = 1 << (width - 1);
+				ui5b mask = 1 << ((width == 0) ? 31 : (width - 1));
 				si5b i = offset;
 				while (mask && ((tmp & mask) != 0)) {
 					mask >>= 1;
@@ -3557,24 +3603,34 @@ LOCALPROC DoBitField(void)
 			}
 			break;
 		case 6: /* BFSET */
-			newtmp = (1 << width) - 1;
+			newtmp = (width == 0) ? ~ 0 : ((1 << width) - 1);
 			break;
 		case 7: /* BFINS */
-			newtmp = m68k_dreg((extra >> 12) & 7) & ((1 << width) - 1);
+			newtmp = m68k_dreg((extra >> 12) & 7);
+			if (width != 0) {
+				newtmp &= ((1 << width) - 1);
+			}
 			break;
 	}
 
 	if (newtmp != tmp) {
-		ui5b mask = ~ ((((1 << width) - 1) << (32 - width)) >> offset);
+		ui5b mask = ~ 0;
+		if (width != 0) {
+			mask <<= (32 - width);
+		}
+		mask = ~ (mask >> offset);
 
-		newtmp <<= (32 - width);
+		if (width != 0) {
+			newtmp <<= (32 - width);
+		}
 		bf0 = (bf0 & mask) | (newtmp >> offset);
 		if (mode == 0) {
 			m68k_dreg(dstreg) = bf0;
 		} else {
+			si5r extrabit = offset + ((width == 0) ? 32 : width) - 32;
 			put_long(dsta, bf0);
-			if ((offset + width) > 32) {
-				bf1 = (bf1 & (0xff >> (width - 32 + offset)))
+			if (extrabit > 0) {
+				bf1 = (bf1 & (0xff >> extrabit))
 					| (newtmp << (8 - offset));
 				put_byte(dsta + 4, bf1);
 			}
@@ -3616,7 +3672,7 @@ LOCALPROC m68k_go_MaxInstructions(void)
 		DumpTable[regs.disp_table[opcode]] ++;
 #endif
 
-		switch (regs.disp_table[opcode] /* opcode >> 12 */) {
+		switch (regs.disp_table[opcode]) {
 			case kIKindTst :
 				DoCodeTst();
 				break;

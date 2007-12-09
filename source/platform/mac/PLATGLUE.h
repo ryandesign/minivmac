@@ -2988,7 +2988,7 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 	SetLongs((ui5b *)screencomparebuff, vMacScreenNumBytes / 4);
 
 #if IncludeVidMem
-	VidMem = NewPtr(kVidMemRAM_Size + RAMSafetyMarginFudge);
+	VidMem = (ui3p)NewPtr(kVidMemRAM_Size + RAMSafetyMarginFudge);
 	if (NULL == VidMem) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;

@@ -22,6 +22,10 @@
 #include "SYSDEPNS.h"
 #endif
 
+#ifndef Use68020
+#define Use68020 0
+#endif
+
 #include "M68KITAB.h"
 
 LOCALVAR ui5b opcode;
@@ -528,7 +532,7 @@ LOCALFUNC MayInline ui3b DeCode4(void)
 					}
 				} else {
 #if Use68020
-					if (((opcode >> 7) & 1) == 1) {
+					if (((opcode >> 6) & 1) == 1) {
 						/* DIVU 0100110001mmmrrr 0rrr0s0000000rrr */
 						/* DIVS 0100110001mmmrrr 0rrr1s0000000rrr */
 						v = kIKindDivL;
