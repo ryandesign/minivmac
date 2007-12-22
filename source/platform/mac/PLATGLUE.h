@@ -1033,20 +1033,39 @@ LOCALPROC AdjustMouseMotionGrab(void)
 }
 #endif
 
-LOCALVAR blnr CurTrueMouseButton = falseblnr;
-
-LOCALPROC CheckMouseState(void)
+#if EnableMouseMotion && EnableFullScreen
+LOCALPROC MyMouseConstrain(void)
 {
-	blnr ShouldHaveCursorHidden;
-	ui3b NewMouseButton;
-	Point NewMousePos;
-	GrafPtr oldPort;
+	si4b shiftdh;
+	si4b shiftdv;
 
-	ShouldHaveCursorHidden = trueblnr;
+	if (SavedMouseH < vMacScreenWidth / 4) {
+		shiftdh = vMacScreenWidth / 2;
+	} else if (SavedMouseH > vMacScreenWidth - vMacScreenWidth / 4) {
+		shiftdh = - vMacScreenWidth / 2;
+	} else {
+		shiftdh = 0;
+	}
+	if (SavedMouseV < vMacScreenHeight / 4) {
+		shiftdv = vMacScreenHeight / 2;
+	} else if (SavedMouseV > vMacScreenHeight - vMacScreenHeight / 4) {
+		shiftdv = - vMacScreenHeight / 2;
+	} else {
+		shiftdv = 0;
+	}
+	if ((shiftdh != 0) || (shiftdv != 0)) {
+		SavedMouseH += shiftdh;
+		SavedMouseV += shiftdv;
+		if (! MyMoveMouse(SavedMouseH, SavedMouseV)) {
+			HaveMouseMotion = falseblnr;
+		}
+	}
+}
+#endif
 
-	GetPort(&oldPort);
-	My_SetPortWindowPort(gMyMainWindow);
-	GetMouse(&NewMousePos);
+LOCALPROC MousePositionNotify(Point NewMousePos)
+{
+	blnr ShouldHaveCursorHidden = trueblnr;
 
 #if EnableFullScreen
 	if (UseFullScreen) {
@@ -1060,8 +1079,6 @@ LOCALPROC CheckMouseState(void)
 		}
 	}
 
-	SetPort(oldPort);
-
 #if EnableMagnify
 	if (UseMagnify) {
 		NewMousePos.h /= MyWindowScale;
@@ -1071,32 +1088,7 @@ LOCALPROC CheckMouseState(void)
 
 #if EnableMouseMotion && EnableFullScreen
 	if (HaveMouseMotion) {
-		si4b shiftdh;
-		si4b shiftdv;
-
-		MouseMotionH += NewMousePos.h - SavedMouseH;
-		MouseMotionV += NewMousePos.v - SavedMouseV;
-		if (NewMousePos.h < vMacScreenWidth / 4) {
-			shiftdh = vMacScreenWidth / 2;
-		} else if (NewMousePos.h > vMacScreenWidth - vMacScreenWidth / 4) {
-			shiftdh = - vMacScreenWidth / 2;
-		} else {
-			shiftdh = 0;
-		}
-		if (NewMousePos.v < vMacScreenHeight / 4) {
-			shiftdv = vMacScreenHeight / 2;
-		} else if (NewMousePos.v > vMacScreenHeight - vMacScreenHeight / 4) {
-			shiftdv = - vMacScreenHeight / 2;
-		} else {
-			shiftdv = 0;
-		}
-		if ((shiftdh != 0) || (shiftdv != 0)) {
-			NewMousePos.h += shiftdh;
-			NewMousePos.v += shiftdv;
-			if (! MyMoveMouse(NewMousePos.h, NewMousePos.v)) {
-				HaveMouseMotion = falseblnr;
-			}
-		}
+		MyMousePositionSetDelta(NewMousePos.h - SavedMouseH, NewMousePos.v - SavedMouseV);
 		SavedMouseH = NewMousePos.h;
 		SavedMouseV = NewMousePos.v;
 	} else
@@ -1126,34 +1118,42 @@ LOCALPROC CheckMouseState(void)
 		/* if (ShouldHaveCursorHidden || CurMouseButton) */
 		/* for a game like arkanoid, would like mouse to still
 		move even when outside window in one direction */
-		{
-			CurMouseV = NewMousePos.v;
-			CurMouseH = NewMousePos.h;
-		}
-	}
-
-	NewMouseButton = Button();
-
-	if (CurTrueMouseButton != NewMouseButton) {
-		CurTrueMouseButton = NewMouseButton;
-		CurMouseButton = CurTrueMouseButton && ShouldHaveCursorHidden;
-		/*
-			CurMouseButton changes only when the button state changes.
-			So if have mouse down outside our window, CurMouseButton will
-			stay false even if mouse dragged back over our window.
-			and if mouse down inside our window, CurMouseButton will
-			stay true even if mouse dragged outside our window.
-		*/
+		MyMousePositionSet(NewMousePos.h, NewMousePos.v);
 	}
 
 	WantCursorHidden = ShouldHaveCursorHidden;
+}
+
+LOCALPROC MousePositionNotifyFromGlobal(Point NewMousePos)
+{
+	GrafPtr oldPort;
+
+	GetPort(&oldPort);
+	My_SetPortWindowPort(gMyMainWindow);
+	GlobalToLocal(&NewMousePos);
+	SetPort(oldPort);
+
+	MousePositionNotify(NewMousePos);
+}
+
+LOCALPROC CheckMouseState(void)
+{
+	Point NewMousePos;
+	GrafPtr oldPort;
+
+	GetPort(&oldPort);
+	My_SetPortWindowPort(gMyMainWindow);
+	GetMouse(&NewMousePos);
+	SetPort(oldPort);
+
+	MousePositionNotify(NewMousePos);
 }
 
 LOCALPROC DisconnectKeyCodes3(void)
 {
 	DisconnectKeyCodes2();
 
-	CurMouseButton = falseblnr;
+	MyMouseButtonSet(falseblnr);
 
 	ForceShowCursor();
 }
@@ -3388,6 +3388,19 @@ LOCALPROC EnterSpeedStopped(void)
 
 LOCALPROC CheckStateAfterEvents(void)
 {
+	if (MyEvtQNeedRecover) {
+		MyEvtQNeedRecover = falseblnr;
+
+		/* attempt cleanup, MyEvtQNeedRecover may get set again */
+		MyEvtQTryRecoverFromFull();
+	}
+
+#if EnableMouseMotion && EnableFullScreen
+	if (HaveMouseMotion) {
+		MyMouseConstrain();
+	}
+#endif
+
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
 		if (AnyDiskInserted()) {
@@ -3660,6 +3673,10 @@ LOCALPROC HandleMacEvent(EventRecord *theEvent)
 					if (FrontWindow() != whichWindow) {
 						SelectWindow(whichWindow);
 					}
+					if (whichWindow == gMyMainWindow) {
+						MousePositionNotifyFromGlobal(theEvent->where);
+						MyMouseButtonSet(trueblnr);
+					}
 					break;
 
 				case inGoAway:
@@ -3673,6 +3690,10 @@ LOCALPROC HandleMacEvent(EventRecord *theEvent)
 					/* Zoom Boxes */
 					break;
 			}
+			break;
+		case mouseUp:
+			MousePositionNotifyFromGlobal(theEvent->where);
+			MyMouseButtonSet(falseblnr);
 			break;
 
 		case updateEvt:
@@ -3813,7 +3834,9 @@ LOCALPROC CheckForSystemEvents(void)
 					if event can effect only us, and not looking out for aftermath
 					of another event, then hog the cpu
 				*/
-				(void) GetOSEvent(PrivateEventMask, &theEvent); /* discard it */
+				if (GetOSEvent(PrivateEventMask, &theEvent)) {
+					HandleMacEvent(&theEvent);
+				}
 			} else {
 				NoEventsCounter = 0;
 				/*

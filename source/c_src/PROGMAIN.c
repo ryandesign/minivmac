@@ -53,6 +53,15 @@ GLOBALPROC DoMacReset(void)
 	EmulatedHardwareZap();
 }
 
+GLOBALFUNC MyEvtQEl * MyEvtQOutP(void)
+{
+	MyEvtQEl *p = nullpr;
+	if (MyEvtQIn != MyEvtQOut) {
+		p = &MyEvtQA[MyEvtQOut & MyEvtQIMask];
+	}
+	return p;
+}
+
 #define InstructionsPerSubTick (InstructionsPerTick / kNumSubTicks)
 
 LOCALVAR ui5b ExtraSubTicksToDo = 0;

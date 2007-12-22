@@ -944,27 +944,39 @@ LOCALPROC StopSaveMouseMotion(void)
 
 /* cursor state */
 
-LOCALVAR blnr CurTrueMouseButton = falseblnr;
-
-LOCALPROC CheckMouseState(void)
+#if EnableMouseMotion
+LOCALPROC MyMouseConstrain(void)
 {
-	blnr ShouldHaveCursorHidden;
-	ui3b NewMouseButton;
-	int NewMousePosh;
-	int NewMousePosv;
-	int root_x_return;
-	int root_y_return;
-	Window root_return;
-	Window child_return;
-	unsigned int mask_return;
+	si4b shiftdh;
+	si4b shiftdv;
 
-	ShouldHaveCursorHidden = trueblnr;
+	if (SavedMouseH < vMacScreenWidth / 4) {
+		shiftdh = vMacScreenWidth / 2;
+	} else if (SavedMouseH > vMacScreenWidth - vMacScreenWidth / 4) {
+		shiftdh = - vMacScreenWidth / 2;
+	} else {
+		shiftdh = 0;
+	}
+	if (SavedMouseV < vMacScreenHeight / 4) {
+		shiftdv = vMacScreenHeight / 2;
+	} else if (SavedMouseV > vMacScreenHeight - vMacScreenHeight / 4) {
+		shiftdv = - vMacScreenHeight / 2;
+	} else {
+		shiftdv = 0;
+	}
+	if ((shiftdh != 0) || (shiftdv != 0)) {
+		SavedMouseH += shiftdh;
+		SavedMouseV += shiftdv;
+		if (! MyMoveMouse(SavedMouseH, SavedMouseV)) {
+			HaveMouseMotion = falseblnr;
+		}
+	}
+}
+#endif
 
-	XQueryPointer(x_display, my_main_wind,
-		&root_return, &child_return,
-		&root_x_return, &root_y_return,
-		&NewMousePosh, &NewMousePosv,
-		&mask_return);
+LOCALPROC MousePositionNotify(int NewMousePosh, int NewMousePosv)
+{
+	blnr ShouldHaveCursorHidden = trueblnr;
 
 #if EnableFullScreen
 	if (UseFullScreen) {
@@ -980,32 +992,7 @@ LOCALPROC CheckMouseState(void)
 #endif
 #if EnableMouseMotion
 	if (HaveMouseMotion) {
-		si4b shiftdh;
-		si4b shiftdv;
-
-		MouseMotionH += NewMousePosh - SavedMouseH;
-		MouseMotionV += NewMousePosv - SavedMouseV;
-		if (NewMousePosh < vMacScreenWidth / 4) {
-			shiftdh = vMacScreenWidth / 2;
-		} else if (NewMousePosh > vMacScreenWidth - vMacScreenWidth / 4) {
-			shiftdh = - vMacScreenWidth / 2;
-		} else {
-			shiftdh = 0;
-		}
-		if (NewMousePosv < vMacScreenHeight / 4) {
-			shiftdv = vMacScreenHeight / 2;
-		} else if (NewMousePosv > vMacScreenHeight - vMacScreenHeight / 4) {
-			shiftdv = - vMacScreenHeight / 2;
-		} else {
-			shiftdv = 0;
-		}
-		if ((shiftdh != 0) || (shiftdv != 0)) {
-			NewMousePosh += shiftdh;
-			NewMousePosv += shiftdv;
-			if (! MyMoveMouse(NewMousePosh, NewMousePosv)) {
-				HaveMouseMotion = falseblnr;
-			}
-		}
+		MyMousePositionSetDelta(NewMousePosh - SavedMouseH, NewMousePosv - SavedMouseV);
 		SavedMouseH = NewMousePosh;
 		SavedMouseV = NewMousePosv;
 	} else
@@ -1035,29 +1022,28 @@ LOCALPROC CheckMouseState(void)
 		/* if (ShouldHaveCursorHidden || CurMouseButton) */
 		/* for a game like arkanoid, would like mouse to still
 		move even when outside window in one direction */
-		{
-			CurMouseV = NewMousePosv;
-			CurMouseH = NewMousePosh;
-		}
-	}
-
-	NewMouseButton = ((mask_return &
-		(Button1Mask | Button2Mask | Button3Mask))
-		!= 0);
-
-	if (CurTrueMouseButton != NewMouseButton) {
-		CurTrueMouseButton = NewMouseButton;
-		CurMouseButton = CurTrueMouseButton && ShouldHaveCursorHidden;
-		/*
-			CurMouseButton changes only when the button state changes.
-			So if have mouse down outside our window, CurMouseButton will
-			stay false even if mouse dragged back over our window.
-			and if mouse down inside our window, CurMouseButton will
-			stay true even if mouse dragged outside our window.
-		*/
+		MyMousePositionSet(NewMousePosh, NewMousePosv);
 	}
 
 	WantCursorHidden = ShouldHaveCursorHidden;
+}
+
+LOCALPROC CheckMouseState(void)
+{
+	int NewMousePosh;
+	int NewMousePosv;
+	int root_x_return;
+	int root_y_return;
+	Window root_return;
+	Window child_return;
+	unsigned int mask_return;
+
+	XQueryPointer(x_display, my_main_wind,
+		&root_return, &child_return,
+		&root_x_return, &root_y_return,
+		&NewMousePosh, &NewMousePosv,
+		&mask_return);
+	MousePositionNotify(NewMousePosh, NewMousePosv);
 }
 
 /*--- keyboard input ---*/
@@ -1509,7 +1495,7 @@ LOCALPROC ReconnectKeyCodes3(void)
 LOCALPROC DisconnectKeyCodes3(void)
 {
 	DisconnectKeyCodes2();
-	CurMouseButton = falseblnr;
+	MyMouseButtonSet(falseblnr);
 }
 
 /*--- time, date, location ---*/
@@ -1700,7 +1686,7 @@ label_retry:
 						err = snd_pcm_prepare(pcm_handle);
 						if (err < 0) {
 							fprintf(stderr, "pcm prepare error: %s\n",
-								snd_strerror(avail));
+								snd_strerror(err));
 						} else {
 							/* fprintf(stderr, "prepare succeeded\n"); */
 							goto label_retry;
@@ -1719,7 +1705,7 @@ label_retry:
 						err = snd_pcm_resume(pcm_handle);
 						if (err < 0) {
 							fprintf(stderr, "pcm resume error: %s\n",
-								snd_strerror(avail));
+								snd_strerror(err));
 						} else {
 							/* fprintf(stderr, "resume succeeded\n"); */
 							goto label_retry;
@@ -2463,6 +2449,12 @@ LOCALPROC HandleClientMessageDndDrop(XEvent *theEvent)
 }
 #endif
 
+#define UseMotionEvents 1
+
+#if UseMotionEvents
+LOCALVAR blnr CaughtMouse = falseblnr;
+#endif
+
 /*--- event handling for main window ---*/
 
 LOCALPROC HandleTheEvent(XEvent *theEvent)
@@ -2478,6 +2470,7 @@ LOCALPROC HandleTheEvent(XEvent *theEvent)
 				fprintf(stderr, "- event - KeyPress\n");
 #endif
 
+				MousePositionNotify(theEvent->xkey.x, theEvent->xkey.y);
 				DoKeyCode(theEvent->xkey.keycode, trueblnr);
 			}
 			break;
@@ -2489,9 +2482,65 @@ LOCALPROC HandleTheEvent(XEvent *theEvent)
 				fprintf(stderr, "- event - KeyRelease\n");
 #endif
 
+				MousePositionNotify(theEvent->xkey.x, theEvent->xkey.y);
 				DoKeyCode(theEvent->xkey.keycode, falseblnr);
 			}
 			break;
+		case ButtonPress:
+			/* any mouse button, we don't care which */
+			if (theEvent->xbutton.window != my_main_wind) {
+				WriteExtraErr("Got ButtonPress for some other window");
+			} else {
+				/*
+					could check some modifiers, but don't bother for now
+					Keyboard_UpdateKeyMap2(MKC_CapsLock, (theEvent->xbutton.state & LockMask) != 0);
+				*/
+				MousePositionNotify(theEvent->xbutton.x, theEvent->xbutton.y);
+				MyMouseButtonSet(trueblnr);
+			}
+			break;
+		case ButtonRelease:
+			/* any mouse button, we don't care which */
+			if (theEvent->xbutton.window != my_main_wind) {
+				WriteExtraErr("Got ButtonRelease for some other window");
+			} else {
+				MousePositionNotify(theEvent->xbutton.x, theEvent->xbutton.y);
+				MyMouseButtonSet(falseblnr);
+			}
+			break;
+#if UseMotionEvents
+		case MotionNotify:
+			if (theEvent->xmotion.window != my_main_wind) {
+				WriteExtraErr("Got MotionNotify for some other window");
+			} else {
+				MousePositionNotify(theEvent->xmotion.x, theEvent->xmotion.y);
+			}
+			break;
+		case EnterNotify:
+			if (theEvent->xcrossing.window != my_main_wind) {
+				WriteExtraErr("Got EnterNotify for some other window");
+			} else {
+#if MyDbgEvents
+				fprintf(stderr, "- event - EnterNotify\n");
+#endif
+
+				CaughtMouse = trueblnr;
+				MousePositionNotify(theEvent->xcrossing.x, theEvent->xcrossing.y);
+			}
+			break;
+		case LeaveNotify:
+			if (theEvent->xcrossing.window != my_main_wind) {
+				WriteExtraErr("Got LeaveNotify for some other window");
+			} else {
+#if MyDbgEvents
+				fprintf(stderr, "- event - LeaveNotify\n");
+#endif
+
+				MousePositionNotify(theEvent->xcrossing.x, theEvent->xcrossing.y);
+				CaughtMouse = falseblnr;
+			}
+			break;
+#endif
 		case Expose:
 			if (theEvent->xexpose.window != my_main_wind) {
 				WriteExtraErr("Got SelectionRequest for some other window");
@@ -2654,6 +2703,14 @@ LOCALPROC HandleTheEvent(XEvent *theEvent)
 #endif
 
 				gTrueBackgroundFlag = falseblnr;
+#if UseMotionEvents
+				CheckMouseState();
+					/*
+						Doesn't help on x11 for OS X,
+						can't get new mouse position
+						in any fashion until mouse moves.
+					*/
+#endif
 			}
 			break;
 		case FocusOut:
@@ -2951,6 +3008,9 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		XSelectInput(x_display, NewMainWindow,
 			ExposureMask | KeyPressMask | KeyReleaseMask |
 			ButtonPressMask | ButtonReleaseMask |
+#if UseMotionEvents
+			PointerMotionMask | EnterWindowMask | LeaveWindowMask |
+#endif
 			FocusChangeMask);
 
 		XStoreName(x_display, NewMainWindow, kStrAppName);
@@ -3254,6 +3314,19 @@ LOCALVAR blnr GrabMachine = falseblnr;
 
 LOCALPROC CheckForSavedTasks(void)
 {
+	if (MyEvtQNeedRecover) {
+		MyEvtQNeedRecover = falseblnr;
+
+		/* attempt cleanup, MyEvtQNeedRecover may get set again */
+		MyEvtQTryRecoverFromFull();
+	}
+
+#if EnableMouseMotion
+	if (HaveMouseMotion) {
+		MyMouseConstrain();
+	}
+#endif
+
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
 		if (AnyDiskInserted()) {
@@ -3441,7 +3514,12 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 			CurEmulatedTime = OnTrueTime - n;
 		}
 
-		if (! gBackgroundFlag) {
+		if ((! gBackgroundFlag)
+#if UseMotionEvents
+			&& (! CaughtMouse)
+#endif
+			)
+		{
 			CheckMouseState();
 		}
 

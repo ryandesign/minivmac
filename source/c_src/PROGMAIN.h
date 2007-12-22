@@ -22,6 +22,8 @@
 
 #define kNumSubTicks 16
 
+EXPORTFUNC MyEvtQEl * MyEvtQOutP(void);
+
 EXPORTPROC DoEmulateOneTick(void);
 EXPORTPROC DoEmulateExtraTime(void);
 EXPORTPROC DoMacReset(void);

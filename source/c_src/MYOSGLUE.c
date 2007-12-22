@@ -39,11 +39,12 @@ GLOBALVAR ui3p RAM = nullpr;
 
 GLOBALVAR ui3p ROM = nullpr;
 
+GLOBALVAR MyEvtQEl MyEvtQA[MyEvtQSz];
+GLOBALVAR ui4r MyEvtQIn = 0;
+GLOBALVAR ui4r MyEvtQOut = 0;
+
 GLOBALVAR ui4b CurMouseV = 0;
 GLOBALVAR ui4b CurMouseH = 0;
-GLOBALVAR ui3b CurMouseButton = falseblnr;
-
-GLOBALVAR ui5b theKeys[4];
 
 #ifndef WantInitSpeedValue
 #define WantInitSpeedValue 3
@@ -54,9 +55,7 @@ GLOBALVAR ui3b SpeedValue = WantInitSpeedValue;
 GLOBALVAR blnr SpeedLimit = (WantInitSpeedValue != -1);
 
 #if EnableMouseMotion
-GLOBALVAR blnr HaveMouseMotion = falseblnr;
-GLOBALVAR ui4b MouseMotionV = 0;
-GLOBALVAR ui4b MouseMotionH = 0;
+LOCALVAR blnr HaveMouseMotion = falseblnr;
 #endif
 
 #if MySoundEnabled

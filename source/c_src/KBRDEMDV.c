@@ -27,6 +27,7 @@
 #include "MYOSGLUE.h"
 #include "GLOBGLUE.h"
 #include "ADDRSPAC.h"
+#include "PROGMAIN.h"
 #include "VIAEMDEV.h"
 #endif
 
@@ -36,39 +37,18 @@
 #include <stdio.h>
 #endif
 
-LOCALVAR ui5b theKeyCopys[4];
-	/*
-		What the emulated keyboard thinks the mac thinks is the
-		state of the keyboard. This is compared to theKeys.
-	*/
-
 LOCALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
 {
-	int j;
-	int b;
-
-	for (j = 0; j < 16; ++j) {
-		ui3b k1 = ((ui3b *)theKeys)[j];
-		ui3b k2 = ((ui3b *)theKeyCopys)[j];
-
-		if (k1 != k2) {
-			ui3b bit = 1;
-			for (b = 0; b < 8; ++b) {
-				ui3b newk = k1 & bit;
-				ui3b oldk = k2 & bit;
-
-				if (oldk != newk) {
-					((ui3b *)theKeyCopys)[j] = (k2 & ~ bit) | newk;
-
-					*VirtualKey = j * 8 + b;
-					*KeyDown = (newk != 0);
-
-					return trueblnr;
-				}
-				bit <<= 1;
-			}
+	MyEvtQEl *p = MyEvtQOutP();
+	if (nullpr != p) {
+		if (MyEvtQElKindKey == p->kind) {
+			*VirtualKey = p->u.press.key;
+			*KeyDown = p->u.press.down;
+			++MyEvtQOut;
+			return trueblnr;
 		}
 	}
+
 	return falseblnr;
 }
 
@@ -180,14 +160,6 @@ GLOBALPROC DoKybd_ReceiveCommand(void)
 				InstantCommandData = 0x7B;
 				break;
 			case 0x16 : /* Model Command */
-				{
-					int i;
-
-					for (i = 4; --i >= 0; ) {
-						theKeyCopys[i] = 0;
-					}
-				}
-
 				GotKeyBoardData(0x0b /*0x01*/); /* Test value, means Model 0, no extra devices */
 				/* Fixed by Hoshi Takanori - it uses the proper keyboard type now */
 				break;
@@ -288,20 +260,68 @@ LOCALVAR ui3b NotSoRandAddr = 1;
 #if EmADB
 LOCALVAR ui3b MouseADBAddress;
 LOCALVAR blnr SavedCurMouseButton = falseblnr;
+LOCALVAR ui4r MouseADBDeltaH = 0;
+LOCALVAR ui4r MouseADBDeltaV = 0;
 #endif
-
-#define CheckForADBmouseEvt() (SavedCurMouseButton != CurMouseButton)
 
 #if EmADB
 LOCALPROC ADB_DoMouseTalk(void)
 {
 	switch (ADB_CurCmd & 3) {
 		case 0:
-			if (SavedCurMouseButton != CurMouseButton) {
-				ADB_SzDatBuf = 2;
-				ADB_DatBuf[0] = CurMouseButton ? 0x00 : 0x80;
-				ADB_DatBuf[1] = 0x00;
-				SavedCurMouseButton = CurMouseButton;
+			{
+				blnr overflow = falseblnr;
+				ui4b partH;
+				ui4b partV;
+				blnr MouseButtonChange = falseblnr;
+				MyEvtQEl *p = MyEvtQOutP();
+				if (nullpr != p) {
+					if (MyEvtQElKindMouseDelta == p->kind) {
+						MouseADBDeltaH += p->u.pos.h;
+						MouseADBDeltaV += p->u.pos.v;
+						++MyEvtQOut;
+					}
+				}
+				partH = MouseADBDeltaH;
+				partV = MouseADBDeltaV;
+
+				if ((si4b)MouseADBDeltaH < 0) {
+					partH = - partH;
+				}
+				if ((si4b)MouseADBDeltaV < 0) {
+					partV = - partV;
+				}
+				if ((partH >> 6) > 0) {
+					overflow = trueblnr;
+					partH = (1 << 6) - 1;
+				}
+				if ((partV >> 6) > 0) {
+					overflow = trueblnr;
+					partV = (1 << 6) - 1;
+				}
+				if ((si4b)MouseADBDeltaH < 0) {
+					partH = - partH;
+				}
+				if ((si4b)MouseADBDeltaV < 0) {
+					partV = - partV;
+				}
+				MouseADBDeltaH -= partH;
+				MouseADBDeltaV -= partV;
+				if (! overflow) {
+					MyEvtQEl *p = MyEvtQOutP();
+					if (nullpr != p) {
+						if (MyEvtQElKindMouseButton == p->kind) {
+							SavedCurMouseButton = p->u.press.down;
+							MouseButtonChange = trueblnr;
+							++MyEvtQOut;
+						}
+					}
+				}
+				if ((0 != partH) || (0 != partV) || MouseButtonChange) {
+					ADB_SzDatBuf = 2;
+					ADB_DatBuf[0] = (SavedCurMouseButton ? 0x00 : 0x80) | (partV & 127);
+					ADB_DatBuf[1] = /* 0x00 */ 0x80 | (partH & 127);
+				}
 			}
 			ADBMouseDisabled = 0;
 			break;
@@ -339,48 +359,41 @@ LOCALPROC ADB_DoMouseListen(void)
 
 #if EmADB
 LOCALVAR ui3b KeyboardADBAddress;
-LOCALVAR ui3b NextADBkeyevt = 0xFF;
 #endif
 
 #if EmADB
-LOCALFUNC blnr CheckForADBkeyEvt(void)
+LOCALFUNC blnr CheckForADBkeyEvt(ui3b *NextADBkeyevt)
 {
 	int i;
 	blnr KeyDown;
 
-	if (0xFF == NextADBkeyevt) {
-		if (! FindKeyEvent(&i, &KeyDown)) {
-			return falseblnr;
-		} else {
-			switch (i) {
-				case MKC_Control:
-					i = 0x36;
-					break;
-				case MKC_Left:
-					i = 0x3B;
-					break;
-				case MKC_Right:
-					i = 0x3C;
-					break;
-				case MKC_Down:
-					i = 0x3D;
-					break;
-				case MKC_Up:
-					i = 0x3E;
-					break;
-				default:
-					/* unchanged */
-					break;
-			}
-			NextADBkeyevt = (KeyDown ? 0x00 : 0x80) | i;
+	if (! FindKeyEvent(&i, &KeyDown)) {
+		return falseblnr;
+	} else {
+		switch (i) {
+			case MKC_Control:
+				i = 0x36;
+				break;
+			case MKC_Left:
+				i = 0x3B;
+				break;
+			case MKC_Right:
+				i = 0x3C;
+				break;
+			case MKC_Down:
+				i = 0x3D;
+				break;
+			case MKC_Up:
+				i = 0x3E;
+				break;
+			default:
+				/* unchanged */
+				break;
 		}
+		*NextADBkeyevt = (KeyDown ? 0x00 : 0x80) | i;
+		return trueblnr;
 	}
-	return trueblnr;
 }
-#endif
-
-#if EmADB
-#define GotADBKeyEvt() (NextADBkeyevt = 0xFF)
 #endif
 
 #if EmADB
@@ -389,15 +402,15 @@ LOCALPROC ADB_DoKeyboardTalk(void)
 	switch (ADB_CurCmd & 3) {
 		case 0:
 			{
-				if (CheckForADBkeyEvt()) {
+				ui3b NextADBkeyevt;
+
+				if (CheckForADBkeyEvt(&NextADBkeyevt)) {
 					ADB_SzDatBuf = 2;
 					ADB_DatBuf[0] = NextADBkeyevt;
-					GotADBKeyEvt();
-					if (! CheckForADBkeyEvt()) {
+					if (! CheckForADBkeyEvt(&NextADBkeyevt)) {
 						ADB_DatBuf[1] = 0xFF;
 					} else {
 						ADB_DatBuf[1] = NextADBkeyevt;
-						GotADBKeyEvt();
 					}
 				}
 			}
@@ -437,8 +450,20 @@ LOCALPROC ADB_DoKeyboardListen(void)
 #if EmADB
 LOCALFUNC blnr CheckForADBanyEvt(void)
 {
-	return CheckForADBmouseEvt()
-		|| CheckForADBkeyEvt();
+	MyEvtQEl *p = MyEvtQOutP();
+	if (nullpr != p) {
+		switch (p->kind) {
+			case MyEvtQElKindMouseButton:
+			case MyEvtQElKindMouseDelta:
+			case MyEvtQElKindKey:
+				return trueblnr;
+				break;
+			default:
+				break;
+		}
+	}
+
+	return (0 != MouseADBDeltaH) && (0 != MouseADBDeltaV);
 }
 #endif
 
@@ -590,7 +615,16 @@ GLOBALPROC ADBstate_ChangeNtfy(void)
 #ifdef _VIA_Debug
 	fprintf(stderr, "ADBstate_ChangeNtfy: %d, %d, %d\n", ADBst1, ADBst0, GetCuriCount());
 #endif
-	ICT_add(kICT_ADB_NewState, 50);
+	ICT_add(kICT_ADB_NewState, 512);
+		/*
+			Macintosh Family Hardware Reference say device "must respond to
+			talk command within 260 microseconds", which translates to
+			about 190 instructions. But haven't seen much problems even
+			for very large values (tens of thousands), and do see
+			problems for small values. 50 is definitely too small,
+			mouse doesn't move smoothly. There may still be some
+			signs of this problem with 150.
+		*/
 }
 #endif
 

@@ -24,16 +24,107 @@
 #define CONTROLM_H
 #endif
 
+LOCALVAR blnr MyEvtQNeedRecover = falseblnr; /* events lost because of full queue */
+
+LOCALFUNC MyEvtQEl * MyEvtQElPreviousIn(void)
+{
+	MyEvtQEl *p = NULL;
+	if (MyEvtQIn - MyEvtQOut != 0) {
+		p = &MyEvtQA[(MyEvtQIn - 1) & MyEvtQIMask];
+	}
+
+	return p;
+}
+
+LOCALFUNC MyEvtQEl * MyEvtQElAlloc(void)
+{
+	MyEvtQEl *p = NULL;
+	if (MyEvtQIn - MyEvtQOut >= MyEvtQSz) {
+		MyEvtQNeedRecover = trueblnr;
+	} else {
+		p = &MyEvtQA[MyEvtQIn & MyEvtQIMask];
+
+		++MyEvtQIn;
+	}
+
+	return p;
+}
+
+LOCALVAR ui5b theKeys[4];
+
 LOCALPROC Keyboard_UpdateKeyMap(int key, blnr down)
 {
+	int k = key & 127; /* just for safety */
+	int bit = 1 << (k & 7);
 	ui3b *kp = (ui3b *)theKeys;
+	ui3b *kpi = &kp[k / 8];
+	blnr CurDown = ((*kpi & bit) != 0);
+	if (CurDown != down) {
+		MyEvtQEl *p = MyEvtQElAlloc();
+		if (NULL != p) {
+			p->kind = MyEvtQElKindKey;
+			p->u.press.key = k;
+			p->u.press.down = down;
 
-	if (key >= 0 && key < 128) {
-		int bit = 1 << (key & 7);
-		if (down) {
-			kp[key / 8] |= bit;
+			if (down) {
+				*kpi |= bit;
+			} else {
+				*kpi &= ~ bit;
+			}
+		}
+	}
+}
+
+LOCALVAR blnr MyMouseButtonState = falseblnr;
+
+LOCALPROC MyMouseButtonSet(blnr down)
+{
+	if (MyMouseButtonState != down) {
+		MyEvtQEl *p = MyEvtQElAlloc();
+		if (NULL != p) {
+			p->kind = MyEvtQElKindMouseButton;
+			p->u.press.down = down;
+
+			MyMouseButtonState = down;
+		}
+	}
+}
+
+LOCALPROC MyMousePositionSetDelta(ui4r dh, ui4r dv)
+{
+	if ((dh != 0) || (dv != 0)) {
+		MyEvtQEl *p = MyEvtQElPreviousIn();
+		if ((NULL != p) && (MyEvtQElKindMouseDelta == p->kind)) {
+			p->u.pos.h += dh;
+			p->u.pos.v += dv;
 		} else {
-			kp[key / 8] &= ~ bit;
+			p = MyEvtQElAlloc();
+			if (NULL != p) {
+				p->kind = MyEvtQElKindMouseDelta;
+				p->u.pos.h = dh;
+				p->u.pos.v = dv;
+			}
+		}
+	}
+}
+
+LOCALVAR ui4b MyMousePosCurV = 0;
+LOCALVAR ui4b MyMousePosCurH = 0;
+
+LOCALPROC MyMousePositionSet(ui4r h, ui4r v)
+{
+	if ((h != MyMousePosCurH) || (v != MyMousePosCurV)) {
+		MyEvtQEl *p = MyEvtQElPreviousIn();
+		if ((NULL == p) || (MyEvtQElKindMousePos != p->kind)) {
+			p = MyEvtQElAlloc();
+		}
+		if (NULL != p) {
+			p->kind = MyEvtQElKindMousePos;
+			p->u.pos.h = h;
+			p->u.pos.v = v;
+
+			MyMousePosCurH = h;
+			MyMousePosCurV = v;
 		}
 	}
 }
@@ -64,30 +155,41 @@ LOCALPROC DisconnectKeyCodes(ui5b KeepMask)
 		except maybe for control, caps lock, command,
 		option and shift.
 	*/
-	ui5b KeysMask[4] = {0, 0, 0, 0};
 
-	if (0 != (KeepMask & kKeepMaskControl)) {
-		((ui3b *)KeysMask)[MKC_Control / 8] |= (1 << (MKC_Control & 7));
-	}
+	int j;
+	int b;
+	int key;
+	ui5b m;
 
-	if (0 != (KeepMask & kKeepMaskCapsLock)) {
-		((ui3b *)KeysMask)[MKC_CapsLock / 8] |= (1 << (MKC_CapsLock & 7));
+	for (j = 0; j < 16; ++j) {
+		ui3b k1 = ((ui3b *)theKeys)[j];
+		if (0 != k1) {
+			ui3b bit = 1;
+			for (b = 0; b < 8; ++b) {
+				if (0 != (k1 & bit)) {
+					key = j * 8 + b;
+					switch (key) {
+						case MKC_Control: m = kKeepMaskControl; break;
+						case MKC_CapsLock: m = kKeepMaskCapsLock; break;
+						case MKC_Command: m = kKeepMaskCommand; break;
+						case MKC_Option: m = kKeepMaskOption; break;
+						case MKC_Shift: m = kKeepMaskShift; break;
+						default: m = 0; break;
+					}
+					if (0 == (KeepMask & m)) {
+						Keyboard_UpdateKeyMap(key, falseblnr);
+					}
+				}
+				bit <<= 1;
+			}
+		}
 	}
+}
 
-	if (0 != (KeepMask & kKeepMaskCommand)) {
-		((ui3b *)KeysMask)[MKC_Command / 8] |= (1 << (MKC_Command & 7));
-	}
-	if (0 != (KeepMask & kKeepMaskOption)) {
-		((ui3b *)KeysMask)[MKC_Option / 8] |= (1 << (MKC_Option & 7));
-	}
-	if (0 != (KeepMask & kKeepMaskShift)) {
-		((ui3b *)KeysMask)[MKC_Shift / 8] |= (1 << (MKC_Shift & 7));
-	}
-
-	theKeys[0] &= KeysMask[0];
-	theKeys[1] &= KeysMask[1];
-	theKeys[2] &= KeysMask[2];
-	theKeys[3] &= KeysMask[3];
+LOCALPROC MyEvtQTryRecoverFromFull(void)
+{
+	MyMouseButtonSet(falseblnr);
+	DisconnectKeyCodes(0);
 }
 
 #ifndef EnableAltKeysMode

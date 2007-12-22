@@ -879,6 +879,36 @@ LOCALPROC StopSaveMouseMotion(void)
 
 /* cursor state */
 
+#if EnableMouseMotion
+LOCALPROC MyMouseConstrain(void)
+{
+	si4b shiftdh;
+	si4b shiftdv;
+
+	if (SavedMouseH < vMacScreenWidth / 4) {
+		shiftdh = vMacScreenWidth / 2;
+	} else if (SavedMouseH > vMacScreenWidth - vMacScreenWidth / 4) {
+		shiftdh = - vMacScreenWidth / 2;
+	} else {
+		shiftdh = 0;
+	}
+	if (SavedMouseV < vMacScreenHeight / 4) {
+		shiftdv = vMacScreenHeight / 2;
+	} else if (SavedMouseV > vMacScreenHeight - vMacScreenHeight / 4) {
+		shiftdv = - vMacScreenHeight / 2;
+	} else {
+		shiftdv = 0;
+	}
+	if ((shiftdh != 0) || (shiftdv != 0)) {
+		SavedMouseH += shiftdh;
+		SavedMouseV += shiftdv;
+		if (! MyMoveMouse(SavedMouseH, SavedMouseV)) {
+			HaveMouseMotion = falseblnr;
+		}
+	}
+}
+#endif
+
 LOCALVAR blnr CurTrueMouseButton = falseblnr;
 
 LOCALPROC CheckMouseState(void)
@@ -902,32 +932,7 @@ LOCALPROC CheckMouseState(void)
 
 #if EnableMouseMotion
 	if (HaveMouseMotion) {
-		si4b shiftdh;
-		si4b shiftdv;
-
-		MouseMotionH += NewMousePosh - SavedMouseH;
-		MouseMotionV += NewMousePosv - SavedMouseV;
-		if (NewMousePosh < vMacScreenWidth / 4) {
-			shiftdh = vMacScreenWidth / 2;
-		} else if (NewMousePosh > vMacScreenWidth - vMacScreenWidth / 4) {
-			shiftdh = - vMacScreenWidth / 2;
-		} else {
-			shiftdh = 0;
-		}
-		if (NewMousePosv < vMacScreenHeight / 4) {
-			shiftdv = vMacScreenHeight / 2;
-		} else if (NewMousePosv > vMacScreenHeight - vMacScreenHeight / 4) {
-			shiftdv = - vMacScreenHeight / 2;
-		} else {
-			shiftdv = 0;
-		}
-		if ((shiftdh != 0) || (shiftdv != 0)) {
-			NewMousePosh += shiftdh;
-			NewMousePosv += shiftdv;
-			if (! MyMoveMouse(NewMousePosh, NewMousePosv)) {
-				HaveMouseMotion = falseblnr;
-			}
-		}
+		MyMousePositionSetDelta(NewMousePosh - SavedMouseH, NewMousePosv - SavedMouseV);
 		SavedMouseH = NewMousePosh;
 		SavedMouseV = NewMousePosv;
 	} else
@@ -957,15 +962,12 @@ LOCALPROC CheckMouseState(void)
 		/* if (ShouldHaveCursorHidden || CurMouseButton) */
 		/* for a game like arkanoid, would like mouse to still
 		move even when outside window in one direction */
-		{
-			CurMouseV = NewMousePosv;
-			CurMouseH = NewMousePosh;
-		}
+		MyMousePositionSet(CurMouseH, CurMouseV);
 	}
 
 	if (CurTrueMouseButton != NewMouseButton) {
 		CurTrueMouseButton = NewMouseButton;
-		CurMouseButton = CurTrueMouseButton && ShouldHaveCursorHidden;
+		MyMouseButtonSet(CurTrueMouseButton && ShouldHaveCursorHidden);
 		/*
 			CurMouseButton changes only when the button state changes.
 			So if have mouse down outside our window, CurMouseButton will
@@ -1632,6 +1634,19 @@ LOCALVAR blnr GrabMachine = falseblnr;
 
 LOCALPROC CheckForSavedTasks(void)
 {
+	if (MyEvtQNeedRecover) {
+		MyEvtQNeedRecover = falseblnr;
+
+		/* attempt cleanup, MyEvtQNeedRecover may get set again */
+		MyEvtQTryRecoverFromFull();
+	}
+
+#if EnableMouseMotion
+	if (HaveMouseMotion) {
+		MyMouseConstrain();
+	}
+#endif
+
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
 		if (AnyDiskInserted()) {

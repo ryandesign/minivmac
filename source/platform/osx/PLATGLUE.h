@@ -1235,13 +1235,43 @@ LOCALPROC AdjustMouseMotionGrab(void)
 }
 #endif
 
+#if EnableMouseMotion && EnableFullScreen
+LOCALPROC MyMouseConstrain(void)
+{
+	si4b shiftdh;
+	si4b shiftdv;
+
+	if (SavedMouseH < vMacScreenWidth / 4) {
+		shiftdh = vMacScreenWidth / 2;
+	} else if (SavedMouseH > vMacScreenWidth - vMacScreenWidth / 4) {
+		shiftdh = - vMacScreenWidth / 2;
+	} else {
+		shiftdh = 0;
+	}
+	if (SavedMouseV < vMacScreenHeight / 4) {
+		shiftdv = vMacScreenHeight / 2;
+	} else if (SavedMouseV > vMacScreenHeight - vMacScreenHeight / 4) {
+		shiftdv = - vMacScreenHeight / 2;
+	} else {
+		shiftdv = 0;
+	}
+	if ((shiftdh != 0) || (shiftdv != 0)) {
+		SavedMouseH += shiftdh;
+		SavedMouseV += shiftdv;
+		if (! MyMoveMouse(SavedMouseH, SavedMouseV)) {
+			HaveMouseMotion = falseblnr;
+		}
+	}
+}
+#endif
+
 LOCALVAR blnr MouseIsOutside = falseblnr;
 	/*
 		MouseIsOutside true if sure mouse outside our window. If in
 		our window, or not sure, set false.
 	*/
 
-LOCALPROC CheckMouseState(void)
+LOCALPROC MousePositionNotify(Point NewMousePos)
 {
 	/*
 		Not MouseIsOutside includes in the title bar, etc, so have
@@ -1249,16 +1279,9 @@ LOCALPROC CheckMouseState(void)
 	*/
 
 	Rect r;
-	Point NewMousePos;
 	blnr ShouldHaveCursorHidden = ! MouseIsOutside;
 
 	GetWindowBounds(gMyMainWindow, kWindowContentRgn, &r);
-	GetGlobalMouse(&NewMousePos);
-		/* deprecated, but haven't found useable replace.
-			between window deactivate and then reactivate,
-			mouse can move without getting kEventMouseMoved.
-			and no way to get initial position.
-		*/
 
 	NewMousePos.h -= r.left;
 	NewMousePos.v -= r.top;
@@ -1279,32 +1302,8 @@ LOCALPROC CheckMouseState(void)
 
 #if EnableMouseMotion && EnableFullScreen
 	if (HaveMouseMotion) {
-		si4b shiftdh;
-		si4b shiftdv;
-
-		MouseMotionH += NewMousePos.h - SavedMouseH;
-		MouseMotionV += NewMousePos.v - SavedMouseV;
-		if (NewMousePos.h < vMacScreenWidth / 4) {
-			shiftdh = vMacScreenWidth / 2;
-		} else if (NewMousePos.h > vMacScreenWidth - vMacScreenWidth / 4) {
-			shiftdh = - vMacScreenWidth / 2;
-		} else {
-			shiftdh = 0;
-		}
-		if (NewMousePos.v < vMacScreenHeight / 4) {
-			shiftdv = vMacScreenHeight / 2;
-		} else if (NewMousePos.v > vMacScreenHeight - vMacScreenHeight / 4) {
-			shiftdv = - vMacScreenHeight / 2;
-		} else {
-			shiftdv = 0;
-		}
-		if ((shiftdh != 0) || (shiftdv != 0)) {
-			NewMousePos.h += shiftdh;
-			NewMousePos.v += shiftdv;
-			if (! MyMoveMouse(NewMousePos.h, NewMousePos.v)) {
-				HaveMouseMotion = falseblnr;
-			}
-		}
+		MyMousePositionSetDelta(NewMousePos.h - SavedMouseH,
+			NewMousePos.v - SavedMouseV);
 		SavedMouseH = NewMousePos.h;
 		SavedMouseV = NewMousePos.v;
 	} else
@@ -1328,13 +1327,26 @@ LOCALPROC CheckMouseState(void)
 		/* if (ShouldHaveCursorHidden || CurMouseButton) */
 		/* for a game like arkanoid, would like mouse to still
 		move even when outside window in one direction */
-		{
-			CurMouseV = NewMousePos.v;
-			CurMouseH = NewMousePos.h;
-		}
+		MyMousePositionSet(NewMousePos.h, NewMousePos.v);
 	}
 
 	WantCursorHidden = ShouldHaveCursorHidden;
+}
+
+LOCALPROC CheckMouseState(void)
+{
+	Point NewMousePos;
+	GetGlobalMouse(&NewMousePos);
+		/*
+			Deprecated, but haven't found usable replacement.
+			Between window deactivate and then reactivate,
+			mouse can move without getting kEventMouseMoved.
+			Also no way to get initial position.
+			(Also don't get kEventMouseMoved after
+			using menu bar. Or while using menubar, but
+			that isn't too important.)
+		*/
+	MousePositionNotify(NewMousePos);
 }
 
 #if 0
@@ -1364,7 +1376,7 @@ LOCALPROC DisconnectKeyCodes3(void)
 {
 	DisconnectKeyCodes2();
 
-	CurMouseButton = falseblnr;
+	MyMouseButtonSet(falseblnr);
 
 	ForceShowCursor();
 }
@@ -2979,8 +2991,7 @@ LOCALPROC PostMyLowPriorityTasksEvent(void)
 	}
 }
 
-#if 0
-LOCALPROC MouseMovedNotify(EventRef theEvent)
+LOCALPROC HandleEventLocation(EventRef theEvent)
 {
 	Point NewMousePos;
 
@@ -2996,10 +3007,18 @@ LOCALPROC MouseMovedNotify(EventRef theEvent)
 		NULL,
 		&NewMousePos))
 	{
-		GlobalMousePos = NewMousePos;
+		MousePositionNotify(NewMousePos);
 	}
 }
-#endif
+
+LOCALPROC HandleEventModifiers(EventRef theEvent)
+{
+	UInt32 theModifiers;
+
+	GetEventParameter(theEvent, kEventParamKeyModifiers, typeUInt32, NULL, sizeof(typeUInt32), NULL, &theModifiers);
+
+	MyUpdateKeyboardModifiers(theModifiers);
+}
 
 LOCALVAR blnr IsOurMouseMove;
 
@@ -3028,7 +3047,10 @@ static pascal OSStatus windowEventHandler(EventHandlerCallRef nextHandler,
 					result = noErr;
 					break;
 				case kEventWindowClickContentRgn:
-					CurMouseButton = trueblnr;
+					MouseIsOutside = falseblnr;
+					HandleEventLocation(theEvent);
+					HandleEventModifiers(theEvent);
+					MyMouseButtonSet(trueblnr);
 					result = noErr;
 					break;
 			}
@@ -3037,8 +3059,11 @@ static pascal OSStatus windowEventHandler(EventHandlerCallRef nextHandler,
 			switch(eventKind) {
 				case kEventMouseMoved:
 				case kEventMouseDragged:
-					/* MouseMovedNotify(theEvent); */
 					MouseIsOutside = falseblnr;
+#if 0 /* don't bother, CheckMouseState will take care of it, better */
+					HandleEventLocation(theEvent);
+					HandleEventModifiers(theEvent);
+#endif
 					IsOurMouseMove = trueblnr;
 					result = noErr;
 					break;
@@ -3579,6 +3604,19 @@ LOCALPROC EnterSpeedStopped(void)
 
 LOCALPROC CheckStateAfterEvents(void)
 {
+	if (MyEvtQNeedRecover) {
+		MyEvtQNeedRecover = falseblnr;
+
+		/* attempt cleanup, MyEvtQNeedRecover may get set again */
+		MyEvtQTryRecoverFromFull();
+	}
+
+#if EnableMouseMotion && EnableFullScreen
+	if (HaveMouseMotion) {
+		MyMouseConstrain();
+	}
+#endif
+
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
 		if (AnyDiskInserted()) {
@@ -3881,6 +3919,7 @@ LOCALFUNC OSStatus Keyboard_UpdateKeyMap3(EventRef theEvent, blnr down)
 {
 	UInt32 uiKeyCode;
 
+	HandleEventModifiers(theEvent);
 	GetEventParameter(theEvent, kEventParamKeyCode, typeUInt32, NULL, sizeof(uiKeyCode), NULL, &uiKeyCode);
 	Keyboard_UpdateKeyMap2(uiKeyCode & 0x000000FF, down);
 	return noErr;
@@ -3900,7 +3939,9 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 				case kEventMouseDown:
 #if EnableFullScreen
 					if (GrabMachine) {
-						CurMouseButton = trueblnr;
+						HandleEventLocation(theEvent);
+						HandleEventModifiers(theEvent);
+						MyMouseButtonSet(trueblnr);
 						result = noErr;
 					} else
 #endif
@@ -3909,7 +3950,9 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 					}
 					break;
 				case kEventMouseUp:
-					CurMouseButton = falseblnr;
+					HandleEventLocation(theEvent);
+					HandleEventModifiers(theEvent);
+					MyMouseButtonSet(falseblnr);
 #if EnableFullScreen
 					if (GrabMachine) {
 						result = noErr;
@@ -3932,7 +3975,10 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 						*/
 					if (! IsOurMouseMove) {
 						MouseIsOutside = trueblnr;
-						/* MouseMovedNotify(theEvent); */
+#if 0 /* don't bother, CheckMouseState will take care of it, better */
+						HandleEventLocation(theEvent);
+						HandleEventModifiers(theEvent);
+#endif
 					}
 					break;
 			}
@@ -3989,13 +4035,7 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 						}
 						break;
 					case kEventRawKeyModifiersChanged:
-						{
-							UInt32 theModifiers;
-
-							GetEventParameter(theEvent, kEventParamKeyModifiers, typeUInt32, NULL, sizeof(typeUInt32), NULL, &theModifiers);
-
-							MyUpdateKeyboardModifiers(theModifiers);
-						}
+						HandleEventModifiers(theEvent);
 						result = noErr;
 						if (CurSpeedStopped) {
 							PostMyLowPriorityTasksEvent();

@@ -28,51 +28,72 @@
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
 #include "ADDRSPAC.h"
+#include "PROGMAIN.h"
 #include "SCCEMDEV.h"
 #endif
 
 #include "MOUSEMDV.h"
 
+#ifdef MouseBtnUp
+LOCALVAR ui4r MyMouseDebounceLock = 0;
+#endif
+
 GLOBALPROC Mouse_Update(void)
 {
 #ifdef MouseBtnUp
-	MouseBtnUp = CurMouseButton ? 0 : 1;
+	if (MyMouseDebounceLock != 0) {
+		--MyMouseDebounceLock;
+	} else {
+		MyEvtQEl *p = MyEvtQOutP();
+		if (nullpr != p) {
+			if (MyEvtQElKindMouseButton == p->kind) {
+				MouseBtnUp = p->u.press.down ? 0 : 1;
+				++MyEvtQOut;
+				MyMouseDebounceLock = 2;
+			}
+		}
+	}
 #endif
 
 	/* if start doing this too soon after boot, will mess up memory check */
 	if (Mouse_Enabled()) {
-#if EnableMouseMotion
-		if (HaveMouseMotion) {
-			/* tell platform specific code where the mouse went */
-			CurMouseV = get_ram_word(0x082C);
-			CurMouseH = get_ram_word(0x082E);
-
-			if ((MouseMotionH != 0) || (MouseMotionV != 0)) {
-				put_ram_word(0x0828, get_ram_word(0x0828) + MouseMotionV);
-				put_ram_word(0x082A, get_ram_word(0x082A) + MouseMotionH);
-				put_ram_byte(0x08CE, get_ram_byte(0x08CF));
-					/* Tell MacOS to redraw the Mouse */
-
-				MouseMotionV = 0;
-				MouseMotionH = 0;
-			}
-		} else
-#endif
-		{
-			ui5b NewMouse = (CurMouseV << 16) | CurMouseH;
-
-			if (get_ram_long(0x0828) != NewMouse) {
-				put_ram_long(0x0828, NewMouse); /* Set Mouse Position */
-				put_ram_long(0x082C, NewMouse);
+		MyEvtQEl *p = MyEvtQOutP();
+		if (nullpr != p) {
 #if CurEmu <= kEmuPlus
-				put_ram_byte(0x08CE, get_ram_byte(0x08CF));
-					/* Tell MacOS to redraw the Mouse */
-#else
-				put_ram_long(0x0830, NewMouse);
-				put_ram_byte(0x08CE, 0xFF);
-					/* Tell MacOS to redraw the Mouse */
+#if EnableMouseMotion
+			if (MyEvtQElKindMouseDelta == p->kind) {
+
+				if ((p->u.pos.h != 0) || (p->u.pos.v != 0)) {
+					put_ram_word(0x0828, get_ram_word(0x0828) + p->u.pos.v);
+					put_ram_word(0x082A, get_ram_word(0x082A) + p->u.pos.h);
+					put_ram_byte(0x08CE, get_ram_byte(0x08CF));
+						/* Tell MacOS to redraw the Mouse */
+				}
+				++MyEvtQOut;
+			} else
 #endif
+#endif
+			if (MyEvtQElKindMousePos == p->kind) {
+				ui5b NewMouse = (p->u.pos.v << 16) | p->u.pos.h;
+
+				if (get_ram_long(0x0828) != NewMouse) {
+					put_ram_long(0x0828, NewMouse); /* Set Mouse Position */
+					put_ram_long(0x082C, NewMouse);
+#if CurEmu <= kEmuPlus
+					put_ram_byte(0x08CE, get_ram_byte(0x08CF));
+						/* Tell MacOS to redraw the Mouse */
+#else
+					put_ram_long(0x0830, NewMouse);
+					put_ram_byte(0x08CE, 0xFF);
+						/* Tell MacOS to redraw the Mouse */
+#endif
+				}
+				++MyEvtQOut;
 			}
 		}
+
+		/* tell platform specific code where the mouse went */
+		CurMouseV = get_ram_word(0x082C);
+		CurMouseH = get_ram_word(0x082E);
 	}
 }

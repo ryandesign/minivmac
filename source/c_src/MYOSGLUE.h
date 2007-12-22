@@ -242,6 +242,37 @@ EXPORTVAR(char, *screencomparebuff)
 EXPORTVAR(ui3p, VidMem)
 #endif
 
+#define MyEvtQElKindKey 0
+#define MyEvtQElKindMouseButton 1
+#define MyEvtQElKindMousePos 2
+#define MyEvtQElKindMouseDelta 3
+
+struct MyEvtQEl {
+	/* expected size : 8 bytes */
+	ui3b kind;
+	ui3b pad[3];
+	union {
+		struct {
+			ui3b down;
+			ui3b key;
+		} press;
+		struct {
+			ui4b h;
+			ui4b v;
+		} pos;
+	} u;
+};
+typedef struct MyEvtQEl MyEvtQEl;
+
+#define MyEvtQLg2Sz 4
+#define MyEvtQSz (1 << MyEvtQLg2Sz)
+#define MyEvtQIMask (MyEvtQSz - 1)
+
+EXPORTVAR(MyEvtQEl, MyEvtQA[MyEvtQSz])
+EXPORTVAR(ui4r, MyEvtQIn)
+EXPORTVAR(ui4r, MyEvtQOut)
+
+
 EXPORTVAR(blnr, ForceMacOff)
 
 EXPORTVAR(blnr, WantMacInterrupt)
@@ -254,19 +285,12 @@ EXPORTVAR(blnr, SpeedLimit)
 
 EXPORTVAR(ui3b, SpeedValue)
 
-EXPORTVAR(ui3b, CurMouseButton)
-
+/* where emulated machine thinks mouse is */
 EXPORTVAR(ui4b, CurMouseV)
 EXPORTVAR(ui4b, CurMouseH)
 
 #ifndef EnableMouseMotion
 #define EnableMouseMotion 1
-#endif
-
-#if EnableMouseMotion
-EXPORTVAR(blnr, HaveMouseMotion)
-EXPORTVAR(ui4b, MouseMotionV)
-EXPORTVAR(ui4b, MouseMotionH)
 #endif
 
 #ifndef MySoundEnabled
@@ -288,12 +312,6 @@ EXPORTFUNC ui3p GetCurSoundOutBuff(void);
 EXPORTFUNC tMacErr HTCEexport(tPbuf i);
 EXPORTFUNC tMacErr HTCEimport(tPbuf *r);
 #endif
-
-EXPORTVAR(ui5b, theKeys[4])
-	/*
-		What the emulated keyboard thinks is the
-		state of the keyboard.
-	*/
 
 #define MKC_A 0x00
 #define MKC_B 0x0B

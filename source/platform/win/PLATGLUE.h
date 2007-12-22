@@ -25,7 +25,7 @@
 	port of vMac, by Philip Cummins.
 	Adapted by Fabio Concas to run on Pocket PC 2003 devices.
 
-	The main entry point 'WinMain' is at the end of this file.
+	The main entry point '_tWinMain' is at the end of this file.
 */
 
 #ifndef InstallFileIcons
@@ -221,19 +221,24 @@ LOCALPROC StopSaveMouseMotion(void)
 }
 #endif
 
+LOCALVAR blnr MyMouseCaptured = falseblnr;
+
+LOCALPROC MyMouseCaptureSet(blnr v)
+{
+	if (v != MyMouseCaptured) {
+		if (v) {
+			(void) SetCapture(MainWnd);
+		} else {
+			(void) ReleaseCapture();
+		}
+		MyMouseCaptured = v;
+	}
+}
+
 LOCALPROC SetCurMouseButton(blnr v)
 {
-	if (v) {
-		if (! CurMouseButton) {
-			(void) SetCapture(MainWnd);
-			CurMouseButton = trueblnr;
-		}
-	} else {
-		if (CurMouseButton) {
-			(void) ReleaseCapture();
-			CurMouseButton = falseblnr;
-		}
-	}
+	MyMouseButtonSet(v);
+	MyMouseCaptureSet(v);
 }
 
 /* keyboard */
@@ -2064,76 +2069,87 @@ LOCALFUNC blnr InitTheCursor(void)
 	return trueblnr;
 }
 
-LOCALPROC CheckMouseState(void)
+#if EnableMouseMotion
+LOCALPROC MyMouseConstrain(void)
 {
-	blnr ShouldHaveCursorHidden;
-	POINT NewMousePos;
+	si4b shiftdh;
+	si4b shiftdv;
 
-	ShouldHaveCursorHidden = trueblnr;
+	if (SavedMouseH < vMacScreenWidth / 4) {
+		shiftdh = vMacScreenWidth / 2;
+	} else if (SavedMouseH > vMacScreenWidth - vMacScreenWidth / 4) {
+		shiftdh = - vMacScreenWidth / 2;
+	} else {
+		shiftdh = 0;
+	}
+	if (SavedMouseV < vMacScreenHeight / 4) {
+		shiftdv = vMacScreenHeight / 2;
+	} else if (SavedMouseV > vMacScreenHeight - vMacScreenHeight / 4) {
+		shiftdv = - vMacScreenHeight / 2;
+	} else {
+		shiftdv = 0;
+	}
+	if ((shiftdh != 0) || (shiftdv != 0)) {
+		SavedMouseH += shiftdh;
+		SavedMouseV += shiftdv;
+		if (! MyMoveMouse(SavedMouseH, SavedMouseV)) {
+			HaveMouseMotion = falseblnr;
+		}
+	}
+}
+#endif
 
-	GetCursorPos(&NewMousePos);
-	NewMousePos.x -= WndX;
-	NewMousePos.y -= WndY;
-#if ! UseWinCE
+LOCALPROC MousePositionNotify(LONG NewMousePosx, LONG NewMousePosy)
+{
+	blnr ShouldHaveCursorHidden = trueblnr;
+
+#if UseWinCE
 #if EnableFullScreen
 	if (UseFullScreen) {
-		NewMousePos.x -= hOffset;
-		NewMousePos.y -= vOffset;
-	}
+		NewMousePosx /= 1.6;
+		NewMousePosy /= 1.6;
+	} else
 #endif
+	{
+		NewMousePosx += hOffset;
+		NewMousePosy += vOffset;
+	}
+#else
+#if EnableFullScreen
+	if (UseFullScreen) {
+		NewMousePosx -= hOffset;
+		NewMousePosy -= vOffset;
+	}
 #endif
 #if EnableMagnify
 	if (UseMagnify) {
-		NewMousePos.x /= MyWindowScale;
-		NewMousePos.y /= MyWindowScale;
+		NewMousePosx /= MyWindowScale;
+		NewMousePosy /= MyWindowScale;
 	}
+#endif
 #endif
 
 #if EnableMouseMotion
 	if (HaveMouseMotion) {
-		si4b shiftdh;
-		si4b shiftdv;
-
-		MouseMotionH += NewMousePos.x - SavedMouseH;
-		MouseMotionV += NewMousePos.y - SavedMouseV;
-		if (NewMousePos.x < vMacScreenWidth / 4) {
-			shiftdh = vMacScreenWidth / 2;
-		} else if (NewMousePos.x > vMacScreenWidth - vMacScreenWidth / 4) {
-			shiftdh = - vMacScreenWidth / 2;
-		} else {
-			shiftdh = 0;
-		}
-		if (NewMousePos.y < vMacScreenHeight / 4) {
-			shiftdv = vMacScreenHeight / 2;
-		} else if (NewMousePos.y > vMacScreenHeight - vMacScreenHeight / 4) {
-			shiftdv = - vMacScreenHeight / 2;
-		} else {
-			shiftdv = 0;
-		}
-		if ((shiftdh != 0) || (shiftdv != 0)) {
-			NewMousePos.x += shiftdh;
-			NewMousePos.y += shiftdv;
-			if (! MyMoveMouse(NewMousePos.x, NewMousePos.y)) {
-				HaveMouseMotion = falseblnr;
-			}
-		}
-		SavedMouseH = NewMousePos.x;
-		SavedMouseV = NewMousePos.y;
+		MyMousePositionSetDelta(NewMousePosx - SavedMouseH,
+			NewMousePosy - SavedMouseV);
+		SavedMouseH = NewMousePosx;
+		SavedMouseV = NewMousePosy;
 	} else
 #endif
 	{
-		if (NewMousePos.x < 0) {
-			NewMousePos.x = 0;
+		if (NewMousePosx < 0) {
+			NewMousePosx = 0;
 			ShouldHaveCursorHidden = falseblnr;
-		} else if (NewMousePos.x > vMacScreenWidth) {
-			NewMousePos.x = vMacScreenWidth - 1;
+		} else if (NewMousePosx > vMacScreenWidth) {
+			NewMousePosx = vMacScreenWidth - 1;
 			ShouldHaveCursorHidden = falseblnr;
 		}
-		if (NewMousePos.y < 0) {
-			NewMousePos.y = 0;
+		if (NewMousePosy < 0) {
+			NewMousePosy = 0;
 			ShouldHaveCursorHidden = falseblnr;
-		} else if (NewMousePos.y > vMacScreenHeight) {
-			NewMousePos.y = vMacScreenHeight - 1;
+		} else if (NewMousePosy > vMacScreenHeight) {
+			NewMousePosy = vMacScreenHeight - 1;
 			ShouldHaveCursorHidden = falseblnr;
 		}
 
@@ -2147,14 +2163,21 @@ LOCALPROC CheckMouseState(void)
 		/* if (ShouldHaveCursorHidden || CurMouseButton) */
 		/* for a game like arkanoid, would like mouse to still
 		move even when outside window in one direction */
-		{
-			CurMouseV = NewMousePos.y;
-			CurMouseH = NewMousePos.x;
-		}
+		MyMousePositionSet(NewMousePosx, NewMousePosy);
 #endif
 	}
 
 	WantCursorHidden = ShouldHaveCursorHidden;
+}
+
+LOCALPROC CheckMouseState(void)
+{
+	POINT NewMousePos;
+
+	GetCursorPos(&NewMousePos);
+	NewMousePos.x -= WndX;
+	NewMousePos.y -= WndY;
+	MousePositionNotify(NewMousePos.x, NewMousePos.y);
 }
 
 #if IncludePbufs
@@ -3535,6 +3558,19 @@ LOCALPROC CheckForSavedTasks(void)
 		have done at an awkward time.
 	*/
 
+	if (MyEvtQNeedRecover) {
+		MyEvtQNeedRecover = falseblnr;
+
+		/* attempt cleanup, MyEvtQNeedRecover may get set again */
+		MyEvtQTryRecoverFromFull();
+	}
+
+#if EnableMouseMotion
+	if (HaveMouseMotion) {
+		MyMouseConstrain();
+	}
+#endif
+
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
 		if (AnyDiskInserted()) {
@@ -3663,26 +3699,6 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd, UINT uMessage, WPARAM wparam, LPARAM lpa
 			GotTheTick = trueblnr;
 			break;
 #endif
-		case WM_MOUSEMOVE:
-#if UseWinCE
-#if EnableFullScreen
-			CurMouseV = WantFullScreen? ((HIWORD (lparam)) / 1.6) : HIWORD (lparam) + vOffset;
-			CurMouseH = WantFullScreen? ((LOWORD (lparam)) / 1.6) : LOWORD (lparam) + hOffset;
-#else
-			CurMouseV = HIWORD (lparam) + vOffset;
-			CurMouseH = LOWORD (lparam) + hOffset;
-#endif
-#endif
-			/* windows may have messed up cursor */
-			/*
-				there is no notification when the mouse moves
-				outside the window, and the cursor is automatically
-				changed
-			*/
-			if (! HaveCursorHidden) {
-				/* SetCursor(LoadCursor(NULL, IDC_ARROW)); */
-			}
-			break;
 		case WM_PAINT:
 			{
 				PAINTSTRUCT ps;
@@ -3836,29 +3852,27 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd, UINT uMessage, WPARAM wparam, LPARAM lpa
 			break;
 		case WM_LBUTTONDOWN:
 		case WM_RBUTTONDOWN:
+			MousePositionNotify(LOWORD (lparam), HIWORD (lparam));
 			SetCurMouseButton(trueblnr);
-#if UseWinCE
-#if EnableFullScreen
-			CurMouseV = WantFullScreen? ((HIWORD (lparam)) / 1.6) : HIWORD (lparam) + vOffset;
-			CurMouseH = WantFullScreen? ((LOWORD (lparam)) / 1.6) : LOWORD (lparam) + hOffset;
-#else
-			CurMouseV = HIWORD (lparam) + vOffset;
-			CurMouseH = LOWORD (lparam) + hOffset;
-#endif
-#endif
 			break;
 		case WM_LBUTTONUP:
 		case WM_RBUTTONUP:
+			MousePositionNotify(LOWORD (lparam), HIWORD (lparam));
 			SetCurMouseButton(falseblnr);
+			break;
+		case WM_MOUSEMOVE:
 #if UseWinCE
-#if EnableFullScreen
-			CurMouseV = WantFullScreen? ((HIWORD (lparam)) / 1.6) : HIWORD (lparam) + vOffset;
-			CurMouseH = WantFullScreen? ((LOWORD (lparam)) / 1.6) : LOWORD (lparam) + hOffset;
-#else
-			CurMouseV = HIWORD (lparam) + vOffset;
-			CurMouseH = LOWORD (lparam) + hOffset;
+			MousePositionNotify(LOWORD (lparam), HIWORD (lparam));
 #endif
-#endif
+			/* windows may have messed up cursor */
+			/*
+				there is no notification when the mouse moves
+				outside the window, and the cursor is automatically
+				changed
+			*/
+			if (! HaveCursorHidden) {
+				/* SetCursor(LoadCursor(NULL, IDC_ARROW)); */
+			}
 			break;
 #if EnableDragDrop
 		case WM_CREATE:
@@ -4198,7 +4212,7 @@ LOCALPROC UnInitOSGLU(void)
 #if UseTimerThread
 	MyTimer_UnInit();
 #endif
-	SetCurMouseButton(falseblnr);
+	MyMouseCaptureSet(falseblnr);
 
 	if (MacMsgDisplayed) {
 		MacMsgDisplayOff();
