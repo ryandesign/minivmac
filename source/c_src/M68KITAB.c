@@ -22,6 +22,8 @@
 #include "SYSDEPNS.h"
 #endif
 
+#include "EMCONFIG.h"
+
 #ifndef Use68020
 #define Use68020 0
 #endif

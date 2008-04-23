@@ -273,6 +273,9 @@ LOCALPROC WriteConfigFiles(void)
 {
 	WriteCommonCNFGGLOB();
 	WriteCommonCNFGRAPI();
+#ifdef Have_SPOTHRCF
+	WriteAppSpecificConfigFiles();
+#endif
 
 	if (HaveMacRrscs) {
 		WriteCommonCNFGRSRC();

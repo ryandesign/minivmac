@@ -90,6 +90,8 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 #endif
 	if ((gbo_cpufam == gbk_cpufam_68k) || (gbo_cpufam == gbk_cpufam_ppc)) {
 		WriteDestFileLn("#define BigEndianUnaligned 1");
+	} else if (gbo_cpufam == gbk_cpufam_x86) {
+		WriteDestFileLn("#define LittleEndianUnaligned 1");
 	}
 
 	if (gbo_cpufam == gbk_cpufam_68k) {

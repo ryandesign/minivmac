@@ -258,56 +258,6 @@ LOCALVAR int ControlMessage = 0;
 LOCALVAR char *CntrlDisplayBuff = nullpr;
 #endif
 
-#ifndef RomFileName
-#if CurEmu <= kEmu512K
-#define RomFileName "Mac128K.ROM"
-#elif CurEmu <= kEmuPlus
-#define RomFileName "vMac.ROM"
-#elif CurEmu <= kEmuSE
-#define RomFileName "MacSE.ROM"
-#elif CurEmu <= kEmuClassic
-#define RomFileName "Classic.ROM"
-#else
-#error "RomFileName not defined"
-#endif
-#endif
-
-#ifndef kEmuName
-#if CurEmu == kEmu128K
-#define kEmuName "128K"
-#elif CurEmu == kEmu512K
-#define kEmuName "512K"
-#elif CurEmu == kEmu512Ke
-#define kEmuName "512Ke"
-#elif CurEmu == kEmuPlus1M
-#define kEmuName "Plus 1M"
-#elif CurEmu == kEmuPlus2M
-#define kEmuName "Plus 2M"
-#elif CurEmu == kEmuPlus2_5M
-#define kEmuName "Plus 2.5M"
-#elif CurEmu == kEmuPlus
-#define kEmuName "Plus 4M"
-#elif CurEmu == kEmuSE1M
-#define kEmuName "SE 1M"
-#elif CurEmu == kEmuSE2M
-#define kEmuName "SE 2M"
-#elif CurEmu == kEmuSE2_5M
-#define kEmuName "SE 2.5M"
-#elif CurEmu == kEmuSE
-#define kEmuName "SE 4M"
-#elif CurEmu == kEmuClassic1M
-#define kEmuName "Classic 1M"
-#elif CurEmu == kEmuClassic2M
-#define kEmuName "Classic 2M"
-#elif CurEmu == kEmuClassic2_5M
-#define kEmuName "Classic 2.5M"
-#elif CurEmu == kEmuClassic
-#define kEmuName "Classic 4M"
-#else
-#error "kEmuName not defined"
-#endif
-#endif
-
 LOCALFUNC char * GetSubstitutionStr(char x)
 {
 	char *s;
@@ -2748,14 +2698,14 @@ GLOBALPROC WarnMsgUnsupportedROM(void)
 	MacMsg(kStrUnsupportedROMTitle, kStrUnsupportedROMMessage, falseblnr);
 }
 
-#if DetailedAbormalReport
+#if DetailedAbnormalReport
 GLOBALPROC WarnMsgAbnormal(char *s)
 #else
 GLOBALPROC WarnMsgAbnormal(void)
 #endif
 {
 	MacMsg(kStrReportAbnormalTitle,
-#if DetailedAbormalReport
+#if DetailedAbnormalReport
 		s,
 #else
 		kStrReportAbnormalMessage,

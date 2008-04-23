@@ -31,13 +31,13 @@
 
 #include "ROMEMDEV.h"
 
-#if CurEmu <= kEmuClassic
+#if (CurEmMd <= kEmMd_Classic) || (CurEmMd == kEmMd_II)
 LOCALVAR const ui4b sony_driver[] = {
 /*
 	Replacement for .Sony driver
 	68k machine code, compiled from mydriver.c
 */
-#if CurEmu <= kEmu512K
+#if CurEmMd <= kEmMd_128K
 	0x4F00, 0x0000, 0x0000, 0x0000,
 	0x0018, 0x002C, 0x0040, 0x005C,
 	0x0092, 0x052E, 0x536F, 0x6E79,
@@ -560,20 +560,22 @@ LOCALVAR const ui4b sony_driver[] = {
 };
 #endif
 
-#if CurEmu <= kEmu512K
+#if CurEmMd <= kEmMd_128K
 #define Sony_DriverBase 0x1690
-#elif CurEmu <= kEmuPlus
+#elif CurEmMd <= kEmMd_Plus
 #define Sony_DriverBase 0x17D30
-#elif CurEmu <= kEmuSE
+#elif CurEmMd <= kEmMd_SE
 #define Sony_DriverBase 0x34680
-#elif CurEmu <= kEmuClassic
+#elif CurEmMd <= kEmMd_Classic
 #define Sony_DriverBase 0x34680
+#elif CurEmMd == kEmMd_II
+#define Sony_DriverBase 0x2D72C
 #endif
 
 #define kVidMem_Base 0x00540000
 #define kROM_Base 0x00400000
 
-#if CurEmu <= kEmuClassic
+#if (CurEmMd <= kEmMd_Classic) || (CurEmMd == kEmMd_II)
 LOCALPROC Sony_Install(void)
 {
 	int i;
@@ -586,7 +588,7 @@ LOCALPROC Sony_Install(void)
 		pto += 2;
 	}
 
-#if IncludeVidMem
+#if IncludeVidMem && (CurEmMd != kEmMd_PB100) && (CurEmMd != kEmMd_II)
 	{
 		ui3p patchp = pto;
 
@@ -602,7 +604,7 @@ LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
 	ui5b CheckSum2 = 0;
 	ui3p p = 4 + ROM;
 
-	for (i = (kTrueROM_Size - 4) >> 1; --i >= 0; ) {
+	for (i = (kCheckSumRom_Size - 4) >> 1; --i >= 0; ) {
 		CheckSum2 += do_get_mem_word(p);
 		p += 2;
 	}
@@ -616,12 +618,12 @@ GLOBALFUNC blnr ROM_Init(void)
 	if (! Check_Checksum(CheckSum)) {
 		WarnMsgCorruptedROM();
 	} else
-#if CurEmu <= kEmu512K
+#if CurEmMd <= kEmMd_128K
 	if (CheckSum == 0x28BA61CE) {
 	} else
 	if (CheckSum == 0x28BA4E50) {
 	} else
-#elif CurEmu <= kEmuPlus
+#elif CurEmMd <= kEmMd_Plus
 	if (CheckSum == 0x4D1EEEE1) {
 		/* Mac Plus ROM v 1, 'Lonely Hearts' */
 	} else
@@ -631,11 +633,17 @@ GLOBALFUNC blnr ROM_Init(void)
 	if (CheckSum == 0x4D1F8172) {
 		/* Mac Plus ROM v 3, 'Loud Harmonicas' */
 	} else
-#elif CurEmu <= kEmuSE
+#elif CurEmMd <= kEmMd_SE
 	if (CheckSum == 0xB2E362A8) {
 	} else
-#elif CurEmu <= kEmuClassic
+#elif CurEmMd <= kEmMd_Classic
 	if (CheckSum == 0xA49F9914) {
+	} else
+#elif CurEmMd <= kEmMd_PB100
+	if (CheckSum == 0x96645F9C) {
+	} else
+#elif CurEmMd <= kEmMd_II
+	if (CheckSum == 0x9779D2C4) {
 	} else
 #endif
 	{
@@ -647,30 +655,32 @@ GLOBALFUNC blnr ROM_Init(void)
 	*/
 
 /* skip the rom checksum */
-#if CurEmu <= kEmu512K
+#if CurEmMd <= kEmMd_128K
 	do_put_mem_word(226 + ROM, 0x6004);
-#elif CurEmu <= kEmuPlus
+#elif CurEmMd <= kEmMd_Plus
 	do_put_mem_word(3450 + ROM, 0x6022);
-#elif CurEmu <= kEmuClassic
+#elif CurEmMd <= kEmMd_Classic
 	do_put_mem_word(7272 + ROM, 0x6008);
+#elif CurEmMd == kEmMd_II
+	do_put_mem_word(0x2AB0 + ROM, 0x6008);
 #endif
 
-#if CurEmu <= kEmu512K
-#elif CurEmu <= kEmuPlus
+#if CurEmMd <= kEmMd_128K
+#elif CurEmMd <= kEmMd_Plus
 	do_put_mem_word(3752 + ROM, 0x4E71); /* shorten the ram check read */
 	do_put_mem_word(3728 + ROM, 0x4E71); /* shorten the ram check write*/
-#elif CurEmu <= kEmuClassic
+#elif CurEmMd <= kEmMd_Classic
 	do_put_mem_word(134 + ROM, 0x6002);
 	do_put_mem_word(286 + ROM, 0x6002);
 #endif
 
 	/* do_put_mem_word(862 + ROM, 0x4E71); */ /* shorten set memory*/
 
-#if CurEmu <= kEmuClassic
+#if (CurEmMd <= kEmMd_Classic) || (CurEmMd == kEmMd_II)
 	Sony_Install();
 #endif
 
-#if CurEmu <= kEmu512K
+#if CurEmMd <= kEmMd_128K
 	MyMoveBytes(ROM, kTrueROM_Size + ROM, kTrueROM_Size);
 #endif
 

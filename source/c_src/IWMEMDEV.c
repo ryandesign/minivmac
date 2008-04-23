@@ -15,7 +15,7 @@
 */
 
 /*
-	Integrated Woz Macine EMulated DEVice
+	Integrated Woz Machine EMulated DEVice
 
 	Emulates the IWM found in the Mac Plus.
 
@@ -30,6 +30,7 @@
 #include "SYSDEPNS.h"
 
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -91,8 +92,50 @@ LOCALPROC IWM_Set_Lines(ui3b line, Mode_Ty the_mode)
 	}
 }
 
-FORWARDFUNC ui3b IWM_Read_Reg(void);
-FORWARDPROC IWM_Write_Reg(ui3b in);
+LOCALFUNC ui3b IWM_Read_Reg(void)
+{
+	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
+		case 0 :
+#if TempDebug && (CurEmMd >= kEmMd_SE)
+			/* don't report */
+#else
+			ReportAbnormal("IWM Data Read");
+#endif
+#ifdef _IWM_Debug
+			printf("IWM Data Read\n");
+#endif
+			return IWM.DataIn;
+			break;
+		case 1 :
+#ifdef _IWM_Debug
+			printf("IWM Status Read\n");
+#endif
+			return IWM.Status;
+			break;
+		case 2 :
+			ReportAbnormal("IWM Handshake Read");
+#ifdef _IWM_Debug
+			printf("IWM Handshake Read\n");
+#endif
+			return IWM.Handshake;
+			break;
+		case 3 :
+		default : /* should alway be in 0-3, but compiler warnings don't know that */
+			return 0;
+			break;
+	}
+}
+
+LOCALPROC IWM_Write_Reg(ui3b in)
+{
+	if (((IWM.Lines & kmtr) >> 4) == 0) {
+#ifdef _IWM_Debug
+		printf("IWM Mode Register Write\n");
+#endif
+		IWM.Mode = in;
+		IWM.Status = ((IWM.Status & 0xE0) + (IWM.Mode & 0x1F));
+	}
+}
 
 GLOBALFUNC ui5b IWM_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
@@ -155,49 +198,4 @@ GLOBALFUNC ui5b IWM_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			break;
 	}
 	return Data;
-}
-
-LOCALFUNC ui3b IWM_Read_Reg(void)
-{
-	switch ((IWM.Lines & (kq6 + kq7)) >> 6) {
-		case 0 :
-#if TempDebug && (CurEmu >= kEmuSE1M)
-			/* don't report */
-#else
-			ReportAbnormal("IWM Data Read");
-#endif
-#ifdef _IWM_Debug
-			printf("IWM Data Read\n");
-#endif
-			return IWM.DataIn;
-			break;
-		case 1 :
-#ifdef _IWM_Debug
-			printf("IWM Status Read\n");
-#endif
-			return IWM.Status;
-			break;
-		case 2 :
-			ReportAbnormal("IWM Handshake Read");
-#ifdef _IWM_Debug
-			printf("IWM Handshake Read\n");
-#endif
-			return IWM.Handshake;
-			break;
-		case 3 :
-		default : /* should alway be in 0-3, but compiler warnings don't know that */
-			return 0;
-			break;
-	}
-}
-
-LOCALPROC IWM_Write_Reg(ui3b in)
-{
-	if (((IWM.Lines & kmtr) >> 4) == 0) {
-#ifdef _IWM_Debug
-		printf("IWM Mode Register Write\n");
-#endif
-		IWM.Mode = in;
-		IWM.Status = ((IWM.Status & 0xE0) + (IWM.Mode & 0x1F));
-	}
 }

@@ -24,60 +24,66 @@
 #define ALTKEYSM_H
 #endif
 
-LOCALVAR blnr AltKeysTempMode = falseblnr;
-LOCALVAR blnr AltKeysLockMode = falseblnr;
+LOCALVAR blnr AltKeysLockText = falseblnr;
 LOCALVAR blnr AltKeysTrueCmnd = falseblnr;
 LOCALVAR blnr AltKeysTrueOption = falseblnr;
 LOCALVAR blnr AltKeysTrueShift = falseblnr;
-LOCALVAR blnr AltKeysModeOn = falseblnr;
+LOCALVAR blnr AltKeysModOn = falseblnr;
+LOCALVAR blnr AltKeysTextOn = falseblnr;
 
 LOCALPROC CheckAltKeyUseMode(void)
 {
-	blnr NewAltKeyUseMode = (AltKeysTempMode | AltKeysLockMode)
-		&& (! AltKeysTrueCmnd);
-	if (NewAltKeyUseMode != AltKeysModeOn) {
+	blnr NewAltKeysTextOn;
+
+	AltKeysModOn = AltKeysTrueCmnd
+		|| AltKeysTrueOption || AltKeysTrueShift;
+	NewAltKeysTextOn = AltKeysLockText || AltKeysModOn;
+	if (NewAltKeysTextOn != AltKeysTextOn) {
 		DisconnectKeyCodes(kKeepMaskControl | kKeepMaskCapsLock
 			| (AltKeysTrueCmnd ? kKeepMaskCommand : 0)
 			| (AltKeysTrueOption ? kKeepMaskOption : 0)
 			| (AltKeysTrueShift ? kKeepMaskShift : 0));
-		AltKeysModeOn = NewAltKeyUseMode;
+		AltKeysTextOn = NewAltKeysTextOn;
 	}
 }
 
 LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 {
-	if (MKC_SemiColon == key) {
-		AltKeysTempMode = down;
-		CheckAltKeyUseMode();
-	} else if (MKC_Command == key) {
+	if (MKC_Command == key) {
 		AltKeysTrueCmnd = down;
 		CheckAltKeyUseMode();
 		Keyboard_UpdateKeyMap(key, down);
 	} else if (MKC_Option == key) {
 		AltKeysTrueOption = down;
+		CheckAltKeyUseMode();
 		Keyboard_UpdateKeyMap(key, down);
 	} else if (MKC_Shift == key) {
 		AltKeysTrueShift = down;
+		CheckAltKeyUseMode();
 		Keyboard_UpdateKeyMap(key, down);
-	} else if (! AltKeysModeOn) {
-		Keyboard_UpdateKeyMap(key, down);
+	} else if (AltKeysTextOn) {
+		if ((MKC_SemiColon == key) && (! AltKeysModOn)) {
+			if (down) {
+				AltKeysLockText = falseblnr;
+				CheckAltKeyUseMode();
+			}
+		} else {
+			Keyboard_UpdateKeyMap(key, down);
+		}
 	} else if (MKC_M == key) {
 		if (down) {
-			AltKeysLockMode = trueblnr;
+			AltKeysLockText = trueblnr;
 			CheckAltKeyUseMode();
 		}
-	} else if (MKC_U == key) {
-		if (down) {
-			AltKeysLockMode = falseblnr;
-			CheckAltKeyUseMode();
-		}
+	} else if (MKC_SemiColon == key) {
+		/* ignore */
 	} else {
 		switch (key) {
 			case MKC_A:
-				key = MKC_BackSpace;
+				key = MKC_SemiColon;
 				break;
 			case MKC_B:
-				key = MKC_ForwardDel;
+				key = MKC_BackSlash;
 				break;
 			case MKC_C:
 				key = MKC_F3;
@@ -86,7 +92,7 @@ LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 				key = MKC_Option;
 				break;
 			case MKC_E:
-				key = MKC_Return;
+				key = MKC_BackSpace;
 				break;
 			case MKC_F:
 				key = MKC_Command;
@@ -95,7 +101,7 @@ LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 				key = MKC_Enter;
 				break;
 			case MKC_H:
-				key = MKC_SemiColon;
+				key = MKC_Equal;
 				break;
 			case MKC_I:
 				key = MKC_Up;
@@ -113,34 +119,34 @@ LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 				/* handled above */
 				break;
 			case MKC_N:
-				key = MKC_Help;
+				key = MKC_Minus;
 				break;
 			case MKC_O:
-				key = MKC_Home;
+				key = MKC_RightBracket;
 				break;
 			case MKC_P:
-				key = MKC_End;
+				return; /* none */
 				break;
 			case MKC_Q:
 				key = MKC_Grave;
 				break;
 			case MKC_R:
-				key = MKC_PageUp;
+				key = MKC_Return;
 				break;
 			case MKC_S:
 				key = MKC_Shift;
 				break;
 			case MKC_T:
-				key = MKC_PageDown;
+				key = MKC_Tab;
 				break;
 			case MKC_U:
-				/* handled above */
+				key = MKC_LeftBracket;
 				break;
 			case MKC_V:
 				key = MKC_F4;
 				break;
 			case MKC_W:
-				key = MKC_BackSlash;
+				return; /* none */
 				break;
 			case MKC_X:
 				key = MKC_F2;
@@ -162,7 +168,6 @@ LOCALPROC DisconnectKeyCodes1(ui5b KeepMask)
 {
 	DisconnectKeyCodes(KeepMask);
 
-	AltKeysTempMode = falseblnr;
 	if (! (0 != (KeepMask & kKeepMaskCommand))) {
 		AltKeysTrueCmnd = falseblnr;
 	}
@@ -172,8 +177,7 @@ LOCALPROC DisconnectKeyCodes1(ui5b KeepMask)
 	if (! (0 != (KeepMask & kKeepMaskShift))) {
 		AltKeysTrueShift = falseblnr;
 	}
-
-	if (AltKeysLockMode != AltKeysModeOn) {
-		AltKeysModeOn = AltKeysLockMode;
-	}
+	AltKeysModOn = AltKeysTrueCmnd
+		|| AltKeysTrueOption || AltKeysTrueShift;
+	AltKeysTextOn = AltKeysLockText || AltKeysModOn;
 }

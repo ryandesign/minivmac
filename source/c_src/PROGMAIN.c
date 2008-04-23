@@ -27,6 +27,7 @@
 #ifndef AllFiles
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "GLOBGLUE.h"
 #include "ADDRSPAC.h"
 #endif
@@ -60,6 +61,21 @@ GLOBALFUNC MyEvtQEl * MyEvtQOutP(void)
 		p = &MyEvtQA[MyEvtQOut & MyEvtQIMask];
 	}
 	return p;
+}
+
+GLOBALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
+{
+	MyEvtQEl *p = MyEvtQOutP();
+	if (nullpr != p) {
+		if (MyEvtQElKindKey == p->kind) {
+			*VirtualKey = p->u.press.key;
+			*KeyDown = p->u.press.down;
+			++MyEvtQOut;
+			return trueblnr;
+		}
+	}
+
+	return falseblnr;
 }
 
 #define InstructionsPerSubTick (InstructionsPerTick / kNumSubTicks)

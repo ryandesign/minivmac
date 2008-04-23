@@ -32,8 +32,12 @@ static void DoAllExtraHeaders(tDoOneExtraHeader p)
 		p(kDepDirCSrc, "ALTKEYSM.h");
 	}
 	p(kDepDirCSrc, "CONTROLM.h");
+	p(kDepDirCnfg, "EMCONFIG.h");
 	if (NeedScrnHack) {
 		p(kDepDirCSrc, "SCRNHACK.h");
+	}
+	if (cur_mdl >= gbk_mdl_SE) {
+		p(kDepDirCSrc, "ADBSHARE.h");
 	}
 }
 
@@ -57,15 +61,31 @@ static void DoAllSrcFiles(tDoOneCFile p)
 			kCSrcFlgmAsmAvail),
 		nullpr);
 	p("VIAEMDEV", kCSrcFlgmNone, nullpr);
+	if (gbk_mdl_II == cur_mdl) {
+		p("VIA2EMDV", kCSrcFlgmNone, nullpr);
+	}
 	p("IWMEMDEV", kCSrcFlgmNone, nullpr);
 	p("SCCEMDEV", kCSrcFlgmNone, nullpr);
-	p("RTCEMDEV", kCSrcFlgmNone, nullpr);
+	if (gbk_mdl_PB100 != cur_mdl) {
+		p("RTCEMDEV", kCSrcFlgmNone, nullpr);
+	}
 	p("ROMEMDEV", kCSrcFlgmNone, nullpr);
 	p("SCSIEMDV", kCSrcFlgmNone, nullpr);
 	p("SONYEMDV", kCSrcFlgmNone, nullpr);
-	p("SNDEMDEV", kCSrcFlgmNone, nullpr);
+	if (gbk_mdl_PB100 != cur_mdl) {
+		p("SNDEMDEV", kCSrcFlgmNone, nullpr);
+	}
 	p("SCRNEMDV", kCSrcFlgmNone, nullpr);
-	p("KBRDEMDV", kCSrcFlgmNone, nullpr);
+	if (cur_mdl <= gbk_mdl_Plus) {
+		p("KBRDEMDV", kCSrcFlgmNone, nullpr);
+	} else if (gbk_mdl_PB100 != cur_mdl) {
+		p("ADBEMDEV", kCSrcFlgmNone, nullpr);
+	} else {
+		p("PMUEMDEV", kCSrcFlgmNone, nullpr);
+	}
+	if ((gbk_mdl_PB100 == cur_mdl) || (gbk_mdl_II == cur_mdl)) {
+		p("ASCEMDEV", kCSrcFlgmNone, nullpr);
+	}
 	p("MOUSEMDV", kCSrcFlgmNone, nullpr);
 }
 

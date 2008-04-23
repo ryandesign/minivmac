@@ -1,7 +1,7 @@
 /*
 	VIAEMDEV.c
 
-	Copyright (C) 2004 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2008 Philip Cummins, Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -26,92 +26,230 @@
 #include "SYSDEPNS.h"
 
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #include "PROGMAIN.h"
 #endif
 
 #include "VIAEMDEV.h"
 
-#define VIA_ORA_CanIn 0x80
-#define VIA_ORA_CanOut 0x7F
-
-#define VIA_ORA_FloatVal 0xEF
-#define VIA_ORB_FloatVal 0xFF
-
-#if CurEmu >= kEmuSE1M
-#define VIA_ORB_CanIn 0x09
-#define VIA_ORB_CanOut 0xF7
-#else
-#define VIA_ORB_CanIn 0x79
-#define VIA_ORB_CanOut 0x87
+#ifndef VIA1_ORA_FloatVal
+#define VIA1_ORA_FloatVal 0xFF
 #endif
 
-#ifdef VIAiA0_ChangeNtfy
-IMPORTPROC VIAiA0_ChangeNtfy(void);
+#ifndef VIA1_ORB_FloatVal
+#define VIA1_ORB_FloatVal 0xFF
 #endif
 
-#ifdef VIAiA1_ChangeNtfy
-IMPORTPROC VIAiA1_ChangeNtfy(void);
+#ifndef VIA1_ORA_CanIn
+#define VIA1_ORA_CanIn 0x00
 #endif
 
-#ifdef VIAiA2_ChangeNtfy
-IMPORTPROC VIAiA2_ChangeNtfy(void);
+#ifndef VIA1_ORA_CanOut
+#define VIA1_ORA_CanOut 0x00
 #endif
 
-#ifdef VIAiA3_ChangeNtfy
-IMPORTPROC VIAiA3_ChangeNtfy(void);
+#ifndef VIA1_ORB_CanIn
+#define VIA1_ORB_CanIn 0x00
 #endif
 
-#ifdef VIAiA4_ChangeNtfy
-IMPORTPROC VIAiA4_ChangeNtfy(void);
+#ifndef VIA1_ORB_CanOut
+#define VIA1_ORB_CanOut 0x00
 #endif
 
-#ifdef VIAiA5_ChangeNtfy
-IMPORTPROC VIAiA5_ChangeNtfy(void);
+#ifndef VIA1_IER_Never0
+#define VIA1_IER_Never0 0xFF
 #endif
 
-#ifdef VIAiA6_ChangeNtfy
-IMPORTPROC VIAiA6_ChangeNtfy(void);
+#ifndef VIA1_IER_Never1
+#define VIA1_IER_Never1 0xFF
 #endif
 
-#ifdef VIAiA7_ChangeNtfy
-IMPORTPROC VIAiA7_ChangeNtfy(void);
+#ifndef VIA1_CB2modesAllowed
+#define VIA1_CB2modesAllowed 0x01
 #endif
 
-#ifdef VIAiB0_ChangeNtfy
-IMPORTPROC VIAiB0_ChangeNtfy(void);
+#ifndef VIA1_CA2modesAllowed
+#define VIA1_CA2modesAllowed 0x01
 #endif
 
-#ifdef VIAiB1_ChangeNtfy
-IMPORTPROC VIAiB1_ChangeNtfy(void);
+#ifdef VIA1_iA0_ChangeNtfy
+IMPORTPROC VIA1_iA0_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiB2_ChangeNtfy
-IMPORTPROC VIAiB2_ChangeNtfy(void);
+#ifdef VIA1_iA1_ChangeNtfy
+IMPORTPROC VIA1_iA1_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiB3_ChangeNtfy
-IMPORTPROC VIAiB3_ChangeNtfy(void);
+#ifdef VIA1_iA2_ChangeNtfy
+IMPORTPROC VIA1_iA2_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiB4_ChangeNtfy
-IMPORTPROC VIAiB4_ChangeNtfy(void);
+#ifdef VIA1_iA3_ChangeNtfy
+IMPORTPROC VIA1_iA3_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiB5_ChangeNtfy
-IMPORTPROC VIAiB5_ChangeNtfy(void);
+#ifdef VIA1_iA4_ChangeNtfy
+IMPORTPROC VIA1_iA4_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiB6_ChangeNtfy
-IMPORTPROC VIAiB6_ChangeNtfy(void);
+#ifdef VIA1_iA5_ChangeNtfy
+IMPORTPROC VIA1_iA5_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiB7_ChangeNtfy
-IMPORTPROC VIAiB7_ChangeNtfy(void);
+#ifdef VIA1_iA6_ChangeNtfy
+IMPORTPROC VIA1_iA6_ChangeNtfy(void);
 #endif
 
-#ifdef VIAiCB2_ChangeNtfy
-IMPORTPROC VIAiCB2_ChangeNtfy(void);
+#ifdef VIA1_iA7_ChangeNtfy
+IMPORTPROC VIA1_iA7_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB0_ChangeNtfy
+IMPORTPROC VIA1_iB0_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB1_ChangeNtfy
+IMPORTPROC VIA1_iB1_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB2_ChangeNtfy
+IMPORTPROC VIA1_iB2_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB3_ChangeNtfy
+IMPORTPROC VIA1_iB3_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB4_ChangeNtfy
+IMPORTPROC VIA1_iB4_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB5_ChangeNtfy
+IMPORTPROC VIA1_iB5_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB6_ChangeNtfy
+IMPORTPROC VIA1_iB6_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iB7_ChangeNtfy
+IMPORTPROC VIA1_iB7_ChangeNtfy(void);
+#endif
+
+#ifdef VIA1_iCB2_ChangeNtfy
+IMPORTPROC VIA1_iCB2_ChangeNtfy(void);
+#endif
+
+#define Ui3rPowOf2(p) (1 << (p))
+#define Ui3rTestBit(i, p) (((i) & Ui3rPowOf2(p)) != 0)
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 7) || Ui3rTestBit(VIA1_ORA_CanOut, 7))
+#ifdef VIA1_iA7
+#error "VIA1_iA7 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 6) || Ui3rTestBit(VIA1_ORA_CanOut, 6))
+#ifdef VIA1_iA6
+#error "VIA1_iA6 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 5) || Ui3rTestBit(VIA1_ORA_CanOut, 5))
+#ifdef VIA1_iA5
+#error "VIA1_iA5 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 5) || Ui3rTestBit(VIA1_ORA_CanOut, 5))
+#ifdef VIA1_iA5
+#error "VIA1_iA5 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 4) || Ui3rTestBit(VIA1_ORA_CanOut, 4))
+#ifdef VIA1_iA4
+#error "VIA1_iA4 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 3) || Ui3rTestBit(VIA1_ORA_CanOut, 3))
+#ifdef VIA1_iA3
+#error "VIA1_iA3 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 2) || Ui3rTestBit(VIA1_ORA_CanOut, 2))
+#ifdef VIA1_iA2
+#error "VIA1_iA2 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 1) || Ui3rTestBit(VIA1_ORA_CanOut, 1))
+#ifdef VIA1_iA1
+#error "VIA1_iA1 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORA_CanIn, 0) || Ui3rTestBit(VIA1_ORA_CanOut, 0))
+#ifdef VIA1_iA0
+#error "VIA1_iA0 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 7) || Ui3rTestBit(VIA1_ORB_CanOut, 7))
+#ifdef VIA1_iB7
+#error "VIA1_iB7 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 6) || Ui3rTestBit(VIA1_ORB_CanOut, 6))
+#ifdef VIA1_iB6
+#error "VIA1_iB6 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 5) || Ui3rTestBit(VIA1_ORB_CanOut, 5))
+#ifdef VIA1_iB5
+#error "VIA1_iB5 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 5) || Ui3rTestBit(VIA1_ORB_CanOut, 5))
+#ifdef VIA1_iB5
+#error "VIA1_iB5 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 4) || Ui3rTestBit(VIA1_ORB_CanOut, 4))
+#ifdef VIA1_iB4
+#error "VIA1_iB4 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 3) || Ui3rTestBit(VIA1_ORB_CanOut, 3))
+#ifdef VIA1_iB3
+#error "VIA1_iB3 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 2) || Ui3rTestBit(VIA1_ORB_CanOut, 2))
+#ifdef VIA1_iB2
+#error "VIA1_iB2 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 1) || Ui3rTestBit(VIA1_ORB_CanOut, 1))
+#ifdef VIA1_iB1
+#error "VIA1_iB1 defined but not used"
+#endif
+#endif
+
+#if ! (Ui3rTestBit(VIA1_ORB_CanIn, 0) || Ui3rTestBit(VIA1_ORB_CanOut, 0))
+#ifdef VIA1_iB0
+#error "VIA1_iB0 defined but not used"
+#endif
 #endif
 
 typedef struct {
@@ -130,9 +268,9 @@ typedef struct {
 	ui3b IFR;    /* Interrupt Flag Register */
 	ui3b IER;    /* Interrupt Enable Register */
 	ui3b ORA;    /* Buffer A */
-} VIA_Ty;
+} VIA1_Ty;
 
-LOCALVAR VIA_Ty VIA;
+LOCALVAR VIA1_Ty VIA1_D;
 
 #define kIntCA2 0 /* One_Second */
 #define kIntCA1 1 /* Vertical_Blanking */
@@ -142,138 +280,119 @@ LOCALVAR VIA_Ty VIA;
 #define kIntT2 5 /* Timer_2 */
 #define kIntT1 6 /* Timer_1 */
 
-#define Ui3rPowOf2(p) (1 << (p))
-#define Ui3rTestBit(i, p) (((i) & Ui3rPowOf2(p)) != 0)
-
-/* VIA_Get_ORA : VIA Get Port A Data */
+/* VIA1_Get_ORA : VIA Get Port A Data */
 /* This function queries VIA Port A interfaced hardware about their status */
 
-LOCALFUNC ui3b VIA_Get_ORA(void)
+LOCALFUNC ui3b VIA1_Get_ORA(ui3b Selection)
 {
-	ui3b Selection = ~ VIA.DDR_A;
-	ui3b Value = VIA.ORA & VIA.DDR_A;
+	ui3b Value = (~ VIA1_ORA_CanIn) & Selection & VIA1_ORA_FloatVal;
 
-#if 0
-	if ((Selection & ~ VIA_ORA_CanIn) != 0) {
-		ReportAbnormal("Set VIA DDR_A unexpected direction");
-	}
-#endif
-
-#if Ui3rTestBit(VIA_ORA_CanIn, 7)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 7)
 	if (Ui3rTestBit(Selection, 7)) {
-		Value |= (VIAiA7 << 7);
+		Value |= (VIA1_iA7 << 7);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 6)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 6)
 	if (Ui3rTestBit(Selection, 6)) {
-		Value |= (VIAiA6 << 6);
+		Value |= (VIA1_iA6 << 6);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 5)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 5)
 	if (Ui3rTestBit(Selection, 5)) {
-		Value |= (VIAiA5 << 5);
+		Value |= (VIA1_iA5 << 5);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 4)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 4)
 	if (Ui3rTestBit(Selection, 4)) {
-		Value |= (VIAiA4 << 4);
+		Value |= (VIA1_iA4 << 4);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 3)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 3)
 	if (Ui3rTestBit(Selection, 3)) {
-		Value |= (VIAiA3 << 3);
+		Value |= (VIA1_iA3 << 3);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 2)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 2)
 	if (Ui3rTestBit(Selection, 2)) {
-		Value |= (VIAiA2 << 2);
+		Value |= (VIA1_iA2 << 2);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 1)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 1)
 	if (Ui3rTestBit(Selection, 1)) {
-		Value |= (VIAiA1 << 1);
+		Value |= (VIA1_iA1 << 1);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanIn, 0)
+#if Ui3rTestBit(VIA1_ORA_CanIn, 0)
 	if (Ui3rTestBit(Selection, 0)) {
-		Value |= (VIAiA0 << 0);
+		Value |= (VIA1_iA0 << 0);
 	}
 #endif
 
-	VIA.ORA = Value;
 	return Value;
 }
 
-/* VIA_Get_ORB : VIA Get Port B Data */
+/* VIA1_Get_ORB : VIA Get Port B Data */
 /* This function queries VIA Port B interfaced hardware about their status */
 
-LOCALFUNC ui3b VIA_Get_ORB(void)
+LOCALFUNC ui3b VIA1_Get_ORB(ui3b Selection)
 {
-	ui3b Selection = ~ VIA.DDR_B;
-	ui3b Value = VIA.ORB & VIA.DDR_B;
+	ui3b Value = (~ VIA1_ORB_CanIn) & Selection & VIA1_ORB_FloatVal;
 
-#if 0
-	if ((Selection & ~ VIA_ORB_CanIn) != 0) {
-		ReportAbnormal("Set VIA DDR_A unexpected direction");
-	}
-#endif
-
-#if Ui3rTestBit(VIA_ORB_CanIn, 7)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 7)
 	if (Ui3rTestBit(Selection, 7)) {
-		Value |= (VIAiB7 << 7);
+		Value |= (VIA1_iB7 << 7);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 6)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 6)
 	if (Ui3rTestBit(Selection, 6)) {
-		Value |= (VIAiB6 << 6);
+		Value |= (VIA1_iB6 << 6);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 5)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 5)
 	if (Ui3rTestBit(Selection, 5)) {
-		Value |= (VIAiB5 << 5);
+		Value |= (VIA1_iB5 << 5);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 4)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 4)
 	if (Ui3rTestBit(Selection, 4)) {
-		Value |= (VIAiB4 << 4);
+		Value |= (VIA1_iB4 << 4);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 3)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 3)
 	if (Ui3rTestBit(Selection, 3)) {
-		Value |= (VIAiB3 << 3);
+		Value |= (VIA1_iB3 << 3);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 2)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 2)
 	if (Ui3rTestBit(Selection, 2)) {
-		Value |= (VIAiB2 << 2);
+		Value |= (VIA1_iB2 << 2);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 1)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 1)
 	if (Ui3rTestBit(Selection, 1)) {
-		Value |= (VIAiB1 << 1);
+		Value |= (VIA1_iB1 << 1);
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanIn, 0)
+#if Ui3rTestBit(VIA1_ORB_CanIn, 0)
 	if (Ui3rTestBit(Selection, 0)) {
-		Value |= (VIAiB0 << 0);
+		Value |= (VIA1_iB0 << 0);
 	}
 #endif
 
-	VIA.ORB = Value;
 	return Value;
 }
 
@@ -281,270 +400,267 @@ LOCALFUNC ui3b VIA_Get_ORB(void)
 	(Ui3rTestBit(Selection, p) && \
 	((v = (Data >> p) & 1) != x))
 
-LOCALPROC VIA_Put_ORA(void)
+LOCALPROC VIA1_Put_ORA(ui3b Selection, ui3b Data)
 {
+#if 0 != VIA1_ORA_CanOut
 	ui3b v;
-	ui3b Data = VIA.ORA;
-	ui3b Selection = VIA.DDR_A;
+#endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 7)
-	if (ViaORcheckBit(7, VIAiA7)) {
-		VIAiA7 = v;
-#ifdef VIAiA7_ChangeNtfy
-		VIAiA7_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 7)
+	if (ViaORcheckBit(7, VIA1_iA7)) {
+		VIA1_iA7 = v;
+#ifdef VIA1_iA7_ChangeNtfy
+		VIA1_iA7_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 6)
-	if (ViaORcheckBit(6, VIAiA6)) {
-		VIAiA6 = v;
-#ifdef VIAiA6_ChangeNtfy
-		VIAiA6_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 6)
+	if (ViaORcheckBit(6, VIA1_iA6)) {
+		VIA1_iA6 = v;
+#ifdef VIA1_iA6_ChangeNtfy
+		VIA1_iA6_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 5)
-	if (ViaORcheckBit(5, VIAiA5)) {
-		VIAiA5 = v;
-#ifdef VIAiA5_ChangeNtfy
-		VIAiA5_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 5)
+	if (ViaORcheckBit(5, VIA1_iA5)) {
+		VIA1_iA5 = v;
+#ifdef VIA1_iA5_ChangeNtfy
+		VIA1_iA5_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 4)
-	if (ViaORcheckBit(4, VIAiA4)) {
-		VIAiA4 = v;
-#ifdef VIAiA4_ChangeNtfy
-		VIAiA4_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 4)
+	if (ViaORcheckBit(4, VIA1_iA4)) {
+		VIA1_iA4 = v;
+#ifdef VIA1_iA4_ChangeNtfy
+		VIA1_iA4_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 3)
-	if (ViaORcheckBit(3, VIAiA3)) {
-		VIAiA3 = v;
-#ifdef VIAiA3_ChangeNtfy
-		VIAiA3_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 3)
+	if (ViaORcheckBit(3, VIA1_iA3)) {
+		VIA1_iA3 = v;
+#ifdef VIA1_iA3_ChangeNtfy
+		VIA1_iA3_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 2)
-	if (ViaORcheckBit(2, VIAiA2)) {
-		VIAiA2 = v;
-#ifdef VIAiA2_ChangeNtfy
-		VIAiA2_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 2)
+	if (ViaORcheckBit(2, VIA1_iA2)) {
+		VIA1_iA2 = v;
+#ifdef VIA1_iA2_ChangeNtfy
+		VIA1_iA2_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 1)
-	if (ViaORcheckBit(1, VIAiA1)) {
-		VIAiA1 = v;
-#ifdef VIAiA1_ChangeNtfy
-		VIAiA1_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 1)
+	if (ViaORcheckBit(1, VIA1_iA1)) {
+		VIA1_iA1 = v;
+#ifdef VIA1_iA1_ChangeNtfy
+		VIA1_iA1_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORA_CanOut, 0)
-	if (ViaORcheckBit(0, VIAiA0)) {
-		VIAiA0 = v;
-#ifdef VIAiA0_ChangeNtfy
-		VIAiA0_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORA_CanOut, 0)
+	if (ViaORcheckBit(0, VIA1_iA0)) {
+		VIA1_iA0 = v;
+#ifdef VIA1_iA0_ChangeNtfy
+		VIA1_iA0_ChangeNtfy();
 #endif
 	}
 #endif
 }
 
-LOCALPROC VIA_Put_ORB(void)
+LOCALPROC VIA1_Put_ORB(ui3b Selection, ui3b Data)
 {
+#if 0 != VIA1_ORB_CanOut
 	ui3b v;
-	ui3b Data = VIA.ORB;
-	ui3b Selection = VIA.DDR_B;
+#endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 7)
-	if (ViaORcheckBit(7, VIAiB7)) {
-		VIAiB7 = v;
-#ifdef VIAiB7_ChangeNtfy
-		VIAiB7_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 7)
+	if (ViaORcheckBit(7, VIA1_iB7)) {
+		VIA1_iB7 = v;
+#ifdef VIA1_iB7_ChangeNtfy
+		VIA1_iB7_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 6)
-	if (ViaORcheckBit(6, VIAiB6)) {
-		VIAiB6 = v;
-#ifdef VIAiB6_ChangeNtfy
-		VIAiB6_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 6)
+	if (ViaORcheckBit(6, VIA1_iB6)) {
+		VIA1_iB6 = v;
+#ifdef VIA1_iB6_ChangeNtfy
+		VIA1_iB6_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 5)
-	if (ViaORcheckBit(5, VIAiB5)) {
-		VIAiB5 = v;
-#ifdef VIAiB5_ChangeNtfy
-		VIAiB5_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 5)
+	if (ViaORcheckBit(5, VIA1_iB5)) {
+		VIA1_iB5 = v;
+#ifdef VIA1_iB5_ChangeNtfy
+		VIA1_iB5_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 4)
-	if (ViaORcheckBit(4, VIAiB4)) {
-		VIAiB4 = v;
-#ifdef VIAiB4_ChangeNtfy
-		VIAiB4_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 4)
+	if (ViaORcheckBit(4, VIA1_iB4)) {
+		VIA1_iB4 = v;
+#ifdef VIA1_iB4_ChangeNtfy
+		VIA1_iB4_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 3)
-	if (ViaORcheckBit(3, VIAiB3)) {
-		VIAiB3 = v;
-#ifdef VIAiB3_ChangeNtfy
-		VIAiB3_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 3)
+	if (ViaORcheckBit(3, VIA1_iB3)) {
+		VIA1_iB3 = v;
+#ifdef VIA1_iB3_ChangeNtfy
+		VIA1_iB3_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 2)
-	if (ViaORcheckBit(2, VIAiB2)) {
-		VIAiB2 = v;
-#ifdef VIAiB2_ChangeNtfy
-		VIAiB2_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 2)
+	if (ViaORcheckBit(2, VIA1_iB2)) {
+		VIA1_iB2 = v;
+#ifdef VIA1_iB2_ChangeNtfy
+		VIA1_iB2_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 1)
-	if (ViaORcheckBit(1, VIAiB1)) {
-		VIAiB1 = v;
-#ifdef VIAiB1_ChangeNtfy
-		VIAiB1_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 1)
+	if (ViaORcheckBit(1, VIA1_iB1)) {
+		VIA1_iB1 = v;
+#ifdef VIA1_iB1_ChangeNtfy
+		VIA1_iB1_ChangeNtfy();
 #endif
 	}
 #endif
 
-#if Ui3rTestBit(VIA_ORB_CanOut, 0)
-	if (ViaORcheckBit(0, VIAiB0)) {
-		VIAiB0 = v;
-#ifdef VIAiB0_ChangeNtfy
-		VIAiB0_ChangeNtfy();
+#if Ui3rTestBit(VIA1_ORB_CanOut, 0)
+	if (ViaORcheckBit(0, VIA1_iB0)) {
+		VIA1_iB0 = v;
+#ifdef VIA1_iB0_ChangeNtfy
+		VIA1_iB0_ChangeNtfy();
 #endif
 	}
 #endif
 }
 
-LOCALPROC VIA_SetDDR_A(ui3b Data)
+LOCALPROC VIA1_SetDDR_A(ui3b Data)
 {
-	ui3b floatbits = VIA.DDR_A & ~ Data;
-	ui3b unfloatbits = Data & ~ VIA.DDR_A;
+	ui3b floatbits = VIA1_D.DDR_A & ~ Data;
+	ui3b unfloatbits = Data & ~ VIA1_D.DDR_A;
 
 	if (floatbits != 0) {
-		VIA.ORA = (VIA.ORA & ~ floatbits)
-			| (VIA_ORA_FloatVal & floatbits);
-		VIA_Put_ORA();
+		VIA1_Put_ORA(floatbits, VIA1_ORA_FloatVal);
 	}
-	VIA.DDR_A = Data;
+	VIA1_D.DDR_A = Data;
 	if (unfloatbits != 0) {
-		VIA_Put_ORA();
+		VIA1_Put_ORA(unfloatbits, VIA1_D.ORA);
 	}
-	if ((Data & ~ VIA_ORA_CanOut) != 0) {
-		ReportAbnormal("Set VIA DDR_A unexpected direction");
+	if ((Data & ~ VIA1_ORA_CanOut) != 0) {
+		ReportAbnormal("Set VIA1_D.DDR_A unexpected direction");
 	}
 }
 
-LOCALPROC VIA_SetDDR_B(ui3b Data)
+LOCALPROC VIA1_SetDDR_B(ui3b Data)
 {
-	ui3b floatbits = VIA.DDR_B & ~ Data;
-	ui3b unfloatbits = Data & ~ VIA.DDR_B;
+	ui3b floatbits = VIA1_D.DDR_B & ~ Data;
+	ui3b unfloatbits = Data & ~ VIA1_D.DDR_B;
 
 	if (floatbits != 0) {
-		VIA.ORB = (VIA.ORB & ~ floatbits)
-			| (VIA_ORB_FloatVal & floatbits);
-		VIA_Put_ORB();
+		VIA1_Put_ORB(floatbits, VIA1_ORB_FloatVal);
 	}
-	VIA.DDR_B = Data;
+	VIA1_D.DDR_B = Data;
 	if (unfloatbits != 0) {
-		VIA_Put_ORB();
+		VIA1_Put_ORB(unfloatbits, VIA1_D.ORB);
 	}
-	if ((Data & ~ VIA_ORB_CanOut) != 0) {
-		ReportAbnormal("Set VIA DDR_B unexpected direction");
+	if ((Data & ~ VIA1_ORB_CanOut) != 0) {
+		ReportAbnormal("Set VIA1_D.DDR_B unexpected direction");
 	}
 }
 
 
-LOCALPROC CheckVIAInterruptFlag(void)
+LOCALPROC VIA1_CheckInterruptFlag(void)
 {
-	ui3b NewVIAInterruptRequest = ((VIA.IFR & VIA.IER) != 0) ? 1 : 0;
+	ui3b NewInterruptRequest = ((VIA1_D.IFR & VIA1_D.IER) != 0) ? 1 : 0;
 
-	if (NewVIAInterruptRequest != VIAInterruptRequest) {
-		VIAInterruptRequest = NewVIAInterruptRequest;
-#ifdef VIAinterruptChngNtfy
-		VIAinterruptChngNtfy();
+	if (NewInterruptRequest != VIA1_InterruptRequest) {
+		VIA1_InterruptRequest = NewInterruptRequest;
+#ifdef VIA1_interruptChngNtfy
+		VIA1_interruptChngNtfy();
 #endif
 	}
 }
 
 
-LOCALVAR ui3b T1_Active = 0;
-LOCALVAR ui3b T2_Active = 0;
+LOCALVAR ui3b VIA1_T1_Active = 0;
+LOCALVAR ui3b VIA1_T2_Active = 0;
 
-LOCALVAR blnr T1IntReady = falseblnr;
+LOCALVAR blnr VIA1_T1IntReady = falseblnr;
 
-LOCALPROC VIA_Clear(void)
+LOCALPROC VIA1_Clear(void)
 {
-	VIA.ORA   = 0; VIA.DDR_A = 0;
-	VIA.ORB   = 0; VIA.DDR_B = 0;
-	VIA.T1L_L = VIA.T1L_H = 0x00;
-	VIA.T2L_L = 0x00;
-	VIA.T1C_F = 0;
-	VIA.T2C_F = 0;
-	VIA.SR = VIA.ACR = 0x00;
-	VIA.PCR   = VIA.IFR   = VIA.IER   = 0x00;
-	T1_Active = T2_Active = 0x00;
-	T1IntReady = falseblnr;
+	VIA1_D.ORA   = 0; VIA1_D.DDR_A = 0;
+	VIA1_D.ORB   = 0; VIA1_D.DDR_B = 0;
+	VIA1_D.T1L_L = VIA1_D.T1L_H = 0x00;
+	VIA1_D.T2L_L = 0x00;
+	VIA1_D.T1C_F = 0;
+	VIA1_D.T2C_F = 0;
+	VIA1_D.SR = VIA1_D.ACR = 0x00;
+	VIA1_D.PCR   = VIA1_D.IFR   = VIA1_D.IER   = 0x00;
+	VIA1_T1_Active = VIA1_T2_Active = 0x00;
+	VIA1_T1IntReady = falseblnr;
 }
 
-GLOBALPROC VIA_Zap(void)
+GLOBALPROC VIA1_Zap(void)
 {
-	VIA_Clear();
-	VIAInterruptRequest = 0;
+	VIA1_Clear();
+	VIA1_InterruptRequest = 0;
 }
 
-GLOBALPROC VIA_Reset(void)
+GLOBALPROC VIA1_Reset(void)
 {
-	VIA_SetDDR_A(0);
-	VIA_SetDDR_B(0);
+	VIA1_SetDDR_A(0);
+	VIA1_SetDDR_B(0);
 
-	VIA_Clear();
+	VIA1_Clear();
 
-	CheckVIAInterruptFlag();
+	VIA1_CheckInterruptFlag();
 }
 
-LOCALPROC SetVIAInterruptFlag(ui3b VIA_Int)
+LOCALPROC VIA1_SetInterruptFlag(ui3b VIA_Int)
 {
-	VIA.IFR |= ((ui3b)1 << VIA_Int);
-	CheckVIAInterruptFlag();
+	VIA1_D.IFR |= ((ui3b)1 << VIA_Int);
+	VIA1_CheckInterruptFlag();
 }
 
-LOCALPROC ClrVIAInterruptFlag(ui3b VIA_Int)
+LOCALPROC VIA1_ClrInterruptFlag(ui3b VIA_Int)
 {
-	VIA.IFR &= ~ ((ui3b)1 << VIA_Int);
-	CheckVIAInterruptFlag();
+	VIA1_D.IFR &= ~ ((ui3b)1 << VIA_Int);
+	VIA1_CheckInterruptFlag();
 }
 
 #ifdef _VIA_Debug
 #include <stdio.h>
 #endif
 
-GLOBALPROC VIA_ShiftInData(ui3b v)
+GLOBALPROC VIA1_ShiftInData(ui3b v)
 {
-	ui3b ShiftMode = (VIA.ACR & 0x1C) >> 2;
+	/* external hardware generates 8 pulses on CB1, writes 8 bits to CB2 */
+	ui3b ShiftMode = (VIA1_D.ACR & 0x1C) >> 2;
 	if (ShiftMode != 3) {
 		if (ShiftMode == 0) {
 			/* happens on reset */
@@ -552,20 +668,23 @@ GLOBALPROC VIA_ShiftInData(ui3b v)
 			ReportAbnormal("VIA Not ready to shift in");
 		}
 	} else {
-		VIA.SR = v;
-		SetVIAInterruptFlag(kIntSR);
+		VIA1_D.SR = v;
+		VIA1_SetInterruptFlag(kIntSR);
+		VIA1_SetInterruptFlag(kIntCB1);
 	}
 }
 
-GLOBALFUNC ui3b VIA_ShiftOutData(void)
+GLOBALFUNC ui3b VIA1_ShiftOutData(void)
 {
-	if (((VIA.ACR & 0x1C) >> 2) != 7) {
+	/* external hardware generates 8 pulses on CB1, reads 8 bits from CB2 */
+	if (((VIA1_D.ACR & 0x1C) >> 2) != 7) {
 		ReportAbnormal("VIA Not ready to shift out");
 		return 0;
 	} else {
-		SetVIAInterruptFlag(kIntSR);
-		VIAiCB2 = (VIA.SR & 1);
-		return VIA.SR;
+		VIA1_SetInterruptFlag(kIntSR);
+		VIA1_SetInterruptFlag(kIntCB1);
+		VIA1_iCB2 = (VIA1_D.SR & 1);
+		return VIA1_D.SR;
 	}
 }
 
@@ -575,52 +694,54 @@ GLOBALFUNC ui3b VIA_ShiftOutData(void)
 #define ConvertTimeConst (0x00010000UL * TimerTicksPerTick / InstructionsPerTick)
 #define ConvertTimeInv (0x00010000UL * InstructionsPerTick / TimerTicksPerTick)
 
-LOCALVAR blnr T1Running = trueblnr;
-LOCALVAR iCountt VIA_T1LastTime = 0;
+LOCALVAR blnr VIA1_T1Running = trueblnr;
+LOCALVAR iCountt VIA1_T1LastTime = 0;
 
-GLOBALPROC VIA_DoTimer1Check(void)
+GLOBALPROC VIA1_DoTimer1Check(void)
 {
-	if (T1Running) {
+	if (VIA1_T1Running) {
 		iCountt NewTime = GetCuriCount();
-		iCountt deltaTime = NewTime - VIA_T1LastTime;
+		iCountt deltaTime = NewTime - VIA1_T1LastTime;
 		if (deltaTime != 0) {
-			ui5b Temp = VIA.T1C_F; /* Get Timer 1 Counter */
+			ui5b Temp = VIA1_D.T1C_F; /* Get Timer 1 Counter */
 			ui5b deltaTemp = deltaTime * ConvertTimeConst; /* may overflow */
 			ui5b NewTemp = Temp - deltaTemp;
 			if ((deltaTime > ConvertTimeInv)
 				|| ((Temp <= deltaTemp) && (Temp != 0)))
 			{
-				if ((VIA.ACR & 0x40) != 0) { /* Free Running? */
+				if ((VIA1_D.ACR & 0x40) != 0) { /* Free Running? */
 					/* Reload Counter from Latches */
-					ui4b v = (VIA.T1L_H << 8) + VIA.T1L_L;
-					ui4b ntrans = 1 + (v == 0) ? 0 :
-						(((deltaTemp - Temp) / v) >> 16);
+					ui4b v = (VIA1_D.T1L_H << 8) + VIA1_D.T1L_L;
+					ui4b ntrans = 1 + ((v == 0) ? 0 :
+						(((deltaTemp - Temp) / v) >> 16));
 					NewTemp += (((ui5b)v * ntrans) << 16);
-					if ((VIA.ACR & 0x80) != 0) { /* invert ? */
+#if Ui3rTestBit(VIA1_ORB_CanOut, 7)
+					if ((VIA1_D.ACR & 0x80) != 0) { /* invert ? */
 						if ((ntrans & 1) != 0) {
-							VIAiB7 ^= 1;
-#ifdef VIAiB7_ChangeNtfy
-							VIAiB7_ChangeNtfy();
+							VIA1_iB7 ^= 1;
+#ifdef VIA1_iB7_ChangeNtfy
+							VIA1_iB7_ChangeNtfy();
 #endif
 						}
 					}
-					SetVIAInterruptFlag(kIntT1);
+#endif
+					VIA1_SetInterruptFlag(kIntT1);
 				} else {
-					if (T1_Active == 1) {
-						T1_Active = 0;
-						SetVIAInterruptFlag(kIntT1);
+					if (VIA1_T1_Active == 1) {
+						VIA1_T1_Active = 0;
+						VIA1_SetInterruptFlag(kIntT1);
 					}
 				}
 			}
 
-			VIA.T1C_F = NewTemp;
-			VIA_T1LastTime = NewTime;
+			VIA1_D.T1C_F = NewTemp;
+			VIA1_T1LastTime = NewTime;
 		}
 
-		T1IntReady = falseblnr;
-		if ((VIA.IFR & (1 << kIntT1)) == 0) {
-			if (((VIA.ACR & 0x40) != 0) || (T1_Active == 1)) {
-				ui5b NewTemp = VIA.T1C_F; /* Get Timer 1 Counter */
+		VIA1_T1IntReady = falseblnr;
+		if ((VIA1_D.IFR & (1 << kIntT1)) == 0) {
+			if (((VIA1_D.ACR & 0x40) != 0) || (VIA1_T1_Active == 1)) {
+				ui5b NewTemp = VIA1_D.T1C_F; /* Get Timer 1 Counter */
 				ui5b NewTimer;
 #ifdef _VIA_Debug
 				fprintf(stderr, "posting Timer1Check, %d, %d\n", Temp, GetCuriCount());
@@ -630,8 +751,8 @@ GLOBALPROC VIA_DoTimer1Check(void)
 				} else {
 					NewTimer = (((NewTemp >> 16) * ConvertTimeInv) >> 16) + 1;
 				}
-				ICT_add(kICT_VIA_Timer1Check, NewTimer);
-				T1IntReady = trueblnr;
+				ICT_add(kICT_VIA1_Timer1Check, NewTimer);
+				VIA1_T1IntReady = trueblnr;
 			}
 		}
 	}
@@ -639,55 +760,55 @@ GLOBALPROC VIA_DoTimer1Check(void)
 
 LOCALPROC CheckT1IntReady(void)
 {
-	if (T1Running) {
+	if (VIA1_T1Running) {
 		blnr NewT1IntReady = falseblnr;
 
-		if ((VIA.IFR & (1 << kIntT1)) == 0) {
-			if (((VIA.ACR & 0x40) != 0) || (T1_Active == 1)) {
+		if ((VIA1_D.IFR & (1 << kIntT1)) == 0) {
+			if (((VIA1_D.ACR & 0x40) != 0) || (VIA1_T1_Active == 1)) {
 				NewT1IntReady = trueblnr;
 			}
 		}
 
-		if (T1IntReady != NewT1IntReady) {
-			T1IntReady = NewT1IntReady;
+		if (VIA1_T1IntReady != NewT1IntReady) {
+			VIA1_T1IntReady = NewT1IntReady;
 			if (NewT1IntReady) {
-				VIA_DoTimer1Check();
+				VIA1_DoTimer1Check();
 			}
 		}
 	}
 }
 
-GLOBALFUNC ui4b GetSoundInvertTime(void)
+GLOBALFUNC ui4b VIA1_GetT1InvertTime(void)
 {
 	ui4b v;
 
-	if ((VIA.ACR & 0xC0) == 0xC0) {
-		v = (VIA.T1L_H << 8) + VIA.T1L_L;
+	if ((VIA1_D.ACR & 0xC0) == 0xC0) {
+		v = (VIA1_D.T1L_H << 8) + VIA1_D.T1L_L;
 	} else {
 		v = 0;
 	}
 	return v;
 }
 
-LOCALVAR blnr T2Running = trueblnr;
-LOCALVAR blnr T2C_ShortTime = falseblnr;
-LOCALVAR iCountt VIA_T2LastTime = 0;
+LOCALVAR blnr VIA1_T2Running = trueblnr;
+LOCALVAR blnr VIA1_T2C_ShortTime = falseblnr;
+LOCALVAR iCountt VIA1_T2LastTime = 0;
 
-GLOBALPROC VIA_DoTimer2Check(void)
+GLOBALPROC VIA1_DoTimer2Check(void)
 {
-	if (T2Running) {
+	if (VIA1_T2Running) {
 		iCountt NewTime = GetCuriCount();
-		ui5b Temp = VIA.T2C_F; /* Get Timer 2 Counter */
-		iCountt deltaTime = NewTime - VIA_T2LastTime;
+		ui5b Temp = VIA1_D.T2C_F; /* Get Timer 2 Counter */
+		iCountt deltaTime = NewTime - VIA1_T2LastTime;
 		ui5b deltaTemp = deltaTime * ConvertTimeConst; /* may overflow */
 		ui5b NewTemp = Temp - deltaTemp;
-		if (T2_Active == 1) {
+		if (VIA1_T2_Active == 1) {
 			if ((deltaTime > ConvertTimeInv)
 				|| ((Temp <= deltaTemp) && (Temp != 0)))
 			{
-				T2C_ShortTime = falseblnr;
-				T2_Active = 0;
-				SetVIAInterruptFlag(kIntT2);
+				VIA1_T2C_ShortTime = falseblnr;
+				VIA1_T2_Active = 0;
+				VIA1_SetInterruptFlag(kIntT2);
 			} else {
 				ui5b NewTimer;
 #ifdef _VIA_Debug
@@ -698,11 +819,11 @@ GLOBALPROC VIA_DoTimer2Check(void)
 				} else {
 					NewTimer = (((NewTemp >> 16) * ConvertTimeInv) >> 16) + 1;
 				}
-				ICT_add(kICT_VIA_Timer2Check, NewTimer);
+				ICT_add(kICT_VIA1_Timer2Check, NewTimer);
 			}
 		}
-		VIA.T2C_F = NewTemp;
-		VIA_T2LastTime = NewTime;
+		VIA1_D.T2C_F = NewTemp;
+		VIA1_T2LastTime = NewTime;
 	}
 }
 
@@ -723,92 +844,97 @@ GLOBALPROC VIA_DoTimer2Check(void)
 #define kIER    0x0E
 #define kORA    0x0F
 
-GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
+GLOBALFUNC ui5b VIA1_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
 	switch (addr) {
 		case kORB   :
-			if ((VIA.PCR & 0xE0) == 0) {
-				ClrVIAInterruptFlag(kIntCB2);
+#if VIA1_CB2modesAllowed != 0x01
+			if ((VIA1_D.PCR & 0xE0) == 0)
+#endif
+			{
+				VIA1_ClrInterruptFlag(kIntCB2);
 			}
+			VIA1_ClrInterruptFlag(kIntCB1);
 			if (WriteMem) {
-				VIA.ORB = Data;
-				VIA_Put_ORB();
+				VIA1_D.ORB = Data;
+				VIA1_Put_ORB(VIA1_D.DDR_B, VIA1_D.ORB);
 			} else {
-				Data = VIA_Get_ORB();
+				Data = (VIA1_D.ORB & VIA1_D.DDR_B)
+					| VIA1_Get_ORB(~ VIA1_D.DDR_B);
 			}
 			break;
 		case kDDR_B :
 			if (WriteMem) {
-				VIA_SetDDR_B(Data);
+				VIA1_SetDDR_B(Data);
 			} else {
-				Data = VIA.DDR_B;
+				Data = VIA1_D.DDR_B;
 			}
 			break;
 		case kDDR_A :
 			if (WriteMem) {
-				VIA_SetDDR_A(Data);
+				VIA1_SetDDR_A(Data);
 			} else {
-				Data = VIA.DDR_A;
+				Data = VIA1_D.DDR_A;
 			}
 			break;
 		case kT1C_L :
 			if (WriteMem) {
-				VIA.T1L_L = Data;
+				VIA1_D.T1L_L = Data;
 			} else {
-				ClrVIAInterruptFlag(kIntT1);
-				VIA_DoTimer1Check();
-				Data = (VIA.T1C_F & 0x00FF0000) >> 16;
+				VIA1_ClrInterruptFlag(kIntT1);
+				VIA1_DoTimer1Check();
+				Data = (VIA1_D.T1C_F & 0x00FF0000) >> 16;
 			}
 			break;
 		case kT1C_H :
 			if (WriteMem) {
-				VIA.T1L_H = Data;
-				ClrVIAInterruptFlag(kIntT1);
-				VIA.T1C_F = (Data << 24) + (VIA.T1L_L << 16);
-				if ((VIA.ACR & 0x40) == 0) {
-					T1_Active = 1;
+				VIA1_D.T1L_H = Data;
+				VIA1_ClrInterruptFlag(kIntT1);
+				VIA1_D.T1C_F = (Data << 24) + (VIA1_D.T1L_L << 16);
+				if ((VIA1_D.ACR & 0x40) == 0) {
+					VIA1_T1_Active = 1;
 				}
-				VIA_T1LastTime = GetCuriCount();
-				VIA_DoTimer1Check();
+				VIA1_T1LastTime = GetCuriCount();
+				VIA1_DoTimer1Check();
 			} else {
-				VIA_DoTimer1Check();
-				Data = (VIA.T1C_F & 0xFF000000) >> 24;
+				VIA1_DoTimer1Check();
+				Data = (VIA1_D.T1C_F & 0xFF000000) >> 24;
 			}
 			break;
 		case kT1L_L :
 			if (WriteMem) {
-				VIA.T1L_L = Data;
+				VIA1_D.T1L_L = Data;
 			} else {
-				Data = VIA.T1L_L;
+				Data = VIA1_D.T1L_L;
 			}
 			break;
 		case kT1L_H :
 			if (WriteMem) {
-				VIA.T1L_H = Data;
+				VIA1_D.T1L_H = Data;
 			} else {
-				Data = VIA.T1L_H;
+				Data = VIA1_D.T1L_H;
 			}
 			break;
 		case kT2_L  :
 			if (WriteMem) {
-				VIA.T2L_L = Data;
+				VIA1_D.T2L_L = Data;
 			} else {
-				ClrVIAInterruptFlag(kIntT2);
-				VIA_DoTimer2Check();
-				Data = (VIA.T2C_F & 0x00FF0000) >> 16;
+				VIA1_ClrInterruptFlag(kIntT2);
+				VIA1_DoTimer2Check();
+				Data = (VIA1_D.T2C_F & 0x00FF0000) >> 16;
 			}
 			break;
 		case kT2_H  :
 			if (WriteMem) {
-				VIA.T2C_F = (Data << 24) + (VIA.T2L_L << 16);
-				ClrVIAInterruptFlag(kIntT2);
-				T2_Active = 1;
+				VIA1_D.T2C_F = (Data << 24) + (VIA1_D.T2L_L << 16);
+				VIA1_ClrInterruptFlag(kIntT2);
+				VIA1_T2_Active = 1;
 
-				if ((VIA.T2C_F < (128UL << 16))
-					&& (VIA.T2C_F != 0))
+				if ((VIA1_D.T2C_F < (128UL << 16))
+					&& (VIA1_D.T2C_F != 0))
 				{
-					T2C_ShortTime = trueblnr;
-					T2Running = trueblnr;
+					VIA1_T2C_ShortTime = trueblnr;
+					VIA1_T2Running = trueblnr;
 					/*
 						Running too many instructions during
 						a short timer interval can crash when
@@ -816,129 +942,125 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 						in this case don't let timer pause.
 					*/
 				}
-				VIA_T2LastTime = GetCuriCount();
-				VIA_DoTimer2Check();
+				VIA1_T2LastTime = GetCuriCount();
+				VIA1_DoTimer2Check();
 			} else {
-				VIA_DoTimer2Check();
-				Data = (VIA.T2C_F & 0xFF000000) >> 24;
+				VIA1_DoTimer2Check();
+				Data = (VIA1_D.T2C_F & 0xFF000000) >> 24;
 			}
 			break;
 		case kSR:
 #ifdef _VIA_Debug
-			fprintf(stderr, "VIA.SR: %d, %d, %d\n", WriteMem, ((VIA.ACR & 0x1C) >> 2), Data);
+			fprintf(stderr, "VIA1_D.SR: %d, %d, %d\n", WriteMem, ((VIA1_D.ACR & 0x1C) >> 2), Data);
 #endif
 			if (WriteMem) {
-				VIA.SR = Data;
+				VIA1_D.SR = Data;
 			}
-			switch ((VIA.ACR & 0x1C) >> 2) {
+			VIA1_ClrInterruptFlag(kIntSR);
+			switch ((VIA1_D.ACR & 0x1C) >> 2) {
 				case 3 : /* Shifting In */
-					ClrVIAInterruptFlag(kIntSR);
 					break;
 				case 6 : /* shift out under o2 clock */
-					if ((! WriteMem) || (VIA.SR != 0)) {
+					if ((! WriteMem) || (VIA1_D.SR != 0)) {
 						ReportAbnormal("VIA shift mode 6, non zero");
 					} else {
 #ifdef _VIA_Debug
 						fprintf(stderr, "posting Foo2Task\n");
 #endif
-						if (VIAiCB2 != 0) {
-							VIAiCB2 = 0;
-#ifdef VIAiCB2_ChangeNtfy
-							VIAiCB2_ChangeNtfy();
+						if (VIA1_iCB2 != 0) {
+							VIA1_iCB2 = 0;
+#ifdef VIA1_iCB2_ChangeNtfy
+							VIA1_iCB2_ChangeNtfy();
 #endif
 						}
 					}
 #if 0 /* possibly should do this. seems not to affect anything. */
-					SetVIAInterruptFlag(kIntSR); /* don't wait */
+					VIA1_SetInterruptFlag(kIntSR); /* don't wait */
 #endif
 					break;
 				case 7 : /* Shifting Out */
-					ClrVIAInterruptFlag(kIntSR);
 					break;
 			}
 			if (! WriteMem) {
-				Data = VIA.SR;
+				Data = VIA1_D.SR;
 			}
 			break;
 		case kACR:
 			if (WriteMem) {
 #if 1
-				if ((VIA.ACR & 0x10) != ((ui3b)Data & 0x10)) {
+				if ((VIA1_D.ACR & 0x10) != ((ui3b)Data & 0x10)) {
 					/* shift direction has changed */
 					if ((Data & 0x10) == 0) {
 						/* no longer an output,
 							set data to float value */
-						if (VIAiCB2 == 0) {
-							VIAiCB2 = 1;
-#ifdef VIAiCB2_ChangeNtfy
-							VIAiCB2_ChangeNtfy();
+						if (VIA1_iCB2 == 0) {
+							VIA1_iCB2 = 1;
+#ifdef VIA1_iCB2_ChangeNtfy
+							VIA1_iCB2_ChangeNtfy();
 #endif
 						}
 					}
 				}
 #endif
-				VIA.ACR = Data;
-				if ((VIA.ACR & 0x20) != 0) { /* Not pulse counting? */
-					ReportAbnormal("Set VIA ACR T2 Timer pulse counting");
+				VIA1_D.ACR = Data;
+				if ((VIA1_D.ACR & 0x20) != 0) { /* Not pulse counting? */
+					ReportAbnormal("Set VIA1_D.ACR T2 Timer pulse counting");
 				}
-				switch ((VIA.ACR & 0xC0) >> 6) {
+				switch ((VIA1_D.ACR & 0xC0) >> 6) {
 					/* case 1: happens in early System 6 */
 					case 2:
-						ReportAbnormal("Set VIA ACR T1 Timer mode 2");
+						ReportAbnormal("Set VIA1_D.ACR T1 Timer mode 2");
 						break;
 				}
 				CheckT1IntReady();
-				switch ((VIA.ACR & 0x1C) >> 2) {
+				switch ((VIA1_D.ACR & 0x1C) >> 2) {
 					case 0: /* this isn't sufficient */
-						ClrVIAInterruptFlag(kIntSR);
+						VIA1_ClrInterruptFlag(kIntSR);
 						break;
 					case 1:
 					case 2:
 					case 4:
 					case 5:
-						ReportAbnormal("Set VIA ACR shift mode 1,2,4,5");
+						ReportAbnormal("Set VIA1_D.ACR shift mode 1,2,4,5");
 						break;
 					default:
 						break;
 				}
-				if ((VIA.ACR & 0x03) != 0) {
-					ReportAbnormal("Set VIA ACR T2 Timer latching enabled");
+				if ((VIA1_D.ACR & 0x03) != 0) {
+					ReportAbnormal("Set VIA1_D.ACR T2 Timer latching enabled");
 				}
 			} else {
-				Data = VIA.ACR;
+				Data = VIA1_D.ACR;
 			}
 			break;
 		case kPCR:
 			if (WriteMem) {
-				VIA.PCR = Data;
-				if ((VIA.PCR & 0xE0) != 0) {
-					ReportAbnormal("Set VIA PCR CB2 Control mode?");
+				VIA1_D.PCR = Data;
+#define Ui3rSetContains(s, i) (((s) & (1 << (i))) != 0)
+				if (! Ui3rSetContains(VIA1_CB2modesAllowed, (VIA1_D.PCR >> 5) & 0x07)) {
+					ReportAbnormal("Set VIA1_D.PCR CB2 Control mode?");
 				}
-				if ((VIA.PCR & 0x10) != 0) {
-					ReportAbnormal("Set VIA PCR CB1 INTERRUPT CONTROL?");
+				if ((VIA1_D.PCR & 0x10) != 0) {
+					ReportAbnormal("Set VIA1_D.PCR CB1 INTERRUPT CONTROL?");
 				}
-				if ((VIA.PCR & 0x0E) != 0) {
-					ReportAbnormal("Set VIA PCR CA2 INTERRUPT CONTROL?");
+				if (! Ui3rSetContains(VIA1_CA2modesAllowed, (VIA1_D.PCR >> 1) & 0x07)) {
+					ReportAbnormal("Set VIA1_D.PCR CA2 INTERRUPT CONTROL?");
 				}
-				if ((VIA.PCR & 0x01) != 0) {
-					ReportAbnormal("Set VIA PCR CA1 INTERRUPT CONTROL?");
+				if ((VIA1_D.PCR & 0x01) != 0) {
+					ReportAbnormal("Set VIA1_D.PCR CA1 INTERRUPT CONTROL?");
 				}
 			} else {
-				Data = VIA.PCR;
+				Data = VIA1_D.PCR;
 			}
 			break;
 		case kIFR:
 			if (WriteMem) {
-				if ((Data & 0x80) == 0) {
-					VIA.IFR = VIA.IFR & ((~ Data) & 0x7F); /* Clear Enable Bits */
-				} else {
-					VIA.IFR = VIA.IFR | (Data & 0x7F); /* Set Enable Bits */
-				}
-				CheckVIAInterruptFlag();
+				VIA1_D.IFR = VIA1_D.IFR & ((~ Data) & 0x7F); /* Clear Enable Bits */
+				VIA1_CheckInterruptFlag();
 				CheckT1IntReady();
 			} else {
-				Data = VIA.IFR;
-				if ((VIA.IFR & VIA.IER) != 0) {
+				Data = VIA1_D.IFR;
+				if ((VIA1_D.IFR & VIA1_D.IER) != 0) {
 					Data |= 0x80;
 				}
 			}
@@ -946,77 +1068,81 @@ GLOBALFUNC ui5b VIA_Access(ui5b Data, blnr WriteMem, CPTR addr)
 		case kIER   :
 			if (WriteMem) {
 				if ((Data & 0x80) == 0) {
-					VIA.IER = VIA.IER & ((~ Data) & 0x7F); /* Clear Enable Bits */
+					VIA1_D.IER = VIA1_D.IER & ((~ Data) & 0x7F); /* Clear Enable Bits */
+#if 0 != VIA1_IER_Never0
+					/*
+						of course, will be 0 initially,
+						this just checks not cleared later.
+					*/
+					if ((Data & VIA1_IER_Never0) != 0) {
+						ReportAbnormal("IER Never0 clr");
+					}
+#endif
 				} else {
-					VIA.IER = VIA.IER | (Data & 0x7F); /* Set Enable Bits */
-				}
-				CheckVIAInterruptFlag();
-				if ((VIA.IER & (1 << 1)) == 0) {
-#if TempDebug && (CurEmu >= kEmuSE1M)
-#else
-					ReportAbnormal("IER ~1");
+					VIA1_D.IER = VIA1_D.IER | (Data & 0x7F); /* Set Enable Bits */
+#if 0 != VIA1_IER_Never1
+					if ((VIA1_D.IER & VIA1_IER_Never1) != 0) {
+						ReportAbnormal("IER Never1 set");
+					}
 #endif
 				}
-				if ((VIA.IER & (1 << 3)) != 0) {
-					ReportAbnormal("IER 3");
-				}
-				if ((VIA.IER & (1 << 4)) != 0) {
-					ReportAbnormal("IER 4");
-				}
+				VIA1_CheckInterruptFlag();
 			} else {
-				Data = VIA.IER | 0x80;
+				Data = VIA1_D.IER | 0x80;
 			}
 			break;
 		case kORA   :
 		case kORA_H :
-			if ((VIA.PCR & 0xE) == 0) {
-				ClrVIAInterruptFlag(kIntCA2);
+			if ((VIA1_D.PCR & 0xE) == 0) {
+				VIA1_ClrInterruptFlag(kIntCA2);
 			}
+			VIA1_ClrInterruptFlag(kIntCA1);
 			if (WriteMem) {
-				VIA.ORA = Data;
-				VIA_Put_ORA();
+				VIA1_D.ORA = Data;
+				VIA1_Put_ORA(VIA1_D.DDR_A, VIA1_D.ORA);
 			} else {
-				Data = VIA_Get_ORA();
+				Data = (VIA1_D.ORA & VIA1_D.DDR_A)
+					| VIA1_Get_ORA(~ VIA1_D.DDR_A);
 			}
 			break;
 	}
 	return Data;
 }
 
-GLOBALPROC VIA_ExtraTimeBegin(void)
+GLOBALPROC VIA1_ExtraTimeBegin(void)
 {
-	if (T1Running) {
-		VIA_DoTimer1Check(); /* run up to this moment */
-		T1Running = falseblnr;
+	if (VIA1_T1Running) {
+		VIA1_DoTimer1Check(); /* run up to this moment */
+		VIA1_T1Running = falseblnr;
 	}
-	if (T2Running & (! T2C_ShortTime)) {
-		VIA_DoTimer2Check(); /* run up to this moment */
-		T2Running = falseblnr;
+	if (VIA1_T2Running & (! VIA1_T2C_ShortTime)) {
+		VIA1_DoTimer2Check(); /* run up to this moment */
+		VIA1_T2Running = falseblnr;
 	}
 }
 
-GLOBALPROC VIA_ExtraTimeEnd(void)
+GLOBALPROC VIA1_ExtraTimeEnd(void)
 {
-	if (! T1Running) {
-		T1Running = trueblnr;
-		VIA_T1LastTime = GetCuriCount();
-		VIA_DoTimer1Check();
+	if (! VIA1_T1Running) {
+		VIA1_T1Running = trueblnr;
+		VIA1_T1LastTime = GetCuriCount();
+		VIA1_DoTimer1Check();
 	}
-	if (! T2Running) {
-		T2Running = trueblnr;
-		VIA_T2LastTime = GetCuriCount();
-		VIA_DoTimer2Check();
+	if (! VIA1_T2Running) {
+		VIA1_T2Running = trueblnr;
+		VIA1_T2LastTime = GetCuriCount();
+		VIA1_DoTimer2Check();
 	}
 }
 
 /* VIA Interrupt Interface */
 
-GLOBALPROC VIA_Int_Vertical_Blanking(void)
+GLOBALPROC VIA1_iCA1_PulseNtfy(void)
 {
-	SetVIAInterruptFlag(kIntCA1);
+	VIA1_SetInterruptFlag(kIntCA1);
 }
 
-GLOBALPROC VIA_Int_One_Second(void)
+GLOBALPROC VIA1_iCA2_PulseNtfy(void)
 {
-	SetVIAInterruptFlag(kIntCA2);
+	VIA1_SetInterruptFlag(kIntCA2);
 }

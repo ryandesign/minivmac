@@ -584,8 +584,6 @@ LOCALPROC MyGetGrayRgnBounds(Rect *r)
 
 /*--- sending debugging info to file ---*/
 
-#define MakeDumpFile 0
-
 #if MakeDumpFile
 
 #include <stdio.h>
@@ -611,31 +609,24 @@ LOCALPROC EndDump(void)
 	}
 }
 
-EXPORTPROC DumpAJump(CPTR fromaddr, CPTR toaddr);
-
-GLOBALPROC DumpAJump(CPTR fromaddr, CPTR toaddr)
-{
-	fprintf(DumpFile, "%d,%d\n", fromaddr, toaddr);
-}
-
-EXPORTPROC DumpANote(char *s);
-
-GLOBALPROC DumpANote(char *s)
+GLOBALPROC DumpACStr(char *s)
 {
 	fprintf(DumpFile, s);
-	/* fprintf(DumpFile, "at %d\n", m68k_getpc1() - 0x00400000); */
 }
 
-EXPORTPROC DumpATable(ui5b *p, ui5b n);
-
-GLOBALPROC DumpATable(ui5b *p, ui5b n)
+GLOBALPROC DumpANewLine(void)
 {
-	si5b i;
+	fprintf(DumpFile, "\n");
+}
 
-	for (i = 0; i < n; ++i) {
-		fprintf(DumpFile, "%d\n", p[i]);
-	}
-	/* fprintf(DumpFile, "at %d\n", m68k_getpc1() - 0x00400000); */
+GLOBALPROC DumpAHex(ui5r x)
+{
+	fprintf(DumpFile, "%X", (int)x);
+}
+
+GLOBALPROC DumpANum(ui5r x)
+{
+	fprintf(DumpFile, "%d", (int)x);
 }
 
 #endif
@@ -1898,7 +1889,7 @@ LOCALPROC My_HideMenuBar(void)
 		(void) MySetSystemUIMode(MykUIModeAllHidden,
 			MykUIOptionDisableAppleMenu
 			| MykUIOptionDisableProcessSwitch
-			| MykUIOptionDisableForceQuit
+			/* | MykUIOptionDisableForceQuit */ /* too dangerous */
 			| MykUIOptionDisableSessionTerminate);
 	} else {
 		if (IsMenuBarVisible()) {
@@ -4242,13 +4233,13 @@ LOCALFUNC blnr InitOSGLU(void)
 	return falseblnr;
 }
 
-#if MakeDumpFile
+#if MakeDumpFile && 0
 IMPORTPROC DoDumpTable(void);
 #endif
 
 LOCALPROC UnInitOSGLU(void)
 {
-#if MakeDumpFile
+#if MakeDumpFile && 0
 	DoDumpTable();
 #endif
 

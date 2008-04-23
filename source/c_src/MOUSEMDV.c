@@ -27,6 +27,7 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #include "PROGMAIN.h"
 #include "SCCEMDEV.h"
@@ -59,7 +60,7 @@ GLOBALPROC Mouse_Update(void)
 	if (Mouse_Enabled()) {
 		MyEvtQEl *p = MyEvtQOutP();
 		if (nullpr != p) {
-#if CurEmu <= kEmuPlus
+#if EmClassicKbrd
 #if EnableMouseMotion
 			if (MyEvtQElKindMouseDelta == p->kind) {
 
@@ -79,7 +80,7 @@ GLOBALPROC Mouse_Update(void)
 				if (get_ram_long(0x0828) != NewMouse) {
 					put_ram_long(0x0828, NewMouse); /* Set Mouse Position */
 					put_ram_long(0x082C, NewMouse);
-#if CurEmu <= kEmuPlus
+#if EmClassicKbrd
 					put_ram_byte(0x08CE, get_ram_byte(0x08CF));
 						/* Tell MacOS to redraw the Mouse */
 #else

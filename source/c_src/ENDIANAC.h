@@ -38,9 +38,15 @@
 #else
 static MayInline ui4b do_get_mem_word(ui3p a)
 {
+#if LittleEndianUnaligned
+	ui4b b = (*((ui4b *)(a)));
+
+	return ((b & 0x00FF) << 8) | ((b >> 8) & 0x00FF);
+#else
 	ui3b *b = a;
 
 	return (*b << 8) | (*(b + 1));
+#endif
 }
 #endif
 
@@ -49,10 +55,34 @@ static MayInline ui4b do_get_mem_word(ui3p a)
 #else
 static MayInline ui5b do_get_mem_long(ui3p a)
 {
+#if LittleEndianUnaligned
+#if 0
+	return ((b << 24) & 0xFF000000)
+		|  ((b <<  8) & 0x00FF0000)
+		|  ((b >>  8) & 0x0000FF00)
+		|  ((b >> 24) & 0x000000FF);
+	/*
+		no, this doesn't do well with apple tools,
+		instead try combining two 16 bit swaps.
+	*/
+#endif
+	ui5b b = (*((ui5b *)(a)));
+	ui4b b1 = b;
+	ui4b b2 = b >> 16;
+	ui4b c1 = ((b1 & 0x00FF) << 8) | ((b1 >> 8) & 0x00FF);
+	ui4b c2 = ((b2 & 0x00FF) << 8) | ((b2 >> 8) & 0x00FF);
+
+	return (c1 << 16) | c2;
+	/*
+		better, though still doesn't use BSWAP
+		instruction with apple tools for intel.
+	*/
+#else
 	ui3b *b = a;
 
 	return (*b << 24) | (*(b + 1) << 16)
 		| (*(b + 2) << 8) | (*(b + 3));
+#endif
 }
 #endif
 
@@ -63,10 +93,16 @@ static MayInline ui5b do_get_mem_long(ui3p a)
 #else
 static MayInline void do_put_mem_word(ui3p a, ui4b v)
 {
+#if LittleEndianUnaligned
+	ui4b b = ((v & 0x00FF) << 8) | ((v >> 8) & 0x00FF);
+
+	*(ui4b *)a = b;
+#else
 	ui3b *b = a;
 
 	*b = v >> 8;
 	*(b + 1) = v;
+#endif
 }
 #endif
 
@@ -75,11 +111,20 @@ static MayInline void do_put_mem_word(ui3p a, ui4b v)
 #else
 static MayInline void do_put_mem_long(ui3p a, ui5b v)
 {
+#if LittleEndianUnaligned
+	ui4b b1 = v;
+	ui4b b2 = v >> 16;
+	ui4b c1 = ((b1 & 0x00FF) << 8) | ((b1 >> 8) & 0x00FF);
+	ui4b c2 = ((b2 & 0x00FF) << 8) | ((b2 >> 8) & 0x00FF);
+
+	*(ui5b *)a = (c1 << 16) | c2;
+#else
 	ui3b *b = a;
 
 	*b = v >> 24;
 	*(b + 1) = v >> 16;
 	*(b + 2) = v >> 8;
 	*(b + 3) = v;
+#endif
 }
 #endif

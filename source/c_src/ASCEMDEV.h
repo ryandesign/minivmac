@@ -1,7 +1,7 @@
 /*
-	PROGMAIN.h
+	ASCEMDEV.h
 
-	Copyright (C) 2003 Philip Cummins, Paul C. Pratt
+	Copyright (C) 2008 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -14,17 +14,10 @@
 	license for more details.
 */
 
-#ifdef PROGMAIN_H
+#ifdef ASCEMDEV_H
 #error "header already included"
 #else
-#define PROGMAIN_H
+#define ASCEMDEV_H
 #endif
 
-#define kNumSubTicks 16
-
-EXPORTFUNC MyEvtQEl * MyEvtQOutP(void);
-EXPORTFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown);
-
-EXPORTPROC DoEmulateOneTick(void);
-EXPORTPROC DoEmulateExtraTime(void);
-EXPORTPROC DoMacReset(void);
+EXPORTFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr);

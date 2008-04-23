@@ -42,16 +42,12 @@ LOCALPROC ChooseSoundEnabled(void)
 
 enum {
 	gbk_mdl_128K,
-	gbk_mdl_512K,
 	gbk_mdl_512Ke,
-	gbk_mdl_Plus1M,
-	gbk_mdl_Plus2M,
-	gbk_mdl_Plus2_5M,
 	gbk_mdl_Plus,
-	gbk_mdl_SE1M,
-	gbk_mdl_SE2M,
-	gbk_mdl_SE2_5M,
 	gbk_mdl_SE,
+	gbk_mdl_Classic,
+	gbk_mdl_PB100,
+	gbk_mdl_II,
 	kNumModels
 };
 
@@ -70,35 +66,23 @@ LOCALFUNC char * GetModelName(int i)
 		case gbk_mdl_128K:
 			s = "128K";
 			break;
-		case gbk_mdl_512K:
-			s = "512K";
-			break;
 		case gbk_mdl_512Ke:
 			s = "512Ke";
-			break;
-		case gbk_mdl_Plus1M:
-			s = "Plus1M";
-			break;
-		case gbk_mdl_Plus2M:
-			s = "Plus2M";
-			break;
-		case gbk_mdl_Plus2_5M:
-			s = "Plus2_5M";
 			break;
 		case gbk_mdl_Plus:
 			s = "Plus";
 			break;
-		case gbk_mdl_SE1M:
-			s = "SE1M";
-			break;
-		case gbk_mdl_SE2M:
-			s = "SE2M";
-			break;
-		case gbk_mdl_SE2_5M:
-			s = "SE2_5M";
-			break;
 		case gbk_mdl_SE:
 			s = "SE";
+			break;
+		case gbk_mdl_Classic:
+			s = "Classic";
+			break;
+		case gbk_mdl_PB100:
+			s = "PB100";
+			break;
+		case gbk_mdl_II:
+			s = "II";
 			break;
 		default:
 			s = "(unknown Model)";
@@ -117,6 +101,85 @@ LOCALPROC ChooseModel(void)
 LOCALFUNC blnr TryAsModelOptionNot(void)
 {
 	return FindNamedOption("-m", kNumModels, GetModelName, &cur_mdl);
+}
+
+/* option: memory size */
+
+enum {
+	gbk_msz_128K,
+	gbk_msz_512K,
+	gbk_msz_1M,
+	gbk_msz_2M,
+	gbk_msz_2_5M,
+	gbk_msz_4M,
+	kNumMemSizs
+};
+
+LOCALVAR int cur_msz;
+
+LOCALPROC ResetMemSizOption(void)
+{
+	cur_msz = kListOptionAuto;
+}
+
+LOCALFUNC char * GetMemSizName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_msz_128K:
+			s = "128K";
+			break;
+		case gbk_msz_512K:
+			s = "512K";
+			break;
+		case gbk_msz_1M:
+			s = "1M";
+			break;
+		case gbk_msz_2M:
+			s = "2M";
+			break;
+		case gbk_msz_2_5M:
+			s = "2.5M";
+			break;
+		case gbk_msz_4M:
+			s = "4M";
+			break;
+		default:
+			s = "(unknown Memory Size)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC blnr ChooseMemSiz(void)
+{
+	if (cur_msz == kListOptionAuto) {
+		switch (cur_mdl) {
+			case gbk_mdl_128K:
+				cur_msz = gbk_msz_128K;
+				break;
+			case gbk_mdl_512Ke:
+				cur_msz = gbk_msz_512K;
+				break;
+			case gbk_mdl_Plus:
+			case gbk_mdl_SE:
+			case gbk_mdl_Classic:
+			case gbk_mdl_PB100:
+			case gbk_mdl_II:
+			default:
+				cur_msz = gbk_msz_4M;
+				break;
+		}
+	} else {
+		/* should error check here */
+	}
+	return trueblnr;
+}
+
+LOCALFUNC blnr TryAsMemSizOptionNot(void)
+{
+	return FindNamedOption("-mem", kNumMemSizs, GetMemSizName, &cur_msz);
 }
 
 /* option: number of drives */
@@ -170,7 +233,11 @@ LOCALFUNC blnr TryAsEmCpuVersOptionNot(void)
 LOCALPROC ChooseEmCpuVers(void)
 {
 	if (! have_em_cpu_vers) {
-		em_cpu_vers = 0;
+		if (gbk_mdl_II == cur_mdl) {
+			em_cpu_vers = 2;
+		} else {
+			em_cpu_vers = 0;
+		}
 		have_em_cpu_vers = trueblnr;
 	}
 }
@@ -364,7 +431,11 @@ LOCALVAR uimr dflt_hres;
 
 LOCALFUNC blnr ChooseHRes(void)
 {
-	dflt_hres = 512;
+	if (gbk_mdl_PB100 == cur_mdl) {
+		dflt_hres = 640;
+	} else {
+		dflt_hres = 512;
+	}
 	if (! have_hres) {
 		cur_hres = dflt_hres;
 		have_hres = trueblnr;
@@ -402,7 +473,11 @@ LOCALVAR uimr dflt_vres;
 
 LOCALFUNC blnr ChooseVRes(void)
 {
-	dflt_vres = 342;
+	if (gbk_mdl_PB100 == cur_mdl) {
+		dflt_vres = 400;
+	} else {
+		dflt_vres = 342;
+	}
 	if (! have_vres) {
 		cur_vres = dflt_vres;
 		have_vres = trueblnr;
@@ -421,6 +496,7 @@ LOCALFUNC blnr ChooseVRes(void)
 /* ------ */
 
 LOCALVAR blnr NeedScrnHack;
+LOCALVAR blnr NeedVidMem;
 
 LOCALFUNC blnr ChooseScreenOpts(void)
 {
@@ -430,6 +506,7 @@ LOCALFUNC blnr ChooseScreenOpts(void)
 	}
 	NeedScrnHack = (cur_hres != dflt_hres)
 		|| (cur_vres != dflt_vres);
+	NeedVidMem = NeedScrnHack || (gbk_mdl_PB100 == cur_mdl) || (gbk_mdl_II == cur_mdl);
 	return trueblnr;
 }
 
@@ -438,6 +515,7 @@ LOCALFUNC blnr ChooseScreenOpts(void)
 LOCALPROC SPResetCommandLineParameters(void)
 {
 	ResetModelOption();
+	ResetMemSizOption();
 	ResetNumDrivesOption();
 	ResetSoundOption();
 	ResetEmCpuVersOption();
@@ -455,6 +533,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 LOCALFUNC blnr TryAsSPOptionNot(void)
 {
 	if (TryAsModelOptionNot())
+	if (TryAsMemSizOptionNot())
 	if (TryAsNumDrivesOptionNot())
 	if (TryAsSoundOptionNot())
 	if (TryAsEmCpuVersOptionNot())
@@ -477,6 +556,7 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 {
 	ChooseSoundEnabled();
 	ChooseModel();
+	if (ChooseMemSiz())
 	if (ChooseNumDrives())
 	if (ChooseHRes())
 	if (ChooseVRes())

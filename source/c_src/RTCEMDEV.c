@@ -26,6 +26,7 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -36,7 +37,7 @@
 
 #include "RTCEMDEV.h"
 
-#define HaveXPRAM (CurEmu >= kEmuPlus1M)
+#define HaveXPRAM (CurEmMd >= kEmMd_Plus)
 
 #if HaveXPRAM
 #define PARAMRAMSize 256
@@ -194,7 +195,7 @@ GLOBALFUNC blnr RTC_Init(void)
 	do_put_mem_long(&RTC.PARAMRAM[0xEC], CurMacDelta);
 #endif
 
-#if (CurEmu > kEmuPlus) && (CurEmu <= kEmuClassic)
+#if (CurEmMd >= kEmMd_SE) && (CurEmMd <= kEmMd_Classic)
 	RTC.PARAMRAM[0x01] = 0x80;
 	RTC.PARAMRAM[0x02] = 0x4F;
 
@@ -205,12 +206,14 @@ GLOBALFUNC blnr RTC_Init(void)
 	RTC.PARAMRAM[0x7B] = 0xFE;
 #endif
 
-#endif
+#endif /* RTCinitPRAM */
 
 	return trueblnr;
 }
 
-IMPORTPROC VIA_Int_One_Second(void);
+#ifdef RTC_OneSecond_PulseNtfy
+IMPORTPROC RTC_OneSecond_PulseNtfy(void);
+#endif
 
 GLOBALPROC RTC_Interrupt(void)
 {
@@ -228,7 +231,9 @@ GLOBALPROC RTC_Interrupt(void)
 
 		LastRealDate = NewRealDate;
 
-		VIA_Int_One_Second();
+#ifdef RTC_OneSecond_PulseNtfy
+		RTC_OneSecond_PulseNtfy();
+#endif
 	}
 }
 
@@ -361,6 +366,7 @@ GLOBALPROC RTCclock_ChangeNtfy(void)
 {
 	if (! RTCunEnabled) {
 		if (RTCclock) {
+			RTC.DataOut = RTC.DataNextOut;
 			RTC.Counter = (RTC.Counter - 1) & 0x07;
 			if (RTC.DataOut) {
 				RTCdataLine = ((RTC.ShiftData >> RTC.Counter) & 0x01);
@@ -376,15 +382,28 @@ GLOBALPROC RTCclock_ChangeNtfy(void)
 					RTC_DoCmd();
 				}
 			}
-		} else {
-			RTC.DataOut = RTC.DataNextOut;
 		}
 	}
 }
 
 GLOBALPROC RTCdataLine_ChangeNtfy(void)
 {
+#if DetailedAbnormalReport
 	if (RTC.DataOut) {
-		ReportAbnormal("write RTC Data unexpected direction");
+		if (! RTC.DataNextOut) {
+			/*
+				ignore. The ROM doesn't read from the RTC the
+				way described in the Hardware Reference.
+				It reads the data after setting the clock to
+				one instead of before, and then immediately
+				changes the VIA direction. So the RTC
+				has no way of knowing to stop driving the
+				data line, which certainly can't really be
+				correct.
+			*/
+		} else {
+			ReportAbnormal("write RTC Data unexpected direction");
+		}
 	}
+#endif
 }

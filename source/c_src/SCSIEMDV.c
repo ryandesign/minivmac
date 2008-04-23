@@ -29,6 +29,7 @@
 
 #include "ENDIANAC.h"
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #endif
 

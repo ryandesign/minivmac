@@ -26,6 +26,7 @@
 #include "SYSDEPNS.h"
 
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "PROGMAIN.h"
 #include "ADDRSPAC.h"
 #endif

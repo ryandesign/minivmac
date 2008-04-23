@@ -37,5 +37,6 @@
 #define Have_SPBLDOPT 1
 #define Have_SPCNFGGL 1
 #define Have_SPCNFGAP 1
+#define Have_SPOTHRCF 1
 
 #define UseOpenGLinOSX 1

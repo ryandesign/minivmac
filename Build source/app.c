@@ -73,6 +73,8 @@
 #include "SPFILDEF.i"
 #include "USFILDEF.i"
 
+#pragma segment Body2
+
 #include "WRMACRES.i"
 #include "WRMPLIST.i"
 #ifdef Have_SPCNFGGL
@@ -85,6 +87,9 @@
 #include "WRCNFGAP.i"
 
 #include "SPWROASM.i"
+#ifdef Have_SPBLDOPT
+#include "SPOTHRCF.i"
+#endif
 
 #if support_ide_mpw
 #include "WRMPWFLS.i"

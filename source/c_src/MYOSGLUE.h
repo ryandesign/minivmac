@@ -32,70 +32,40 @@
 #define MYOSGLUE_H
 #endif
 
-#define kEmu128K        0
-#define kEmu512K        1
-#define kEmu512Ke       2
-#define kEmuPlus1M      3
-#define kEmuPlus2M      4
-#define kEmuPlus2_5M    5
-#define kEmuPlus        6
-#define kEmuSE1M        7
-#define kEmuSE2M        8
-#define kEmuSE2_5M      9
-#define kEmuSE          10
-#define kEmuClassic1M   11
-#define kEmuClassic2M   12
-#define kEmuClassic2_5M 13
-#define kEmuClassic     14
+
+#define kEmMd_128K        0
+#define kEmMd_512Ke       1
+#define kEmMd_Plus        2
+#define kEmMd_SE          3
+#define kEmMd_Classic     4
+#define kEmMd_PB100       5
+#define kEmMd_II          6
 
 EXPORTPROC WarnMsgCorruptedROM(void);
 EXPORTPROC WarnMsgUnsupportedROM(void);
 
-#ifndef DetailedAbormalReport
-#define DetailedAbormalReport 0
+#ifndef DetailedAbnormalReport
+#define DetailedAbnormalReport 0
 #endif
 
-#if DetailedAbormalReport
+#if DetailedAbnormalReport
 EXPORTPROC WarnMsgAbnormal(char *s);
 #else
 EXPORTPROC WarnMsgAbnormal(void);
 #endif
 
-EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
+#ifndef MakeDumpFile
+#define MakeDumpFile 0
+#endif
 
-#ifndef kRAM_Size
-#if CurEmu == kEmu128K
-#define kRAM_Size 0x00020000
-#elif (CurEmu == kEmu512K) || (CurEmu == kEmu512Ke)
-#define kRAM_Size 0x00080000
-#elif (CurEmu == kEmuPlus1M)
-#define kRAM_Size 0x00100000
-#elif (CurEmu == kEmuPlus2M)
-#define kRAM_Size 0x00200000
-#elif (CurEmu == kEmuPlus2_5M)
-#define kRAM_Size 0x00280000
-#elif (CurEmu == kEmuPlus)
-#define kRAM_Size 0x00400000
-#elif (CurEmu == kEmuSE1M)
-#define kRAM_Size 0x00100000
-#elif (CurEmu == kEmuSE2M)
-#define kRAM_Size 0x00200000
-#elif (CurEmu == kEmuSE2_5M)
-#define kRAM_Size 0x00280000
-#elif (CurEmu == kEmuSE)
-#define kRAM_Size 0x00400000
-#elif (CurEmu == kEmuClassic1M)
-#define kRAM_Size 0x00100000
-#elif (CurEmu == kEmuClassic2M)
-#define kRAM_Size 0x00200000
-#elif (CurEmu == kEmuClassic2_5M)
-#define kRAM_Size 0x00280000
-#elif (CurEmu == kEmuClassic)
-#define kRAM_Size 0x00400000
-#else
-#error "kRAM_Size not defined"
+#if MakeDumpFile
+EXPORTPROC DumpACStr(char *s);
+EXPORTPROC DumpANewLine(void);
+EXPORTPROC DumpAHex(ui5r x);
+EXPORTPROC DumpANum(ui5r x);
 #endif
-#endif
+
+EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 
 #define RAMSafetyMarginFudge 4
 EXPORTVAR(ui3p, RAM)
@@ -106,26 +76,8 @@ EXPORTVAR(ui3p, RAM)
 	*/
 
 
-#if CurEmu <= kEmu512K
-#define kTrueROM_Size 0x010000 /* ROM size is 64 KB */
-#elif CurEmu <= kEmuPlus
-#define kTrueROM_Size 0x020000 /* ROM size is 128 KB */
-#elif CurEmu <= kEmuSE
-#define kTrueROM_Size 0x040000 /* ROM size is 256 KB */
-#elif CurEmu <= kEmuClassic
-#define kTrueROM_Size 0x080000 /* ROM size is 512 KB */
-#else
-#error "kTrueROM_Size not defined"
-#endif
-
-#if CurEmu <= kEmu512K
-#define kROM_Size 0x020000 /* ROM size is 128 KB */
-#else
-#define kROM_Size kTrueROM_Size
-#endif
-
 #ifndef TempDebug /* a way to mark temporary debugging code */
-#if (CurEmu >= kEmuSE1M) && (CurEmu <= kEmuClassic)
+#if (CurEmMd >= kEmMd_SE) && (CurEmMd <= kEmMd_II)
 #define TempDebug 1 /* flag some stuff that needs look at */
 #else
 #define TempDebug 0

@@ -20,14 +20,8 @@
 #define KBRDEMDV_H
 #endif
 
-EXPORTPROC KeyBoard_Update(void);
 
-#if CurEmu <= kEmuPlus
 EXPORTPROC Kybd_DataLineChngNtfy(void);
 EXPORTPROC DoKybd_ReceiveEndCommand(void);
 EXPORTPROC DoKybd_ReceiveCommand(void);
-#else
-EXPORTPROC ADBstate_ChangeNtfy(void);
-EXPORTPROC ADB_DoNewState(void);
-EXPORTPROC ADB_DataLineChngNtfy(void);
-#endif
+EXPORTPROC KeyBoard_Update(void);

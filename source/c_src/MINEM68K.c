@@ -34,6 +34,8 @@
 #endif
 
 #include "ENDIANAC.h"
+#include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 
 #include "M68KITAB.h"
@@ -370,64 +372,56 @@ LOCALFUNC MayInline void SkipiLong(void)
 }
 #endif
 
-#define MakeDumpFile 0
-
-#if MakeDumpFile
-IMPORTPROC DumpAJump(CPTR fromaddr, CPTR toaddr);
-
-LOCALPROC DumpAJump2(CPTR toaddr)
-{
-	CPTR fromaddr = regs.pc + (pc_p - pc_oldp);
-
-	if ((toaddr > fromaddr) || (toaddr < regs.pc)) {
-		if ((fromaddr >= 0x00400000) && (fromaddr < 0x00500000)) {
-			fromaddr = fromaddr - 0x00400000 + 10000000;
-		}
-		if ((toaddr >= 0x00400000) && (toaddr < 0x00500000)) {
-			toaddr = toaddr - 0x00400000 + 10000000;
-		}
-		DumpAJump(fromaddr, toaddr);
-	}
-}
-
+#ifndef WantDumpAJump
+#define WantDumpAJump 0
 #endif
 
+#if WantDumpAJump
+LOCALPROC DumpAJump(CPTR toaddr)
+{
 #if USE_POINTER
+	CPTR fromaddr = regs.pc + (pc_p - pc_oldp);
+	if ((toaddr > fromaddr) || (toaddr < regs.pc))
+#else
+	CPTR fromaddr = regs.pc;
+#endif
+	{
+		DumpAHex(fromaddr);
+		DumpACStr(",");
+		DumpAHex(toaddr);
+		DumpANewLine();
+	}
+}
+#endif
 
 LOCALFUNC MayInline void m68k_setpc(CPTR newpc)
 {
-#if MakeDumpFile && 0
-	DumpAJump2(newpc);
+#if WantDumpAJump
+	DumpAJump(newpc);
 #endif
+
 #if 0
 	if (newpc == 0xBD50 /* 401AB4 */) {
 		/* Debugger(); */
-		Exception(5); /* try and get macsbug */
+		/* Exception(5); */ /* try and get macsbug */
 	}
 #endif
+
+#if USE_POINTER
 	pc_p = pc_oldp = get_pc_real_address(newpc);
+#endif
+
 	regs.pc = newpc;
 }
 
 LOCALFUNC MayInline CPTR m68k_getpc(void)
 {
+#if USE_POINTER
 	return regs.pc + (pc_p - pc_oldp);
-}
-
 #else
-
-LOCALFUNC MayInline void m68k_setpc(CPTR newpc)
-{
-/* regs.pc = newpc; */
-/* bill mod */
-	regs.pc = newpc & 0x00FFFFFF;
-}
-
-LOCALFUNC MayInline CPTR m68k_getpc(void)
-{
 	return regs.pc;
-}
 #endif
+}
 
 #ifndef FastRelativeJump
 #define FastRelativeJump (1 && USE_POINTER)
@@ -522,13 +516,17 @@ GLOBALPROC m68k_IPLchangeNtfy(void)
 	}
 }
 
-#if MakeDumpFile
+#ifndef WantDumpTable
+#define WantDumpTable 0
+#endif
+
+#if WantDumpTable
 FORWARDPROC InitDumpTable(void);
 #endif
 
 GLOBALPROC m68k_reset(void)
 {
-#if MakeDumpFile
+#if WantDumpTable
 	InitDumpTable();
 #endif
 #if 0
@@ -582,7 +580,7 @@ LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 	}
 #if Use68020
 	regd <<= (dp >> 9) & 3;
-#if ExtraAbormalReports
+#if ExtraAbnormalReports
 	if (((dp >> 9) & 3) != 0) {
 		/* ReportAbnormal("Have scale in Extension Word"); */
 		/* apparently can happen in Sys 7.5.5 boot on 68000 */
@@ -596,7 +594,8 @@ LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 		}
 		if ((dp & 0x40) != 0) {
 			regd = 0;
-			ReportAbnormal("Extension Word: suppress regd");
+			/* ReportAbnormal("Extension Word: suppress regd"); */
+			/* used by Mac II boot */
 		}
 
 		switch ((dp >> 4) & 0x03) {
@@ -616,7 +615,8 @@ LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 				break;
 			case 3:
 				base += nextilong();
-				ReportAbnormal("Extension Word: long displacement");
+				/* ReportAbnormal("Extension Word: long displacement"); */
+				/* used by Mac II boot from system 6.0.8? */
 				break;
 		}
 
@@ -647,11 +647,13 @@ LOCALFUNC MayInline ui5b get_disp_ea(ui5b base)
 					break;
 				case 2:
 					base += (si5b)(si4b)nextiword();
-					ReportAbnormal("Extension Word: word outer displacement");
+					/* ReportAbnormal("Extension Word: word outer displacement"); */
+					/* used by Mac II boot from system 6.0.8? */
 					break;
 				case 3:
 					base += nextilong();
-					ReportAbnormal("Extension Word: long outer displacement");
+					/* ReportAbnormal("Extension Word: long outer displacement"); */
+					/* used by Mac II boot from system 6.0.8? */
 					break;
 			}
 		}
@@ -2668,7 +2670,7 @@ LOCALPROCUSEDONCE DoCodeTas(void)
 LOCALPROCUSEDONCE DoCodeF(void)
 {
 	/* ReportAbnormal("DoCodeF"); */
-#if 0 && Use68020
+#if EmMMU
 	if (0 == rg9) {
 		/*
 			Emulate enough of MMU for System 7.5.5 universal
@@ -2708,6 +2710,41 @@ LOCALPROCUSEDONCE DoCodeF(void)
 		}
 		/* fprintf(stderr, "opcode %x\n", (int)opcode); */
 		ReportAbnormal("MMU op");
+	}
+#endif
+#if EmFPU
+	if (1 == rg9) {
+		/*
+			Emulate enough of FPU for System 6.0.8 universal
+			to boot on Mac II.
+		*/
+		if (opcode == 0xF280) {
+			ui4b ew = (int)nextiword();
+			if (ew == 0x0000) {
+				/* FNOP */
+				/* fprintf(stderr, "0xF280 0x0000\n"); */
+				return;
+			}
+			BackupPC();
+		} else if (opcode == 0xF327) {
+			/* FSAVE -(A7) */
+			opsize = 4; /* actually unsized */
+			DecodeModeRegister(mode, reg);
+			SetArgValue(0); /* for now try, null state frame */
+			return;
+		} else if (opcode == 0xF35F) {
+			si5b dstvalue;
+			/* FRESTORE (A7)+ */
+			opsize = 4; /* actually unsized */
+			DecodeModeRegister(mode, reg);
+			dstvalue = GetArgValue();
+			if (dstvalue != 0) {
+				ReportAbnormal("unknown restore"); /* not a null state we saved */
+			} else {
+				return;
+			}
+		}
+		ReportAbnormal("FPU op");
 	}
 #endif
 	BackupPC();
@@ -3639,7 +3676,7 @@ LOCALPROC DoBitField(void)
 }
 #endif
 
-#if MakeDumpFile
+#if WantDumpTable
 LOCALVAR ui5b DumpTable[kNumIKinds];
 
 LOCALPROC InitDumpTable(void)
@@ -3651,7 +3688,15 @@ LOCALPROC InitDumpTable(void)
 	}
 }
 
-IMPORTPROC DumpATable(ui5b *p, ui5b n);
+LOCALPROC DumpATable(ui5b *p, ui5b n)
+{
+	si5b i;
+
+	for (i = 0; i < n; ++i) {
+		DumpANum(p[i]);
+		DumpANewLine();
+	}
+}
 
 EXPORTPROC DoDumpTable(void);
 GLOBALPROC DoDumpTable(void)
@@ -3668,7 +3713,7 @@ LOCALPROC m68k_go_MaxInstructions(void)
 	do {
 		opcode = nextiword();
 
-#if MakeDumpFile
+#if WantDumpTable
 		DumpTable[regs.disp_table[opcode]] ++;
 #endif
 

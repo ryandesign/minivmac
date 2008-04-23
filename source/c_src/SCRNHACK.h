@@ -21,7 +21,7 @@
 */
 
 
-#if CurEmu <= kEmu512K
+#if CurEmMd <= kEmMd_128K
 		do_put_mem_long(112 + ROM, kVidMem_Base);
 		do_put_mem_long(260 + ROM, kVidMem_Base);
 		do_put_mem_long(292 + ROM, kVidMem_Base
@@ -135,7 +135,7 @@
 		do_put_mem_word(3838 + ROM, vMacScreenWidth);
 		/* do_put_mem_word(7810 + ROM, vMacScreenHeight); */
 
-#elif CurEmu <= kEmuPlus
+#elif CurEmMd <= kEmMd_Plus
 
 		do_put_mem_long(138 + ROM, kVidMem_Base);
 		do_put_mem_long(326 + ROM, kVidMem_Base);
@@ -283,7 +283,7 @@
 		do_put_mem_word(5214 + ROM, vMacScreenWidth / 2 - 218);
 #endif
 
-#elif CurEmu <= kEmuSE
+#elif CurEmMd <= kEmMd_SE
 
 		/* screen setup, main */
 		{

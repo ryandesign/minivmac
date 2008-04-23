@@ -42,6 +42,10 @@
 #define BigEndianUnaligned 0
 #endif
 
+#ifndef LittleEndianUnaligned
+#define LittleEndianUnaligned 0
+#endif
+
 /*--- integer types ----*/
 
 /*

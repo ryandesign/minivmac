@@ -35,6 +35,7 @@
 #include "SYSDEPNS.h"
 
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #endif
 
@@ -607,7 +608,7 @@ LOCALFUNC ui3b SCC_GetReg(int chan, ui3b SCC_Reg)
 		case 8: /* Receive Buffer */
 			/* happens on boot with appletalk on */
 			if (SCC.a[chan].RxEnable) { /* Rx Enable */
-#if TempDebug && (CurEmu >= kEmuSE1M)
+#if TempDebug && (CurEmMd >= kEmMd_SE)
 #else
 				ReportAbnormal("read rr8 when RxEnable");
 #endif
@@ -1045,7 +1046,7 @@ LOCALPROC SCC_PutReg(int Data, int chan, ui3b SCC_Reg)
 					CheckSCCInterruptFlag();
 					break;
 				case 3: /* Force Hardware Reset */
-#if TempDebug && (CurEmu >= kEmuSE1M)
+#if TempDebug && (CurEmMd >= kEmMd_SE)
 #else
 					ReportAbnormal("SCC_Reset");
 #endif
@@ -1253,7 +1254,7 @@ LOCALPROC SCC_PutReg(int Data, int chan, ui3b SCC_Reg)
 			SCC.a[chan].DCD_IE = (Data & Bit3) != 0;
 #else
 			if ((Data & Bit3) == 0) { /* DCD_IE */
-#if TempDebug && (CurEmu >= kEmuSE1M)
+#if TempDebug && (CurEmMd >= kEmMd_SE)
 #else
 				ReportAbnormal("not DCD IE");
 #endif

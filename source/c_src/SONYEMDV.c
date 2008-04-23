@@ -27,6 +27,7 @@
 #include "SYSDEPNS.h"
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
+#include "EMCONFIG.h"
 #include "ADDRSPAC.h"
 #include "MINEM68K.h"
 #endif

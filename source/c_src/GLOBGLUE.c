@@ -28,39 +28,63 @@
 #include "SYSDEPNS.h"
 
 #include "MYOSGLUE.h"
+#include "EMCONFIG.h"
 #endif
 
 #include "GLOBGLUE.h"
 
+#if EmRTC
 IMPORTFUNC blnr RTC_Init(void);
+#endif
 IMPORTFUNC blnr ROM_Init(void);
 IMPORTFUNC blnr AddrSpac_Init(void);
 
-IMPORTPROC VIA_Zap(void);
+IMPORTPROC VIA1_Zap(void);
+#if EmVIA2
+IMPORTPROC VIA2_Zap(void);
+#endif
 
 IMPORTPROC m68k_reset(void);
 IMPORTPROC IWM_Reset(void);
 IMPORTPROC SCC_Reset(void);
 IMPORTPROC SCSI_Reset(void);
-IMPORTPROC VIA_Reset(void);
+IMPORTPROC VIA1_Reset(void);
+#if EmVIA2
+IMPORTPROC VIA2_Reset(void);
+#endif
 IMPORTPROC Memory_Reset(void);
 IMPORTPROC Sony_Reset(void);
 
 IMPORTPROC Mouse_Update(void);
+#if EmClassicKbrd
 IMPORTPROC KeyBoard_Update(void);
-IMPORTPROC VIA_Int_Vertical_Blanking(void);
+#endif
+#if EmADB
+IMPORTPROC ADB_Update(void);
+#endif
+IMPORTPROC InterruptReset_Update(void);
+IMPORTPROC VIA1_iCA1_PulseNtfy(void);
 IMPORTPROC Sony_Update(void);
 
+#if EmRTC
 IMPORTPROC RTC_Interrupt(void);
+#endif
 
 IMPORTPROC MacSound_SubTick(int SubTick);
 
-IMPORTPROC VIA_ExtraTimeBegin(void);
-IMPORTPROC VIA_ExtraTimeEnd(void);
+IMPORTPROC VIA1_ExtraTimeBegin(void);
+IMPORTPROC VIA1_ExtraTimeEnd(void);
+
+#if EmVIA2
+IMPORTPROC VIA2_ExtraTimeBegin(void);
+IMPORTPROC VIA2_ExtraTimeEnd(void);
+#endif
 
 GLOBALFUNC blnr InitEmulation(void)
 {
+#if EmRTC
 	if (RTC_Init())
+#endif
 	if (ROM_Init())
 	if (AddrSpac_Init())
 	{
@@ -75,7 +99,10 @@ GLOBALPROC EmulatedHardwareZap(void)
 	IWM_Reset();
 	SCC_Reset();
 	SCSI_Reset();
-	VIA_Zap();
+	VIA1_Zap();
+#if EmVIA2
+	VIA2_Zap();
+#endif
 	Sony_Reset();
 	m68k_reset();
 }
@@ -85,34 +112,62 @@ GLOBALPROC customreset(void)
 	IWM_Reset();
 	SCC_Reset();
 	SCSI_Reset();
-	VIA_Reset();
+	VIA1_Reset();
+#if EmVIA2
+	VIA2_Reset();
+#endif
 	Sony_Reset();
+#if CurEmMd <= kEmMd_128K
+	WantMacReset = trueblnr;
+	/*
+		kludge, code in Finder appears
+		to do RESET and not expect
+		to come back. Maybe asserting
+		the RESET somehow causes
+		other hardware compenents to
+		later reset the 68000.
+	*/
+#endif
 }
 
 GLOBALPROC SixtiethSecondNotify(void)
 {
 	Mouse_Update();
+	InterruptReset_Update();
+#if EmClassicKbrd
 	KeyBoard_Update();
+#endif
+#if EmADB
+	ADB_Update();
+#endif
 
-	VIA_Int_Vertical_Blanking();
+	VIA1_iCA1_PulseNtfy(); /* Vertical Blanking Interrupt */
 	Sony_Update();
 
+#if EmRTC
 	RTC_Interrupt();
+#endif
 }
 
 GLOBALPROC SubTickNotify(int SubTick)
 {
-#if MySoundEnabled
+#if MySoundEnabled && (CurEmMd != kEmMd_PB100)
 	MacSound_SubTick(SubTick);
 #endif
 }
 
 GLOBALPROC ExtraTimeBeginNotify(void)
 {
-	VIA_ExtraTimeBegin();
+	VIA1_ExtraTimeBegin();
+#if EmVIA2
+	VIA2_ExtraTimeBegin();
+#endif
 }
 
 GLOBALPROC ExtraTimeEndNotify(void)
 {
-	VIA_ExtraTimeEnd();
+	VIA1_ExtraTimeEnd();
+#if EmVIA2
+	VIA2_ExtraTimeEnd();
+#endif
 }
