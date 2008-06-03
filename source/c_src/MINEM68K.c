@@ -2134,7 +2134,9 @@ LOCALPROCUSEDONCE DoCodeExgda(void)
 LOCALPROCUSEDONCE DoCodeMoveCCREa(void)
 {
 	/* Move from CCR 0100001011mmmrrr */
+#if ! Use68020
 	ReportAbnormal("Move from CCR");
+#endif
 	opsize = 2;
 	DecodeModeRegister(mode, reg);
 	SetArgValue(m68k_getSR() & 0xFF);

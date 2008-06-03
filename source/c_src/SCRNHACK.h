@@ -283,7 +283,7 @@
 		do_put_mem_word(5214 + ROM, vMacScreenWidth / 2 - 218);
 #endif
 
-#elif CurEmMd <= kEmMd_SE
+#elif CurEmMd <= kEmMd_Classic
 
 		/* screen setup, main */
 		{

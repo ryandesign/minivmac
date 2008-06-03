@@ -45,6 +45,7 @@ enum {
 	gbk_mdl_512Ke,
 	gbk_mdl_Plus,
 	gbk_mdl_SE,
+	gbk_mdl_SEFDHD,
 	gbk_mdl_Classic,
 	gbk_mdl_PB100,
 	gbk_mdl_II,
@@ -74,6 +75,9 @@ LOCALFUNC char * GetModelName(int i)
 			break;
 		case gbk_mdl_SE:
 			s = "SE";
+			break;
+		case gbk_mdl_SEFDHD:
+			s = "SEFDHD";
 			break;
 		case gbk_mdl_Classic:
 			s = "Classic";
@@ -164,6 +168,7 @@ LOCALFUNC blnr ChooseMemSiz(void)
 				break;
 			case gbk_mdl_Plus:
 			case gbk_mdl_SE:
+			case gbk_mdl_SEFDHD:
 			case gbk_mdl_Classic:
 			case gbk_mdl_PB100:
 			case gbk_mdl_II:
@@ -431,7 +436,9 @@ LOCALVAR uimr dflt_hres;
 
 LOCALFUNC blnr ChooseHRes(void)
 {
-	if (gbk_mdl_PB100 == cur_mdl) {
+	if (gbk_mdl_II == cur_mdl) {
+		dflt_hres = 640;
+	} else if (gbk_mdl_PB100 == cur_mdl) {
 		dflt_hres = 640;
 	} else {
 		dflt_hres = 512;
@@ -473,7 +480,9 @@ LOCALVAR uimr dflt_vres;
 
 LOCALFUNC blnr ChooseVRes(void)
 {
-	if (gbk_mdl_PB100 == cur_mdl) {
+	if (gbk_mdl_II == cur_mdl) {
+		dflt_vres = 480;
+	} else if (gbk_mdl_PB100 == cur_mdl) {
 		dflt_vres = 400;
 	} else {
 		dflt_vres = 342;

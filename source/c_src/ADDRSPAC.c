@@ -256,7 +256,7 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 		ui5b iAddr = bi << ln2BytesPerMemBank;
 		if ((iAddr >> kRAM_ln2Spc) == (kRAM_Base >> kRAM_ln2Spc)) {
 			if (MemOverlay) {
-#if CurEmMd == kEmMd_MacII
+#if CurEmMd == kEmMd_II
 				ReportAbnormal("Overlay with 24 bit addressing");
 #else
 				if (WriteMem) {
@@ -283,14 +283,20 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 #endif
 			}
 		} else
-#if IncludeVidMem
+#if IncludeVidMem && (CurEmMd == kEmMd_II)
+		if ((iAddr >= 0x900000) && ((iAddr < 0x980000))) {
+			RealStart = VidMem;
+			vMask = kVidMemRAM_Size - 1;
+		} else
+#endif
+#if IncludeVidMem && (CurEmMd != kEmMd_II)
 		if ((iAddr >> kVidMem_ln2Spc) == (kVidMem_Base >> kVidMem_ln2Spc)) {
 			RealStart = VidMem;
 			vMask = kVidMemRAM_Size - 1;
 		} else
 #endif
 		if ((iAddr >> kROM_ln2Spc) == (kROM_Base >> kROM_ln2Spc)) {
-#if CurEmMd == kEmMd_MacII
+#if CurEmMd == kEmMd_II
 			if (MemOverlay) {
 				ReportAbnormal("Overlay with 24 bit addressing");
 			}
@@ -309,7 +315,7 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 				vMask = ROMmem_mask;
 			}
 		} else
-#if CurEmMd != kEmMd_MacII
+#if CurEmMd != kEmMd_II
 		if ((iAddr >> 19) == (kRAM_Overlay_Base >> 19)) {
 			if (MemOverlay) {
 				RealStart = Overlay_RAMmem_offset + RAM;
@@ -319,7 +325,7 @@ LOCALFUNC blnr GetBankAddr(ui5b bi, blnr WriteMem, ui3b **ba)
 #endif
 		{
 			/* fail */
-#if CurEmMd == kEmMd_MacII
+#if CurEmMd == kEmMd_II
 			ReportAbnormal("bad memory access");
 #endif
 		}
@@ -445,9 +451,6 @@ GLOBALFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 		} else
 		if ((addr >= 0x58000000) && (addr < 0x58000004)) {
 			/* test hardware. fail */
-		} else
-		if (addr >= 0xF1000000) {
-			/* Standard NuBus space */
 		} else
 		{
 			ui3p m;
@@ -695,6 +698,28 @@ GLOBALFUNC ui3p get_real_address(ui5b L, blnr WritableMem, CPTR addr)
 				return nullpr;
 			} else {
 				return ROM + (addr & ROMmem_mask);
+			}
+		} else
+		if (addr >= 0xF1000000) {
+			/* Standard NuBus space */
+			if ((addr >= 0xF9000000) && (addr < 0xFA000000)) {
+				if ((addr >= 0xFA000000 - kVidROM_Size) && (addr < 0xFA000000)) {
+					if (WritableMem) {
+						/* fail */
+						return nullpr;
+					} else {
+						return VidROM + (addr & 0x3FF);
+					}
+				} else {
+					if ((addr >= 0xF9900000) && ((addr < 0xF9980000))) {
+						return VidMem + (addr & (kVidMemRAM_Size - 1));
+					} else {
+						return nullpr;
+					}
+				}
+			}
+			{
+				return nullpr;
 			}
 		} else
 		{

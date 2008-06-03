@@ -37,9 +37,10 @@
 #define kEmMd_512Ke       1
 #define kEmMd_Plus        2
 #define kEmMd_SE          3
-#define kEmMd_Classic     4
-#define kEmMd_PB100       5
-#define kEmMd_II          6
+#define kEmMd_SEFDHD      4
+#define kEmMd_Classic     5
+#define kEmMd_PB100       6
+#define kEmMd_II          7
 
 EXPORTPROC WarnMsgCorruptedROM(void);
 EXPORTPROC WarnMsgUnsupportedROM(void);
@@ -192,6 +193,14 @@ EXPORTVAR(char, *screencomparebuff)
 
 #if IncludeVidMem
 EXPORTVAR(ui3p, VidMem)
+#endif
+
+#ifndef IncludeVidRom
+#define IncludeVidRom 0
+#endif
+
+#if IncludeVidRom
+EXPORTVAR(ui3p, VidROM)
 #endif
 
 #define MyEvtQElKindKey 0

@@ -35,6 +35,10 @@ GLOBALVAR char *screencomparebuff = nullpr;
 GLOBALVAR ui3p VidMem = nullpr;
 #endif
 
+#if IncludeVidRom
+GLOBALVAR ui3p VidROM = nullpr;
+#endif
+
 GLOBALVAR ui3p RAM = nullpr;
 
 GLOBALVAR ui3p ROM = nullpr;

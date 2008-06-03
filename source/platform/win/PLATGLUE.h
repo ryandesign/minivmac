@@ -3192,7 +3192,16 @@ LOCALFUNC blnr AllocateMacROM(void)
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	} else {
-		return trueblnr;
+#if IncludeVidRom
+		VidROM = (ui3p)GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, kVidROM_Size);
+		if (VidROM == NULL) {
+			MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
+			return falseblnr;
+		} else
+#endif
+		{
+			return trueblnr;
+		}
 	}
 }
 
@@ -4277,6 +4286,13 @@ LOCALPROC UnInitOSGLU(void)
 			MacMsg("error", "GlobalFree failed", falseblnr);
 		}
 	}
+#if IncludeVidRom
+	if (VidROM != NULL) {
+		if (GlobalFree(VidROM) != NULL) {
+			MacMsg("error", "GlobalFree failed", falseblnr);
+		}
+	}
+#endif
 #if EnableScalingBuff
 	if (ScalingBuff != NULL) {
 		(void) GlobalFree(ScalingBuff);

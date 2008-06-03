@@ -637,7 +637,16 @@ LOCALFUNC blnr AllocateMacROM(void)
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;
 	} else {
-		return trueblnr;
+#if IncludeVidRom
+		VidROM = (ui3p)calloc(1, kVidROM_Size);
+		if (VidROM == NULL) {
+			MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
+			return falseblnr;
+		} else
+#endif
+		{
+			return trueblnr;
+		}
 	}
 #else
 	/*
@@ -654,6 +663,11 @@ LOCALPROC DeallocateMacROM(void)
 	if (NULL != ROM) {
 		free((char *)ROM);
 	}
+#if IncludeVidRom
+	if (NULL != VidROM) {
+		free((char *)VidROM);
+	}
+#endif
 #else
 	/* IMPLEMENT ME */
 #endif

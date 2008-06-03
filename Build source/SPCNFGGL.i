@@ -60,6 +60,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 			WriteCStrToDestFile("0x020000"); /* 128 KB */
 			break;
 		case gbk_mdl_SE:
+		case gbk_mdl_SEFDHD:
 		case gbk_mdl_PB100:
 		case gbk_mdl_II:
 			WriteCStrToDestFile("0x040000"); /* 256 KB */
@@ -97,6 +98,9 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 			break;
 		case gbk_mdl_SE:
 			WriteCStrToDestFile("MacSE.ROM");
+			break;
+		case gbk_mdl_SEFDHD:
+			WriteCStrToDestFile("SEFDHD.ROM");
 			break;
 		case gbk_mdl_Classic:
 			WriteCStrToDestFile("Classic.ROM");
@@ -143,12 +147,17 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteUnsignedToOutput(cur_numdrives);
 	WriteEndDestFileLn();
 
+	if (gbk_mdl_II == cur_mdl) {
+		WriteDestFileLn("#define IncludeVidRom 1");
+		WriteDestFileLn("#define kVidROM_Size 0x000400");
+	}
+
 	if (NeedVidMem) {
 		WriteDestFileLn("#define IncludeVidMem 1");
 		if (gbk_mdl_PB100 == cur_mdl) {
 			WriteDestFileLn("#define kVidMemRAM_Size 0x00008000");
 		} else {
-			WriteDestFileLn("#define kVidMemRAM_Size 0x00040000");
+			WriteDestFileLn("#define kVidMemRAM_Size 0x00020000");
 		}
 	}
 
