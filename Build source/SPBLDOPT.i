@@ -116,6 +116,8 @@ enum {
 	gbk_msz_2M,
 	gbk_msz_2_5M,
 	gbk_msz_4M,
+	gbk_msz_5M,
+	gbk_msz_8M,
 	kNumMemSizs
 };
 
@@ -148,6 +150,12 @@ LOCALFUNC char * GetMemSizName(int i)
 			break;
 		case gbk_msz_4M:
 			s = "4M";
+			break;
+		case gbk_msz_5M:
+			s = "5M";
+			break;
+		case gbk_msz_8M:
+			s = "8M";
 			break;
 		default:
 			s = "(unknown Memory Size)";
@@ -187,6 +195,106 @@ LOCALFUNC blnr TryAsMemSizOptionNot(void)
 	return FindNamedOption("-mem", kNumMemSizs, GetMemSizName, &cur_msz);
 }
 
+/* memory bank sizes */
+
+LOCALVAR uimr RAMa_Size;
+LOCALVAR uimr RAMb_Size;
+
+#define ln2_msz_128K 17
+#define ln2_msz_256K 18
+#define ln2_msz_512K 19
+#define ln2_msz_1M 20
+#define ln2_msz_2M 21
+#define ln2_msz_4M 22
+#define ln2_msz_8M 23
+
+LOCALFUNC blnr ChooseMemBankSizes(void)
+{
+	RAMa_Size = 0;
+	RAMb_Size = 0;
+
+	switch (cur_mdl) {
+		case gbk_mdl_128K:
+		case gbk_mdl_512Ke:
+			if (cur_msz == gbk_msz_128K) {
+				RAMa_Size = ln2_msz_128K;
+			} else
+			if (cur_msz == gbk_msz_512K) {
+				RAMa_Size = ln2_msz_512K;
+			} else
+			{
+				/* unsupported */
+			}
+			break;
+		case gbk_mdl_Plus:
+		case gbk_mdl_SE:
+		case gbk_mdl_SEFDHD:
+		case gbk_mdl_Classic:
+			if (cur_msz == gbk_msz_512K) {
+				RAMa_Size = ln2_msz_512K;
+			} else
+			if (cur_msz == gbk_msz_1M) {
+				RAMa_Size = ln2_msz_512K;
+				RAMb_Size = ln2_msz_512K;
+			} else
+			if (cur_msz == gbk_msz_2M) {
+				RAMa_Size = ln2_msz_2M;
+			} else
+			if (cur_msz == gbk_msz_2_5M) {
+				RAMa_Size = ln2_msz_2M;
+				RAMb_Size = ln2_msz_512K;
+			} else
+			if (cur_msz == gbk_msz_4M) {
+				RAMa_Size = ln2_msz_2M;
+				RAMb_Size = ln2_msz_2M;
+			} else
+			{
+				/* unsupported */
+			}
+			break;
+		case gbk_mdl_II:
+			if (cur_msz == gbk_msz_1M) {
+				RAMa_Size = ln2_msz_1M;
+			} else
+			if (cur_msz == gbk_msz_2M) {
+				RAMa_Size = ln2_msz_1M;
+				RAMb_Size = ln2_msz_1M;
+			} else
+			if (cur_msz == gbk_msz_4M) {
+				RAMa_Size = ln2_msz_4M;
+			} else
+			if (cur_msz == gbk_msz_5M) {
+				RAMa_Size = ln2_msz_4M;
+				RAMb_Size = ln2_msz_1M;
+			} else
+			if (cur_msz == gbk_msz_8M) {
+				RAMa_Size = ln2_msz_4M;
+				RAMb_Size = ln2_msz_4M;
+			} else
+			{
+				/* unsupported */
+			}
+			break;
+		case gbk_mdl_PB100:
+			if (cur_msz == gbk_msz_4M) {
+				RAMa_Size = ln2_msz_4M;
+			} else
+			{
+				/* unsupported */
+			}
+		default:
+			/* unsupported */
+			break;
+	}
+
+	if (0 == RAMa_Size) {
+		ReportParseFailure("memory size (-mem) unsupported for this model (-m)");
+		return falseblnr;
+	} else {
+		return trueblnr;
+	}
+}
+
 /* option: number of drives */
 
 LOCALVAR uimr cur_numdrives;
@@ -199,7 +307,7 @@ LOCALPROC ResetNumDrivesOption(void)
 
 LOCALFUNC blnr TryAsNumDrivesOptionNot(void)
 {
-	return NumberTryAsOptionNot("-drives", (int *)&cur_numdrives, &have_numdrives);
+	return NumberTryAsOptionNot("-drives", (long *)&cur_numdrives, &have_numdrives);
 }
 
 LOCALFUNC blnr ChooseNumDrives(void)
@@ -232,7 +340,7 @@ LOCALPROC ResetEmCpuVersOption(void)
 
 LOCALFUNC blnr TryAsEmCpuVersOptionNot(void)
 {
-	return NumberTryAsOptionNot("-em-cpu", (int *)&em_cpu_vers, &have_em_cpu_vers);
+	return NumberTryAsOptionNot("-em-cpu", (long *)&em_cpu_vers, &have_em_cpu_vers);
 }
 
 LOCALPROC ChooseEmCpuVers(void)
@@ -429,7 +537,7 @@ LOCALPROC ResetHResOption(void)
 
 LOCALFUNC blnr TryAsHResOptionNot(void)
 {
-	return NumberTryAsOptionNot("-hres", (int *)&cur_hres, &have_hres);
+	return NumberTryAsOptionNot("-hres", (long *)&cur_hres, &have_hres);
 }
 
 LOCALVAR uimr dflt_hres;
@@ -473,7 +581,7 @@ LOCALPROC ResetVResOption(void)
 
 LOCALFUNC blnr TryAsVResOptionNot(void)
 {
-	return NumberTryAsOptionNot("-vres", (int *)&cur_vres, &have_vres);
+	return NumberTryAsOptionNot("-vres", (long *)&cur_vres, &have_vres);
 }
 
 LOCALVAR uimr dflt_vres;
@@ -566,6 +674,7 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 	ChooseSoundEnabled();
 	ChooseModel();
 	if (ChooseMemSiz())
+	if (ChooseMemBankSizes())
 	if (ChooseNumDrives())
 	if (ChooseHRes())
 	if (ChooseVRes())

@@ -211,6 +211,8 @@ static void WriteBashGccSpecificFiles(void)
 
 			if (HaveMacBundleApp) {
 				DoAllFrameWorksWithSetup(DoFrameWorkBGCaddFile);
+			} else if (gbk_apifam_gtk == gbo_apifam) {
+				WriteCStrToDestFile(" `pkg-config --libs gtk+-2.0`");
 			} else {
 				WriteCStrToDestFile(" -L/usr/X11R6/lib -lXext -lX11");
 				switch (cur_targ) {

@@ -13,8 +13,6 @@
 	license for more details.
 */
 
-#define IsAnApp 1
-
 #define SupportWinIDE 1
 #define support_ide_mw8 1
 #define support_ide_mpw 1

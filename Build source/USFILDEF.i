@@ -381,7 +381,8 @@ LOCALPROC DoSrcFileMakeCompileBody(void)
 	if (IsAsmFile) {
 		WriteCompileAsm(WriteSrcFileFilePath, WriteSrcFileObjPath);
 	} else {
-		WriteCompileC(WriteSrcFileFilePath, WriteSrcFileObjPath);
+		WriteCompileC(WriteSrcFileFilePath, WriteSrcFileObjPath,
+			(DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
 	}
 }
 

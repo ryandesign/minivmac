@@ -67,7 +67,7 @@ LOCALFUNC blnr WriteMakeOutputDirectories(void)
 	HandToPStr(hVariationName, s);
 	if (MyHGetDir(&BaseDirR))
 	if (DelMakeSubDirectory(&OutputDir0R, &BaseDirR, "output", ""))
-	if (MyMakeNamedDir(&OutputDir0R, s, &OutputDirR));
+	if (MyMakeNamedDir(&OutputDir0R, s, &OutputDirR))
 	if (rConverTextInThingXtn(&BaseDirR,
 		&OutputDirR, "README", ".txt"))
 	if (rConverTextInThingXtn(&BaseDirR,

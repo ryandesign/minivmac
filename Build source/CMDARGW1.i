@@ -377,7 +377,7 @@ LOCALPROC AlertUserFromPStr(ps3p message)
 	short itemHit;
 
 	SetCursor(&qd.arrow);
-	ParamText(message, "", "", "");
+	ParamText(message, "\p", "\p", "\p");
 
 	itemHit = Alert(rUserAlert, nil);
 }

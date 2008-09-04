@@ -18,7 +18,7 @@
 */
 
 
-void rinscharafter_ptr(ui3b *inbuff, ui3b *outbuff,
+static void rinscharafter_ptr(ui3b *inbuff, ui3b *outbuff,
 	uimr inputsize, uimr *outputsize,
 	ui3r after_c, ui3r insert_c)
 {

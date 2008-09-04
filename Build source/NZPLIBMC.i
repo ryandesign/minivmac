@@ -548,10 +548,11 @@ static blnr nzplib_ProcessOne0(void)
 	return IsOk;
 }
 
-static blnr nzplib_putend(n, s, c)
-int n;                  /* number of entries in central directory */
-ui5r s;                  /* size of central directory */
-ui5r c;                  /* offset of central directory */
+static blnr nzplib_putend(
+	int n,  /* number of entries in central directory */
+	ui5r s, /* size of central directory */
+	ui5r c  /* offset of central directory */
+)
 /*
 	Write the end of central directory data.
 */

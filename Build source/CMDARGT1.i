@@ -39,16 +39,33 @@ LOCALPROC AdvanceTheArg(void)
 	}
 }
 
-LOCALFUNC blnr CurArgIsCStrAdvance(char *s)
+LOCALFUNC blnr CurArgIsCStr(char *s)
 {
 	if (The_arg_end) {
 		return falseblnr;
-	} if (! CStrEq(Cur_args, s)) {
+	} else {
+		return CStrEq(Cur_args, s);
+	}
+}
+
+LOCALFUNC blnr CurArgIsCStrAdvance(char *s)
+{
+	if (! CurArgIsCStr(s)) {
 		return falseblnr;
 	} else {
 		AdvanceTheArg();
 		return trueblnr;
 	}
+}
+
+LOCALPROC GetCurArgAsPStr(ps3p s)
+{
+	PStrFromCStr(s, Cur_args);
+}
+
+LOCALFUNC blnr GetCurArgAsHandle(Handle *r)
+{
+	return CStr2Hand(Cur_args, r);
 }
 
 LOCALPROC BeginParseCommandLineArguments(int argc, The_argvt argv)
@@ -73,3 +90,6 @@ LOCALPROC DisplayRunErr(char *s)
 }
 
 LOCALVAR blnr AbortRequested = falseblnr;
+LOCALVAR uimr ProgressBarVal;
+
+#define CheckAbort()

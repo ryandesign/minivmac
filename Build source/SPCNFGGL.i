@@ -25,27 +25,18 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteEndDestFileLn();
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define kRAM_Size ");
-	switch (cur_msz) {
-		case gbk_msz_128K:
-			WriteCStrToDestFile("0x00020000");
-			break;
-		case gbk_msz_512K:
-			WriteCStrToDestFile("0x00080000");
-			break;
-		case gbk_msz_1M:
-			WriteCStrToDestFile("0x00100000");
-			break;
-		case gbk_msz_2M:
-			WriteCStrToDestFile("0x00200000");
-			break;
-		case gbk_msz_2_5M:
-			WriteCStrToDestFile("0x00280000");
-			break;
-		case gbk_msz_4M:
-		default:
-			WriteCStrToDestFile("0x00400000");
-			break;
+	WriteCStrToDestFile("#define kRAMa_Size ");
+	WriteCStrToDestFile("0x");
+	WriteHexLongToOutput(1 << RAMa_Size);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define kRAMb_Size ");
+	if (0 == RAMb_Size) {
+		WriteCStrToDestFile("0");
+	} else {
+		WriteCStrToDestFile("0x");
+		WriteHexLongToOutput(1 << RAMb_Size);
 	}
 	WriteEndDestFileLn();
 
@@ -149,7 +140,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	if (gbk_mdl_II == cur_mdl) {
 		WriteDestFileLn("#define IncludeVidRom 1");
-		WriteDestFileLn("#define kVidROM_Size 0x000400");
+		WriteDestFileLn("#define kVidROM_Size 0x000800");
 	}
 
 	if (NeedVidMem) {
@@ -212,5 +203,17 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 		WriteDestFileLn("#define IncludeSonyNew 0");
 		WriteDestFileLn("#define IncludeSonyNameNew 0");
 		WriteDestFileLn("#define IncludeHostTextClipExchange 0");
+	}
+
+	if (gbk_apifam_gtk == gbo_apifam) {
+		/* temporary, until implemented */
+		WriteDestFileLn("#define EnableMagnify 0");
+		WriteDestFileLn("#define EnableFullScreen 0");
+		WriteDestFileLn("#define EnableMouseMotion 0");
+		WriteDestFileLn("#define IncludeHostTextClipExchange 0");
+		WriteDestFileLn("#define IncludeSonyGetName 0");
+		WriteDestFileLn("#define IncludeSonyNew 0");
+		WriteDestFileLn("#define IncludeSonyNameNew 0");
+		WriteDestFileLn("#define IncludePbufs 0");
 	}
 }

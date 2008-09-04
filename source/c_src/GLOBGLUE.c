@@ -37,6 +37,9 @@
 IMPORTFUNC blnr RTC_Init(void);
 #endif
 IMPORTFUNC blnr ROM_Init(void);
+#if (CurEmMd == kEmMd_II)
+IMPORTFUNC blnr Vid_Init(void);
+#endif
 IMPORTFUNC blnr AddrSpac_Init(void);
 
 IMPORTPROC VIA1_Zap(void);
@@ -65,6 +68,9 @@ IMPORTPROC ADB_Update(void);
 IMPORTPROC InterruptReset_Update(void);
 IMPORTPROC VIA1_iCA1_PulseNtfy(void);
 IMPORTPROC Sony_Update(void);
+#if (CurEmMd == kEmMd_II)
+IMPORTPROC Vid_Update(void);
+#endif
 
 #if EmRTC
 IMPORTPROC RTC_Interrupt(void);
@@ -86,6 +92,9 @@ GLOBALFUNC blnr InitEmulation(void)
 	if (RTC_Init())
 #endif
 	if (ROM_Init())
+#if (CurEmMd == kEmMd_II)
+	if (Vid_Init())
+#endif
 	if (AddrSpac_Init())
 	{
 		return trueblnr;
@@ -146,6 +155,9 @@ GLOBALPROC SixtiethSecondNotify(void)
 
 #if EmRTC
 	RTC_Interrupt();
+#endif
+#if (CurEmMd == kEmMd_II)
+	Vid_Update();
 #endif
 }
 

@@ -66,6 +66,15 @@ LOCALPROC WriteCommonCNFGRAPI(void)
 		if (MySoundEnabled) {
 			WriteDestFileLn("#include <alsa/asoundlib.h>");
 		}
+	} else if (gbo_apifam == gbk_apifam_gtk) {
+		WriteDestFileLn("#include <gtk/gtk.h>");
+		WriteDestFileLn("#include <gdk/gdkkeysyms.h>");
+		WriteDestFileLn("#include <stdio.h>");
+		WriteDestFileLn("#include <stdlib.h>");
+		WriteDestFileLn("#include <string.h>");
+		WriteDestFileLn("#include <time.h>");
+		WriteDestFileLn("#include <sys/time.h>");
+		WriteDestFileLn("#include <sys/times.h>");
 	} else if (cur_targ == gbk_targ_carb) {
 		/* kIdeMW8 or kIdeMPW3_6_a1 */
 #if support_ide_mw8

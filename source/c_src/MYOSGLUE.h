@@ -69,6 +69,8 @@ EXPORTPROC DumpANum(ui5r x);
 EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 
 #define RAMSafetyMarginFudge 4
+
+#define kRAM_Size (kRAMa_Size + kRAMb_Size)
 EXPORTVAR(ui3p, RAM)
 	/*
 		allocated by MYOSGLUE to be at least kRAM_Size + RAMSafetyMarginFudge

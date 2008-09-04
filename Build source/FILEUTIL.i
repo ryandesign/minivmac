@@ -479,8 +479,6 @@ GLOBALFUNC blnr CatInfoOpenReadRF(CInfoPBRec *cPB,
 GLOBALFUNC blnr MyFileGetCatInfo(MyDir_R *d, StringPtr s,
 	StringPtr NameBuffer, CInfoPBRec *cPB)
 {
-	blnr IsOk = falseblnr;
-
 	cPB->hfileInfo.ioCompletion = NULL;
 	cPB->hfileInfo.ioVRefNum = d->VRefNum;
 	cPB->dirInfo.ioDrDirID = d->DirId;

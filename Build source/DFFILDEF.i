@@ -42,7 +42,9 @@ typedef void (*tWriteOneDocType)(
 
 #define kCSrcFlagAsmAvail 0
 #define kCSrcFlagAltSrc 1
+#define kCSrcFlagUseAPI 2
 
 #define kCSrcFlgmNone 0
 #define kCSrcFlgmAsmAvail (1 << kCSrcFlagAsmAvail)
 #define kCSrcFlgmAltSrc (1 << kCSrcFlagAltSrc)
+#define kCSrcFlgmUseAPI (1 << kCSrcFlagUseAPI)

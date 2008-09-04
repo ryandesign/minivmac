@@ -79,7 +79,7 @@
 */
 
 
-typedef struct sitlib_sitHdr { /* 22 bytes */
+struct sitlib_sitHdr { /* 22 bytes */
 	/* big endian format */
 	OSType sig1;     /* = 'SIT!' -- for verification */
 	ui4b numFiles;   /* number of files in archive */
@@ -88,6 +88,8 @@ typedef struct sitlib_sitHdr { /* 22 bytes */
 	ui3b version;    /* version number */
 	ui3b reserved[7];
 };
+
+typedef struct sitlib_sitHdr sitlib_sitHdr;
 
 /*
 	compression methods
@@ -98,7 +100,7 @@ typedef struct sitlib_sitHdr { /* 22 bytes */
 	all other numbers are reserved
 */
 
-typedef struct sitlib_fileHdr { /* 112 bytes */
+struct sitlib_fileHdr { /* 112 bytes */
 	/* big endian format */
 	ui3b compRMethod;  /* rsrc fork compression method */
 	ui3b compDMethod;  /* data fork compression method */
@@ -117,6 +119,8 @@ typedef struct sitlib_fileHdr { /* 112 bytes */
 	ui3b reserved[6];
 	ui4b hdrCRC;       /* crc of file header */
 };
+
+typedef struct sitlib_fileHdr sitlib_fileHdr;
 
 /* file format is:
 	sitArchiveHdr

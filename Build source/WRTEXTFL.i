@@ -135,6 +135,21 @@ LOCALPROC WriteHexWordToOutput(unsigned int v)
 #endif
 }
 
+LOCALPROC WriteHexLongToOutput(ui5r v)
+{
+	MyPStr s;
+
+	s[0] = 8;
+	ui5r2Hex(v, PStrToMyCharPtr(s));
+	WritePStrToDestFile(s);
+#if 0
+	char s[16];
+
+	sprintf(s, "%08X", v);
+	WriteCStrToDestFile(s);
+#endif
+}
+
 LOCALPROC WriteDestFileLn(char *s)
 {
 	WriteBgnDestFileLn();

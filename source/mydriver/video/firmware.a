@@ -1,0 +1,418 @@
+	STRING	C
+	MACHINE	MC68020
+	PRINT	OFF
+	INCLUDE	'SlotEqu.a'
+	INCLUDE	'VideoEqu.a'
+	INCLUDE	'Traps.a'
+	INCLUDE	'SysEqu.a'
+	INCLUDE	'SysErr.a'
+	PRINT	ON
+
+VideoDeclROM	MAIN
+
+;========================================================================================
+
+; General Directives
+
+	BLANKS	ON
+	STRING	ASIS
+
+;========================================================================================
+;	       Local Vars, definitions, etc...
+;========================================================================================
+
+;This is device storage, a handle to which is stored in the dCtlStorage field of the DCE.
+
+DCEPtr	EQU	0		;pointer to our DCE
+saveMode	EQU	DCEPtr+4		;the current mode setting
+saveBaseAddr	EQU	saveMode+2		;the current base address
+saveSQElPtr	EQU	saveBaseAddr+4	;the SQ element pointer (for
+				;_SIRemove
+VidExtnId	EQU	saveSQElPtr+4
+GammaPtr	EQU	VidExtnId+2		;the pointer to the gamma
+				;correction table
+GFlags	EQU	GammaPtr+4		;flags word
+dCtlSize	EQU	GFlags		;size of the dCtlStorage
+
+;Flags within GFlags word
+
+GrayFlag	EQU	15		;luminance mapped if
+				;GFlags(GrayFlag) = 1
+
+;========================================================================================
+;	       Video Driver Header
+;========================================================================================
+
+VidDrvr	DC.W	$4C00		;ctl,status,needsLock
+	DC.W	0,0,0		;not an ornament
+
+;Entry point offset table
+
+	DC.W	VideoOpen-VidDrvr	;open routine
+	DC.W	VidDrvr-VidDrvr	;no prime
+	DC.W	VideoCtl-VidDrvr	;control
+	DC.W	VideoStatus-VidDrvr	;status
+	DC.W	VideoClose-VidDrvr	;close
+
+	STRING	Pascal
+VideoTitle	DC.W	'.Display_Video_Sample'
+	STRING	ASIS
+	ALIGN	2		;make sure we're aligned
+	DC.W	0		;version-0
+
+;========================================================================================
+;VideoOpen allocates private storage for the device in the DCE and locks
+;      it down for perpetuity. It installs the interrupt handler and enables
+;      the interrupts. It also sets the default gamma table included in the driver.
+;
+;Entry:	A0 = param block pointer
+;	A1 = DCE pointer
+;
+;Locals:	A2 = Saved param block pointer
+;	A3 = Saved DCE pointer
+;	A4 = Saved interrupt handler ptr
+;========================================================================================
+
+;Save registers
+VideoOpen
+	MOVE.L	A0,A2		;A2 <- param block pointer
+	MOVE.L	A1,A3		;A3 <- DCE pointer
+
+;Allocate private storage
+	MOVEQ	#dCtlSize, D0		;get size of parameters
+	_ResrvMem	,SYS		;make room as low as possible
+	MOVEQ	#dCtlSize, D0		;get size of parameters
+	_NewHandle	,SYS,CLEAR		;get some memory for private
+				; storage
+	BNE	OpError		;=> return an error in open
+	MOVE.L	A0, dCtlStorage(A3)	;saved returned handle in DCE
+	_HLock			;and lock it down
+
+;Get and install the interrupt handler
+	LEA	BeginIH,A4		;Save point to interrupt
+				; handler
+	MOVEQ	#SlotIntQElement.sqHDSize,D0		;allocate a slot queue element
+	_NewPtr	,SYS,CLEAR		;get it from system heap cleared
+	BNE	OpError
+	MOVE.W	#SIQType,SlotIntQElement.sqType(A0)	;setup queue ID
+	MOVE.L	A4,SlotIntQElement.sqAddr(A0)		;setup int routine address
+	MOVE.L	A3,SlotIntQElement.sqParm(A0)	;save slot base addr as A3 parm
+	CLR.L	D0
+	MOVE.B	dctlSlot(A3),D0	;setup slot #
+	_SIntInstall			;and do install
+	BNE.S	OpError
+
+;Save SQElPtr for removal
+	MOVE.L	dCtlStorage(A3),A1	;Get point to private storage
+	MOVE.L	(A1),A1
+	MOVE.L	A0,saveSQElPtr(A1)	;Save the SQ element pointer
+
+;Enable interrupts
+	SUBQ	#2, A7
+	MOVE.L	#$163DA5A9, -(A7)
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#1, -(A7) ; kCmndFindExtnFind
+	MOVE.W	#0, -(A7) ; DSKDat_extension = 0
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	MOVE.L	($0134).W, A0
+	MOVE.L	20(A0), A0
+	; MOVE.L	A7, ($51F40000).L
+	MOVE.L	A7, (A0)
+	ADD.W	#12, A7
+	MOVE.W	(A7)+, D0 ; Video ExtnId
+	MOVE.W	D0, VidExtnId(A1)
+
+	MOVE.W	#1, -(A7) ; enabled
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#3, -(A7) ; kCmndVideoSetIntEnbl
+	MOVE.W	D0, -(A7) ; DSKDat_extension = Video
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	; MOVE.L	A7, ($00F40000).L
+	MOVE.L	A7, (A0)
+	ADDA.W	#10, A7
+
+	MOVEQ	#0,D0		;no error
+	BRA.S	EndOpen
+;Error
+OpError	MOVE.L	#openErr,D0		;say can't open driver
+EndOpen	RTS			;return
+
+;========================================================================================
+;	       The interrupt handler for the board
+;========================================================================================
+
+;On entry A1 contains DCE
+
+; wrong! "D0-D3/A0-A3 have been preserved."
+; (comment from Apples sample code.)
+; must preserve registers except A1/D0
+
+BeginIH
+	MOVE.L	A0, -(A7)
+
+	;clear interrupt from card
+
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#4, -(A7) ; kCmndVideoClearInt
+	MOVE.L	dCtlStorage(A1), A0 ;Get pointer to private storage
+	MOVE.L	(A0),A0	;A0 = our data
+	MOVE.W	VidExtnId(A0), -(A7) ; DSKDat_extension = Video
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	MOVE.L	($0134).W, A0
+	MOVE.L	20(A0), A0
+	MOVE.L	A7, (A0)
+	ADDQ.W	#8, A7
+
+	MOVE.L	dctlDevBase(A1),D0	;D0 = $Fsxxxxxx
+	ROL.L	#8,D0		;D0 <- $xxxxxxFs      Convert the
+				;                     address into
+	AND	#$0F,D0		;D0 <- $xxxx000x      the slot
+				;                     number
+	MOVE.L	JVBLTask,A0		;call the VBL task manager
+	JSR	(A0)		;with slot # in D0
+
+	MOVE.L	(A7)+, A0
+	MOVEQ	#1,D0		;signal that int was serviced
+	RTS			;and return to caller
+
+;========================================================================================
+;
+;VideoClose releases the device's private storage.
+;
+;Entry:	A0 = param block pointer
+;	A1 = DCE pointer
+;
+;Locals:	A2 = Saved param block pointer
+;	A3 = Saved DCE pointer
+;	A4 = Temporary
+;
+;========================================================================================
+
+VideoClose
+	MOVE.L	dCtlStorage(A1),A3	;Get pointer to private storage
+	MOVE.L	(A3),A3
+
+	MOVE.W	#0, -(A7) ; disabled
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#3, -(A7) ; kCmndVideoSetIntEnbl
+	MOVE.W	VidExtnId(A3), -(A7) ; DSKDat_extension = Video
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	MOVE.L	($0134).W, A0
+	MOVE.L	20(A0), A0
+	MOVE.L	A7, (A0)
+	ADDA.W	#10, A7
+
+	MOVE.L	saveSQElPtr(A3),A0	;Get the SQ element pointer
+
+	MOVE.L	A1,A3		;A3 <- DCE pointer
+	_SIntRemove			;Remove the interrupt handler
+	MOVE.L	dCtlStorage(A3),A0	;Dispose of the private storage
+	_DisposHandle
+	MOVEQ	#0,D0		;get error into D0
+	RTS			;return to caller
+
+;========================================================================================
+;
+;Video Driver Control Call Handler.  Right now there are three calls:
+;
+;      (0)  Reset (VAR mode, page: INTEGER;VAR BaseAddr: Ptr);
+;      (1)  KillIO
+;      (2)  SetMode(mode, page: INTEGER;VAR BaseAddr: Ptr);
+;
+;      Entry:	A0    = param block pointer
+;	A1    = DCE pointer
+;      Uses:	A2    = cs paramaters (i.e. A2 <- csParam(A0)) (must be preserved)
+;	A3    = scratch (doesn't need to be preserved)
+;	A4    = scratch (must be preserved)
+;	D0-D3 = scratch (don't need to be preserved)
+;
+;      Exit:	D0    =       error code
+;
+;========================================================================================
+
+;Decode the call
+VideoCtl	MOVEM.L	A0/A4/D4,-(SP)	;save work registers (A0 is saved
+				;because it is used by ExitDrvr)
+	MOVE.W	csCode(A0),D0		;get the opCode
+	MOVE.L	csParam(A0),A2	;A2 <- Ptr to control parameters
+
+	CMP.W	#2,D0		;IF csCode NOT IN [0..2] THEN
+	BHI.S	CtlBad		;Error, csCode out of bounds.
+	LSL.W	#1,D0		;Adjust csCode to be an index into
+				;the table
+	MOVE.W	CtlJumpTbl(PC, D0.W), D0	;Get the relative offset to the
+				;routine
+	JMP	CtlJumpTbl(PC, D0.W)
+
+CtlJumpTbl	DC.W	VidReset-CtlJumpTbl	;$00 => VidReset
+	DC.W	CtlGood-CtlJumpTbl	;$01 => CtlGood
+	DC.W	SetVidMode-CtlJumpTbl	;$02 => SetVidMode
+
+CtlBad	MOVEQ	#controlErr,D0	;else say we don't do this one
+	BRA.S	CtlDone		;and return
+
+CtlGood	MOVEQ	#noErr,D0		;return no error
+
+CtlDone
+	MOVEM.L	(SP)+,A0/A4/D4	;restore registers.
+	BRA	ExitDrvr
+
+VidReset
+;========================================================================================
+;      Reset the card to its default (one bit per pixel)
+;========================================================================================
+
+	MOVE.L	dCtlStorage(A1),A3		;get the handle to our date
+	MOVE.L	(A3),A3			;A3 = our data
+
+	SUBQ	#2, A7
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#7, -(A7) ; kCmndVideoReset
+	MOVE.W	VidExtnId(A3), -(A7) ; DSKDat_extension = Video
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	MOVE.L	($0134).W, A0
+	MOVE.L	20(A0), A0
+	MOVE.L	A7, (A0)
+	MOVE.W	8(A7), VDPageInfo.csMode(A2)		;return the mode
+	ADDA.W	#10, A7
+
+	CLR.W	VDPageInfo.csPage(A2)		;return the page number
+	MOVE.L	saveBaseAddr(A3), VDPageInfo.csBaseAddr(A2) ;return the base address
+	BRA.S	CtlGood			;=> no error
+
+SetVidMode
+;========================================================================================
+;      Set the card to the specified mode and page.
+;      If either is invalid, returns badMode error.
+;
+;      If the card is already set to the specified mode, then do nothing.
+;
+;      Note: Mode set is in [1,2,4,8].
+;========================================================================================
+
+	MOVE.L	dCtlStorage(A1),A3	;get handle to our data
+	MOVE.L	(A3),A3		;A3 = our data
+
+	MOVE.W	VDPageInfo.csPage(A2),D0	;D0 = page
+	TST.W	D0		;check page, only 0 allowed
+	BNE.S	CtlBad		;=> not a valid page
+
+	MOVE.W	VDPageInfo.csMode(A2), -(A7)
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#6, -(A7) ; kCmndVideoSetMode
+	MOVE.W	VidExtnId(A3), -(A7) ; DSKDat_extension = Video
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	MOVE.L	($0134).W, A0
+	MOVE.L	20(A0), A0
+	MOVE.L	A7, (A0)
+	TST.W	8(A7)
+	ADDA.W	#10, A7
+	BNE	CtlBad
+
+	MOVE.L	saveBaseAddr(A3), VDPageInfo.csBaseAddr(A2)	;return the base address
+	BRA.S	CtlGood		;=> return no error
+
+;========================================================================================
+;
+;Video DriverStatus Call Handler.  Right now there are three calls:
+;
+;      (2)  GetMode
+;      (4)  GetPage
+;      (5)  GetPageBase
+;
+;      Entry:	A0    = param block
+;	A1    = DCE pointer
+;      Uses:	A2    = cs paramaters (i.e. A2 <- csParam(A0)) (must be preserved)
+;	A3    = scratch (doesn't need to be preserved)
+;	D0-D3 = scratch (don't need to be preserved)
+;
+;      Exit:	D0    =       error code
+;
+;========================================================================================
+
+VideoStatus
+	MOVE.L	A0, -(SP)	; save
+	MOVE.W	csCode(A0),D0		;get the opCode
+	MOVE.L	csParam(A0),A2	;A2 <- Ptr to control parameters
+
+	CMP.W	#5,D0		;IF csCode NOT IN [0..5] THEN
+	BHI.S	StatBad		;Error, csCode out of bounds.
+	LSL.W	#1,D0		;Adjust the csCode to be an index into
+				;the table
+	MOVE.W	StatJumpTbl(PC,D0.W),D0	;Get the relative offset to the
+				;routine
+	JMP	StatJumpTbl(PC,D0.W)	;GOTO the proper routine
+
+StatJumpTbl	DC.W	StatBad-StatJumpTbl	;$00 => Error
+	DC.W	StatBad-StatJumpTbl	;$01 => Error
+	DC.W	GetMode-StatJumpTbl	;$02 => GetMode
+	DC.W	StatBad-StatJumpTbl	;$03 => Error
+	DC.W	GetPage-StatJumpTbl	;$04 => GetPage
+	DC.W	GetPageBase-StatJumpTbl	;$05 => GetPageBase
+
+StatBad	MOVEQ	#statusErr,D0		;else say we don't do this one
+	BRA	StatDone		;and return
+
+StatGood	MOVEQ	#noErr,D0		;return no error
+StatDone
+	MOVE.L	(SP)+,A0	; restore
+	BRA	ExitDrvr
+
+GetMode
+;========================================================================================
+;	       Return the current mode
+;========================================================================================
+
+	MOVE.L	dCtlStorage(A1),A3		;get handle to our storage
+	MOVE.L	(A3),A3			;get pointer to our storage
+
+	SUBQ	#2, A7
+	SUBQ	#2, A7 ; result code
+	MOVE.W	#5, -(A7) ; kCmndVideoGetMode
+	MOVE.W	VidExtnId(A3), -(A7) ; DSKDat_extension = Video
+	MOVE.W	#$5B17, -(A7) ; kcom_callcheck
+	MOVE.L	($0134).W, A0
+	MOVE.L	20(A0), A0
+	MOVE.L	A7, (A0)
+	MOVE.W	8(A7),VDPageInfo.csMode(A2)		;return the mode
+	ADDA.W	#10, A7
+
+	CLR.W	VDPageInfo.csPage(A2)		;return the page number
+	MOVE.L	saveBaseAddr(A3),VDPageInfo.csBaseAddr(A2)	;and the base address
+
+	BRA.S	StatGood
+
+GetPage
+;========================================================================================
+;      Return the number of pages in the specified mode
+;========================================================================================
+
+	MOVEQ	#1,D0		; only 1 page
+	MOVE	D0,VDPageInfo.csPage(A2)	;return page count
+	BRA	StatGood
+
+GetPageBase
+;========================================================================================
+;      Return the base address for the specified page in the current mode
+;========================================================================================
+
+; only one page for this driver, so just one base address
+
+	MOVE.L	dCtlDevBase(A1), VDPageInfo.csBaseAddr(A2)	;return the base address
+
+	BRA	StatGood		;=> return no error
+
+;========================================================================================
+;      Exit from control or status
+;========================================================================================
+
+ExitDrvr	BTST	#NoQueueBit,ioTrap(A0)	;no queue bit set?
+	BEQ.S	GoIODone		;=> no, not immediate
+	RTS			;otherwise, it was an immediate call
+
+GoIODone	MOVE.L	JIODone,A0		;get the IODone address
+	JMP	(A0)
+
+	ENDP
+
+	END

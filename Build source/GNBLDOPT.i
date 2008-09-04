@@ -368,7 +368,7 @@ LOCALPROC ResetIdeVersOption(void)
 
 LOCALFUNC blnr TryAsIdeVersOptionNot(void)
 {
-	return NumberTryAsOptionNot("-ev", (int *)&ide_vers, &have_ide_vers);
+	return NumberTryAsOptionNot("-ev", (long *)&ide_vers, &have_ide_vers);
 }
 
 LOCALPROC ChooseIdeVers(void)
@@ -468,44 +468,84 @@ LOCALPROC ChooseCPUFam(void)
 	}
 }
 
-/* derived option: api family */
+/* option: api family */
 
 enum {
 	gbk_apifam_mac,
 	gbk_apifam_osx,
 	gbk_apifam_win,
 	gbk_apifam_xwn,
+	gbk_apifam_gtk,
 	kNumAPIFamilies
 };
 
 LOCALVAR int gbo_apifam;
 
+LOCALPROC ResetAPIFamOption(void)
+{
+	gbo_apifam = kListOptionAuto;
+}
+
+LOCALFUNC char * GetAPIFamName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_apifam_mac:
+			s = "mac";
+			break;
+		case gbk_apifam_osx:
+			s = "osx";
+			break;
+		case gbk_apifam_win:
+			s = "win";
+			break;
+		case gbk_apifam_xwn:
+			s = "xwn";
+			break;
+		case gbk_apifam_gtk:
+			s = "gtk";
+			break;
+		default:
+			s = "(unknown API)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC blnr TryAsAPIFamOptionNot(void)
+{
+	return FindNamedOption("-api", kNumAPIFamilies, GetAPIFamName, &gbo_apifam);
+}
+
 LOCALPROC ChooseAPIFam(void)
 {
-	switch (cur_targ) {
-		case gbk_targ_m68k:
-		case gbk_targ_mfpu:
-		case gbk_targ_mppc:
-			gbo_apifam = gbk_apifam_mac;
-			break;
-		case gbk_targ_carb:
-		case gbk_targ_mach:
-		case gbk_targ_imch:
-			gbo_apifam = gbk_apifam_osx;
-			break;
-		case gbk_targ_wx86:
-		case gbk_targ_wcar:
-		case gbk_targ_wc86:
-			gbo_apifam = gbk_apifam_win;
-			break;
-		case gbk_targ_lx86:
-		case gbk_targ_lppc:
-		case gbk_targ_slrs:
-		case gbk_targ_sl86:
-		case gbk_targ_mx11:
-		case gbk_targ_mi11:
-			gbo_apifam = gbk_apifam_xwn;
-			break;
+	if (kListOptionAuto == gbo_apifam) {
+		switch (cur_targ) {
+			case gbk_targ_m68k:
+			case gbk_targ_mfpu:
+			case gbk_targ_mppc:
+				gbo_apifam = gbk_apifam_mac;
+				break;
+			case gbk_targ_carb:
+			case gbk_targ_mach:
+			case gbk_targ_imch:
+				gbo_apifam = gbk_apifam_osx;
+				break;
+			case gbk_targ_wx86:
+			case gbk_targ_wcar:
+			case gbk_targ_wc86:
+				gbo_apifam = gbk_apifam_win;
+				break;
+			case gbk_targ_lx86:
+			case gbk_targ_lppc:
+			case gbk_targ_slrs:
+			case gbk_targ_sl86:
+			case gbk_targ_mx11:
+			case gbk_targ_mi11:
+				gbo_apifam = gbk_apifam_xwn;
+				break;
+		}
 	}
 }
 
@@ -989,6 +1029,7 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetVariationName();
 	ResetIconMaster();
 	ResetNoAsm();
+	ResetAPIFamOption();
 }
 
 LOCALFUNC blnr TryAsGNOptionNot(void)
@@ -1009,6 +1050,7 @@ LOCALFUNC blnr TryAsGNOptionNot(void)
 	if (TryAsVariationNameOptionNot())
 	if (TryAsIconMasterNot())
 	if (TryAsNoAsmNot())
+	if (TryAsAPIFamOptionNot())
 	{
 		return trueblnr;
 	}

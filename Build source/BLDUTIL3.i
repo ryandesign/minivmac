@@ -110,6 +110,9 @@ LOCALFUNC char * GetPlatformDirName(void)
 		case gbk_apifam_xwn:
 			s = "xwn";
 			break;
+		case gbk_apifam_gtk:
+			s = "gtk";
+			break;
 		default:
 			s = "gen";
 			break;
@@ -921,7 +924,7 @@ LOCALPROC WriteCompileCExec(void)
 	}
 }
 
-LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj)
+LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 {
 	WriteBgnDestFileLn();
 	switch (cur_ide) {
@@ -935,6 +938,11 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj)
 			WritePathArgInMakeCmnd(pobj);
 			WriteCStrToDestFile(" ");
 			WriteMakeVar("mk_COptions");
+			if (UseAPI) {
+				if (gbk_apifam_gtk == gbo_apifam) {
+					WriteCStrToDestFile(" `pkg-config --cflags gtk+-2.0`");
+				}
+			}
 			break;
 		case gbk_ide_msv:
 			WriteCompileCExec();

@@ -18,7 +18,7 @@
 */
 
 
-void rsubstchar_ptr(ui3b *inbuff,
+static void rsubstchar_ptr(ui3b *inbuff,
 	uimr inputsize,
 	ui3r fromchar, ui3r tochar)
 {

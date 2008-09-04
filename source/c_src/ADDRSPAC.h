@@ -178,6 +178,12 @@ enum {
 	Wire_VIA2_iCB2_unknown,
 #define VIA2_iCB2 (Wires[Wire_VIA2_iCB2_unknown])
 
+#if CurEmMd == kEmMd_II
+	Wire_VIA2_iB2_PowerOff,
+#define VIA2_iB2 (Wires[Wire_VIA2_iB2_PowerOff])
+#define VIA2_iB2_ChangeNtfy PowerOff_ChangeNtfy
+#endif
+
 	Wire_VIA2_iB3_Addr32,
 #define VIA2_iB3 (Wires[Wire_VIA2_iB3_Addr32])
 #define Addr32 (Wires[Wire_VIA2_iB3_Addr32])
@@ -380,6 +386,17 @@ enum {
 #define Mouse_Enabled() (! ADBMouseDisabled)
 #endif
 
+#if CurEmMd == kEmMd_II
+	Wire_VBLinterrupt,
+#define Vid_VBLinterrupt (Wires[Wire_VBLinterrupt])
+#define VIA2_iA0 (Wires[Wire_VBLinterrupt])
+#endif
+
+#if CurEmMd == kEmMd_II
+	Wire_VBLintunenbl,
+#define Vid_VBLintunenbl (Wires[Wire_VBLintunenbl])
+#endif
+
 	kNumWires
 };
 
@@ -434,13 +451,13 @@ EXPORTVAR(ui3b, Wires[kNumWires])
 #endif
 
 #if CurEmMd == kEmMd_II
-#define VIA2_ORA_CanIn 0x00
+#define VIA2_ORA_CanIn 0x01
 #define VIA2_ORA_CanOut 0xC0
 #endif
 
 #if CurEmMd == kEmMd_II
 #define VIA2_ORB_CanIn 0x00
-#define VIA2_ORB_CanOut 0x88
+#define VIA2_ORB_CanOut 0x8C
 #endif
 
 #if CurEmMd <= kEmMd_Plus
@@ -468,6 +485,10 @@ EXPORTVAR(ui3b, Wires[kNumWires])
 #endif
 
 #define RTC_OneSecond_PulseNtfy VIA1_iCA2_PulseNtfy
+
+#if CurEmMd == kEmMd_II
+#define Vid_VBLinterrupt_PulseNotify VIA2_iCA1_PulseNtfy
+#endif
 
 #define GetSoundInvertTime VIA1_GetT1InvertTime
 

@@ -2728,15 +2728,55 @@ LOCALPROCUSEDONCE DoCodeF(void)
 				return;
 			}
 			BackupPC();
-		} else if (opcode == 0xF327) {
-			/* FSAVE -(A7) */
+		} else if ((opcode & 0xFFC0) == 0xF200) {
+			ui4b moo = (int)nextiword();
+			if ((moo == 0xBC00)
+				|| (moo == 0xB000) || (moo == 0xA800) || (moo == 0xA400)) {
+				/* FMOVE.L FP?, <EA> */
+				opsize = 4;
+				DecodeModeRegister(mode, reg);
+				SetArgValue(0);
+				return;
+			} else
+			if ((moo == 0x9C00)
+					/* used by macsbug, doesn't seem to be valid */
+				|| (moo == 0x9000) || (moo == 0x8800) || (moo == 0x8400))
+			{
+				/* FMOVE.L <EA>, FP? */
+				opsize = 4;
+				DecodeModeRegister(mode, reg);
+				(void) GetArgValue();
+				return;
+			} else
+			if (opcode == 0xF22D) {
+				if (moo == 0xF0FF) {
+					/* FMOVEM FPn, <EA> */
+					opsize = 4; /* actually unsized */
+					DecodeModeRegister(mode, reg);
+					return;
+				} else if (moo == 0xD0FF) {
+					/* FMOVEM <EA>, FPn */
+					opsize = 4; /* actually unsized */
+					DecodeModeRegister(mode, reg);
+					return;
+				}
+			}
+			ReportAbnormal("F22D");
+			BackupPC();
+		} else if ((opcode == 0xF327)
+				/* FSAVE -(A7) */
+			|| (opcode == 0xF32D)
+			)
+		{
 			opsize = 4; /* actually unsized */
 			DecodeModeRegister(mode, reg);
-			SetArgValue(0); /* for now try, null state frame */
+			SetArgValue(0); /* for now, try null state frame */
 			return;
-		} else if (opcode == 0xF35F) {
+		} else if ((opcode == 0xF35F)
+				/* FRESTORE (A7)+ */
+			|| (opcode == 0xF36D))
+		{
 			si5b dstvalue;
-			/* FRESTORE (A7)+ */
 			opsize = 4; /* actually unsized */
 			DecodeModeRegister(mode, reg);
 			dstvalue = GetArgValue();

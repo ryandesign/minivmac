@@ -50,7 +50,7 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 
 static void DoAllSrcFiles(tDoOneCFile p)
 {
-	p("MYOSGLUE", kCSrcFlgmNone,
+	p("MYOSGLUE", kCSrcFlgmUseAPI,
 		DoMYOSGLUEdepends);
 	p("GLOBGLUE", kCSrcFlgmNone, nullpr);
 	p("ADDRSPAC", kCSrcFlgmNone, nullpr);
@@ -76,12 +76,15 @@ static void DoAllSrcFiles(tDoOneCFile p)
 		p("SNDEMDEV", kCSrcFlgmNone, nullpr);
 	}
 	p("SCRNEMDV", kCSrcFlgmNone, nullpr);
+	if (gbk_mdl_II == cur_mdl) {
+		p("VIDEMDEV", kCSrcFlgmNone, nullpr);
+	}
 	if (cur_mdl <= gbk_mdl_Plus) {
 		p("KBRDEMDV", kCSrcFlgmNone, nullpr);
-	} else if (gbk_mdl_PB100 != cur_mdl) {
-		p("ADBEMDEV", kCSrcFlgmNone, nullpr);
-	} else {
+	} else if (cur_mdl == gbk_mdl_PB100) {
 		p("PMUEMDEV", kCSrcFlgmNone, nullpr);
+	} else {
+		p("ADBEMDEV", kCSrcFlgmNone, nullpr);
 	}
 	if ((gbk_mdl_PB100 == cur_mdl) || (gbk_mdl_II == cur_mdl)) {
 		p("ASCEMDEV", kCSrcFlgmNone, nullpr);

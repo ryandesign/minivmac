@@ -262,6 +262,8 @@ enum {
 #define Support64kROM 1
 #endif
 
+#if IsAnApp
+
 /* From StandardFile.h */
 
 struct StandardFileReply {
@@ -296,6 +298,8 @@ pascal void StandardPutFile(ConstStr255Param prompt,
 	};
 
 typedef const OSType *                  ConstSFTypeListPtr;
+
+#endif
 
 /* from AppleEvents.h */
 

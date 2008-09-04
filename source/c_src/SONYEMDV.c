@@ -34,6 +34,10 @@
 
 #include "SONYEMDV.h"
 
+IMPORTFUNC ui4r Vid_GetMode(void);
+IMPORTFUNC tMacErr Vid_SetMode(ui4r v);
+IMPORTFUNC ui4r Vid_Reset(void);
+
 #define kDSK_Params_Hi 0
 #define kDSK_Params_Lo 1
 #define kDSK_QuitOnEject 3 /* obsolete */
@@ -45,6 +49,9 @@ enum {
 	kExtnFindExtn, /* must be first */
 
 	kExtnDisk,
+#if (CurEmMd == kEmMd_II)
+	kExtnVideo,
+#endif
 #if IncludePbufs
 	kExtnParamBuffers,
 #endif
@@ -60,6 +67,9 @@ enum {
 
 #define kFindExtnExtension 0x64E1F58A
 #define kDiskDriverExtension 0x4C9219E6
+#if (CurEmMd == kEmMd_II)
+#define kHostVideoExtension 0x163DA5A9
+#endif
 #if IncludePbufs
 #define kHostParamBuffersExtension 0x314C87BF
 #endif
@@ -131,6 +141,16 @@ enum {
 #define kCmndHTCEFeatures 1
 #define kCmndHTCEExport 2
 #define kCmndHTCEImport 3
+#endif
+
+#if (CurEmMd == kEmMd_II)
+#define kCmndVideoFeatures 1
+#define kCmndVideoGetIntEnbl 2
+#define kCmndVideoSetIntEnbl 3
+#define kCmndVideoClearInt 4
+#define kCmndVideoGetMode 5
+#define kCmndVideoSetMode 6
+#define kCmndVideoReset 7
 #endif
 
 #define MinTicksBetweenInsert 60
@@ -281,6 +301,16 @@ LOCALFUNC tMacErr CheckWriteableDrive(tDrive Drive_No)
 LOCALVAR blnr QuitOnEject = falseblnr;
 LOCALVAR ui4b ParamAddrHi;
 
+#if CurEmMd == kEmMd_II
+EXPORTPROC PowerOff_ChangeNtfy(void);
+GLOBALPROC PowerOff_ChangeNtfy(void)
+{
+	if (! VIA2_iB2) {
+		ForceMacOff = trueblnr;
+	}
+}
+#endif
+
 GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 {
 	switch (addr) {
@@ -313,6 +343,12 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 											do_put_mem_word(p + kParamFindExtnTheId, kExtnDisk);
 											result = mnvm_noErr;
 										} else
+#if (CurEmMd == kEmMd_II)
+										if (extn == kHostVideoExtension) {
+											do_put_mem_word(p + kParamFindExtnTheId, kExtnVideo);
+											result = mnvm_noErr;
+										} else
+#endif
 #if IncludePbufs
 										if (extn == kHostParamBuffersExtension) {
 											do_put_mem_word(p + kParamFindExtnTheId, kExtnParamBuffers);
@@ -342,6 +378,12 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 											do_put_mem_long(p + kParamFindExtnTheExtn, kDiskDriverExtension);
 											result = mnvm_noErr;
 										} else
+#if (CurEmMd == kEmMd_II)
+										if (extn == kExtnVideo) {
+											do_put_mem_long(p + kParamFindExtnTheExtn, kHostVideoExtension);
+											result = mnvm_noErr;
+										} else
+#endif
 #if IncludePbufs
 										if (extn == kExtnParamBuffers) {
 											do_put_mem_long(p + kParamFindExtnTheExtn, kHostParamBuffersExtension);
@@ -369,6 +411,44 @@ GLOBALPROC Sony_Access(ui5b Data, CPTR addr)
 									break;
 							}
 							break;
+#if (CurEmMd == kEmMd_II)
+						case kExtnVideo:
+							switch (command) {
+								case kCmndVersion:
+									do_put_mem_word(p + kParamVersion, 1);
+									result = mnvm_noErr;
+									break;
+								case kCmndVideoGetIntEnbl:
+									do_put_mem_word(p + 8,
+										Vid_VBLintunenbl ? 0 : 1);
+									result = mnvm_noErr;
+									break;
+								case kCmndVideoSetIntEnbl:
+									Vid_VBLintunenbl =
+										(0 == do_get_mem_word(p + 8))
+											? 1 : 0;
+									result = mnvm_noErr;
+									break;
+								case kCmndVideoClearInt:
+									Vid_VBLinterrupt = 1;
+									result = mnvm_noErr;
+									break;
+								case kCmndVideoGetMode:
+									do_put_mem_word(p + 8,
+										Vid_GetMode());
+									result = mnvm_noErr;
+									break;
+								case kCmndVideoSetMode:
+									result = Vid_SetMode(do_get_mem_word(p + 8));
+									break;
+								case kCmndVideoReset:
+									do_put_mem_word(p + 8,
+										Vid_GetMode());
+									result = mnvm_noErr;
+									break;
+							}
+							break;
+#endif
 #if IncludePbufs
 						case kExtnParamBuffers:
 							switch (command) {
