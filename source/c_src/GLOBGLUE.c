@@ -165,6 +165,8 @@ GLOBALPROC SubTickNotify(int SubTick)
 {
 #if MySoundEnabled && (CurEmMd != kEmMd_PB100)
 	MacSound_SubTick(SubTick);
+#else
+	UnusedParam(SubTick);
 #endif
 }
 

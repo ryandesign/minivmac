@@ -17,27 +17,6 @@
 	program SPecific BuiLD OPTions
 */
 
-/* option: sound */
-
-LOCALVAR blnr MySoundEnabled;
-
-LOCALPROC ResetSoundOption(void)
-{
-	MySoundEnabled = nanblnr;
-}
-
-LOCALFUNC blnr TryAsSoundOptionNot(void)
-{
-	return BooleanTryAsOptionNot("-sound", &MySoundEnabled);
-}
-
-LOCALPROC ChooseSoundEnabled(void)
-{
-	if (nanblnr == MySoundEnabled) {
-		MySoundEnabled = (gbo_apifam == gbk_apifam_mac) || (gbo_apifam == gbk_apifam_osx) || (gbo_apifam == gbk_apifam_win);
-	}
-}
-
 /* option: model */
 
 enum {
@@ -292,6 +271,28 @@ LOCALFUNC blnr ChooseMemBankSizes(void)
 		return falseblnr;
 	} else {
 		return trueblnr;
+	}
+}
+
+/* option: sound */
+
+LOCALVAR blnr MySoundEnabled;
+
+LOCALPROC ResetSoundOption(void)
+{
+	MySoundEnabled = nanblnr;
+}
+
+LOCALFUNC blnr TryAsSoundOptionNot(void)
+{
+	return BooleanTryAsOptionNot("-sound", &MySoundEnabled);
+}
+
+LOCALPROC ChooseSoundEnabled(void)
+{
+	if (nanblnr == MySoundEnabled) {
+		MySoundEnabled = ((gbo_apifam == gbk_apifam_mac) || (gbo_apifam == gbk_apifam_osx) || (gbo_apifam == gbk_apifam_win))
+			&& (gbk_mdl_II != cur_mdl);
 	}
 }
 
@@ -610,6 +611,47 @@ LOCALFUNC blnr ChooseVRes(void)
 	return trueblnr;
 }
 
+/* option: screen depth */
+
+LOCALVAR uimr cur_ScrnDpth;
+LOCALVAR blnr have_ScrnDpth;
+
+LOCALPROC ResetScrnDpthOption(void)
+{
+	have_ScrnDpth = falseblnr;
+}
+
+LOCALFUNC blnr TryAsScrnDpthOptionNot(void)
+{
+	return NumberTryAsOptionNot("-depth", (long *)&cur_ScrnDpth, &have_ScrnDpth);
+}
+
+LOCALFUNC blnr ChooseScrnDpth(void)
+{
+	if (! have_ScrnDpth) {
+		if (gbk_mdl_II == cur_mdl) {
+			cur_ScrnDpth = /* 3 */ 0
+				/* until implement color for all platforms */;
+		} else {
+			cur_ScrnDpth = 0;
+		}
+		have_ScrnDpth = trueblnr;
+	} else {
+		if (gbk_mdl_II == cur_mdl) {
+			if (cur_ScrnDpth > 5) {
+				ReportParseFailure("-depth must be <= 5");
+				return falseblnr;
+			}
+		} else {
+			if (cur_ScrnDpth != 0) {
+				ReportParseFailure("-depth must be 0 for this model");
+				return falseblnr;
+			}
+		}
+	}
+	return trueblnr;
+}
+
 /* ------ */
 
 LOCALVAR blnr NeedScrnHack;
@@ -617,9 +659,11 @@ LOCALVAR blnr NeedVidMem;
 
 LOCALFUNC blnr ChooseScreenOpts(void)
 {
-	if (cur_hres * cur_vres > (uimr)2 * 1024 * 1024) {
-		ReportParseFailure("-hres and -vres multiplied must be < 2M");
-		return falseblnr;
+	if (gbk_mdl_II != cur_mdl) {
+		if (cur_hres * cur_vres > (uimr)2 * 1024 * 1024) {
+			ReportParseFailure("-hres and -vres multiplied must be < 2M");
+			return falseblnr;
+		}
 	}
 	NeedScrnHack = (cur_hres != dflt_hres)
 		|| (cur_vres != dflt_vres);
@@ -645,6 +689,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetWantMinExtn();
 	ResetHResOption();
 	ResetVResOption();
+	ResetScrnDpthOption();
 }
 
 LOCALFUNC blnr TryAsSPOptionNot(void)
@@ -663,6 +708,7 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsWantMinExtnNot())
 	if (TryAsHResOptionNot())
 	if (TryAsVResOptionNot())
+	if (TryAsScrnDpthOptionNot())
 	{
 		return trueblnr;
 	}
@@ -678,6 +724,7 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 	if (ChooseNumDrives())
 	if (ChooseHRes())
 	if (ChooseVRes())
+	if (ChooseScrnDpth())
 	if (ChooseScreenOpts())
 	{
 		ChooseEmCpuVers();

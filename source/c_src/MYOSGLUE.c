@@ -39,6 +39,20 @@ GLOBALVAR ui3p VidMem = nullpr;
 GLOBALVAR ui3p VidROM = nullpr;
 #endif
 
+#if 0 != vMacScreenDepth
+GLOBALVAR blnr UseColorMode = falseblnr;
+#endif
+
+#if 0 != vMacScreenDepth
+GLOBALVAR blnr ColorMappingChanged = falseblnr;
+#endif
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+GLOBALVAR ui4r CLUT_reds[CLUT_size];
+GLOBALVAR ui4r CLUT_greens[CLUT_size];
+GLOBALVAR ui4r CLUT_blues[CLUT_size];
+#endif
+
 GLOBALVAR ui3p RAM = nullpr;
 
 GLOBALVAR ui3p ROM = nullpr;

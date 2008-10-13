@@ -81,7 +81,7 @@ static void DoAllSrcFiles(tDoOneCFile p)
 	}
 	if (cur_mdl <= gbk_mdl_Plus) {
 		p("KBRDEMDV", kCSrcFlgmNone, nullpr);
-	} else if (cur_mdl == gbk_mdl_PB100) {
+	} else if (gbk_mdl_PB100 == cur_mdl) {
 		p("PMUEMDEV", kCSrcFlgmNone, nullpr);
 	} else {
 		p("ADBEMDEV", kCSrcFlgmNone, nullpr);

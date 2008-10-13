@@ -2184,17 +2184,77 @@ LOCALPROC DrawCell(unsigned int h, unsigned int v, int x)
 {
 #if 1
 	/* safety check */
-	if ((h < vMacScreenByteWidth - 2) && (v < (vMacScreenHeight / 16 - 1)))
+	if ((h < ((long)vMacScreenWidth / 8 - 2)) && (v < (vMacScreenHeight / 16 - 1)))
 #endif
 	{
 		int i;
-		ui3p p = ((ui3p)CntrlDisplayBuff) + (h + 1) + (v * 16 + 11) * vMacScreenByteWidth;
 		ui3p p0 = ((ui3p)CellData) + 16 * x;
 
-		for (i = 16; --i >= 0; ) {
-			*p = *p0;
-			p += vMacScreenByteWidth;
-			p0 ++;
+#if 0 != vMacScreenDepth
+		if (UseColorMode) {
+			ui3p p = ((ui3p)CntrlDisplayBuff) + ((h + 1) << vMacScreenDepth) + (v * 16 + 11) * vMacScreenByteWidth;
+
+			for (i = 16; --i >= 0; ) {
+#if 1 == vMacScreenDepth
+				int k;
+				ui3b t0 = *p0;
+				ui3p p2 = p;
+				for (k = 2; --k >= 0; ) {
+					*p2++ = (((t0) & 0x80) ? 0xC0 : 0x00)
+						| (((t0) & 0x40) ? 0x30 : 0x00)
+						| (((t0) & 0x20) ? 0x0C : 0x00)
+						| (((t0) & 0x10) ? 0x03 : 0x00);
+						/* black RRGGBBAA, white RRGGBBAA */
+					t0 <<= 4;
+				}
+#elif 2 == vMacScreenDepth
+				int k;
+				ui3b t0 = *p0;
+				ui3p p2 = p;
+				for (k = 4; --k >= 0; ) {
+					*p2++ = (((t0) & 0x40) ? 0x0F : 0x00)
+						| (((t0) & 0x80) ? 0xF0 : 0x00);
+						/* black RRGGBBAA, white RRGGBBAA */
+					t0 <<= 2;
+				}
+#elif 3 == vMacScreenDepth
+				int k;
+				ui3b t0 = *p0;
+				ui3p p2 = p;
+				for (k = 8; --k >= 0; ) {
+					*p2++ = ((t0 >> k) & 0x01) ? 0xFF : 0x00;
+						/* black RRGGBBAA, white RRGGBBAA */
+				}
+#elif 4 == vMacScreenDepth
+				int k;
+				ui3b t0 = *p0;
+				ui3p p2 = p;
+				for (k = 8; --k >= 0; ) {
+					*((ui4b *)p2)++ = ((t0 >> k) & 0x01) ? 0x0000 : 0x7FFF;
+						/* black RRGGBBAA, white RRGGBBAA */
+				}
+#elif 5 == vMacScreenDepth
+				int k;
+				ui3b t0 = *p0;
+				ui3p p2 = p;
+				for (k = 8; --k >= 0; ) {
+					*((ui5b *)p2)++ = ((t0 >> k) & 0x01) ? 0x00000000 : 0x00FFFFFF;
+						/* black RRGGBBAA, white RRGGBBAA */
+				}
+#endif
+				p += vMacScreenByteWidth;
+				p0 ++;
+			}
+		} else
+#endif
+		{
+			ui3p p = ((ui3p)CntrlDisplayBuff) + (h + 1) + (v * 16 + 11) * vMacScreenMonoByteWidth;
+
+			for (i = 16; --i >= 0; ) {
+				*p = *p0;
+				p += vMacScreenMonoByteWidth;
+				p0 ++;
+			}
 		}
 	}
 }
@@ -2518,7 +2578,12 @@ LOCALFUNC char * GetCurDrawBuff(void)
 
 #if UseControlKeys
 	if (CurControlMode != 0) {
-		MyMoveBytes((anyp)p, (anyp)CntrlDisplayBuff, vMacScreenNumBytes);
+		MyMoveBytes((anyp)p, (anyp)CntrlDisplayBuff,
+#if 0 != vMacScreenDepth
+			UseColorMode ? vMacScreenNumBytes :
+#endif
+				vMacScreenMonoNumBytes
+			);
 		p = CntrlDisplayBuff;
 
 		DrawControlMode();

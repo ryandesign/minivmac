@@ -33,84 +33,55 @@
 #include "ENDIANAC.h"
 #include "EMCONFIG.h"
 #include "ADDRSPAC.h"
+#include "SONYEMDV.h"
 #endif
 
 #include "VIDEMDEV.h"
 
 LOCALVAR const ui4b VidDrvr_contents[] = {
 0x4C00, 0x0000, 0x0000, 0x0000,
-0x002A, 0x0000, 0x0122, 0x01C0,
-0x00EC, 0x152E, 0x4469, 0x7370,
+0x002A, 0x0000, 0x011A, 0x0124,
+0x00EA, 0x152E, 0x4469, 0x7370,
 0x6C61, 0x795F, 0x5669, 0x6465,
 0x6F5F, 0x5361, 0x6D70, 0x6C65,
-0x0000, 0x2448, 0x2649, 0x7014,
-0xA440, 0x7014, 0xA722, 0x6600,
-0x0078, 0x2748, 0x0014, 0xA029,
-0x49FA, 0x0072, 0x7010, 0xA71E,
-0x6600, 0x0066, 0x317C, 0x0006,
+0x0000, 0x2448, 0x2649, 0x700A,
+0xA440, 0x700A, 0xA722, 0x6600,
+0x007A, 0x2748, 0x0014, 0xA029,
+0x49FA, 0x0074, 0x7010, 0xA71E,
+0x6600, 0x0068, 0x317C, 0x0006,
 0x0004, 0x214C, 0x0008, 0x214B,
 0x000C, 0x7000, 0x102B, 0x0028,
-0xA075, 0x664C, 0x226B, 0x0014,
-0x2251, 0x2348, 0x000A, 0x554F,
-0x2F3C, 0x163D, 0xA5A9, 0x554F,
-0x3F3C, 0x0001, 0x4267, 0x3F3C,
-0x5B17, 0x2078, 0x0134, 0x2068,
-0x0014, 0x208F, 0xDEFC, 0x000C,
-0x301F, 0x3340, 0x000E, 0x3F3C,
-0x0001, 0x554F, 0x3F3C, 0x0003,
-0x3F00, 0x3F3C, 0x5B17, 0x208F,
-0xDEFC, 0x000A, 0x7000, 0x6002,
-0x70E9, 0x4E75, 0x2F08, 0x554F,
-0x3F3C, 0x0004, 0x2069, 0x0014,
-0x2050, 0x3F28, 0x000E, 0x3F3C,
-0x5B17, 0x2078, 0x0134, 0x2068,
-0x0014, 0x208F, 0x504F, 0x2029,
-0x002A, 0xE198, 0x0240, 0x000F,
-0x2078, 0x0D28, 0x4E90, 0x205F,
-0x7001, 0x4E75, 0x2669, 0x0014,
-0x2653, 0x4267, 0x554F, 0x3F3C,
-0x0003, 0x3F2B, 0x000E, 0x3F3C,
-0x5B17, 0x2078, 0x0134, 0x2068,
-0x0014, 0x208F, 0xDEFC, 0x000A,
-0x206B, 0x000A, 0x2649, 0xA076,
-0x206B, 0x0014, 0xA023, 0x7000,
-0x4E75, 0x48E7, 0x0888, 0x3028,
-0x001A, 0x2468, 0x001C, 0x0C40,
-0x0002, 0x6210, 0xE348, 0x303B,
-0x0006, 0x4EFB, 0x0002, 0x0014,
-0x000A, 0x0048, 0x70EF, 0x6002,
-0x7000, 0x4CDF, 0x1110, 0x6000,
-0x00E8, 0x2669, 0x0014, 0x2653,
-0x554F, 0x554F, 0x3F3C, 0x0007,
-0x3F2B, 0x000E, 0x3F3C, 0x5B17,
+0xA075, 0x664E, 0x226B, 0x0014,
+0x2251, 0x2288, 0x554F, 0x2F3C,
+0x163D, 0xA5A9, 0x554F, 0x3F3C,
+0x0001, 0x4267, 0x3F3C, 0x5B17,
 0x2078, 0x0134, 0x2068, 0x0014,
-0x208F, 0x34AF, 0x0008, 0xDEFC,
-0x000A, 0x426A, 0x0006, 0x256B,
-0x0006, 0x0008, 0x60C2, 0x2669,
-0x0014, 0x2653, 0x302A, 0x0006,
-0x4A40, 0x66B0, 0x3F12, 0x554F,
-0x3F3C, 0x0006, 0x3F2B, 0x000E,
-0x3F3C, 0x5B17, 0x2078, 0x0134,
-0x2068, 0x0014, 0x208F, 0x4A6F,
-0x0008, 0xDEFC, 0x000A, 0x668C,
-0x256B, 0x0006, 0x0008, 0x6088,
-0x2F08, 0x3028, 0x001A, 0x2468,
-0x001C, 0x0C40, 0x0005, 0x6216,
-0xE348, 0x303B, 0x0006, 0x4EFB,
-0x0002, 0x000C, 0x000C, 0x001A,
-0x000C, 0x004E, 0x0056, 0x70EE,
-0x6000, 0x0004, 0x7000, 0x205F,
-0x6000, 0x0046, 0x2669, 0x0014,
-0x2653, 0x554F, 0x554F, 0x3F3C,
-0x0005, 0x3F2B, 0x000E, 0x3F3C,
-0x5B17, 0x2078, 0x0134, 0x2068,
-0x0014, 0x208F, 0x34AF, 0x0008,
-0xDEFC, 0x000A, 0x426A, 0x0006,
-0x256B, 0x0006, 0x0008, 0x60C4,
-0x7001, 0x3540, 0x0006, 0x60BC,
-0x2569, 0x002A, 0x0008, 0x60B4,
-0x0828, 0x0009, 0x0006, 0x6702,
-0x4E75, 0x2078, 0x08FC, 0x4ED0
+0x2348, 0x0004, 0x208F, 0xDEFC,
+0x000C, 0x301F, 0x3340, 0x0008,
+0x3F3C, 0x0001, 0x554F, 0x3F3C,
+0x0003, 0x3F00, 0x3F3C, 0x5B17,
+0x208F, 0xDEFC, 0x000A, 0x7000,
+0x6002, 0x70E9, 0x4E75, 0x2F08,
+0x554F, 0x3F3C, 0x0004, 0x2069,
+0x0014, 0x2050, 0x3F28, 0x0008,
+0x3F3C, 0x5B17, 0x2068, 0x0004,
+0x208F, 0x504F, 0x2029, 0x002A,
+0xE198, 0x0240, 0x000F, 0x2078,
+0x0D28, 0x4E90, 0x205F, 0x7001,
+0x4E75, 0x2669, 0x0014, 0x2653,
+0x4267, 0x554F, 0x3F3C, 0x0003,
+0x3F2B, 0x0008, 0x3F3C, 0x5B17,
+0x206B, 0x0004, 0x208F, 0xDEFC,
+0x000A, 0x2053, 0x2649, 0xA076,
+0x206B, 0x0014, 0xA023, 0x7000,
+0x4E75, 0x2F08, 0x554F, 0x3F3C,
+0x0006, 0x6008, 0x2F08, 0x554F,
+0x3F3C, 0x0005, 0x2069, 0x0014,
+0x2050, 0x3F28, 0x0008, 0x3F3C,
+0x5B17, 0x2068, 0x0004, 0x208F,
+0x5C4F, 0x301F, 0x205F, 0x0828,
+0x0009, 0x0006, 0x6702, 0x4E75,
+0x2078, 0x08FC, 0x4ED0
 };
 
 LOCALPROC ChecksumSlotROM(void)
@@ -202,21 +173,17 @@ GLOBALFUNC blnr Vid_Init(void)
 	ui3p pTo_VideoName;
 	ui3p pTo_MinorBase;
 	ui3p pTo_MinorLength;
+#if 0
+	ui3p pTo_MajorBase;
+	ui3p pTo_MajorLength;
+#endif
 	ui3p pTo_VidDrvrDir;
 	ui3p pTo_sMacOS68020;
 	ui3p pTo_OneBitMode;
 	ui3p pTo_OneVidParams;
-#if 0
-	ui3p pTo_TwoBitMode;
-	ui3p pTo_TwoVidParams;
-	ui3p pTo_FourBitMode;
-	ui3p pTo_FourVidParams;
-	ui3p pTo_EightBitMode;
-	ui3p pTo_EightVidParams;
-	ui3p pTo_SixteenBitMode;
-	ui3p pTo_SixteenVidParams;
-	ui3p pTo_ThirtyTwoBitMode;
-	ui3p pTo_ThirtyTwoVidParams;
+#if 0 != vMacScreenDepth
+	ui3p pTo_ColorBitMode;
+	ui3p pTo_ColorVidParams;
 #endif
 
 	pPatch = VidROM;
@@ -229,8 +196,8 @@ GLOBALFUNC blnr Vid_Init(void)
 	PatchAReservedOSLstEntry(pTo_sRsrc_Board, 0x01 /* sRsrc_Board */);
 	pTo_BoardType = ReservePatchOSLstEntry();
 	pTo_BoardName = ReservePatchOSLstEntry();
-	PatchADatLstEntry(0x20 /* sRsrcType */, 0x00004232);
-		/* use Basilisk II id, since known to work */
+	PatchADatLstEntry(0x20 /* BoardId */, 0x0000764D);
+		/* 'vM', for Mini vMac */
 	pTo_VenderInfo = ReservePatchOSLstEntry();
 	PatchAnEndOfLst();
 
@@ -240,17 +207,18 @@ GLOBALFUNC blnr Vid_Init(void)
 	PatchAWord(0x0000);
 	PatchAWord(0x0000);
 
-	PatchAReservedOSLstEntry(pTo_BoardName, 0x02 /* sRsrcType */);
+	PatchAReservedOSLstEntry(pTo_BoardName, 0x02 /* sRsrcName */);
 	/*
-		'Sample video card' as ascii c string
+		'Mini vMac video card' as ascii c string
 		(null terminated), and
 		zero padded to end aligned long.
 	*/
-	PatchALong(0x53616D70);
-	PatchALong(0x6C652076);
-	PatchALong(0x6964656F);
-	PatchALong(0x20636172);
-	PatchALong(0x64000000);
+	PatchALong(0x4D696E69);
+	PatchALong(0x20764D61);
+	PatchALong(0x63207669);
+	PatchALong(0x64656F20);
+	PatchALong(0x63617264);
+	PatchALong(0x00000000);
 
 	PatchAReservedOSLstEntry(pTo_VenderInfo, 0x24 /* vendorInfo */);
 
@@ -261,23 +229,22 @@ GLOBALFUNC blnr Vid_Init(void)
 
 	PatchAReservedOSLstEntry(pTo_VendorID, 0x01 /* vendorId */);
 	/*
-		'XYZ Inc.' as ascii c string
+		'Paul C. Pratt' as ascii c string
 		(null terminated), and
 		zero padded to end aligned long.
 	*/
-	PatchALong(0x58595A20);
-	PatchALong(0x496E632E);
-	PatchALong(0x00000000);
+	PatchALong(0x5061756C);
+	PatchALong(0x20432E20);
+	PatchALong(0x50726174);
+	PatchALong(0x74000000);
 
 	PatchAReservedOSLstEntry(pTo_RevLevel, 0x03 /* revLevel */);
 	/*
-		'Beta-7.0' as ascii c string
+		'1.0' as ascii c string
 		(null terminated), and
 		zero padded to end aligned long.
 	*/
-	PatchALong(0x42657461);
-	PatchALong(0x2D372E30);
-	PatchALong(0x00000000);
+	PatchALong(0x312E3000);
 
 	PatchAReservedOSLstEntry(pTo_PartNum, 0x04 /* partNum */);
 	/*
@@ -296,13 +263,13 @@ GLOBALFUNC blnr Vid_Init(void)
 	PatchADatLstEntry(0x08 /* sRsrcHWDevId */, 0x00000001);
 	pTo_MinorBase = ReservePatchOSLstEntry();
 	pTo_MinorLength = ReservePatchOSLstEntry();
-	pTo_OneBitMode = ReservePatchOSLstEntry();
 #if 0
-	pTo_TwoBitMode = ReservePatchOSLstEntry();
-	pTo_FourBitMode = ReservePatchOSLstEntry();
-	pTo_EightBitMode = ReservePatchOSLstEntry();
-	pTo_SixteenBitMode = ReservePatchOSLstEntry();
-	pTo_ThirtyTwoBitMode = ReservePatchOSLstEntry();
+	pTo_MajorBase = ReservePatchOSLstEntry();
+	pTo_MajorLength = ReservePatchOSLstEntry();
+#endif
+	pTo_OneBitMode = ReservePatchOSLstEntry();
+#if 0 != vMacScreenDepth
+	pTo_ColorBitMode = ReservePatchOSLstEntry();
 #endif
 	PatchAnEndOfLst();
 
@@ -313,7 +280,7 @@ GLOBALFUNC blnr Vid_Init(void)
 	PatchAWord(0x0001); /* drSwApple */
 	PatchAWord(0x0001); /* drHwTFB */
 
-	PatchAReservedOSLstEntry(pTo_VideoName, 0x02 /* sRsrcType */);
+	PatchAReservedOSLstEntry(pTo_VideoName, 0x02 /* sRsrcName */);
 	/*
 		'Display_Video_Apple_TFB' as ascii c string
 		(null terminated), and
@@ -330,7 +297,15 @@ GLOBALFUNC blnr Vid_Init(void)
 	PatchALong(0x00000000);
 
 	PatchAReservedOSLstEntry(pTo_MinorLength, 0x0B /* MinorLength */);
-	PatchALong(0x00040000);
+	PatchALong(kVidMemRAM_Size);
+
+#if 0
+	PatchAReservedOSLstEntry(pTo_MajorBase, 0x0C /* MinorBaseOS */);
+	PatchALong(0x00000000);
+
+	PatchAReservedOSLstEntry(pTo_MajorLength, 0x0D /* MinorLength */);
+	PatchALong(kVidMemRAM_Size);
+#endif
 
 	PatchAReservedOSLstEntry(pTo_VidDrvrDir, 0x04 /* sRsrcDrvrDir */);
 	pTo_sMacOS68020 = ReservePatchOSLstEntry();
@@ -348,7 +323,6 @@ GLOBALFUNC blnr Vid_Init(void)
 	pTo_OneVidParams = ReservePatchOSLstEntry();
 	PatchADatLstEntry(0x03 /* mVidParams */, 0x00000001);
 	PatchADatLstEntry(0x04 /* mDevType */, 0x00000000);
-		/* 2 for direct devices, according to Basilisk II */
 	PatchAnEndOfLst();
 
 	PatchAReservedOSLstEntry(pTo_OneVidParams, 0x01 /* mVidParams */);
@@ -370,131 +344,41 @@ GLOBALFUNC blnr Vid_Init(void)
 	PatchAWord(0x0001); /* bmCmpSize */
 	PatchALong(0x00000000); /* bmPlaneBytes */
 
-#if 0
-	PatchAReservedOSLstEntry(pTo_TwoBitMode, 0x81 /* twoBitMode */);
-	pTo_TwoVidParams = ReservePatchOSLstEntry();
-	PatchADatLstEntry(0x03, 0x00000001);
-	PatchADatLstEntry(0x04, 0x00000000);
+#if 0 != vMacScreenDepth
+
+	PatchAReservedOSLstEntry(pTo_ColorBitMode, 0x81);
+	pTo_ColorVidParams = ReservePatchOSLstEntry();
+	PatchADatLstEntry(0x03 /* mVidParams */, 0x00000001);
+	PatchADatLstEntry(0x04 /* mDevType */,
+		(vMacScreenDepth < 4) ? 0x00000000 : 0x00000002);
+		/* 2 for direct devices, according to Basilisk II */
 	PatchAnEndOfLst();
 
-	PatchAReservedOSLstEntry(pTo_TwoVidParams, 0x01);
-	PatchALong(0x0000002E);
-	PatchALong(0x00000000);
-	PatchAWord(vMacScreenWidth / 8 * 2);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchAWord(vMacScreenHeight);
-	PatchAWord(vMacScreenWidth);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchALong(0x00000000);
-	PatchALong(0x00480000);
-	PatchALong(0x00480000);
-	PatchAWord(0x0000);
-	PatchAWord(0x0002);
-	PatchAWord(0x0001);
-	PatchAWord(0x0002);
-	PatchALong(0x00000000);
+	PatchAReservedOSLstEntry(pTo_ColorVidParams, 0x01);
+	PatchALong(0x0000002E); /* physical Block Size */
+	PatchALong(0x00000000); /* defmBaseOffset */
+	PatchAWord(vMacScreenByteWidth);
+	PatchAWord(0x0000); /* Bounds.T */
+	PatchAWord(0x0000); /* Bounds.L */
+	PatchAWord(vMacScreenHeight); /* Bounds.B */
+	PatchAWord(vMacScreenWidth); /* Bounds.R */
+	PatchAWord(0x0000); /* bmVersion */
+	PatchAWord(0x0000); /* packType not used */
+	PatchALong(0x00000000); /* packSize not used */
+	PatchALong(0x00480000); /* bmHRes */
+	PatchALong(0x00480000); /* bmVRes */
+	PatchAWord((vMacScreenDepth < 4) ? 0x0000 : 0x0010); /* bmPixelType */
+	PatchAWord(1 << vMacScreenDepth); /* bmPixelSize */
+	PatchAWord((vMacScreenDepth < 4) ? 0x0001 : 0x0003); /* bmCmpCount */
+#if 4 == vMacScreenDepth
+	PatchAWord(0x0005); /* bmCmpSize */
+#elif 5 == vMacScreenDepth
+	PatchAWord(0x0008); /* bmCmpSize */
+#else
+	PatchAWord(1 << vMacScreenDepth); /* bmCmpSize */
+#endif
+	PatchALong(0x00000000); /* bmPlaneBytes */
 
-	PatchAReservedOSLstEntry(pTo_FourBitMode, 0x82 /* fourBitMode */);
-	pTo_FourVidParams = ReservePatchOSLstEntry();
-	PatchADatLstEntry(0x03, 0x00000001);
-	PatchADatLstEntry(0x04, 0x00000000);
-	PatchAnEndOfLst();
-
-	PatchAReservedOSLstEntry(pTo_FourVidParams, 0x01);
-	PatchALong(0x0000002E);
-	PatchALong(0x00000000);
-	PatchAWord(vMacScreenWidth / 8 * 4);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchAWord(vMacScreenHeight);
-	PatchAWord(vMacScreenWidth);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchALong(0x00000000);
-	PatchALong(0x00480000);
-	PatchALong(0x00480000);
-	PatchAWord(0x0000);
-	PatchAWord(0x0004);
-	PatchAWord(0x0001);
-	PatchAWord(0x0004);
-	PatchALong(0x00000000);
-
-	PatchAReservedOSLstEntry(pTo_EightBitMode, 0x83);
-	pTo_EightVidParams = ReservePatchOSLstEntry();
-	PatchADatLstEntry(0x03, 0x00000001);
-	PatchADatLstEntry(0x04, 0x00000000);
-	PatchAnEndOfLst();
-
-	PatchAReservedOSLstEntry(pTo_EightVidParams, 0x01);
-	PatchALong(0x0000002E);
-	PatchALong(0x00000000);
-	PatchAWord(vMacScreenWidth);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchAWord(vMacScreenHeight);
-	PatchAWord(vMacScreenWidth);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchALong(0x00000000);
-	PatchALong(0x00480000);
-	PatchALong(0x00480000);
-	PatchAWord(0x0000);
-	PatchAWord(0x0008);
-	PatchAWord(0x0001);
-	PatchAWord(0x0008);
-	PatchALong(0x00000000);
-
-	PatchAReservedOSLstEntry(pTo_SixteenBitMode, 0x84);
-	pTo_SixteenVidParams = ReservePatchOSLstEntry();
-	PatchADatLstEntry(0x03, 0x00000001);
-	PatchADatLstEntry(0x04, 0x00000002);
-	PatchAnEndOfLst();
-
-	PatchAReservedOSLstEntry(pTo_SixteenVidParams, 0x01);
-	PatchALong(0x0000002E);
-	PatchALong(0x00000000);
-	PatchAWord(vMacScreenWidth * 2);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchAWord(vMacScreenHeight);
-	PatchAWord(vMacScreenWidth);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchALong(0x00000000);
-	PatchALong(0x00480000);
-	PatchALong(0x00480000);
-	PatchAWord(0x0010);
-	PatchAWord(0x0010);
-	PatchAWord(0x0003);
-	PatchAWord(0x0005);
-	PatchALong(0x00000000);
-
-	PatchAReservedOSLstEntry(pTo_ThirtyTwoBitMode, 0x85);
-	pTo_ThirtyTwoVidParams = ReservePatchOSLstEntry();
-	PatchADatLstEntry(0x03, 0x00000001);
-	PatchADatLstEntry(0x04, 0x00000002);
-	PatchAnEndOfLst();
-
-	PatchAReservedOSLstEntry(pTo_ThirtyTwoVidParams, 0x01);
-	PatchALong(0x0000002E);
-	PatchALong(0x00000000);
-	PatchAWord(vMacScreenWidth * 4);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchAWord(vMacScreenHeight);
-	PatchAWord(vMacScreenWidth);
-	PatchAWord(0x0000);
-	PatchAWord(0x0000);
-	PatchALong(0x00000000);
-	PatchALong(0x00480000);
-	PatchALong(0x00480000);
-	PatchAWord(0x0010);
-	PatchAWord(0x0020);
-	PatchAWord(0x0003);
-	PatchAWord(0x0008);
-	PatchALong(0x00000000);
 #endif
 
 	UsedSoFar = (pPatch - VidROM) + 20;
@@ -519,6 +403,15 @@ GLOBALFUNC blnr Vid_Init(void)
 
 	ChecksumSlotROM();
 
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+	CLUT_reds[0] = 0xFFFF;
+	CLUT_greens[0] = 0xFFFF;
+	CLUT_blues[0] = 0xFFFF;
+	CLUT_reds[CLUT_size - 1] = 0;
+	CLUT_greens[CLUT_size - 1] = 0;
+	CLUT_blues[CLUT_size - 1] = 0;
+#endif
+
 	return trueblnr;
 }
 
@@ -532,21 +425,284 @@ GLOBALPROC Vid_Update(void)
 	}
 }
 
-LOCALVAR ui4r VidMode = 0;
-
-GLOBALFUNC ui4r Vid_GetMode(void)
+LOCALFUNC ui4r Vid_GetMode(void)
 {
-	return VidMode + 128;
+	return
+#if 0 != vMacScreenDepth
+		UseColorMode ? 129 :
+#endif
+		128;
 }
 
-GLOBALFUNC tMacErr Vid_SetMode(ui4r v)
+LOCALFUNC tMacErr Vid_SetMode(ui4r v)
 {
-	VidMode = v - 128;
+#if 0 == vMacScreenDepth
+	UnusedParam(v);
+#else
+	if (UseColorMode != (v != 128)) {
+		UseColorMode = ! UseColorMode;
+		ColorMappingChanged = trueblnr;
+	}
+#endif
 	return mnvm_noErr;
 }
 
 GLOBALFUNC ui4r Vid_Reset(void)
 {
-	VidMode = 0;
-	return VidMode + 128;
+#if 0 != vMacScreenDepth
+	UseColorMode = falseblnr;
+#endif
+	return 128;
+}
+
+#define mnvm_statusErr ((tMacErr) - 18) /* 0xFFEE - Driver can't respond to Status call */
+#define mnvm_paramErr ((tMacErr) - 50) /* error in parameter list */
+
+#define kCmndVideoFeatures 1
+#define kCmndVideoGetIntEnbl 2
+#define kCmndVideoSetIntEnbl 3
+#define kCmndVideoClearInt 4
+#define kCmndVideoStatus 5
+#define kCmndVideoControl 6
+
+#define CntrlParam_csCode 0x1A /* control/status code [word] */
+#define CntrlParam_csParam 0x1C /* operation-defined parameters */
+
+#define VDPageInfo_csMode 0
+#define VDPageInfo_csPage 6
+#define VDPageInfo_csBaseAddr 8
+
+#define VDSetEntryRecord_csTable 0
+#define VDSetEntryRecord_csStart 4
+#define VDSetEntryRecord_csCount 6
+
+#define VDGammaRecord_csGTable 0
+
+#define VidBaseAddr 0xF9900000
+	/* appears to be completely ignored */
+
+LOCALVAR blnr UseGrayTones = falseblnr;
+
+LOCALPROC FillScreenWithGrayPattern(void)
+{
+	int i;
+	int j;
+	ui5b *p1 = (ui5b *)VidMem;
+
+#if 0 != vMacScreenDepth
+	if (UseColorMode) {
+#if 1 == vMacScreenDepth
+		ui5b pat = 0xCCCCCCCC;
+#elif 2 == vMacScreenDepth
+		ui5b pat = 0xF0F0F0F0;
+#elif 3 == vMacScreenDepth
+		ui5b pat = 0xFF00FF00;
+#elif 4 == vMacScreenDepth
+		ui5b pat = 0x00007FFF;
+#elif 5 == vMacScreenDepth
+		ui5b pat = 0x00000000;
+#endif
+		for (i = vMacScreenHeight; --i >= 0; ) {
+			for (j = vMacScreenByteWidth >> 2; --j >= 0; ) {
+				*p1++ = pat;
+#if 5 == vMacScreenDepth
+				pat = (~ pat) & 0x00FFFFFF;
+#endif
+			}
+			pat = (~ pat)
+#if 4 == vMacScreenDepth
+				& 0x7FFF7FFF
+#elif 5 == vMacScreenDepth
+				& 0x00FFFFFF
+#endif
+				;
+		}
+	} else
+#endif
+	{
+		ui5b pat = 0xAAAAAAAA;
+
+		for (i = vMacScreenHeight; --i >= 0; ) {
+			for (j = vMacScreenMonoByteWidth >> 2; --j >= 0; ) {
+				*p1++ = pat;
+			}
+			pat = ~ pat;
+		}
+	}
+}
+
+GLOBALPROC ExtnVideo_Access(CPTR p)
+{
+	tMacErr result = mnvm_controlErr;
+
+	switch (get_vm_word(p + ExtnDat_commnd)) {
+		case kCmndVersion:
+			put_vm_word(p + ExtnDat_version, 1);
+			result = mnvm_noErr;
+			break;
+		case kCmndVideoGetIntEnbl:
+			put_vm_word(p + 8,
+				Vid_VBLintunenbl ? 0 : 1);
+			result = mnvm_noErr;
+			break;
+		case kCmndVideoSetIntEnbl:
+			Vid_VBLintunenbl =
+				(0 == get_vm_word(p + 8))
+					? 1 : 0;
+			result = mnvm_noErr;
+			break;
+		case kCmndVideoClearInt:
+			Vid_VBLinterrupt = 1;
+			result = mnvm_noErr;
+			break;
+		case kCmndVideoControl:
+			{
+				CPTR CntrlParams = get_vm_long(p + 8);
+				CPTR csParam = get_vm_long(CntrlParams + CntrlParam_csParam);
+				ui4r csCode = get_vm_word(CntrlParams + CntrlParam_csCode);
+
+				switch (csCode) {
+					case 0: /* VidReset */
+						put_vm_word(csParam + VDPageInfo_csMode, Vid_GetMode());
+						put_vm_word(csParam + VDPageInfo_csPage, 0); /* page is always 0 */
+						put_vm_long(csParam + VDPageInfo_csBaseAddr, VidBaseAddr);
+
+						result = mnvm_noErr;
+						break;
+					case 1: /* KillIO */
+						result = mnvm_noErr;
+						break;
+					case 2: /* SetVidMode */
+						if (0 != get_vm_word(csParam + VDPageInfo_csPage)) {
+							/* return mnvm_controlErr, page must be 0 */
+						} else {
+							result = Vid_SetMode(get_vm_word(csParam + VDPageInfo_csMode));
+							put_vm_long(csParam + VDPageInfo_csBaseAddr, VidBaseAddr);
+						}
+						break;
+					case 3: /* SetEntries */
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+						if (UseColorMode) {
+							CPTR csTable = get_vm_long(csParam + VDSetEntryRecord_csTable);
+							ui4r csStart = get_vm_word(csParam + VDSetEntryRecord_csStart);
+							ui4r csCount = 1 + get_vm_word(csParam + VDSetEntryRecord_csCount);
+							if (((ui4r) - 1) ==  csStart) {
+								ReportAbnormal("Indexed SetEntries not implemented");
+							} else if (csStart + csCount > CLUT_size) {
+								result = mnvm_paramErr;
+							} else {
+								int i;
+
+								for (i = 0; i < csCount; ++i) {
+									int j = i + csStart;
+									if (j == 0) {
+										/* ignore input, leave white */
+									} else if (j == CLUT_size - 1) {
+										/* ignore input, leave black */
+									} else {
+										ui4b r = get_vm_word(csTable + 2);
+										ui4b g = get_vm_word(csTable + 4);
+										ui4b b = get_vm_word(csTable + 6);
+										CLUT_reds[j] = r;
+										CLUT_greens[j] = g;
+										CLUT_blues[j] = b;
+									}
+									csTable += 8;
+								}
+								ColorMappingChanged = trueblnr;
+							}
+						} else
+#endif
+						{
+							/* not implemented */
+						}
+						break;
+					case 4: /* SetGamma */
+						{
+#if 0
+							CPTR csTable = get_vm_long(csParam + VDGammaRecord_csGTable);
+							/* not implemented */
+#endif
+						}
+						break;
+					case 5: /* GrayScreen */
+						{
+#if 0
+							ui4r csPage = get_vm_word(csParam + VDPageInfo_csPage);
+							/* not implemented */
+#endif
+							FillScreenWithGrayPattern();
+							result = mnvm_noErr;
+						}
+						break;
+					case 6: /* SetGray */
+						{
+							ui4r csMode = get_vm_byte(csParam + VDPageInfo_csMode);
+								/*
+									"Designing Cards and Drivers" book says
+									this is a word, but it seems to be a byte.
+								*/
+
+							UseGrayTones = (csMode != 0);
+							result = mnvm_noErr;
+						}
+						break;
+				}
+			}
+			break;
+		case kCmndVideoStatus:
+			{
+				CPTR CntrlParams = get_vm_long(p + 8);
+				CPTR csParam = get_vm_long(CntrlParams + CntrlParam_csParam);
+				ui4r csCode = get_vm_word(CntrlParams + CntrlParam_csCode);
+
+				result = mnvm_statusErr;
+				switch (csCode) {
+					case 2: /* GetMode */
+						put_vm_word(csParam + VDPageInfo_csMode, Vid_GetMode());
+						put_vm_word(csParam + VDPageInfo_csPage, 0); /* page is always 0 */
+						put_vm_long(csParam + VDPageInfo_csBaseAddr, VidBaseAddr);
+						result = mnvm_noErr;
+						break;
+					case 3: /* GetEntries */
+						{
+#if 0
+							CPTR csTable = get_vm_long(csParam + VDSetEntryRecord_csTable);
+							put_vm_word(csParam + VDSetEntryRecord_csStart, csStart);
+							put_vm_word(csParam + VDSetEntryRecord_csCount, csCount);
+#endif
+							ReportAbnormal("GetEntries not implemented");
+						}
+						break;
+					case 4: /* GetPages */
+						put_vm_word(csParam + VDPageInfo_csPage, 1); /* always 1 page */
+						result = mnvm_noErr;
+						break;
+					case 5: /* GetPageAddr */
+						{
+							ui4r csPage = get_vm_word(csParam + VDPageInfo_csPage);
+							if (0 != csPage) {
+								/* return mnvm_statusErr, page must be 0 */
+							} else {
+								put_vm_long(csParam + VDPageInfo_csBaseAddr, VidBaseAddr);
+								result = mnvm_noErr;
+							}
+						}
+						break;
+					case 6: /* GetGray */
+						{
+							put_vm_word(csParam + VDPageInfo_csMode, UseGrayTones ? 0x0100 : 0);
+								/*
+									"Designing Cards and Drivers" book says
+									this is a word, but it seems to be a byte.
+								*/
+							result = mnvm_noErr;
+						}
+						break;
+				}
+			}
+			break;
+	}
+
+	put_vm_word(p + ExtnDat_result, result);
 }

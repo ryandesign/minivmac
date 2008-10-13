@@ -157,6 +157,8 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 
 	if (MySoundEnabled) {
 		WriteDestFileLn("#define MySoundEnabled 1");
+	} else {
+		WriteDestFileLn("#define MySoundEnabled 0");
 	}
 
 #ifdef Have_SPCNFGGL
@@ -208,9 +210,14 @@ LOCALPROC WriteCommonCNFGGLOB(void)
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("/* ignore unused inline warning */");
 		WriteDestFileLn("#pragma warning(disable : 4514 4714)");
+#if 0
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("/* ignore type redefinition warning */");
 		WriteDestFileLn("#pragma warning(disable : 4142)");
+#endif
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("/* ignore unary minus operator applied to unsigned type warning */");
+		WriteDestFileLn("#pragma warning(disable : 4146)");
 	}
 #endif
 #if support_ide_mw8

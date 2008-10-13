@@ -109,39 +109,90 @@ GLOBALFUNC blnr ScreenFindChanges(si3b TimeAdjust,
 	}
 #endif
 
-	if (! FindFirstChangeInLVecs((ui5b *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
-			(ui5b *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),
-			((uimr)(vMacScreenHeight - NextDrawRow) * (uimr)vMacScreenWidth) / 32, &j0))
-	{
-		NextDrawRow = 0;
-		return falseblnr;
-	}
-	j0 /= (vMacScreenWidth / 32);
-	j0 += NextDrawRow;
-	LimitDrawRow = j0 + MaxRowsDrawnPerTick;
-	if (LimitDrawRow >= vMacScreenHeight) {
-		LimitDrawRow = vMacScreenHeight;
-		NextDrawRow = 0;
-	} else {
-		NextDrawRow = LimitDrawRow;
-	}
-	if (! FindLastChangeInLVecs((ui5b *)screencurrentbuff,
-		(ui5b *)screencomparebuff,
-		((uimr)LimitDrawRow * (uimr)vMacScreenWidth) / 32, &j1))
-	{
-		return falseblnr;
-	} else {
-		j1 /= (vMacScreenWidth / 32); j1++;
+#if 0 != vMacScreenDepth
+	if (UseColorMode) {
+		if (ColorMappingChanged) {
+			ColorMappingChanged = falseblnr;
+			j0 = 0;
+			j1 = vMacScreenHeight;
+		} else {
+			if (! FindFirstChangeInLVecs((ui5b *)screencurrentbuff + NextDrawRow * (vMacScreenBitWidth / 32),
+					(ui5b *)screencomparebuff + NextDrawRow * (vMacScreenBitWidth / 32),
+					((uimr)(vMacScreenHeight - NextDrawRow) * (uimr)vMacScreenBitWidth) / 32, &j0))
+			{
+				NextDrawRow = 0;
+				return falseblnr;
+			}
+			j0 /= (vMacScreenBitWidth / 32);
+			j0 += NextDrawRow;
+			LimitDrawRow = j0 + MaxRowsDrawnPerTick;
+			if (LimitDrawRow >= vMacScreenHeight) {
+				LimitDrawRow = vMacScreenHeight;
+				NextDrawRow = 0;
+			} else {
+				NextDrawRow = LimitDrawRow;
+			}
+			if (! FindLastChangeInLVecs((ui5b *)screencurrentbuff,
+				(ui5b *)screencomparebuff,
+				((uimr)LimitDrawRow * (uimr)vMacScreenBitWidth) / 32, &j1))
+			{
+				return falseblnr;
+			} else {
+				j1 /= (vMacScreenBitWidth / 32); j1++;
+			}
+		}
 
 		copyrows = j1 - j0;
 		copyoffset = j0 * vMacScreenByteWidth;
 		copysize = copyrows * vMacScreenByteWidth;
-		MyMoveBytes((anyp)screencurrentbuff + copyoffset, (anyp)screencomparebuff + copyoffset, copysize);
+	} else
+#endif
+	{
+#if 0 != vMacScreenDepth
+		if (ColorMappingChanged) {
+			ColorMappingChanged = falseblnr;
+			j0 = 0;
+			j1 = vMacScreenHeight;
+		} else
+#endif
+		{
+			if (! FindFirstChangeInLVecs((ui5b *)screencurrentbuff + NextDrawRow * (vMacScreenWidth / 32),
+					(ui5b *)screencomparebuff + NextDrawRow * (vMacScreenWidth / 32),
+					((uimr)(vMacScreenHeight - NextDrawRow) * (uimr)vMacScreenWidth) / 32, &j0))
+			{
+				NextDrawRow = 0;
+				return falseblnr;
+			}
+			j0 /= (vMacScreenWidth / 32);
+			j0 += NextDrawRow;
+			LimitDrawRow = j0 + MaxRowsDrawnPerTick;
+			if (LimitDrawRow >= vMacScreenHeight) {
+				LimitDrawRow = vMacScreenHeight;
+				NextDrawRow = 0;
+			} else {
+				NextDrawRow = LimitDrawRow;
+			}
+			if (! FindLastChangeInLVecs((ui5b *)screencurrentbuff,
+				(ui5b *)screencomparebuff,
+				((uimr)LimitDrawRow * (uimr)vMacScreenWidth) / 32, &j1))
+			{
+				return falseblnr;
+			} else {
+				j1 /= (vMacScreenWidth / 32); j1++;
+			}
+		}
 
-		*top = j0;
-		*left = 0;
-		*bottom = j0 + copyrows;
-		*right = vMacScreenWidth;
-		return trueblnr;
+		copyrows = j1 - j0;
+		copyoffset = j0 * vMacScreenMonoByteWidth;
+		copysize = copyrows * vMacScreenMonoByteWidth;
 	}
+
+	MyMoveBytes((anyp)screencurrentbuff + copyoffset, (anyp)screencomparebuff + copyoffset, copysize);
+
+	*top = j0;
+	*left = 0;
+	*bottom = j0 + copyrows;
+	*right = vMacScreenWidth;
+
+	return trueblnr;
 }

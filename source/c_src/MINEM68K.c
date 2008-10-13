@@ -2869,21 +2869,17 @@ LOCALPROC DoCHK2orCMP2(void)
 		regv = m68k_areg((extra >> 12) & 0x07);
 	}
 	DecodeModeRegister(mode, reg);
-	if (ArgKind != AKMemory) {
-		ReportAbnormal("illegal CHK2 or CMP2 mode");
-	} else {
-		/* CPTR oldpc = m68k_getpc(); */
-		lower = GetArgValue();
-		ArgAddr.mem += opsize;
-		upper = GetArgValue();
+	/* ArgKind == AKMemory, otherwise illegal and don't get here */
+	lower = GetArgValue();
+	ArgAddr.mem += opsize;
+	upper = GetArgValue();
 
-		ZFLG = (upper == regv) || (lower == regv);
-		CFLG = (lower <= upper)
-				? (regv < lower || regv > upper)
-				: (regv > upper || regv < lower);
-		if ((extra & 0x800) && CFLG) {
-			Exception(6);
-		}
+	ZFLG = (upper == regv) || (lower == regv);
+	CFLG = (lower <= upper)
+			? (regv < lower || regv > upper)
+			: (regv > upper || regv < lower);
+	if ((extra & 0x800) && CFLG) {
+		Exception(6);
 	}
 }
 #endif
@@ -3410,6 +3406,7 @@ LOCALPROC DoMoveFromControl(void)
 				ReportAbnormal("DoMoveFromControl: isp");
 				break;
 			default:
+				v = 0;
 				ReportAbnormal("DoMoveFromControl: unknown reg");
 				op_illg();
 				break;
@@ -3624,15 +3621,14 @@ LOCALPROC DoBitField(void)
 		tmp = bf0 << offset;
 	} else {
 		DecodeModeRegister(mode, reg);
-		if (ArgKind == AKMemory) { /* should check addr modes beforehand */
-			dsta = ArgAddr.mem;
-			dsta += (offset >> 3) | (offset & 0x80000000 ? ~ 0x1fffffff : 0);
-			offset &= 7;
-			{
-				bf0 = get_long(dsta);
-				bf1 = get_byte(dsta + 4) & 0xff;
-				tmp = (bf0 << offset) | (bf1 >> (8 - offset));
-			}
+		/* ArgKind == AKMemory, otherwise illegal and don't get here */
+		dsta = ArgAddr.mem;
+		dsta += (offset >> 3) | (offset & 0x80000000 ? ~ 0x1fffffff : 0);
+		offset &= 7;
+		{
+			bf0 = get_long(dsta);
+			bf1 = get_byte(dsta + 4) & 0xff;
+			tmp = (bf0 << offset) | (bf1 >> (8 - offset));
 		}
 	}
 

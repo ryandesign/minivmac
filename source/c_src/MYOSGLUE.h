@@ -183,9 +183,14 @@ EXPORTVAR(ui5b, CurMacLongitude)
 EXPORTVAR(ui5b, CurMacDelta) /* (dlsDelta << 24) | (gmtDelta & 0x00FFFFFF) */
 
 
-#define vMacScreenNumBits ((long)vMacScreenHeight * (long)vMacScreenWidth)
+#define vMacScreenNumPixels ((long)vMacScreenHeight * (long)vMacScreenWidth)
+#define vMacScreenNumBits (vMacScreenNumPixels << vMacScreenDepth)
 #define vMacScreenNumBytes (vMacScreenNumBits / 8)
-#define vMacScreenByteWidth (vMacScreenWidth / 8)
+#define vMacScreenBitWidth ((long)vMacScreenWidth << vMacScreenDepth)
+#define vMacScreenByteWidth (vMacScreenBitWidth / 8)
+
+#define vMacScreenMonoNumBytes (vMacScreenNumPixels / 8)
+#define vMacScreenMonoByteWidth ((long)vMacScreenWidth / 8)
 
 EXPORTVAR(char, *screencomparebuff)
 
@@ -203,6 +208,22 @@ EXPORTVAR(ui3p, VidMem)
 
 #if IncludeVidRom
 EXPORTVAR(ui3p, VidROM)
+#endif
+
+#if 0 != vMacScreenDepth
+EXPORTVAR(blnr, UseColorMode)
+#endif
+
+#if 0 != vMacScreenDepth
+EXPORTVAR(blnr, ColorMappingChanged)
+#endif
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+#define CLUT_size (1 << (1 << vMacScreenDepth))
+
+EXPORTVAR(ui4r, CLUT_reds[CLUT_size])
+EXPORTVAR(ui4r, CLUT_greens[CLUT_size])
+EXPORTVAR(ui4r, CLUT_blues[CLUT_size])
 #endif
 
 #define MyEvtQElKindKey 0

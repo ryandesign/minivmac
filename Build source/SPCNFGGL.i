@@ -144,12 +144,30 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	}
 
 	if (NeedVidMem) {
+		uimr FrameSize;
 		WriteDestFileLn("#define IncludeVidMem 1");
-		if (gbk_mdl_PB100 == cur_mdl) {
-			WriteDestFileLn("#define kVidMemRAM_Size 0x00008000");
+		if (gbk_mdl_II == cur_mdl) {
+			FrameSize = ((cur_hres * cur_vres) << cur_ScrnDpth) >> 3;
+			--FrameSize;
+			FrameSize |= (FrameSize >> 1);
+			FrameSize |= (FrameSize >> 2);
+			FrameSize |= (FrameSize >> 4);
+			FrameSize |= (FrameSize >> 8);
+			FrameSize |= (FrameSize >> 16);
+			++FrameSize;
+			if (FrameSize <= 0x00008000) {
+				FrameSize = 0x00008000;
+			}
+		} else if (gbk_mdl_PB100 == cur_mdl) {
+			FrameSize = 0x00008000;
 		} else {
-			WriteDestFileLn("#define kVidMemRAM_Size 0x00020000");
+			FrameSize = 0x00020000;
 		}
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define kVidMemRAM_Size ");
+		WriteCStrToDestFile("0x");
+		WriteHexLongToOutput(FrameSize);
+		WriteEndDestFileLn();
 	}
 
 #if 0
@@ -167,6 +185,11 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define vMacScreenWidth ");
 	WriteUnsignedToOutput(cur_hres);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define vMacScreenDepth ");
+	WriteUnsignedToOutput(cur_ScrnDpth);
 	WriteEndDestFileLn();
 
 	if (WantInitFullScreen) {

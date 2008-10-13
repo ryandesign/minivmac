@@ -760,18 +760,82 @@ LOCALPROC UpdateLuminanceCopy(si4b top, si4b left, si4b bottom, si4b right)
 {
 	int i;
 	int j;
-	int k;
-	ui3b *p1 = (ui3b *)GetCurDrawBuff() + (ui5r)vMacScreenWidth / 8 * top;
-	ui3b *p2 = (ui3b *)ScalingBuff + (ui5r)vMacScreenWidth * top;
 	ui5b t0;
+
 
 	UnusedParam(left);
 	UnusedParam(right);
-	for (i = bottom - top; --i >= 0; ) {
-		for (j = vMacScreenWidth / 8; --j >= 0; ) {
-			t0 = *p1++;
-			for (k = 8; --k >= 0; ) {
-				*p2++ = ((t0 >> k) & 0x01) - 1;
+#if 0 != vMacScreenDepth
+	if (UseColorMode) {
+#if vMacScreenDepth < 4
+		ui5b CLUT_final[CLUT_size];
+#endif
+		ui3b *p1 = (ui3b *)GetCurDrawBuff() + (ui5r)vMacScreenByteWidth * top;
+		ui5b *p2 = (ui5b *)ScalingBuff + (ui5r)vMacScreenWidth * top;
+
+#if vMacScreenDepth < 4
+		for (i = 0; i < CLUT_size; ++i) {
+			CLUT_final[i] = (((long)CLUT_reds[i] & 0xFF00) << 16)
+				| (((long)CLUT_greens[i] & 0xFF00) << 8)
+				| ((long)CLUT_blues[i] & 0xFF00);
+		}
+#endif
+
+		for (i = bottom - top; --i >= 0; ) {
+#if 4 == vMacScreenDepth
+			for (j = vMacScreenWidth; --j >= 0; ) {
+				t0 = *((ui4b *)p1)++;
+				*p2++ =
+					((t0 & 0x7C00) << 17) |
+					((t0 & 0x7000) << 12) |
+					((t0 & 0x03E0) << 14) |
+					((t0 & 0x0380) << 9) |
+					((t0 & 0x001F) << 11) |
+					((t0 & 0x001C) << 6);
+#if 0
+					((t0 & 0x7C00) << 9) |
+					((t0 & 0x7000) << 4) |
+					((t0 & 0x03E0) << 6) |
+					((t0 & 0x0380) << 1) |
+					((t0 & 0x001F) << 3) |
+					((t0 & 0x001C) >> 2);
+#endif
+			}
+#elif 5 == vMacScreenDepth
+			for (j = vMacScreenWidth; --j >= 0; ) {
+				t0 = *((ui5b *)p1)++;
+				*p2++ = t0 << 8;
+			}
+#else
+			for (j = vMacScreenByteWidth; --j >= 0; ) {
+				t0 = *p1++;
+#if 1 == vMacScreenDepth
+				*p2++ = CLUT_final[t0 >> 6];
+				*p2++ = CLUT_final[(t0 >> 4) & 0x03];
+				*p2++ = CLUT_final[(t0 >> 2) & 0x03];
+				*p2++ = CLUT_final[t0 & 0x03];
+#elif 2 == vMacScreenDepth
+				*p2++ = CLUT_final[t0 >> 4];
+				*p2++ = CLUT_final[t0 & 0x0F];
+#elif 3 == vMacScreenDepth
+				*p2++ = CLUT_final[t0];
+#endif
+			}
+#endif
+		}
+	} else
+#endif
+	{
+		int k;
+		ui3b *p1 = (ui3b *)GetCurDrawBuff() + (ui5r)vMacScreenMonoByteWidth * top;
+		ui3b *p2 = (ui3b *)ScalingBuff + (ui5r)vMacScreenWidth * top;
+
+		for (i = bottom - top; --i >= 0; ) {
+			for (j = vMacScreenMonoByteWidth; --j >= 0; ) {
+				t0 = *p1++;
+				for (k = 8; --k >= 0; ) {
+					*p2++ = ((t0 >> k) & 0x01) - 1;
+				}
 			}
 		}
 	}
@@ -807,8 +871,13 @@ LOCALPROC MyDrawWithOpenGL(si4b top, si4b left, si4b bottom, si4b right)
 			glRasterPos2i(GLhOffset, GLvOffset);
 			glDrawPixels(vMacScreenWidth,
 				vMacScreenHeight,
+#if 0 != vMacScreenDepth
+				GL_RGB,
+				GL_UNSIGNED_INT_8_8_8_8,
+#else
 				GL_LUMINANCE,
 				GL_UNSIGNED_BYTE,
+#endif
 				ScalingBuff);
 #else
 			si4b top2 = top;
@@ -821,11 +890,23 @@ LOCALPROC MyDrawWithOpenGL(si4b top, si4b left, si4b bottom, si4b right)
 			}
 #endif
 			glRasterPos2i(GLhOffset + left2, GLvOffset - top2);
-			glDrawPixels(vMacScreenWidth,
-				bottom - top,
-				GL_LUMINANCE,
-				GL_UNSIGNED_BYTE,
-				ScalingBuff + top * vMacScreenWidth);
+#if 0 != vMacScreenDepth
+			if (UseColorMode) {
+				glDrawPixels(vMacScreenWidth,
+					bottom - top,
+					GL_RGBA,
+					GL_UNSIGNED_INT_8_8_8_8,
+					ScalingBuff + top * vMacScreenWidth * 4
+					);
+			} else
+#endif
+			{
+				glDrawPixels(vMacScreenWidth,
+					bottom - top,
+					GL_LUMINANCE,
+					GL_UNSIGNED_BYTE,
+					ScalingBuff + top * vMacScreenWidth);
+			}
 #endif
 		}
 #endif
@@ -3104,10 +3185,11 @@ LOCALFUNC blnr AllocateScreenCompare(void)
 	}
 #endif
 #if EnableScalingBuff
-	ScalingBuff = malloc(vMacScreenNumBytes * (
-		ScaleBuffSzMult < 8 ? 8 :
-		ScaleBuffSzMult
-		));
+	ScalingBuff = malloc(vMacScreenNumPixels
+#if 0 != vMacScreenDepth
+		* 4
+#endif
+		);
 	if (NULL == ScalingBuff) {
 		MacMsg(kStrOutOfMemTitle, kStrOutOfMemMessage, trueblnr);
 		return falseblnr;

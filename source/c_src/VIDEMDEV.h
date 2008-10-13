@@ -21,7 +21,7 @@
 #endif
 
 EXPORTFUNC blnr Vid_Init(void);
-EXPORTPROC Vid_Update(void);
-EXPORTFUNC ui4r Vid_GetMode(void);
-EXPORTFUNC tMacErr Vid_SetMode(ui4r v);
 EXPORTFUNC ui4r Vid_Reset(void);
+EXPORTPROC Vid_Update(void);
+
+EXPORTPROC ExtnVideo_Access(CPTR p);

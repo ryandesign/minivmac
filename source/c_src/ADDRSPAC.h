@@ -81,6 +81,14 @@ EXPORTFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr);
 
 #define get_ram_address(addr) ((addr) + RAM)
 
+GLOBALFUNC si5b get_vm_word(CPTR addr);
+GLOBALFUNC si5b get_vm_byte(CPTR addr);
+GLOBALFUNC ui5b get_vm_long(CPTR addr);
+
+GLOBALPROC put_vm_word(CPTR addr, ui5b w);
+GLOBALPROC put_vm_byte(CPTR addr, ui5b b);
+GLOBALPROC put_vm_long(CPTR addr, ui5b l);
+
 EXPORTFUNC blnr AddrSpac_Init(void);
 
 

@@ -101,16 +101,28 @@ LOCALVAR ui5b LastRealDate;
 #endif
 
 #ifndef DoubleClickTime /* in 5,8,12 */
+#if CurEmMd == kEmMd_II
+#define DoubleClickTime 8
+#else
 #define DoubleClickTime 5
+#endif
 #endif
 
 #ifndef CaretBlinkTime /* in 3,8,15 */
+#if CurEmMd == kEmMd_II
+#define CaretBlinkTime 8
+#else
 #define CaretBlinkTime 3
+#endif
 #endif
 
 #ifndef DiskCacheSz /* in 1,2,3,4,6,8,12 */
 /* actual cache size is DiskCacheSz * 32k */
+#if CurEmMd == kEmMd_II
+#define DiskCacheSz 1
+#else
 #define DiskCacheSz 4
+#endif
 #endif
 
 #ifndef MenuBlink /* in 0..3 */
@@ -144,7 +156,21 @@ LOCALVAR ui5b LastRealDate;
 #define prb_volClickHi (SpeakerVol + (TrackSpeed << 3) + (AlarmOn << 7))
 #define prb_volClickLo (CaretBlinkTime + (DoubleClickTime << 4))
 #define prb_miscHi DiskCacheSz
-#define prb_miscLo ((MenuBlink << 2) + (StartUpDisk << 3) + (DiskCacheOn << 5) + (MouseScalingOn << 6))
+#define prb_miscLo ((MenuBlink << 2) + (StartUpDisk << 4) + (DiskCacheOn << 5) + (MouseScalingOn << 6))
+
+#if 0
+EXPORTPROC DumpRTC(void);
+#include <stdio.h>
+
+GLOBALPROC DumpRTC(void)
+{
+	int Counter;
+
+	for (Counter = 0; Counter < PARAMRAMSize; Counter++) {
+		printf("%d, %d\n", Counter, RTC.PARAMRAM[Counter]);
+	}
+}
+#endif
 
 GLOBALFUNC blnr RTC_Init(void)
 {
@@ -169,6 +195,9 @@ GLOBALFUNC blnr RTC_Init(void)
 
 #if RTCinitPRAM
 	RTC.PARAMRAM[0 + Group1Base] = 168; /* valid */
+#if CurEmMd == kEmMd_II
+	RTC.PARAMRAM[2 + Group1Base] = 1;
+#endif
 	RTC.PARAMRAM[3 + Group1Base] = 34; /* config, serial ports */
 	RTC.PARAMRAM[4 + Group1Base] = 204; /* portA, high */
 	RTC.PARAMRAM[5 + Group1Base] = 10; /* portA, low */
@@ -176,34 +205,76 @@ GLOBALFUNC blnr RTC_Init(void)
 	RTC.PARAMRAM[7 + Group1Base] = 10; /* portB, low */
 	RTC.PARAMRAM[13 + Group1Base] = prb_fontLo;
 	RTC.PARAMRAM[14 + Group1Base] = prb_kbdPrintHi;
+#if CurEmMd == kEmMd_II
+	RTC.PARAMRAM[15 + Group1Base] = 1;
+#endif
 
 #if prb_volClickHi != 0
 	RTC.PARAMRAM[0 + Group2Base] = prb_volClickHi;
 #endif
 	RTC.PARAMRAM[1 + Group2Base] = prb_volClickLo;
 	RTC.PARAMRAM[2 + Group2Base] = prb_miscHi;
-	RTC.PARAMRAM[3 + Group2Base] = prb_miscLo;
+	RTC.PARAMRAM[3 + Group2Base] = prb_miscLo
+#if 0 != vMacScreenDepth
+		| 0x80
+#endif
+		;
 
 #if HaveXPRAM /* extended parameter ram initialized */
+#if CurEmMd == kEmMd_II
+	RTC.PARAMRAM[12] = 0x4e;
+	RTC.PARAMRAM[13] = 0x75;
+	RTC.PARAMRAM[14] = 0x4d;
+	RTC.PARAMRAM[15] = 0x63;
+#else
 	RTC.PARAMRAM[12] = 0x42;
 	RTC.PARAMRAM[13] = 0x75;
 	RTC.PARAMRAM[14] = 0x67;
 	RTC.PARAMRAM[15] = 0x73;
-
-	do_put_mem_long(&RTC.PARAMRAM[0xE4], CurMacLatitude);
-	do_put_mem_long(&RTC.PARAMRAM[0xE8], CurMacLongitude);
-	do_put_mem_long(&RTC.PARAMRAM[0xEC], CurMacDelta);
+#endif
 #endif
 
-#if (CurEmMd >= kEmMd_SE) && (CurEmMd <= kEmMd_Classic)
+#if ((CurEmMd >= kEmMd_SE) && (CurEmMd <= kEmMd_Classic)) || (CurEmMd == kEmMd_II)
 	RTC.PARAMRAM[0x01] = 0x80;
 	RTC.PARAMRAM[0x02] = 0x4F;
+#endif
+#if CurEmMd == kEmMd_II
+	RTC.PARAMRAM[0x03] = 0x48;
+#endif
 
+#if CurEmMd == kEmMd_II
+	/* video board id */
+	RTC.PARAMRAM[0x46] = /* 0x42 */ 0x76; /* 'v' */
+	RTC.PARAMRAM[0x47] = /* 0x32 */ 0x4D; /* 'M' */
+	/* mode */
+#if 0 == vMacScreenDepth
+	RTC.PARAMRAM[0x48] = 0x80;
+#else
+	RTC.PARAMRAM[0x48] = /* 0x81 doesn't quite work right at boot */ 0x80;
+#endif
+#endif
+
+#if CurEmMd == kEmMd_II
+	RTC.PARAMRAM[0x77] = 0x01;
+#endif
+
+#if ((CurEmMd >= kEmMd_SE) && (CurEmMd <= kEmMd_Classic)) || (CurEmMd == kEmMd_II)
 	/* start up disk (encoded how?) */
 	RTC.PARAMRAM[0x78] = 0x00;
 	RTC.PARAMRAM[0x79] = 0x01;
 	RTC.PARAMRAM[0x7A] = 0xFF;
 	RTC.PARAMRAM[0x7B] = 0xFE;
+#endif
+
+#if CurEmMd == kEmMd_II
+	RTC.PARAMRAM[0x80] = 0x09;
+	RTC.PARAMRAM[0x81] = 0x80;
+#endif
+
+#if HaveXPRAM /* extended parameter ram initialized */
+	do_put_mem_long(&RTC.PARAMRAM[0xE4], CurMacLatitude);
+	do_put_mem_long(&RTC.PARAMRAM[0xE8], CurMacLongitude);
+	do_put_mem_long(&RTC.PARAMRAM[0xEC], CurMacDelta);
 #endif
 
 #endif /* RTCinitPRAM */

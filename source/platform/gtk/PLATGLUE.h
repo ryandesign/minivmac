@@ -300,7 +300,7 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 	}
 
 	gdk_draw_gray_image(drawing_area->window,
-		drawing_area->style->fg_gc[GTK_WIDGET_STATE (drawing_area)],
+		drawing_area->style->fg_gc[GTK_WIDGET_STATE(drawing_area)],
 		left /* x */,
 		top /* y */,
 		right - left /* width */,
@@ -324,7 +324,7 @@ LOCALPROC ForceShowCursor(void)
 		HaveCursorHidden = falseblnr;
 
 		if (window) {
-			gdk_window_set_cursor (window->window, NULL);
+			gdk_window_set_cursor(window->window, NULL);
 		}
 	}
 }
@@ -1148,9 +1148,9 @@ LOCALPROC CheckForSavedTasks(void)
 	{
 		HaveCursorHidden = ! HaveCursorHidden;
 		if (HaveCursorHidden) {
-			gdk_window_set_cursor (window->window, blank_cursor);
+			gdk_window_set_cursor(window->window, blank_cursor);
 		} else {
-			gdk_window_set_cursor (window->window, NULL);
+			gdk_window_set_cursor(window->window, NULL);
 		}
 	}
 
@@ -1308,7 +1308,7 @@ MainEventLoop(gpointer data)
 Label_01:
 	fprintf(stderr, "leaving MainEventLoop\n");
 
-	gtk_main_quit ();
+	gtk_main_quit();
 
 	return FALSE;
 }
@@ -1377,7 +1377,7 @@ static gboolean key_release_event(GtkWidget *widget,
 }
 
 static void drag_data_received(GtkWidget *widget,
-	GdkDragContext   *drag_context,
+	GdkDragContext *drag_context,
 	gint x,
 	gint y,
 	GtkSelectionData *data,
@@ -1398,7 +1398,7 @@ static void drag_data_received(GtkWidget *widget,
 			if (file != NULL) {
 				(void) Sony_Insert1(file, falseblnr);
 				handled = TRUE;
-				g_free (file);
+				g_free(file);
 			}
 		}
 		g_strfreev(uris);
@@ -1536,10 +1536,10 @@ int main(int argc, char *argv[])
 	GtkWidget *the_menu;
 	GtkWidget *the_item;
 
-	gtk_init (&argc, &argv);
+	gtk_init(&argc, &argv);
 
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_widget_set_name (window, "Test Input");
+	gtk_widget_set_name(window, "Test Input");
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
 
 	vbox = gtk_vbox_new(FALSE, 0);
@@ -1595,7 +1595,7 @@ int main(int argc, char *argv[])
 
 	/* Create the drawing area */
 
-	drawing_area = gtk_drawing_area_new ();
+	drawing_area = gtk_drawing_area_new();
 	gtk_widget_set_size_request(GTK_WIDGET(drawing_area), vMacScreenWidth, vMacScreenHeight);
 	gtk_box_pack_start(GTK_BOX(vbox), drawing_area, TRUE, TRUE, 0);
 
@@ -1643,7 +1643,7 @@ int main(int argc, char *argv[])
 #if 0
 	/* .. And a quit button */
 	button = gtk_button_new_with_label("Quit");
-	gtk_box_pack_start(GTK_BOX (vbox), button, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
 
 	g_signal_connect_swapped(G_OBJECT(button), "clicked",
 		G_CALLBACK(delete_event), NULL

@@ -918,7 +918,45 @@ LOCALFUNC MayInline ui3b DeCodeE(void)
 		if ((opcode & 0x0800) != 0) {
 #if Use68020
 			/* 11101???11mmmrrr */
-			v = kIKindBitField;
+			switch (mode) {
+				case 1:
+				case 3:
+				case 4:
+				default: /* keep compiler happy */
+					v = kIKindIllegal;
+					break;
+				case 0:
+				case 2:
+				case 5:
+				case 6:
+					v = kIKindBitField;
+					break;
+				case 7:
+					switch (reg) {
+						case 0:
+						case 1:
+							v = kIKindBitField;
+							break;
+						case 2:
+						case 3:
+							switch ((opcode >> 8) & 7) {
+								case 0: /* BFTST */
+								case 1: /* BFEXTU */
+								case 3: /* BFEXTS */
+								case 5: /* BFFFO */
+									v = kIKindBitField;
+									break;
+								default:
+									v = kIKindIllegal;
+									break;
+							}
+							break;
+						default:
+							v = kIKindIllegal;
+							break;
+					}
+					break;
+			}
 #else
 			v = kIKindIllegal;
 #endif

@@ -215,18 +215,22 @@ LOCALVAR ui3b *BankWritAddr[NumMemBanks];
 LOCALPROC get_RAM_realblock(blnr WriteMem, CPTR addr,
 	ui3p *RealStart, ui5b *RealSize)
 {
+	UnusedParam(WriteMem);
+
 #if CurEmMd == kEmMd_II
-	ui5r bankbit = 0x00100000 << (((VIA2_iA7 << 1) | VIA2_iA6) << 1);
-	if (0 != (addr & bankbit)) {
+	{
+		ui5r bankbit = 0x00100000 << (((VIA2_iA7 << 1) | VIA2_iA6) << 1);
+		if (0 != (addr & bankbit)) {
 #if kRAMb_Size != 0
-		*RealStart = kRAMa_Size + RAM;
-		*RealSize = kRAMb_Size;
+			*RealStart = kRAMa_Size + RAM;
+			*RealSize = kRAMb_Size;
 #else
-		/* fail */
+			/* fail */
 #endif
-	} else {
-		*RealStart = RAM;
-		*RealSize = kRAMa_Size;
+		} else {
+			*RealStart = RAM;
+			*RealSize = kRAMa_Size;
+		}
 	}
 #elif (0 == kRAMb_Size) || (kRAMa_Size == kRAMb_Size)
 	*RealStart = RAM;
@@ -246,6 +250,8 @@ LOCALPROC get_RAM_realblock(blnr WriteMem, CPTR addr,
 LOCALPROC get_ROM_realblock(blnr WriteMem, CPTR addr,
 	ui3p *RealStart, ui5b *RealSize)
 {
+	UnusedParam(addr);
+
 	if (WriteMem) {
 		/* fail */
 	} else {
@@ -274,9 +280,9 @@ LOCALPROC get_address24_realblock(blnr WriteMem, CPTR addr,
 		}
 	} else
 #if IncludeVidMem && (CurEmMd == kEmMd_II)
-	if ((addr >= 0x900000) && ((addr < 0x980000))) {
+	if ((addr >= 0x900000) && ((addr < 0xA00000))) {
 		*RealStart = VidMem;
-		*RealSize = kVidMemRAM_Size;
+		*RealSize = ((kVidMemRAM_Size - 1) & 0x0FFFFF) + 1;
 	} else
 #endif
 #if IncludeVidMem && (CurEmMd != kEmMd_II)
@@ -336,10 +342,21 @@ LOCALPROC get_address32_realblock(blnr WriteMem, CPTR addr,
 		get_ROM_realblock(WriteMem, addr,
 			RealStart, RealSize);
 	} else
+#if 0
+	/* haven't persuaded emulated computer to look here yet. */
+	if ((addr >> 28) == (0x90000000 >> 28)) {
+		/* NuBus super space */
+		*RealStart = VidMem;
+		*RealSize = kVidMemRAM_Size;
+	} else
+#endif
 	if ((addr >> 28) == (0xF0000000 >> 28)) {
 		/* Standard NuBus space */
 		if ((addr >> 24) == (0xF9000000 >> 24)) {
-			if ((addr >= 0xFA000000 - kVidROM_Size) && (addr < 0xFA000000)) {
+			/* if ((addr >= 0xFA000000 - kVidROM_Size) && (addr < 0xFA000000)) */
+			/* if (addr >= 0xF9800000) */
+			if ((addr >> 20) == (0xF9F00000 >> 20))
+			{
 				if (WriteMem) {
 					/* fail */
 				} else {
@@ -347,8 +364,18 @@ LOCALPROC get_address32_realblock(blnr WriteMem, CPTR addr,
 					*RealSize = kVidROM_Size;
 				}
 			} else {
+#if kVidMemRAM_Size <= 0x00100000
 				*RealStart = VidMem;
 				*RealSize = kVidMemRAM_Size;
+#else
+				/* ugly kludge to allow more 1M of Video Memory */
+				int i = (addr >> 20) & 0xF;
+				if (i >= 9) {
+					i -= 9;
+				}
+				*RealStart = VidMem + ((i << 20) & (kVidMemRAM_Size - 1));
+				*RealSize = 0x00100000;
+#endif
 			}
 		} else {
 			/* fail */
@@ -679,6 +706,82 @@ GLOBALFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 		}
 	}
 	return Data;
+}
+
+GLOBALFUNC si5b get_vm_word(CPTR addr)
+{
+	ui3p ba = BankReadAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		ui3p m = (addr & MemBankAddrMask) + ba;
+		return (si5b)(si4b)do_get_mem_word(m);
+	} else {
+		return (si5b)(si4b)(ui4b) MM_Access(0, falseblnr, falseblnr, addr);
+	}
+}
+
+GLOBALFUNC si5b get_vm_byte(CPTR addr)
+{
+	ui3p ba = BankReadAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		ui3p m = (addr & MemBankAddrMask) + ba;
+		return (si5b)(si3b)*m;
+	} else {
+		return (si5b)(si3b)(ui3b) MM_Access(0, falseblnr, trueblnr, addr);
+	}
+}
+
+GLOBALFUNC ui5b get_vm_long(CPTR addr)
+{
+	ui3p ba = BankReadAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		ui3p m = (addr & MemBankAddrMask) + ba;
+		return do_get_mem_long(m);
+	} else {
+		si5b hi = get_vm_word(addr);
+		si5b lo = get_vm_word(addr + 2);
+		return (ui5b) ((((ui5b)hi) << 16) & 0xFFFF0000)
+			| (((ui5b)lo) & 0x0000FFFF);
+	}
+}
+
+GLOBALPROC put_vm_word(CPTR addr, ui5b w)
+{
+	ui3p ba = BankWritAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		ui3p m = (addr & MemBankAddrMask) + ba;
+		do_put_mem_word(m, w);
+	} else {
+		(void) MM_Access(w & 0x0000FFFF, trueblnr, falseblnr, addr);
+	}
+}
+
+GLOBALPROC put_vm_byte(CPTR addr, ui5b b)
+{
+	ui3p ba = BankWritAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		ui3p m = (addr & MemBankAddrMask) + ba;
+		*m = b;
+	} else {
+		(void) MM_Access(b & 0x00FF, trueblnr, trueblnr, addr);
+	}
+}
+
+GLOBALPROC put_vm_long(CPTR addr, ui5b l)
+{
+	ui3p ba = BankWritAddr[bankindex(addr)];
+
+	if (ba != nullpr) {
+		ui3p m = (addr & MemBankAddrMask) + ba;
+		do_put_mem_long(m, l);
+	} else {
+		put_vm_word(addr, l >> 16);
+		put_vm_word(addr + 2, l);
+	}
 }
 
 GLOBALPROC MemOverlay_ChangeNtfy(void)

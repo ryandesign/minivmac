@@ -679,6 +679,9 @@ GLOBALFUNC blnr ROM_Init(void)
 #elif CurEmMd <= kEmMd_Classic
 	do_put_mem_word(134 + ROM, 0x6002);
 	do_put_mem_word(286 + ROM, 0x6002);
+#elif CurEmMd == kEmMd_II
+	do_put_mem_word(0xEE + ROM, 0x6002);
+	do_put_mem_word(0x1AA + ROM, 0x6002);
 #endif
 
 	/* do_put_mem_word(862 + ROM, 0x4E71); */ /* shorten set memory*/
