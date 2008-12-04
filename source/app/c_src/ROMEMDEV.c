@@ -28,6 +28,7 @@
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
 #include "EMCONFIG.h"
+#include "GLOBGLUE.h"
 #endif
 
 #include "ROMEMDEV.h"
@@ -603,7 +604,7 @@ LOCALPROC Sony_Install(void)
 }
 #endif
 
-LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
+LOCALFUNC blnr Check_Checksum(ui5r CheckSum1)
 {
 	long int i;
 	ui5b CheckSum2 = 0;
@@ -618,7 +619,7 @@ LOCALFUNC blnr Check_Checksum(ui5b CheckSum1)
 
 GLOBALFUNC blnr ROM_Init(void)
 {
-	ui5b CheckSum = do_get_mem_long(ROM);
+	ui5r CheckSum = do_get_mem_long(ROM);
 
 	if (! Check_Checksum(CheckSum)) {
 		WarnMsgCorruptedROM();

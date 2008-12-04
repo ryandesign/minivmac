@@ -1,4 +1,3 @@
-
 #include <ConditionalMacros.h>
 #include <MacTypes.h>
 #include <NullDef.h>
@@ -19,6 +18,7 @@
 #include <CFString.h>
 #include <MacErrors.h>
 #include <MixedMode.h>
+#include <Gestalt.h>
 #include <MacMemory.h>
 #include <Patches.h>
 #include <DateTimeUtils.h>
@@ -51,7 +51,44 @@
 #include <Aliases.h>
 #include <NumberFormatting.h>
 
+#include <SegLoad.h>
+#include <Resources.h>
+#include <Events.h>
+#include <AEDataModel.h>
+#include <Notification.h>
+#include <AEInteraction.h>
+#include <AppleEvents.h>
+#include <Drag.h>
+#include <TextEdit.h>
+#include <AERegistry.h>
+#include <ATSTypes.h>
+#include <Fonts.h>
+#include <Processes.h>
+#include <Collections.h>
+#include <CFUUID.h>
+#include <Menus.h>
+#include <QDOffscreen.h>
+#include <TextCommon.h>
+#include <Icons.h>
+#include <MacWindows.h>
+#include <Controls.h>
+#include <CarbonEvents.h>
+#include <Dialogs.h>
+#include <ControlDefinitions.h>
+#include <Traps.h>
+#include <Scrap.h>
+#include <ToolUtils.h>
+#include <DiskInit.h>
+#include <LowMem.h>
 
-#define IsAnApp 0
+#define Have64kROM() (LMGetROM85() < 0)
 
-#include "app.c"
+#define ShouldDefineQDGlobals 1
+
+#if ShouldDefineQDGlobals
+/* GLOBALVAR */ QDGlobals qd;
+#endif
+
+#define IsAnApp 1
+
+#include <app.c>

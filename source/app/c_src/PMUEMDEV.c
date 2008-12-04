@@ -23,8 +23,6 @@
 #include "MYOSGLUE.h"
 #include "EMCONFIG.h"
 #include "GLOBGLUE.h"
-#include "ADDRSPAC.h"
-#include "PROGMAIN.h"
 #include "VIAEMDEV.h"
 #endif
 

@@ -2201,17 +2201,27 @@ LOCALPROC DrawCell(unsigned int h, unsigned int v, int x)
 				int k;
 				ui3b t0 = *p0;
 				ui3p p2 = p;
+				ui4r v;
 				for (k = 8; --k >= 0; ) {
-					*((ui4b *)p2)++ = ((t0 >> k) & 0x01) ? 0x0000 : 0x7FFF;
+					v = ((t0 >> k) & 0x01) ? 0x0000 : 0x7FFF;
 						/* black RRGGBBAA, white RRGGBBAA */
+					/* *((ui4b *)p2)++ = v; need big endian, so : */
+					*p2++ = v >> 8;
+					*p2++ = v;
 				}
 #elif 5 == vMacScreenDepth
 				int k;
 				ui3b t0 = *p0;
 				ui3p p2 = p;
+				ui5r v;
 				for (k = 8; --k >= 0; ) {
-					*((ui5b *)p2)++ = ((t0 >> k) & 0x01) ? 0x00000000 : 0x00FFFFFF;
+					v = ((t0 >> k) & 0x01) ? 0x00000000 : 0x00FFFFFF;
 						/* black RRGGBBAA, white RRGGBBAA */
+					/* *((ui5b *)p2)++ = v; need big endian, so : */
+					*p2++ = v >> 24;
+					*p2++ = v >> 16;
+					*p2++ = v >> 8;
+					*p2++ = v;
 				}
 #endif
 				p += vMacScreenByteWidth;

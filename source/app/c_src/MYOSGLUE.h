@@ -33,16 +33,6 @@
 #endif
 
 
-#define kEmMd_128K        0
-#define kEmMd_512Ke       1
-#define kEmMd_Plus        2
-#define kEmMd_SE          3
-#define kEmMd_SEFDHD      4
-#define kEmMd_Classic     5
-#define kEmMd_PB100       6
-#define kEmMd_II          7
-#define kEmMd_IIx         8
-
 EXPORTPROC WarnMsgCorruptedROM(void);
 EXPORTPROC WarnMsgUnsupportedROM(void);
 
@@ -66,17 +56,22 @@ EXPORTPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount);
 
 EXPORTVAR(ui3p, ROM)
 
+/*
+	error codes returned by Mini vMac extensions
+	(passed back to the emulated 68k code).
+*/
 
 #define tMacErr ui4r
 
-#define mnvm_noErr      ((tMacErr) 0)   /* 0x0000 - No Error */
-#define mnvm_miscErr    ((tMacErr) - 1)  /* 0xFFFF - Should probably replace these */
-#define mnvm_controlErr ((tMacErr) - 17) /* 0xFFEF - I/O System Errors */
-#define mnvm_eofErr     ((tMacErr) - 39) /* 0xFFD9 - End of file */
-#define mnvm_vLckdErr   ((tMacErr) - 46) /* 0xFFD2 - volume is locked */
-#define mnvm_nsDrvErr   ((tMacErr) - 56) /* 0xFFC8 - No Such Drive */
-#define mnvm_offLinErr  ((tMacErr) - 65) /* 0xFFBF - off-line drive */
-
+#define mnvm_noErr      ((tMacErr) 0x0000) /* (ui4b)    0 - No Error */
+#define mnvm_miscErr    ((tMacErr) 0xFFFF) /* (ui4b) -  1 - Should probably replace these */
+#define mnvm_controlErr ((tMacErr) 0xFFEF) /* (ui4b) - 17 - I/O System Errors */
+#define mnvm_statusErr  ((tMacErr) 0xFFEE) /* (ui4b) - 18 - Driver can't respond to Status call */
+#define mnvm_eofErr     ((tMacErr) 0xFFD9) /* (ui4b) - 39 - End of file */
+#define mnvm_vLckdErr   ((tMacErr) 0xFFD2) /* (ui4b) - 46 - volume is locked */
+#define mnvm_paramErr   ((tMacErr) 0xFFCE) /* (ui4b) - 50 - error in parameter list */
+#define mnvm_nsDrvErr   ((tMacErr) 0xFFC8) /* (ui4b) - 56 - No Such Drive */
+#define mnvm_offLinErr  ((tMacErr) 0xFFBF) /* (ui4b) - 65 - off-line drive */
 
 #if IncludePbufs
 

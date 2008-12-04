@@ -36,7 +36,7 @@
 #include "ENDIANAC.h"
 #include "MYOSGLUE.h"
 #include "EMCONFIG.h"
-#include "ADDRSPAC.h"
+#include "GLOBGLUE.h"
 
 #include "M68KITAB.h"
 #include "MINEM68K.h"
@@ -49,8 +49,8 @@ typedef unsigned char flagtype;
 
 LOCALVAR struct regstruct
 {
-	ui5b regs[16]; /* Data and Address registers */
-	ui5b pc; /* Program Counter */
+	ui5r regs[16]; /* Data and Address registers */
+	ui5r pc; /* Program Counter */
 	CPTR usp; /* User Stack Pointer */
 	CPTR isp; /* Interrupt Stack Pointer */
 #if Use68020
@@ -107,46 +107,57 @@ LOCALVAR struct regstruct
 #define m68k_dreg(num) (regs.regs[(num)])
 #define m68k_areg(num) (regs.regs[(num) + 8])
 
-LOCALFUNC MayNotInline si5b get_word(CPTR addr)
+#define ui5r_FromSByte(x) ((ui5r)(si5r)(si3b)(ui3b)(x))
+#define ui5r_FromSWord(x) ((ui5r)(si5r)(si4b)(ui4b)(x))
+#define ui5r_FromSLong(x) ((ui5r)(si5r)(si5b)(ui5b)(x))
+
+#define ui5r_FromUByte(x) ((ui5r)(ui3b)(x))
+#define ui5r_FromUWord(x) ((ui5r)(ui4b)(x))
+#define ui5r_FromULong(x) ((ui5r)(ui5b)(x))
+
+#define ui5r_MSBisSet(x) (((si5r)(x)) < 0)
+
+
+LOCALFUNC MayNotInline ui5r get_word(CPTR addr)
 {
 	ui3p ba = regs.fBankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
 		ui3p m = (addr & MemBankAddrMask) + ba;
-		return (si5b)(si4b)do_get_mem_word(m);
+		return ui5r_FromSWord(do_get_mem_word(m));
 	} else {
-		return (si5b)(si4b)(ui4b) MM_Access(0, falseblnr, falseblnr, addr);
+		return ui5r_FromSWord(MM_Access(0, falseblnr, falseblnr, addr));
 	}
 }
 
-LOCALFUNC MayNotInline si5b get_byte(CPTR addr)
+LOCALFUNC MayNotInline ui5r get_byte(CPTR addr)
 {
 	ui3p ba = regs.fBankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
 		ui3p m = (addr & MemBankAddrMask) + ba;
-		return (si5b)(si3b)*m;
+		return ui5r_FromSByte(*m);
 	} else {
-		return (si5b)(si3b)(ui3b) MM_Access(0, falseblnr, trueblnr, addr);
+		return ui5r_FromSByte(MM_Access(0, falseblnr, trueblnr, addr));
 	}
 }
 
-LOCALFUNC MayNotInline ui5b get_long(CPTR addr)
+LOCALFUNC MayNotInline ui5r get_long(CPTR addr)
 {
 	ui3p ba = regs.fBankReadAddr[bankindex(addr)];
 
 	if (ba != nullpr) {
 		ui3p m = (addr & MemBankAddrMask) + ba;
-		return do_get_mem_long(m);
+		return ui5r_FromSLong(do_get_mem_long(m));
 	} else {
-		si5b hi = get_word(addr);
-		si5b lo = get_word(addr + 2);
-		return (ui5b) ((((ui5b)hi) << 16) & 0xFFFF0000)
-			| (((ui5b)lo) & 0x0000FFFF);
+		ui5r hi = get_word(addr);
+		ui5r lo = get_word(addr + 2);
+		return ui5r_FromSLong(((hi << 16) & 0xFFFF0000)
+			| (lo & 0x0000FFFF));
 	}
 }
 
-LOCALPROC MayNotInline put_word(CPTR addr, ui5b w)
+LOCALPROC MayNotInline put_word(CPTR addr, ui5r w)
 {
 	ui3p ba = regs.fBankWritAddr[bankindex(addr)];
 
@@ -158,7 +169,7 @@ LOCALPROC MayNotInline put_word(CPTR addr, ui5b w)
 	}
 }
 
-LOCALPROC MayNotInline put_byte(CPTR addr, ui5b b)
+LOCALPROC MayNotInline put_byte(CPTR addr, ui5r b)
 {
 	ui3p ba = regs.fBankWritAddr[bankindex(addr)];
 
@@ -170,7 +181,7 @@ LOCALPROC MayNotInline put_byte(CPTR addr, ui5b b)
 	}
 }
 
-LOCALPROC MayNotInline put_long(CPTR addr, ui5b l)
+LOCALPROC MayNotInline put_long(CPTR addr, ui5r l)
 {
 	ui3p ba = regs.fBankWritAddr[bankindex(addr)];
 
@@ -236,7 +247,7 @@ LOCALFUNC MayInline void m68k_setCR(ui4b newcr)
 
 FORWARDPROC SetExternalInterruptPending(void);
 
-LOCALPROC m68k_setSR(ui4b newsr)
+LOCALPROC m68k_setSR(ui4r newsr)
 {
 	CPTR *pnewstk;
 	CPTR *poldstk = regs.s ? (
@@ -306,39 +317,40 @@ LOCALVAR ui3p pc_oldp;
 #endif
 
 
-LOCALFUNC MayInline ui5b nextibyte(void)
+LOCALFUNC MayInline ui3r nextibyte(void)
 {
 #if USE_POINTER
-	ui5b r = do_get_mem_byte(pc_p + 1);
+	ui3r r = do_get_mem_byte(pc_p + 1);
 	pc_p += 2;
 	return r;
 #else
-	ui5b r = (ui5b)get_byte(regs.pc + 1);
+	ui3r r = get_byte(regs.pc + 1);
 	regs.pc += 2;
 	return r & 0x00FF;
 #endif
 }
 
-LOCALFUNC MayInline ui5b nextiword(void)
+LOCALFUNC MayInline ui4r nextiword(void)
+/* NOT sign extended */
 {
 #if USE_POINTER
-	ui5b r = do_get_mem_word(pc_p);
+	ui4r r = do_get_mem_word(pc_p);
 	pc_p += 2;
 	return r;
 #else
-	ui5b r = (ui5b)get_word(regs.pc);
+	ui4r r = get_word(regs.pc);
 	regs.pc += 2;
 	return r & 0x0000FFFF;
 #endif
 }
 
-LOCALFUNC MayInline ui5b nextilong(void)
+LOCALFUNC MayInline ui5r nextilong(void)
 {
 #if USE_POINTER
-	ui5b r = do_get_mem_long(pc_p);
+	ui5r r = do_get_mem_long(pc_p);
 	pc_p += 4;
 #else
-	ui5b r = get_long(regs.pc);
+	ui5r r = get_long(regs.pc);
 	regs.pc += 4;
 #endif
 	return r;
@@ -681,8 +693,8 @@ LOCALVAR ui5b opsize;
 #define AKConstant 2
 
 union ArgAddrT {
-	ui5b mem;
-	ui5b *rga;
+	ui5r mem;
+	ui5r *rga;
 };
 typedef union ArgAddrT ArgAddrT;
 
@@ -728,7 +740,7 @@ LOCALPROC MayNotInline DecodeModeRegister(ui5b themode, ui5b thereg)
 			break;
 		case 5 :
 			ArgKind = AKMemory;
-			ArgAddr.mem = m68k_areg(thereg) + (si5b)(si4b)nextiword();
+			ArgAddr.mem = m68k_areg(thereg) + ui5r_FromSWord(nextiword());
 			break;
 		case 6 :
 			ArgKind = AKMemory;
@@ -738,7 +750,7 @@ LOCALPROC MayNotInline DecodeModeRegister(ui5b themode, ui5b thereg)
 			switch (thereg) {
 				case 0 :
 					ArgKind = AKMemory;
-					ArgAddr.mem = (si5b)(si4b)nextiword();
+					ArgAddr.mem = ui5r_FromSWord(nextiword());
 					break;
 				case 1 :
 					ArgKind = AKMemory;
@@ -747,7 +759,7 @@ LOCALPROC MayNotInline DecodeModeRegister(ui5b themode, ui5b thereg)
 				case 2 :
 					ArgKind = AKMemory;
 					ArgAddr.mem = m68k_getpc();
-					ArgAddr.mem += (si5b)(si4b)nextiword();
+					ArgAddr.mem += ui5r_FromSWord(nextiword());
 					break;
 				case 3 :
 					ArgKind = AKMemory;
@@ -756,11 +768,11 @@ LOCALPROC MayNotInline DecodeModeRegister(ui5b themode, ui5b thereg)
 				case 4 :
 					ArgKind = AKConstant;
 					if (opsize == 2) {
-						ArgAddr.mem = (si5b)(si4b)nextiword();
+						ArgAddr.mem = ui5r_FromSWord(nextiword());
 					} else if (opsize < 2) {
-						ArgAddr.mem = (si5b)(si3b)nextibyte();
+						ArgAddr.mem = ui5r_FromSByte(nextibyte());
 					} else {
-						ArgAddr.mem = nextilong();
+						ArgAddr.mem = ui5r_FromSLong(nextilong());
 					}
 					break;
 			}
@@ -772,9 +784,9 @@ LOCALPROC MayNotInline DecodeModeRegister(ui5b themode, ui5b thereg)
 	}
 }
 
-LOCALFUNC si5b GetArgValue(void)
+LOCALFUNC ui5r GetArgValue(void)
 {
-	si5b v;
+	ui5r v;
 
 	switch (ArgKind) {
 		case AKMemory:
@@ -789,9 +801,11 @@ LOCALFUNC si5b GetArgValue(void)
 		case AKRegister:
 			v = *ArgAddr.rga;
 			if (opsize == 2) {
-				v = (si5b)(si4b)v;
+				v = ui5r_FromSWord(v);
 			} else if (opsize < 2) {
-				v = (si5b)(si3b)v;
+				v = ui5r_FromSByte(v);
+			} else {
+				v = ui5r_FromSLong(v);
 			}
 			break;
 		case AKConstant:
@@ -802,7 +816,7 @@ LOCALFUNC si5b GetArgValue(void)
 	return v;
 }
 
-LOCALPROC SetArgValue(si5b v)
+LOCALPROC SetArgValue(ui5r v)
 {
 	if (ArgKind == AKRegister) {
 		if (opsize == 2) {
@@ -827,16 +841,20 @@ LOCALPROC SetArgValue(si5b v)
 
 #define extendopsizedstvalue() \
 	if (opsize == 2) {\
-		dstvalue = (si4b)dstvalue;\
+		dstvalue = ui5r_FromSWord(dstvalue);\
 	} else if (opsize < 2) {\
-		dstvalue = (si3b)dstvalue;\
+		dstvalue = ui5r_FromSByte(dstvalue);\
+	} else {\
+		dstvalue = ui5r_FromSLong(dstvalue);\
 	}
 
 #define unextendopsizedstvalue() \
 	if (opsize == 2) {\
-		dstvalue = (ui4b)dstvalue;\
+		dstvalue = ui5r_FromUWord(dstvalue);\
 	} else if (opsize < 2) {\
-		dstvalue = (ui3b)dstvalue;\
+		dstvalue = ui5r_FromUByte(dstvalue);\
+	} else {\
+		dstvalue = ui5r_FromULong(dstvalue);\
 	}
 
 LOCALVAR ui5b opcode;
@@ -866,7 +884,7 @@ LOCALPROC FindOpSizeFromb76(void)
 #endif
 }
 
-LOCALFUNC ui5b octdat(ui5b x)
+LOCALFUNC ui5r octdat(ui5r x)
 {
 	if (x == 0) {
 		return 8;
@@ -875,24 +893,28 @@ LOCALFUNC ui5b octdat(ui5b x)
 	}
 }
 
-LOCALFUNC si5b DecodeDEa_xxxxdddxssmmmrrr(void)
+LOCALFUNC ui5r DecodeDEa_xxxxdddxssmmmrrr(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
+
 	FindOpSizeFromb76();
 	srcvalue = regs.regs[rg9];
 	if (opsize == 2) {
-		srcvalue = (si5b)(si4b)srcvalue;
+		srcvalue = ui5r_FromSWord(srcvalue);
 	} else if (opsize < 2) {
-		srcvalue = (si5b)(si3b)srcvalue;
+		srcvalue = ui5r_FromSByte(srcvalue);
+	} else {
+		srcvalue = ui5r_FromSLong(srcvalue);
 	}
 	DecodeModeRegister(mode, reg);
 
 	return srcvalue;
 }
 
-LOCALFUNC si5b DecodeEaD_xxxxdddxssmmmrrr(void)
+LOCALFUNC ui5r DecodeEaD_xxxxdddxssmmmrrr(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
+
 	FindOpSizeFromb76();
 	DecodeModeRegister(mode, reg);
 	srcvalue = GetArgValue();
@@ -901,25 +923,27 @@ LOCALFUNC si5b DecodeEaD_xxxxdddxssmmmrrr(void)
 	return srcvalue;
 }
 
-LOCALFUNC si5b DecodeI_xxxxxxxxssmmmrrr(void)
+LOCALFUNC ui5r DecodeI_xxxxxxxxssmmmrrr(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
+
 	FindOpSizeFromb76();
 	if (opsize == 2) {
-		srcvalue = (si5b)(si4b)nextiword();
+		srcvalue = ui5r_FromSWord(nextiword());
 	} else if (opsize < 2) {
-		srcvalue = (si5b)(si3b)nextibyte();
+		srcvalue = ui5r_FromSByte(nextibyte());
 	} else {
-		srcvalue = nextilong();
+		srcvalue = ui5r_FromSLong(nextilong());
 	}
 	DecodeModeRegister(mode, reg);
 
 	return srcvalue;
 }
 
-LOCALFUNC si5b DecodeDD_xxxxdddxssxxxrrr(void)
+LOCALFUNC ui5r DecodeDD_xxxxdddxssxxxrrr(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
+
 	FindOpSizeFromb76();
 	SetArgKindReg(reg);
 	srcvalue = GetArgValue();
@@ -928,9 +952,10 @@ LOCALFUNC si5b DecodeDD_xxxxdddxssxxxrrr(void)
 	return srcvalue;
 }
 
-LOCALFUNC si5b DecodeAAs_xxxxdddxssxxxrrr(void)
+LOCALFUNC ui5r DecodeAAs_xxxxdddxssxxxrrr(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
+
 	FindOpSizeFromb76();
 	DecodeModeRegister(4, reg);
 	srcvalue = GetArgValue();
@@ -939,16 +964,17 @@ LOCALFUNC si5b DecodeAAs_xxxxdddxssxxxrrr(void)
 	return srcvalue;
 }
 
-LOCALFUNC si5b Decode_xxxxnnnxssmmmrrr(void)
+LOCALFUNC ui5r Decode_xxxxnnnxssmmmrrr(void)
 {
 	FindOpSizeFromb76();
 	DecodeModeRegister(mode, reg);
 	return octdat(rg9);
 }
 
-LOCALFUNC si5b DecodesAA_xxxxdddxssxxxrrr(void)
+LOCALFUNC ui5r DecodesAA_xxxxdddxssxxxrrr(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
+
 	FindOpSizeFromb76();
 	DecodeModeRegister(3, reg);
 	srcvalue = GetArgValue();
@@ -959,8 +985,8 @@ LOCALFUNC si5b DecodesAA_xxxxdddxssxxxrrr(void)
 
 LOCALPROCUSEDONCE DoCodeTst(void)
 {
-	/* Tst  01001010ssmmmrrr */
-	si5b srcvalue;
+	/* Tst 01001010ssmmmrrr */
+	ui5r srcvalue;
 
 	FindOpSizeFromb76();
 	DecodeModeRegister(mode, reg);
@@ -968,18 +994,18 @@ LOCALPROCUSEDONCE DoCodeTst(void)
 
 	VFLG = CFLG = 0;
 	ZFLG = (srcvalue == 0);
-	NFLG = (srcvalue < 0);
+	NFLG = ui5r_MSBisSet(srcvalue);
 }
 
-LOCALPROC DoCompare(si5b srcvalue)
+LOCALPROC DoCompare(ui5r srcvalue)
 {
-	si5b dstvalue = GetArgValue();
-	int flgs = (srcvalue < 0);
-	int flgo = (dstvalue < 0);
+	ui5r dstvalue = GetArgValue();
+	int flgs = ui5r_MSBisSet(srcvalue);
+	int flgo = ui5r_MSBisSet(dstvalue);
 	dstvalue -= srcvalue;
 	extendopsizedstvalue();
 	ZFLG = (dstvalue == 0);
-	NFLG = (dstvalue < 0);
+	NFLG = ui5r_MSBisSet(dstvalue);
 	VFLG = (flgs != flgo) && (NFLG != flgo);
 	CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 }
@@ -1031,21 +1057,21 @@ LOCALPROCUSEDONCE DoCodeBra(void)
 #if FastRelativeJump
 	ui3p s = pc_p;
 #else
-	ui5b s = m68k_getpc();
+	ui5r s = m68k_getpc();
 #endif
 
 	if (src == 0) {
-		s += (si5b)(si4b)nextiword();
+		s += ui5r_FromSWord(nextiword());
 	} else
 #if Use68020
 	if (src == 255) {
-		s += (si5b)nextilong();
+		s += ui5r_FromSLong(nextilong());
 		/* ReportAbnormal("long branch in DoCode6"); */
 		/* Used by various Apps */
 	} else
 #endif
 	{
-		s += (si5b)(si3b)src;
+		s += ui5r_FromSByte(src);
 	}
 
 	/* Bra 0110ccccnnnnnnnn */
@@ -1088,20 +1114,20 @@ LOCALPROCUSEDONCE DoCodeDBcc(void)
 {
 	/* DBcc 0101cccc11001ddd */
 
-	si5b dstvalue;
+	ui5r dstvalue;
 #if FastRelativeJump
 	ui3p srcvalue = pc_p;
 #else
-	si5b srcvalue = m68k_getpc();
+	ui5r srcvalue = m68k_getpc();
 #endif
 
 	srcvalue += (si5b)(si4b)nextiword();
 	if (! cctrue()) {
-		dstvalue = (si5b)(si4b)m68k_dreg(reg);
+		dstvalue = ui5r_FromSWord(m68k_dreg(reg));
 		--dstvalue;
 		m68k_dreg(reg) = (m68k_dreg(reg) & ~ 0xffff)
 			| ((dstvalue) & 0xffff);
-		if (dstvalue != -1) {
+		if ((si5b)dstvalue != -1) {
 #if FastRelativeJump
 			pc_p = srcvalue;
 #else
@@ -1114,25 +1140,25 @@ LOCALPROCUSEDONCE DoCodeDBcc(void)
 LOCALPROCUSEDONCE DoCodeSwap(void)
 {
 	/* Swap 0100100001000rrr */
-	ui5b srcreg = reg;
-	ui5b src = (ui5b)m68k_dreg(srcreg);
-	si5b dst = (si5b)(((src >> 16) & 0xFFFF) | ((src&0xFFFF) << 16));
+	ui5r srcreg = reg;
+	ui5r src = m68k_dreg(srcreg);
+	ui5r dst = ui5r_FromSLong(((src >> 16) & 0xFFFF) | ((src & 0xFFFF) << 16));
 	VFLG = CFLG = 0;
 	ZFLG = (dst == 0);
-	NFLG = (dst < 0);
+	NFLG = ui5r_MSBisSet(dst);
 	m68k_dreg(srcreg) = dst;
 }
 
 LOCALPROC DoMove(void) /* MOVE */
 {
-	si5b src;
+	ui5r src;
 
 	DecodeModeRegister(mode, reg);
 	src = GetArgValue();
 	DecodeModeRegister(md6, rg9);
 	VFLG = CFLG = 0;
 	ZFLG = (src == 0);
-	NFLG = (src < 0);
+	NFLG = ui5r_MSBisSet(src);
 	SetArgValue(src);
 }
 
@@ -1156,7 +1182,7 @@ LOCALPROCUSEDONCE DoCodeMoveB(void)
 
 LOCALPROC DoMoveA(void) /* MOVE */
 {
-	si5b src;
+	ui5r src;
 
 	DecodeModeRegister(mode, reg);
 	src = GetArgValue();
@@ -1178,26 +1204,26 @@ LOCALPROCUSEDONCE DoCodeMoveAW(void)
 LOCALPROCUSEDONCE DoCodeMoveQ(void)
 {
 	/* MoveQ 0111ddd0nnnnnnnn */
-	ui5b src = (si5b)(si3b)(opcode & 255);
-	ui5b dstreg = rg9;
+	ui5r src = ui5r_FromSByte(opcode);
+	ui5r dstreg = rg9;
 	VFLG = CFLG = 0;
-	ZFLG = ((si5b)(src)) == 0;
-	NFLG = ((si5b)(src)) < 0;
-	m68k_dreg(dstreg) = (src);
+	ZFLG = (src == 0);
+	NFLG = ui5r_MSBisSet(src);
+	m68k_dreg(dstreg) = src;
 }
 
-LOCALPROC DoBinOpAdd(si5b srcvalue)
+LOCALPROC DoBinOpAdd(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	{
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		dstvalue = (dstvalue + srcvalue);
 		extendopsizedstvalue();
 		ZFLG = (dstvalue == 0);
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs && flgo && ! NFLG) || ((! flgs) && (! flgo) && NFLG);
 		XFLG = CFLG = (flgs && flgo) || ((! NFLG) && (flgo || flgs));
 	}
@@ -1225,18 +1251,18 @@ LOCALPROCUSEDONCE DoCodeAddREa(void)
 	DoBinOpAdd(DecodeDEa_xxxxdddxssmmmrrr());
 }
 
-LOCALPROC DoBinOpSub(si5b srcvalue)
+LOCALPROC DoBinOpSub(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	{
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		dstvalue = dstvalue - srcvalue;
 		extendopsizedstvalue();
 		ZFLG = (dstvalue == 0);
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
 		XFLG = CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 	}
@@ -1291,7 +1317,7 @@ LOCALPROCUSEDONCE DoCodeBsr(void)
 #if FastRelativeJump
 	ui3p s = pc_p;
 #else
-	ui5b s = m68k_getpc();
+	ui5r s = m68k_getpc();
 #endif
 
 	if (src == 0) {
@@ -1333,15 +1359,15 @@ LOCALPROCUSEDONCE DoCodeLinkA6(void)
 	stackp -= 4;
 	put_long(stackp, m68k_areg(6));
 	m68k_areg(6) = stackp;
-	m68k_areg(7) = stackp + (si5b)(si4b)nextiword();
+	m68k_areg(7) = stackp + ui5r_FromSWord(nextiword());
 }
 
 LOCALPROCUSEDONCE DoCodeMOVEMRmML(void)
 {
 	/* MOVEM reg to mem 01001000111100rrr */
 	si4b z;
-	ui5b regmask = nextiword();
-	si5b p = m68k_areg(reg);
+	ui5r regmask = nextiword();
+	ui5r p = m68k_areg(reg);
 
 #if Use68020
 	{
@@ -1370,11 +1396,11 @@ LOCALPROCUSEDONCE DoCodeMOVEMApRL(void)
 {
 	/* MOVEM mem to reg 01001100111011rrr */
 	si4b z;
-	ui5b regmask = nextiword();
-	si5b p = m68k_areg(reg);
+	ui5r regmask = nextiword();
+	ui5r p = m68k_areg(reg);
 
 	for (z = 0; z < 16; ++z) {
-		if ((regmask & (1 << (z))) != 0) {
+		if ((regmask & (1 << z)) != 0) {
 			regs.regs[z] = get_long(p);
 			p += 4;
 		}
@@ -1384,7 +1410,7 @@ LOCALPROCUSEDONCE DoCodeMOVEMApRL(void)
 
 LOCALPROCUSEDONCE DoCodeUnlkA6(void)
 {
-	si5b src = m68k_areg(6);
+	ui5r src = m68k_areg(6);
 	m68k_areg(6) = get_long(src);
 	m68k_areg(7) =  src + 4;
 }
@@ -1392,7 +1418,7 @@ LOCALPROCUSEDONCE DoCodeUnlkA6(void)
 LOCALPROCUSEDONCE DoCodeRts(void)
 {
 	/* Rts 0100111001110101 */
-	ui5b NewPC = get_long(m68k_areg(7));
+	ui5r NewPC = get_long(m68k_areg(7));
 	m68k_areg(7) += 4;
 	m68k_setpc(NewPC);
 }
@@ -1419,7 +1445,7 @@ LOCALPROCUSEDONCE DoCodeClr(void)
 LOCALPROCUSEDONCE DoCodeAddA(void)
 {
 	/* ADDA 1101dddm11mmmrrr */
-	si5b srcvalue;
+	ui5r srcvalue;
 
 	opsize = b8 * 2 + 2;
 	DecodeModeRegister(mode, reg);
@@ -1435,7 +1461,7 @@ LOCALPROCUSEDONCE DoCodeAddQA(void)
 
 LOCALPROCUSEDONCE DoCodeSubA(void)
 {
-	si5b srcvalue;
+	ui5r srcvalue;
 
 	/* SUBA 1001dddm11mmmrrr */
 	opsize = b8 * 2 + 2;
@@ -1452,39 +1478,40 @@ LOCALPROCUSEDONCE DoCodeSubQA(void)
 
 LOCALPROCUSEDONCE DoCodeCmpA(void)
 {
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = b8 * 2 + 2;
 	DecodeModeRegister(mode, reg);
 	srcvalue = GetArgValue();
 
-	dstvalue = m68k_areg(rg9);
+	dstvalue = ui5r_FromSLong(m68k_areg(rg9));
 	{
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		dstvalue -= srcvalue;
+		dstvalue = ui5r_FromSLong(dstvalue);
 		ZFLG = (dstvalue == 0);
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
 		CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 	}
 }
 
-LOCALPROC DoBinOpAddX(si5b srcvalue)
+LOCALPROC DoBinOpAddX(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	{
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		dstvalue += srcvalue + (XFLG ? 1 : 0);
 		extendopsizedstvalue();
 		if (dstvalue != 0) {
 			ZFLG = 0;
 		}
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		XFLG = CFLG = (flgs && flgo) || ((! NFLG) && (flgo || flgs));
 		VFLG = (flgs && flgo && ! NFLG) || ((! flgs) && (! flgo) && NFLG);
 	}
@@ -1501,20 +1528,20 @@ LOCALPROCUSEDONCE DoCodeAddXm(void)
 	DoBinOpAddX(DecodeAAs_xxxxdddxssxxxrrr());
 }
 
-LOCALPROC DoBinOpSubX(si5b srcvalue)
+LOCALPROC DoBinOpSubX(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	{
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		dstvalue = dstvalue - srcvalue - (XFLG ? 1 : 0);
 		extendopsizedstvalue();
 		if (dstvalue != 0) {
 			ZFLG = 0;
 		}
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = ((! flgs) && flgo && (! NFLG)) || (flgs && (! flgo) && NFLG);
 		XFLG = CFLG = (flgs && (! flgo)) || (NFLG && ((! flgo) || flgs));
 	}
@@ -1540,17 +1567,17 @@ LOCALPROCUSEDONCE DoCodeSubXm(void)
 #define BinOpROL 6
 #define BinOpROR 7
 
-LOCALPROC DoBinOp1(si5b srcvalue, ui5b binop)
+LOCALPROC DoBinOp1(ui5r srcvalue, ui5r binop)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
+	ui5r cnt = srcvalue & 63;
 
 	dstvalue = GetArgValue();
 	switch (binop) {
 		case BinOpASL:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
-				si5b dstvalue0 = dstvalue;
-				si5b comparevalue;
+				ui5r dstvalue0 = dstvalue;
+				ui5r comparevalue;
 				if (! cnt) {
 					VFLG = 0;
 					CFLG = 0;
@@ -1558,27 +1585,26 @@ LOCALPROC DoBinOp1(si5b srcvalue, ui5b binop)
 					if (cnt > 32) {
 						dstvalue = 0;
 					} else {
-						dstvalue = (si5b)(((ui5b)dstvalue) << (cnt - 1));
+						dstvalue = dstvalue << (cnt - 1);
 					}
 					extendopsizedstvalue();
-					CFLG = XFLG = (dstvalue < 0);
-					dstvalue = (si5b)(((ui5b)dstvalue) << 1);
+					CFLG = XFLG = ui5r_MSBisSet(dstvalue);
+					dstvalue = dstvalue << 1;
 					extendopsizedstvalue();
 				}
-				if (dstvalue < 0) {
-					comparevalue = - (si5b)(((ui5b) - dstvalue) >> (cnt));
+				if (ui5r_MSBisSet(dstvalue)) {
+					comparevalue = - ((- dstvalue) >> cnt);
 				} else {
-					comparevalue = (si5b)(((ui5b)dstvalue) >> (cnt));
+					comparevalue = dstvalue >> cnt;
 				}
 				VFLG = (comparevalue != dstvalue0);
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 			}
 			break;
 		case BinOpASR:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 				VFLG = 0;
 				if (! cnt) {
 					CFLG = 0;
@@ -1590,10 +1616,10 @@ LOCALPROC DoBinOp1(si5b srcvalue, ui5b binop)
 					if (cnt > 32) {
 						dstvalue = 0;
 					} else {
-						dstvalue = (si5b)(((ui5b)dstvalue) >> (cnt - 1));
+						dstvalue = dstvalue >> (cnt - 1);
 					}
-					CFLG = ((ui5b)dstvalue & 1);
-					dstvalue = (si5b)(((ui5b)dstvalue) >> 1);
+					CFLG = (dstvalue & 1) != 0;
+					dstvalue = dstvalue >> 1;
 					if (NFLG) {
 						CFLG = ! CFLG;
 						dstvalue = (~ dstvalue);
@@ -1605,28 +1631,26 @@ LOCALPROC DoBinOp1(si5b srcvalue, ui5b binop)
 			break;
 		case BinOpLSL:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
 				if (! cnt) {
 					CFLG = 0;
 				} else {
 					if (cnt > 32) {
 						dstvalue = 0;
 					} else {
-						dstvalue = (si5b)(((ui5b)dstvalue) << (cnt - 1));
+						dstvalue = dstvalue << (cnt - 1);
 					}
 					extendopsizedstvalue();
-					CFLG = XFLG = (dstvalue < 0);
-					dstvalue = (si5b)(((ui5b)dstvalue) << 1);
+					CFLG = XFLG = ui5r_MSBisSet(dstvalue);
+					dstvalue = dstvalue << 1;
 					extendopsizedstvalue();
 				}
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 				VFLG = 0;
 			}
 			break;
 		case BinOpLSR:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
 				if (! cnt) {
 					CFLG = 0;
 				} else {
@@ -1634,99 +1658,96 @@ LOCALPROC DoBinOp1(si5b srcvalue, ui5b binop)
 					if (cnt > 32) {
 						dstvalue = 0;
 					} else {
-						dstvalue = (si5b)(((ui5b)dstvalue) >> (cnt - 1));
+						dstvalue = dstvalue >> (cnt - 1);
 					}
-					CFLG = XFLG = ((ui5b)dstvalue & 1);
-					dstvalue = (si5b)(((ui5b)dstvalue) >> 1);
+					CFLG = XFLG = (dstvalue & 1) != 0;
+					dstvalue = dstvalue >> 1;
 				}
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
+					/* if cnt != 0, always false */
 				VFLG = 0;
 			}
 			break;
 		case BinOpROL:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
 				if (! cnt) {
 					CFLG = 0;
 				} else {
 					for (; cnt; --cnt) {
-						CFLG = (dstvalue < 0);
-						dstvalue = (si5b)(((ui5b)dstvalue) << 1);
+						CFLG = ui5r_MSBisSet(dstvalue);
+						dstvalue = dstvalue << 1;
 						if (CFLG) {
-							dstvalue = (si5b)(((ui5b)dstvalue) | 1);
+							dstvalue = dstvalue | 1;
 						}
 						extendopsizedstvalue();
 					}
 				}
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 				VFLG = 0;
 			}
 			break;
 		case BinOpRXL:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
 				if (! cnt) {
 					CFLG = XFLG;
 				} else {
 					for (; cnt; --cnt) {
-						CFLG = (dstvalue < 0);
-						dstvalue = (si5b)(((ui5b)dstvalue) << 1);
+						CFLG = ui5r_MSBisSet(dstvalue);
+						dstvalue = dstvalue << 1;
 						if (XFLG) {
-							dstvalue = (si5b)(((ui5b)dstvalue) | 1);
+							dstvalue = dstvalue | 1;
 						}
 						extendopsizedstvalue();
 						XFLG = CFLG;
 					}
 				}
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 				VFLG = 0;
 			}
 			break;
 		case BinOpROR:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
-				ui5b cmask = (ui5b)1 << (opsize * 8 - 1);
+				ui5r cmask = (ui5r)1 << (opsize * 8 - 1);
 				if (! cnt) {
 					CFLG = 0;
 				} else {
 					unextendopsizedstvalue();
 					for (; cnt; --cnt) {
-						CFLG = ((((ui5b)dstvalue) & 1) != 0);
-						dstvalue = (si5b)(((ui5b)dstvalue) >> 1);
+						CFLG = (dstvalue & 1) != 0;
+						dstvalue = dstvalue >> 1;
 						if (CFLG) {
-							dstvalue = (si5b)(((ui5b)dstvalue) | cmask);
+							dstvalue = dstvalue | cmask;
 						}
 					}
 					extendopsizedstvalue();
 				}
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 				VFLG = 0;
 			}
 			break;
 		case BinOpRXR:
 			{
-				ui5b cnt = ((ui5b)srcvalue) & 63;
-				ui5b cmask = (ui5b)1 << (opsize * 8 - 1);
+				ui5r cmask = (ui5r)1 << (opsize * 8 - 1);
 				if (! cnt) {
 					CFLG = XFLG;
 				} else {
 					unextendopsizedstvalue();
 					for (; cnt; --cnt) {
-						CFLG = ((((ui5b)dstvalue) & 1) != 0);
-						dstvalue = (si5b)(((ui5b)dstvalue) >> 1);
+						CFLG = (dstvalue & 1) != 0;
+						dstvalue = dstvalue >> 1;
 						if (XFLG) {
-							dstvalue = (si5b)(((ui5b)dstvalue) | cmask);
+							dstvalue = dstvalue | cmask;
 						}
 						XFLG = CFLG;
 					}
 					extendopsizedstvalue();
 				}
 				ZFLG = (dstvalue == 0);
-				NFLG = (dstvalue < 0);
+				NFLG = ui5r_MSBisSet(dstvalue);
 				VFLG = 0;
 			}
 			break;
@@ -1737,9 +1758,9 @@ LOCALPROC DoBinOp1(si5b srcvalue, ui5b binop)
 	SetArgValue(dstvalue);
 }
 
-LOCALFUNC ui5b rolops(ui5b x)
+LOCALFUNC ui5r rolops(ui5r x)
 {
-	ui5b binop;
+	ui5r binop;
 
 	binop = (x << 1);
 	if (! b8) {
@@ -1766,7 +1787,7 @@ LOCALPROCUSEDONCE DoCodeRolopND(void)
 LOCALPROCUSEDONCE DoCodeRolopDD(void)
 {
 	/* 1110rrrdss1ttddd */
-	si5b srcvalue;
+	ui5r srcvalue;
 	FindOpSizeFromb76();
 	SetArgKindReg(rg9);
 	srcvalue = GetArgValue();
@@ -1779,14 +1800,14 @@ LOCALPROCUSEDONCE DoCodeRolopDD(void)
 #define BinOpBClr 2
 #define BinOpBSet 3
 
-LOCALPROC DoBinBitOp1(si5b srcvalue)
+LOCALPROC DoBinBitOp1(ui5r srcvalue)
 {
-	si5b dstvalue;
-	ui5b binop;
+	ui5r dstvalue;
+	ui5r binop;
 
 	dstvalue = GetArgValue();
 
-	ZFLG = (((ui5b)dstvalue & ((ui5b)1 << srcvalue)) == 0);
+	ZFLG = ((dstvalue & ((ui5r)1 << srcvalue)) == 0);
 	binop = b76;
 	if (binop != BinOpBTst) {
 		switch (binop) {
@@ -1810,7 +1831,7 @@ LOCALPROC DoBinBitOp1(si5b srcvalue)
 LOCALPROCUSEDONCE DoCodeBitOpDD(void)
 {
 	/* dynamic bit, Opcode = 0000ddd1tt000rrr */
-	si5b srcvalue = ((si5b)(si3b)m68k_dreg(rg9)) & 31;
+	ui5r srcvalue = (ui5r_FromSByte(m68k_dreg(rg9))) & 31;
 	opsize = 4;
 	SetArgKindReg(reg);
 	DoBinBitOp1(srcvalue);
@@ -1819,7 +1840,7 @@ LOCALPROCUSEDONCE DoCodeBitOpDD(void)
 LOCALPROCUSEDONCE DoCodeBitOpDM(void)
 {
 	/* dynamic bit, Opcode = 0000ddd1ttmmmrrr */
-	si5b srcvalue = ((si5b)(si3b)m68k_dreg(rg9)) & 7;
+	ui5r srcvalue = (ui5r_FromSByte(m68k_dreg(rg9))) & 7;
 	opsize = 1;
 	DecodeModeRegister(mode, reg);
 	DoBinBitOp1(srcvalue);
@@ -1828,7 +1849,7 @@ LOCALPROCUSEDONCE DoCodeBitOpDM(void)
 LOCALPROCUSEDONCE DoCodeBitOpND(void)
 {
 	/* static bit 00001010tt000rrr */
-	si5b srcvalue = ((si5b)(si3b)nextibyte()) & 31;
+	ui5r srcvalue = (ui5r_FromSByte(nextibyte())) & 31;
 	opsize = 4;
 	SetArgKindReg(reg);
 	DoBinBitOp1(srcvalue);
@@ -1837,21 +1858,25 @@ LOCALPROCUSEDONCE DoCodeBitOpND(void)
 LOCALPROCUSEDONCE DoCodeBitOpNM(void)
 {
 	/* static bit 00001010ttmmmrrr */
-	si5b srcvalue = ((si5b)(si3b)nextibyte()) & 7;
+	ui5r srcvalue = (ui5r_FromSByte(nextibyte())) & 7;
 	opsize = 1;
 	DecodeModeRegister(mode, reg);
 	DoBinBitOp1(srcvalue);
 }
 
-LOCALPROC DoBinOpAnd(si5b srcvalue)
+LOCALPROC DoBinOpAnd(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	dstvalue &= srcvalue;
+		/*
+			don't need to extend, since excess high
+			bits all the same as desired high bit.
+		*/
 	VFLG = CFLG = 0;
 	ZFLG = (dstvalue == 0);
-	NFLG = (dstvalue < 0);
+	NFLG = ui5r_MSBisSet(dstvalue);
 	SetArgValue(dstvalue);
 }
 
@@ -1872,15 +1897,19 @@ LOCALPROCUSEDONCE DoCodeAndEaD(void)
 	DoBinOpAnd(DecodeEaD_xxxxdddxssmmmrrr());
 }
 
-LOCALPROC DoBinOr(si5b srcvalue)
+LOCALPROC DoBinOr(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	dstvalue |= srcvalue;
+		/*
+			don't need to extend, since excess high
+			bits all the same as desired high bit.
+		*/
 	VFLG = CFLG = 0;
 	ZFLG = (dstvalue == 0);
-	NFLG = (dstvalue < 0);
+	NFLG = ui5r_MSBisSet(dstvalue);
 	SetArgValue(dstvalue);
 }
 
@@ -1901,15 +1930,19 @@ LOCALPROCUSEDONCE DoCodeOrEaD(void)
 	DoBinOr(DecodeEaD_xxxxdddxssmmmrrr());
 }
 
-LOCALPROC DoBinOpEor(si5b srcvalue)
+LOCALPROC DoBinOpEor(ui5r srcvalue)
 {
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	dstvalue = GetArgValue();
 	dstvalue ^= srcvalue;
+		/*
+			don't need to extend, since excess high
+			bits all the same as desired high bit.
+		*/
 	VFLG = CFLG = 0;
 	ZFLG = (dstvalue == 0);
-	NFLG = (dstvalue < 0);
+	NFLG = ui5r_MSBisSet(dstvalue);
 	SetArgValue(dstvalue);
 }
 
@@ -1927,7 +1960,7 @@ LOCALPROCUSEDONCE DoCodeEor(void)
 LOCALPROCUSEDONCE DoCodeNot(void)
 {
 	/* Not 01000110ssmmmrrr */
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	FindOpSizeFromb76();
 	DecodeModeRegister(mode, reg);
@@ -1936,7 +1969,7 @@ LOCALPROCUSEDONCE DoCodeNot(void)
 		dstvalue = ~ dstvalue;
 		extendopsizedstvalue();
 		ZFLG = (dstvalue == 0);
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = CFLG = 0;
 	}
 	SetArgValue(dstvalue);
@@ -1953,41 +1986,41 @@ LOCALPROCUSEDONCE DoCodeScc(void)
 LOCALPROCUSEDONCE DoCodeEXTL(void)
 {
 	/* EXT.L */
-	ui5b srcreg = reg;
-	si5b src = m68k_dreg(srcreg);
-	ui5b dst = (si5b)(si4b)src;
+	ui5r srcreg = reg;
+	ui5r src = m68k_dreg(srcreg);
+	ui5r dst = ui5r_FromSWord(src);
 	VFLG = CFLG = 0;
-	ZFLG = ((si5b)(dst)) == 0;
-	NFLG = ((si5b)(dst)) < 0;
-	m68k_dreg(srcreg) = (dst);
+	ZFLG = (dst == 0);
+	NFLG = ui5r_MSBisSet(dst);
+	m68k_dreg(srcreg) = dst;
 }
 
 LOCALPROCUSEDONCE DoCodeEXTW(void)
 {
 	/* EXT.W */
-	ui5b srcreg = reg;
-	si5b src = m68k_dreg(srcreg);
-	ui4b dst = (si4b)(si3b)src;
+	ui5r srcreg = reg;
+	ui5r src = m68k_dreg(srcreg);
+	ui5r dst = ui5r_FromSByte(src);
 	VFLG = CFLG = 0;
-	ZFLG = ((si4b)(dst)) == 0;
-	NFLG = ((si4b)(dst)) < 0;
-	m68k_dreg(srcreg) = (m68k_dreg(srcreg) & ~ 0xffff) | ((dst) & 0xffff);
+	ZFLG = (dst == 0);
+	NFLG = ui5r_MSBisSet(dst);
+	m68k_dreg(srcreg) = (m68k_dreg(srcreg) & ~ 0xffff) | (dst & 0xffff);
 }
 
 LOCALPROCUSEDONCE DoCodeNeg(void)
 {
 	/* Neg 01000100ssmmmrrr */
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	FindOpSizeFromb76();
 	DecodeModeRegister(mode, reg);
 	dstvalue = GetArgValue();
 	{
-		int flgs = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(dstvalue);
 		dstvalue = 0 - dstvalue;
 		extendopsizedstvalue();
 		ZFLG = (dstvalue == 0);
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs && NFLG);
 		XFLG = CFLG = (flgs || NFLG);
 	}
@@ -1997,19 +2030,19 @@ LOCALPROCUSEDONCE DoCodeNeg(void)
 LOCALPROCUSEDONCE DoCodeNegX(void)
 {
 	/* NegX 01000000ssmmmrrr */
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	FindOpSizeFromb76();
 	DecodeModeRegister(mode, reg);
 	dstvalue = GetArgValue();
 	{
-		int flgs = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(dstvalue);
 		dstvalue = 0 - dstvalue - (XFLG ? 1 : 0);
 		extendopsizedstvalue();
 		if (dstvalue != 0) {
 			ZFLG = 0;
 		}
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs && NFLG);
 		XFLG = CFLG = (flgs || NFLG);
 	}
@@ -2019,40 +2052,40 @@ LOCALPROCUSEDONCE DoCodeNegX(void)
 LOCALPROCUSEDONCE DoCodeMulU(void)
 {
 	/* MulU 1100ddd011mmmrrr */
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = 2;
 	DecodeModeRegister(mode, reg);
 	srcvalue = GetArgValue();
-	dstvalue = (ui5b)(ui4b)regs.regs[rg9] * (ui5b)(ui4b)srcvalue;
+	dstvalue = ui5r_FromSLong(ui5r_FromUWord(regs.regs[rg9]) * ui5r_FromUWord(srcvalue));
 	VFLG = CFLG = 0;
 	ZFLG = (dstvalue == 0);
-	NFLG = (dstvalue < 0);
+	NFLG = ui5r_MSBisSet(dstvalue);
 	regs.regs[rg9] = dstvalue;
 }
 
 LOCALPROCUSEDONCE DoCodeMulS(void)
 {
 	/* MulS 1100ddd111mmmrrr */
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = 2;
 	DecodeModeRegister(mode, reg);
 	srcvalue = GetArgValue();
-	dstvalue = (si5b)(si4b)regs.regs[rg9] * (si5b)(si4b)srcvalue;
+	dstvalue = ui5r_FromSLong((si5b)(si4b)regs.regs[rg9] * (si5b)(si4b)srcvalue);
 	VFLG = CFLG = 0;
 	ZFLG = (dstvalue == 0);
-	NFLG = (dstvalue < 0);
+	NFLG = ui5r_MSBisSet(dstvalue);
 	regs.regs[rg9] = dstvalue;
 }
 
 LOCALPROCUSEDONCE DoCodeDivU(void)
 {
 	/* DivU 1000ddd011mmmrrr */
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = 2;
 	DecodeModeRegister(mode, reg);
@@ -2080,8 +2113,8 @@ LOCALPROCUSEDONCE DoCodeDivU(void)
 LOCALPROCUSEDONCE DoCodeDivS(void)
 {
 	/* DivS 1000ddd111mmmrrr */
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = 2;
 	DecodeModeRegister(mode, reg);
@@ -2109,10 +2142,10 @@ LOCALPROCUSEDONCE DoCodeDivS(void)
 LOCALPROCUSEDONCE DoCodeExgdd(void)
 {
 	/* Exg 1100ddd101000rrr, opsize = 4 */
-	ui5b srcreg = rg9;
-	ui5b dstreg = reg;
-	si5b src = m68k_dreg(srcreg);
-	si5b dst = m68k_dreg(dstreg);
+	ui5r srcreg = rg9;
+	ui5r dstreg = reg;
+	ui5r src = m68k_dreg(srcreg);
+	ui5r dst = m68k_dreg(dstreg);
 	m68k_dreg(srcreg) = dst;
 	m68k_dreg(dstreg) = src;
 }
@@ -2120,10 +2153,10 @@ LOCALPROCUSEDONCE DoCodeExgdd(void)
 LOCALPROCUSEDONCE DoCodeExgaa(void)
 {
 	/* Exg 1100ddd101001rrr, opsize = 4 */
-	ui5b srcreg = rg9;
-	ui5b dstreg = reg;
-	si5b src = m68k_areg(srcreg);
-	si5b dst = m68k_areg(dstreg);
+	ui5r srcreg = rg9;
+	ui5r dstreg = reg;
+	ui5r src = m68k_areg(srcreg);
+	ui5r dst = m68k_areg(dstreg);
 	m68k_areg(srcreg) = dst;
 	m68k_areg(dstreg) = src;
 }
@@ -2131,10 +2164,10 @@ LOCALPROCUSEDONCE DoCodeExgaa(void)
 LOCALPROCUSEDONCE DoCodeExgda(void)
 {
 	/* Exg 1100ddd110001rrr, opsize = 4 */
-	ui5b srcreg = rg9;
-	ui5b dstreg = reg;
-	si5b src = m68k_dreg(srcreg);
-	si5b dst = m68k_areg(dstreg);
+	ui5r srcreg = rg9;
+	ui5r dstreg = reg;
+	ui5r src = m68k_dreg(srcreg);
+	ui5r dst = m68k_areg(dstreg);
 	m68k_dreg(srcreg) = dst;
 	m68k_areg(dstreg) = src;
 }
@@ -2177,15 +2210,15 @@ LOCALPROCUSEDONCE DoCodeMoveEaSR(void)
 LOCALPROC DoBinOpStatusCCR(void)
 {
 	blnr IsStatus = (b76 != 0);
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	FindOpSizeFromb76();
 	if (IsStatus && (! regs.s)) {
 		BackupPC();
 		Exception(8);
 	} else {
-		srcvalue = (si5b)(si4b)nextiword();
+		srcvalue = ui5r_FromSWord(nextiword());
 		dstvalue = m68k_getSR();
 		switch (rg9) {
 			case 0 :
@@ -2212,11 +2245,11 @@ LOCALPROCUSEDONCE DoCodeMOVEMApRW(void)
 {
 	/* MOVEM mem to reg 01001100110011rrr */
 	si4b z;
-	ui5b regmask = nextiword();
-	si5b p = m68k_areg(reg);
+	ui5r regmask = nextiword();
+	ui5r p = m68k_areg(reg);
 
 	for (z = 0; z < 16; ++z) {
-		if ((regmask & (1 << (z))) != 0) {
+		if ((regmask & (1 << z)) != 0) {
 			regs.regs[z] = get_word(p);
 			p += 2;
 		}
@@ -2228,8 +2261,8 @@ LOCALPROCUSEDONCE DoCodeMOVEMRmMW(void)
 {
 	/* MOVEM reg to mem 01001000110100rrr */
 	si4b z;
-	ui5b regmask = nextiword();
-	si5b p = m68k_areg(reg);
+	ui5r regmask = nextiword();
+	ui5r p = m68k_areg(reg);
 
 #if Use68020
 	{
@@ -2257,8 +2290,8 @@ LOCALPROCUSEDONCE DoCodeMOVEMRmMW(void)
 LOCALPROC reglist(si4b direction, ui5b m1, ui5b r1)
 {
 	si4b z;
-	si5b p;
-	ui5b regmask;
+	ui5r p;
+	ui5r regmask;
 
 	regmask = nextiword();
 	opsize = 2 * b76 - 2;
@@ -2267,14 +2300,14 @@ LOCALPROC reglist(si4b direction, ui5b m1, ui5b r1)
 	if (direction == 0) {
 		if (opsize == 2) {
 			for (z = 0; z < 16; ++z) {
-				if ((regmask & (1 << (z))) != 0) {
+				if ((regmask & (1 << z)) != 0) {
 					put_word(p, regs.regs[z]);
 					p += 2;
 				}
 			}
 		} else {
 			for (z = 0; z < 16; ++z) {
-				if ((regmask & (1 << (z))) != 0) {
+				if ((regmask & (1 << z)) != 0) {
 					put_long(p, regs.regs[z]);
 					p += 4;
 				}
@@ -2283,14 +2316,14 @@ LOCALPROC reglist(si4b direction, ui5b m1, ui5b r1)
 	} else {
 		if (opsize == 2) {
 			for (z = 0; z < 16; ++z) {
-				if ((regmask & (1 << (z))) != 0) {
+				if ((regmask & (1 << z)) != 0) {
 					regs.regs[z] = get_word(p);
 					p += 2;
 				}
 			}
 		} else {
 			for (z = 0; z < 16; ++z) {
-				if ((regmask & (1 << (z))) != 0) {
+				if ((regmask & (1 << z)) != 0) {
 					regs.regs[z] = get_long(p);
 					p += 4;
 				}
@@ -2313,8 +2346,8 @@ LOCALPROCUSEDONCE DoCodeMOVEMmr(void)
 
 LOCALPROC DoBinOpAbcd(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 {
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = 1;
 	DecodeModeRegister(m1, r1);
@@ -2323,8 +2356,8 @@ LOCALPROC DoBinOpAbcd(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 	dstvalue = GetArgValue();
 	{
 		/* if (opsize != 1) a bug */
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		ui4b newv_lo = (srcvalue & 0xF) + (dstvalue & 0xF) + (XFLG ? 1 : 0);
 		ui4b newv_hi = (srcvalue & 0xF0) + (dstvalue & 0xF0);
 		ui4b newv;
@@ -2337,11 +2370,11 @@ LOCALPROC DoBinOpAbcd(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 		if (CFLG) {
 			newv += 0x60;
 		}
-		dstvalue = (si3b)newv;
+		dstvalue = ui5r_FromSByte(newv);
 		if (dstvalue != 0) {
 			ZFLG = 0;
 		}
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
 		/* but according to my reference book, VFLG is Undefined for ABCD */
 	}
@@ -2362,8 +2395,8 @@ LOCALPROCUSEDONCE DoCodeAbcdm(void)
 
 LOCALPROC DoBinOpSbcd(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 {
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	opsize = 1;
 	DecodeModeRegister(m1, r1);
@@ -2371,8 +2404,8 @@ LOCALPROC DoBinOpSbcd(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 	DecodeModeRegister(m2, r2);
 	dstvalue = GetArgValue();
 	{
-		int flgs = (srcvalue < 0);
-		int flgo = (dstvalue < 0);
+		int flgs = ui5r_MSBisSet(srcvalue);
+		int flgo = ui5r_MSBisSet(dstvalue);
 		ui4b newv_lo = (dstvalue & 0xF) - (srcvalue & 0xF) - (XFLG ? 1 : 0);
 		ui4b newv_hi = (dstvalue & 0xF0) - (srcvalue & 0xF0);
 		ui4b newv;
@@ -2386,11 +2419,11 @@ LOCALPROC DoBinOpSbcd(ui5b m1, ui5b r1, ui5b m2, ui5b r2)
 		if (CFLG) {
 			newv -= 0x60;
 		}
-		dstvalue = (si3b)newv;
+		dstvalue = ui5r_FromSByte(newv);
 		if (dstvalue != 0) {
 			ZFLG = 0;
 		}
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
 		/* but according to my reference book, VFLG is Undefined for SBCD */
 	}
@@ -2412,7 +2445,7 @@ LOCALPROCUSEDONCE DoCodeSbcdm(void)
 LOCALPROCUSEDONCE DoCodeNbcd(void)
 {
 	/* Nbcd 0100100000mmmrrr */
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	opsize = 1;
 	DecodeModeRegister(mode, reg);
@@ -2432,9 +2465,8 @@ LOCALPROCUSEDONCE DoCodeNbcd(void)
 			newv -= 0x60;
 		}
 
-		dstvalue = newv;
-		extendopsizedstvalue();
-		NFLG = (dstvalue < 0);
+		dstvalue = ui5r_FromSByte(newv);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		if (dstvalue != 0) {
 			ZFLG = 0;
 		}
@@ -2449,9 +2481,9 @@ LOCALPROCUSEDONCE DoCodeRte(void)
 		BackupPC();
 		Exception(8);
 	} else {
-		ui5b NewPC;
+		ui5r NewPC;
 		CPTR stackp = m68k_areg(7);
-		ui5b NewSR = (ui5b) get_word(stackp);
+		ui5r NewSR = get_word(stackp);
 		stackp += 2;
 		NewPC = get_long(stackp);
 		stackp += 4;
@@ -2508,9 +2540,9 @@ LOCALPROCUSEDONCE DoCodeNop(void)
 LOCALPROCUSEDONCE DoCodeMoveP(void)
 {
 	/* MoveP 0000ddd1mm001aaa */
-	ui5b TheReg = reg;
-	ui5b TheRg9 = rg9;
-	ui5b Displacement = nextiword();
+	ui5r TheReg = reg;
+	ui5r TheRg9 = rg9;
+	ui5r Displacement = nextiword();
 		/* shouldn't this sign extend ? */
 	CPTR memp = m68k_areg(TheReg) + Displacement;
 #if 0
@@ -2562,17 +2594,17 @@ LOCALPROC op_illg(void)
 
 LOCALPROC DoCheck(void)
 {
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	DecodeModeRegister(mode, reg);
 	srcvalue = GetArgValue();
 	DecodeModeRegister(0, rg9);
 	dstvalue = GetArgValue();
-	if (dstvalue < 0) {
+	if (ui5r_MSBisSet(dstvalue)) {
 		NFLG = 1;
 		Exception(6);
-	} else if (dstvalue > srcvalue) {
+	} else if (((si5r)dstvalue) > ((si5r)srcvalue)) {
 		NFLG = 0;
 		Exception(6);
 	}
@@ -2602,9 +2634,9 @@ LOCALPROCUSEDONCE DoCodeTrapV(void)
 LOCALPROCUSEDONCE DoCodeRtr(void)
 {
 	/* Rtr 0100111001110111 */
-	ui5b NewPC;
+	ui5r NewPC;
 	CPTR stackp = m68k_areg(7);
-	ui5b NewCR = get_word(stackp);
+	ui5r NewCR = get_word(stackp);
 	stackp += 2;
 	NewPC = get_long(stackp);
 	stackp += 4;
@@ -2615,20 +2647,20 @@ LOCALPROCUSEDONCE DoCodeRtr(void)
 
 LOCALPROCUSEDONCE DoCodeLink(void)
 {
-	ui5b srcreg = reg;
+	ui5r srcreg = reg;
 	CPTR stackp = m68k_areg(7);
 	stackp -= 4;
 	m68k_areg(7) = stackp; /* only matters if srcreg == 7 */
 	put_long(stackp, m68k_areg(srcreg));
 	m68k_areg(srcreg) = stackp;
-	m68k_areg(7) += (si5b)(si4b)nextiword();
+	m68k_areg(7) += ui5r_FromSWord(nextiword());
 }
 
 LOCALPROCUSEDONCE DoCodeUnlk(void)
 {
-	ui5b srcreg = reg;
+	ui5r srcreg = reg;
 	if (srcreg != 7) {
-		si5b src = m68k_areg(srcreg);
+		ui5r src = m68k_areg(srcreg);
 		m68k_areg(srcreg) = get_long(src);
 		m68k_areg(7) =  src + 4;
 	} else {
@@ -2662,7 +2694,7 @@ LOCALPROCUSEDONCE DoCodeMoveUSPR(void)
 LOCALPROCUSEDONCE DoCodeTas(void)
 {
 	/* Tas 0100101011mmmrrr */
-	si5b dstvalue;
+	ui5r dstvalue;
 
 	opsize = 1;
 	DecodeModeRegister(mode, reg);
@@ -2670,7 +2702,7 @@ LOCALPROCUSEDONCE DoCodeTas(void)
 
 	{
 		ZFLG = (dstvalue == 0);
-		NFLG = (dstvalue < 0);
+		NFLG = ui5r_MSBisSet(dstvalue);
 		VFLG = CFLG = 0;
 		dstvalue |= 0x80;
 	}
@@ -2784,7 +2816,7 @@ LOCALPROCUSEDONCE DoCodeF(void)
 				/* FRESTORE (A7)+ */
 			|| (opcode == 0xF36D))
 		{
-			si5b dstvalue;
+			ui5r dstvalue;
 			opsize = 4; /* actually unsized */
 			DecodeModeRegister(mode, reg);
 			dstvalue = GetArgValue();
@@ -2816,7 +2848,7 @@ LOCALPROCUSEDONCE DoCodeStop(void)
 		BackupPC();
 		Exception(8);
 	} else {
-		m68k_setSR((si4b)nextiword());
+		m68k_setSR(nextiword());
 		m68k_setstopped();
 	}
 }
@@ -2836,13 +2868,13 @@ LOCALPROCUSEDONCE DoCodeReset(void)
 LOCALPROCUSEDONCE DoCodeEXTBL(void)
 {
 	/* EXTB.L */
-	ui5b srcreg = reg;
-	si5b src = m68k_dreg(srcreg);
-	ui4b dst = (si5b)(si3b)src;
+	ui5r srcreg = reg;
+	ui5r src = m68k_dreg(srcreg);
+	ui5r dst = ui5r_FromSByte(src);
 	VFLG = CFLG = 0;
-	ZFLG = ((si4b)(dst)) == 0;
-	NFLG = ((si4b)(dst)) < 0;
-	m68k_dreg(srcreg) = (dst);
+	ZFLG = (dst == 0);
+	NFLG = ui5r_MSBisSet(dst);
+	m68k_dreg(srcreg) = dst;
 }
 #endif
 
@@ -2850,10 +2882,10 @@ LOCALPROCUSEDONCE DoCodeEXTBL(void)
 LOCALPROC DoCHK2orCMP2(void)
 {
 	/* CHK2 or CMP2 00000ss011mmmrrr */
-	si5b regv;
-	si5b lower;
-	si5b upper;
-	ui4b extra = nextiword();
+	ui5r regv;
+	ui5r lower;
+	ui5r upper;
+	ui5r extra = nextiword();
 
 	/* ReportAbnormal("CHK2 or CMP2 instruction"); */
 	switch ((opcode >> 9) & 3) {
@@ -2874,7 +2906,7 @@ LOCALPROC DoCHK2orCMP2(void)
 		DecodeModeRegister(0, (extra >> 12) & 0x07);
 		regv = GetArgValue();
 	} else {
-		regv = m68k_areg((extra >> 12) & 0x07);
+		regv = ui5r_FromSLong(m68k_areg((extra >> 12) & 0x07));
 	}
 	DecodeModeRegister(mode, reg);
 	/* ArgKind == AKMemory, otherwise illegal and don't get here */
@@ -2883,9 +2915,9 @@ LOCALPROC DoCHK2orCMP2(void)
 	upper = GetArgValue();
 
 	ZFLG = (upper == regv) || (lower == regv);
-	CFLG = (lower <= upper)
-			? (regv < lower || regv > upper)
-			: (regv > upper || regv < lower);
+	CFLG = (((si5r)lower) <= ((si5r)upper))
+			? (((si5r)regv) < ((si5r)lower) || ((si5r)regv) > ((si5r)upper))
+			: (((si5r)regv) > ((si5r)upper) || ((si5r)regv) < ((si5r)lower));
 	if ((extra & 0x800) && CFLG) {
 		Exception(6);
 	}
@@ -2896,8 +2928,8 @@ LOCALPROC DoCHK2orCMP2(void)
 LOCALPROC DoCAS(void)
 {
 	/* CAS  00001ss011mmmrrr */
-	si5b srcvalue;
-	si5b dstvalue;
+	ui5r srcvalue;
+	ui5r dstvalue;
 
 	ui4b src = nextiword();
 	int ru = (src >> 6) & 7;
@@ -2921,16 +2953,18 @@ LOCALPROC DoCAS(void)
 	DecodeModeRegister(mode, reg);
 	dstvalue = GetArgValue();
 	{
-		int flgs = srcvalue < 0;
-		int flgo = dstvalue < 0;
-		si5b newv = dstvalue - srcvalue;
+		int flgs = ((si5b)srcvalue) < 0;
+		int flgo = ((si5b)dstvalue) < 0;
+		ui5r newv = dstvalue - srcvalue;
 		if (opsize == 1) {
-			newv = (ui3b)newv;
+			newv = ui5r_FromSByte(newv);
 		} else if (opsize == 2) {
-			newv = (ui4b)newv;
+			newv = ui5r_FromSWord(newv);
+		} else {
+			newv = ui5r_FromSLong(newv);
 		}
-		ZFLG = (newv == 0);
-		NFLG = (newv < 0);
+		ZFLG = (((si5b)newv) == 0);
+		NFLG = (((si5b)newv) < 0);
 		VFLG = (flgs != flgo) && (NFLG != flgo);
 		CFLG = (flgs && ! flgo) || (NFLG && ((! flgo) || flgs));
 		if (ZFLG) {
@@ -2955,8 +2989,8 @@ LOCALPROC DoCAS2(void)
 	CPTR rn1 = regs.regs[(extra >> 28) & 0x0F];
 	CPTR rn2 = regs.regs[(extra >> 12) & 0x0F];
 	si5b src = m68k_dreg(dc1);
-	si5b dst1;
-	si5b dst2;
+	si5r dst1;
+	si5r dst2;
 
 	ReportAbnormal("DoCAS2 instruction");
 	switch ((opcode >> 9) & 3) {
@@ -3149,13 +3183,13 @@ LOCALFUNC blnr div_unsigned(ui6r *src, ui5b div,
 LOCALPROC DoMulL(void)
 {
 	ui6r dst;
-	ui5b srcvalue;
+	ui5r srcvalue;
 	ui4b extra = nextiword();
 	ui5b r2 = (extra >> 12) & 7;
 	ui5b dstvalue = m68k_dreg(r2);
 
 	DecodeModeRegister(mode, reg);
-	srcvalue = (ui5b)GetArgValue();
+	srcvalue = GetArgValue();
 
 	if (extra & 0x800) {
 		/* MULS.L - signed */
@@ -3229,7 +3263,7 @@ LOCALPROC DoDivL(void)
 	ui5b rDq = (extra >> 12) & 7;
 
 	DecodeModeRegister(mode, reg);
-	src = (ui5b)GetArgValue();
+	src = (ui5b)(si5b)GetArgValue();
 
 	if (src == 0) {
 		Exception(5);
@@ -3487,7 +3521,7 @@ LOCALPROCUSEDONCE DoCodeMulL(void)
 LOCALPROCUSEDONCE DoCodeRtd(void)
 {
 	/* Rtd 0100111001110100 */
-	ui5b NewPC = get_long(m68k_areg(7));
+	ui5r NewPC = get_long(m68k_areg(7));
 	si5b offs = (si5b)(si4b)nextiword();
 	/* ReportAbnormal("RTD"); */
 	/* used by Sys 7.5.5 boot */
@@ -3547,11 +3581,11 @@ LOCALPROCUSEDONCE DoCodeTRAPcc(void)
 #if Use68020
 LOCALPROC DoUNPK(void)
 {
-	si5b val;
-	ui5b m1 = ((opcode >> 3) & 1) << 2;
-	ui5b srcreg = reg;
-	ui5b dstreg = rg9;
-	si5b offs = (si5b)(si4b)nextiword();
+	ui5r val;
+	ui5r m1 = ((opcode >> 3) & 1) << 2;
+	ui5r srcreg = reg;
+	ui5r dstreg = rg9;
+	ui5r offs = ui5r_FromSWord(nextiword());
 
 	opsize = 1;
 	DecodeModeRegister(m1, srcreg);
@@ -3568,11 +3602,11 @@ LOCALPROC DoUNPK(void)
 #if Use68020
 LOCALPROC DoPACK(void)
 {
-	si5b val;
-	ui5b m1 = ((opcode >> 3) & 1) << 2;
-	ui5b srcreg = reg;
-	ui5b dstreg = rg9;
-	si5b offs = (si5b)(si4b)nextiword();
+	ui5r val;
+	ui5r m1 = ((opcode >> 3) & 1) << 2;
+	ui5r srcreg = reg;
+	ui5r dstreg = rg9;
+	ui5r offs = ui5r_FromSWord(nextiword());
 
 	opsize = 2;
 	DecodeModeRegister(m1, srcreg);

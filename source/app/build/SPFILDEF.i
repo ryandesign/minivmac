@@ -53,8 +53,6 @@ static void DoAllSrcFiles(tDoOneCFile p)
 	p("MYOSGLUE", kCSrcFlgmUseAPI,
 		DoMYOSGLUEdepends);
 	p("GLOBGLUE", kCSrcFlgmNone, nullpr);
-	p("ADDRSPAC", kCSrcFlgmNone, nullpr);
-	p("PROGMAIN", kCSrcFlgmNone, nullpr);
 	p("M68KITAB", kCSrcFlgmNone, nullpr);
 	p("MINEM68K",
 		((em_cpu_vers != 0) ? kCSrcFlgmNone :

@@ -29,8 +29,6 @@
 #include "ENDIANAC.h"
 #include "EMCONFIG.h"
 #include "GLOBGLUE.h"
-#include "ADDRSPAC.h"
-#include "PROGMAIN.h"
 #include "SCCEMDEV.h"
 #endif
 
@@ -76,7 +74,7 @@ GLOBALPROC Mouse_Update(void)
 #endif
 #endif
 			if (MyEvtQElKindMousePos == p->kind) {
-				ui5b NewMouse = (p->u.pos.v << 16) | p->u.pos.h;
+				ui5r NewMouse = (p->u.pos.v << 16) | p->u.pos.h;
 
 				if (get_ram_long(0x0828) != NewMouse) {
 					put_ram_long(0x0828, NewMouse); /* Set Mouse Position */

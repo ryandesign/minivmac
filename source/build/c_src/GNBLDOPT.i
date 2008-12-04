@@ -721,6 +721,14 @@ LOCALPROC ResetEolOption(void)
 	cur_eol = kListOptionAuto;
 }
 
+#define src_eol_mac 0
+#define src_eol_win 1
+#define src_eol_unx 2
+
+#ifndef src_eol
+#define src_eol src_eol_mac
+#endif
+
 LOCALFUNC char * GetEolName(int i)
 {
 	char *s;
@@ -748,7 +756,13 @@ LOCALPROC ChooseEOL(void)
 {
 	if (kListOptionAuto == cur_eol) {
 		if (NotWantExport) {
+#if src_eol_unx == src_eol
+			cur_eol = gbk_eol_unx;
+#elif src_eol_win == src_eol
+			cur_eol = gbk_eol_win;
+#else
 			cur_eol = gbk_eol_mac;
+#endif
 		} else {
 			switch (cur_ide) {
 				case gbk_ide_mpw:

@@ -1,28 +1,27 @@
 # make PowerPC MPW tool for MPW 3.6b2, Universal Interfaces 3.4.1
 
-TheDefaultOutput Ä "::::Build"
+TheDefaultOutput Ä ":Build"
 
-":program.o" Ä ":program.c"
-	MrC ":program.c" -o ":program.o" ¶
+":bld:program.o" Ä ":src:program.c"
+	MrC ":src:program.c" -o ":bld:program.o" ¶
 		-proto strict -w 17 ¶
-		-i ":::source:" -i "::::source:build:"
+		-i ":::source:build:c_src:" -i ":::source:app:build:"
 
 ObjFiles = ¶
-	":program.o" ¶
+	":bld:program.o" ¶
 
 
-"::::Build" Ä {ObjFiles}
-	Delete -i "::::Build"
+":Build" Ä {ObjFiles}
+	Delete -i ":Build"
 	PPCLink -t 'MPST' -c 'MPS ' ¶
-		-o "::::Build" ¶
+		-o ":Build" ¶
 		"{PPCLibraries}PPCCRuntime.o" ¶
 		"{PPCLibraries}StdCRuntime.o" ¶
 		"{SharedLibraries}InterfaceLib" ¶
 		"{SharedLibraries}StdCLib" ¶
-		":program.o" 
-	SetFile -d . -m . -a B "::::Build"
+		{ObjFiles}
+	SetFile -d . -m . -a B ":Build"
 
 clean Ä
 	Delete -i {ObjFiles}
-	Delete -i "::::Build"
-
+	Delete -i ":Build"

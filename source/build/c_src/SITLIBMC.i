@@ -79,12 +79,40 @@
 */
 
 
+struct MSBui5
+{
+	ui3b v[4];
+};
+
+typedef struct MSBui5 MSBui5;
+
+LOCALPROC PutMSBui5(MSBui5 *r, ui5b x)
+{
+	r->v[0] = (x >> 24) & 0xFF;
+	r->v[1] = (x >> 16) & 0xFF;
+	r->v[2] = (x >>  8) & 0xFF;
+	r->v[3] = (x      ) & 0xFF;
+}
+
+struct MSBui4
+{
+	ui3b v[2];
+};
+
+typedef struct MSBui4 MSBui4;
+
+LOCALPROC PutMSBui4(MSBui4 *r, ui4b x)
+{
+	r->v[0] = (x >>  8) & 0xFF;
+	r->v[1] = (x      ) & 0xFF;
+}
+
 struct sitlib_sitHdr { /* 22 bytes */
 	/* big endian format */
-	OSType sig1;     /* = 'SIT!' -- for verification */
-	ui4b numFiles;   /* number of files in archive */
-	ui5b arcLen;     /* length of entire archive incl. */
-	OSType sig2;     /* = 'rLau' -- for verification */
+	ui3b sig1[4];     /* = 'SIT!' -- for verification */
+	MSBui4 numFiles;   /* number of files in archive */
+	MSBui5 arcLen;     /* length of entire archive incl. */
+	ui3b sig2[4];     /* = 'rLau' -- for verification */
 	ui3b version;    /* version number */
 	ui3b reserved[7];
 };
@@ -105,19 +133,19 @@ struct sitlib_fileHdr { /* 112 bytes */
 	ui3b compRMethod;  /* rsrc fork compression method */
 	ui3b compDMethod;  /* data fork compression method */
 	ui3b fName[64];    /* a STR63 */
-	OSType fType;      /* file type */
-	OSType fCreator;   /* creator... */
-	unsigned short FndrFlags; /* copy of Finder flags */
-	ui5b cDate;        /* creation date */
-	ui5b mDate;        /* !restored-compat w/backup prgms */
-	ui5b rLen;         /* decom rsrc length */
-	ui5b dLen;         /* decomp data length */
-	ui5b cRLen;        /* compressed lengths */
-	ui5b cDLen;
-	ui4b rsrcCRC;      /* crc of rsrc fork */
-	ui4b dataCRC;      /* crc of data fork */
+	MSBui5 fType;      /* file type */
+	MSBui5 fCreator;   /* creator... */
+	MSBui4 FndrFlags; /* copy of Finder flags */
+	MSBui5 cDate;        /* creation date */
+	MSBui5 mDate;        /* !restored-compat w/backup prgms */
+	MSBui5 rLen;         /* decom rsrc length */
+	MSBui5 dLen;         /* decomp data length */
+	MSBui5 cRLen;        /* compressed lengths */
+	MSBui5 cDLen;
+	MSBui4 rsrcCRC;      /* crc of rsrc fork */
+	MSBui4 dataCRC;      /* crc of data fork */
 	ui3b reserved[6];
-	ui4b hdrCRC;       /* crc of file header */
+	MSBui4 hdrCRC;       /* crc of file header */
 };
 
 typedef struct sitlib_fileHdr sitlib_fileHdr;
@@ -267,10 +295,16 @@ static blnr sitlib_EndProcessing(int numDocs)
 		pBytesClear((MyPtr)&sh, sizeof(sh));
 
 		/* header header */
-		sh.sig1 = 'SIT!';
-		sh.numFiles = numDocs;
-		sh.arcLen = fpos2;
-		sh.sig2 = 'rLau';
+		sh.sig1[0] = 'S';
+		sh.sig1[1] = 'I';
+		sh.sig1[2] = 'T';
+		sh.sig1[3] = '!';
+		PutMSBui4(&sh.numFiles, numDocs);
+		PutMSBui5(&sh.arcLen, fpos2);
+		sh.sig2[0] = 'r';
+		sh.sig2[1] = 'L';
+		sh.sig2[2] = 'a';
+		sh.sig2[3] = 'u';
 		sh.version = 1;
 
 		IsOk = MyBackWriteBytes(sitlib_gd()->ofd, 0, (MyPtr)&sh, 22);
@@ -279,18 +313,18 @@ static blnr sitlib_EndProcessing(int numDocs)
 	return IsOk;
 }
 
-static blnr sitlib_ProcessRF(ui4b *crc)
+static blnr sitlib_ProcessRF(MSBui4 *f_crc)
 {
 	short fd;
 	uimr n = sitlib_gd()->cPB.hFileInfo.ioFlRLgLen;
+	ui4b crc = 0;
 	blnr IsOk = falseblnr;
 
 	if (0 == n) {
 		IsOk = trueblnr;
 	} else if (CatInfoOpenReadRF(&sitlib_gd()->cPB, &fd)) {
-		*crc = 0;
 		if (sitlib_copy(fd, sitlib_gd()->ofd,
-			n, crc))
+			n, &crc))
 		{
 			sitlib_gd()->uncomp_tot += n;
 			IsOk = trueblnr;
@@ -298,27 +332,31 @@ static blnr sitlib_ProcessRF(ui4b *crc)
 		(void) MyCloseFile(fd);
 	}
 
+	PutMSBui4(f_crc, crc);
+
 	return IsOk;
 }
 
-static blnr sitlib_ProcessDF(ui4b *crc)
+static blnr sitlib_ProcessDF(MSBui4 *f_crc)
 {
 	short fd;
 	uimr n = sitlib_gd()->cPB.hFileInfo.ioFlLgLen;
+	ui4b crc = 0;
 	blnr IsOk = falseblnr;
 
 	if (0 == n) {
 		IsOk = trueblnr;
 	} else if (CatInfoOpenReadDF(&sitlib_gd()->cPB, &fd)) {
-		*crc = 0;
 		if (sitlib_copy(fd, sitlib_gd()->ofd,
-			n, crc))
+			n, &crc))
 		{
 			sitlib_gd()->uncomp_tot += n;
 			IsOk = trueblnr;
 		}
 		(void) MyCloseFile(fd);
 	}
+
+	PutMSBui4(f_crc, crc);
 
 	return IsOk;
 }
@@ -330,25 +368,25 @@ static blnr sitlib_ProcessOne0(long fpos1)
 
 	pBytesClear((MyPtr)&fh, 112);
 	MyMoveBytes((MyPtr)&(sitlib_gd()->cPB.hFileInfo.ioNamePtr[0]), (MyPtr)fh.fName, 1 + sitlib_gd()->cPB.hFileInfo.ioNamePtr[0]);
-	fh.cDate = sitlib_gd()->cPB.hFileInfo.ioFlCrDat;
-	fh.mDate = sitlib_gd()->cPB.hFileInfo.ioFlMdDat;
+	PutMSBui5(&fh.cDate, sitlib_gd()->cPB.hFileInfo.ioFlCrDat);
+	PutMSBui5(&fh.mDate, sitlib_gd()->cPB.hFileInfo.ioFlMdDat);
 		/* write incomplete header, will seek back and fill in later */
 	if (MyWriteBytes(sitlib_gd()->ofd, (MyPtr)&fh, 112)) {
 		if (CatInfoIsFolder(&sitlib_gd()->cPB)) {
 			IsOk = trueblnr;
 		} else {
-			fh.fType = sitlib_gd()->cPB.hFileInfo.ioFlFndrInfo.fdType;
-			fh.fCreator = sitlib_gd()->cPB.hFileInfo.ioFlFndrInfo.fdCreator;
-			fh.FndrFlags = sitlib_gd()->cPB.hFileInfo.ioFlFndrInfo.fdFlags;
-			fh.rLen = sitlib_gd()->cPB.hFileInfo.ioFlRLgLen;
-			fh.dLen = sitlib_gd()->cPB.hFileInfo.ioFlLgLen;
-			fh.cRLen = sitlib_gd()->cPB.hFileInfo.ioFlRLgLen;
-			fh.cDLen = sitlib_gd()->cPB.hFileInfo.ioFlLgLen;
+			PutMSBui5(&fh.fType, sitlib_gd()->cPB.hFileInfo.ioFlFndrInfo.fdType);
+			PutMSBui5(&fh.fCreator, sitlib_gd()->cPB.hFileInfo.ioFlFndrInfo.fdCreator);
+			PutMSBui4(&fh.FndrFlags, sitlib_gd()->cPB.hFileInfo.ioFlFndrInfo.fdFlags);
+			PutMSBui5(&fh.rLen, sitlib_gd()->cPB.hFileInfo.ioFlRLgLen);
+			PutMSBui5(&fh.dLen, sitlib_gd()->cPB.hFileInfo.ioFlLgLen);
+			PutMSBui5(&fh.cRLen, sitlib_gd()->cPB.hFileInfo.ioFlRLgLen);
+			PutMSBui5(&fh.cDLen, sitlib_gd()->cPB.hFileInfo.ioFlLgLen);
 
 			if (sitlib_ProcessRF(&fh.rsrcCRC))
 			if (sitlib_ProcessDF(&fh.dataCRC))
 			{
-				fh.hdrCRC = updcrc(0, (ui3b *)&fh, 110);
+				PutMSBui4(&fh.hdrCRC, updcrc(0, (ui3b *)&fh, 110));
 				if (MyBackWriteBytes(sitlib_gd()->ofd, fpos1,
 					(MyPtr)&fh, 112))
 				{
@@ -372,12 +410,12 @@ static blnr sitlib_PostProcessFolder(long fpos1,
 	if (MyBackReadBytes(sitlib_gd()->ofd, fpos1, (MyPtr)&fh, 112))
 	{
 		fh.compRMethod = fh.compDMethod = 0x21;
-		fh.hdrCRC = updcrc(0, (ui3b *)&fh, 110);
+		PutMSBui4(&fh.hdrCRC, updcrc(0, (ui3b *)&fh, 110));
 		if (MyWriteBytes(sitlib_gd()->ofd, (MyPtr)&fh, 112)) {
 			fh.compRMethod = fh.compDMethod = 0x20;
-			fh.cDLen = fpos2 - fpos1;
-			fh.dLen = sitlib_gd()->uncomp_tot - old_uncomp_tot;
-			fh.hdrCRC = updcrc(0, (ui3b *)&fh, 110);
+			PutMSBui5(&fh.cDLen, fpos2 - fpos1);
+			PutMSBui5(&fh.dLen, sitlib_gd()->uncomp_tot - old_uncomp_tot);
+			PutMSBui4(&fh.hdrCRC, updcrc(0, (ui3b *)&fh, 110));
 			if (MyBackWriteBytes(sitlib_gd()->ofd, fpos1, (MyPtr)&fh, 112)) {
 				IsOk = trueblnr;
 			}

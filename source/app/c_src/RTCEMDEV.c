@@ -27,7 +27,7 @@
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
 #include "EMCONFIG.h"
-#include "ADDRSPAC.h"
+#include "GLOBGLUE.h"
 #endif
 
 /*define _RTC_Debug */

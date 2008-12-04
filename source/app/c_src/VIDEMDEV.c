@@ -33,7 +33,6 @@
 #include "ENDIANAC.h"
 #include "EMCONFIG.h"
 #include "GLOBGLUE.h"
-#include "ADDRSPAC.h"
 #include "SONYEMDV.h"
 #endif
 
@@ -456,9 +455,6 @@ GLOBALFUNC ui4r Vid_Reset(void)
 	return 128;
 }
 
-#define mnvm_statusErr ((tMacErr) - 18) /* 0xFFEE - Driver can't respond to Status call */
-#define mnvm_paramErr ((tMacErr) - 50) /* error in parameter list */
-
 #define kCmndVideoFeatures 1
 #define kCmndVideoGetIntEnbl 2
 #define kCmndVideoSetIntEnbl 3
@@ -587,7 +583,7 @@ GLOBALPROC ExtnVideo_Access(CPTR p)
 							CPTR csTable = get_vm_long(csParam + VDSetEntryRecord_csTable);
 							ui4r csStart = get_vm_word(csParam + VDSetEntryRecord_csStart);
 							ui4r csCount = 1 + get_vm_word(csParam + VDSetEntryRecord_csCount);
-							if (((ui4r) - 1) ==  csStart) {
+							if (((ui4r) 0xFFFF) ==  csStart) {
 								ReportAbnormal("Indexed SetEntries not implemented");
 							} else if (csStart + csCount > CLUT_size) {
 								result = mnvm_paramErr;
@@ -601,9 +597,9 @@ GLOBALPROC ExtnVideo_Access(CPTR p)
 									} else if (j == CLUT_size - 1) {
 										/* ignore input, leave black */
 									} else {
-										ui4b r = get_vm_word(csTable + 2);
-										ui4b g = get_vm_word(csTable + 4);
-										ui4b b = get_vm_word(csTable + 6);
+										ui4r r = get_vm_word(csTable + 2);
+										ui4r g = get_vm_word(csTable + 4);
+										ui4r b = get_vm_word(csTable + 6);
 										CLUT_reds[j] = r;
 										CLUT_greens[j] = g;
 										CLUT_blues[j] = b;
@@ -638,7 +634,7 @@ GLOBALPROC ExtnVideo_Access(CPTR p)
 						break;
 					case 6: /* SetGray */
 						{
-							ui4r csMode = get_vm_byte(csParam + VDPageInfo_csMode);
+							ui3r csMode = get_vm_byte(csParam + VDPageInfo_csMode);
 								/*
 									"Designing Cards and Drivers" book says
 									this is a word, but it seems to be a byte.

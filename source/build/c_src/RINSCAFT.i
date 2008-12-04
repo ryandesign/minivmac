@@ -18,9 +18,9 @@
 */
 
 
-static void rinscharafter_ptr(ui3b *inbuff, ui3b *outbuff,
+static void rsubstcharwith2_ptr(ui3b *inbuff, ui3b *outbuff,
 	uimr inputsize, uimr *outputsize,
-	ui3r after_c, ui3r insert_c)
+	ui3r find_c, ui3r subst1_c, ui3r subst2_c)
 {
 	ui3b *pSrc = inbuff;
 	ui3b *pDst = outbuff;
@@ -29,34 +29,37 @@ static void rinscharafter_ptr(ui3b *inbuff, ui3b *outbuff,
 
 	for (i = inputsize; --i >= 0; ) {
 		c = *pSrc++;
-		*pDst++ = c;
-		if (c == after_c) {
-			*pDst++ = insert_c;
+		if (c == find_c) {
+			*pDst++ = subst1_c;
+			*pDst++ = subst2_c;
+		} else {
+			*pDst++ = c;
 		}
 	}
 	*outputsize = (long)pDst - (long)outbuff;
 }
 
 /*
-	The rinscharafter_r structure is used to minimize the amount of
-	stack space used when recursively calling rinscharafter_ProcessOne
+	The rsubstcharwith2_r structure is used to minimize the amount of
+	stack space used when recursively calling rsubstcharwith2_ProcessOne
 	and to hold global information that might be needed at any time.
 */
 
-struct rinscharafter_r
+struct rsubstcharwith2_r
 {
 	MyPtr SavepDt;
 	CInfoPBRec cPB;
-	ui3r after_c;
-	ui3r insert_c;
+	ui3r find_c;
+	ui3r subst1_c;
+	ui3r subst2_c;
 };
 
-typedef struct rinscharafter_r rinscharafter_r;
+typedef struct rsubstcharwith2_r rsubstcharwith2_r;
 
-#define rinscharafter_gd() ((rinscharafter_r *)(pDt))
+#define rsubstcharwith2_gd() ((rsubstcharwith2_r *)(pDt))
 
 
-static blnr rinscharafter_refnum(short src_refnum, short dst_refnum, uimr L)
+static blnr rsubstcharwith2_refnum(short src_refnum, short dst_refnum, uimr L)
 {
 	uimr maxn;
 	uimr n;
@@ -79,10 +82,11 @@ doGetMore:
 				n = L;
 			}
 			if (MyReadBytes(src_refnum, p, n)) {
-				rinscharafter_ptr((ui3b *)p, (ui3b *)pDst,
+				rsubstcharwith2_ptr((ui3b *)p, (ui3b *)pDst,
 					n, &outputsize,
-					rinscharafter_gd()->after_c,
-					rinscharafter_gd()->insert_c);
+					rsubstcharwith2_gd()->find_c,
+					rsubstcharwith2_gd()->subst1_c,
+					rsubstcharwith2_gd()->subst2_c);
 				if (MyWriteBytes(dst_refnum, pDst, outputsize)) {
 					L -= n;
 					goto doGetMore;
@@ -96,7 +100,7 @@ doGetMore:
 	return IsOk;
 }
 
-static blnr rinscharafter_DF(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst_s)
+static blnr rsubstcharwith2_DF(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst_s)
 {
 	short src_refnum;
 	short dst_refnum;
@@ -107,7 +111,7 @@ static blnr rinscharafter_DF(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst_s)
 		IsOk = trueblnr;
 	} else if (CatInfoOpenReadDF(cPB, &src_refnum)) {
 		if (MyFileOpenWrite(dst_d, dst_s, &dst_refnum)) {
-			if (rinscharafter_refnum(src_refnum, dst_refnum, n)) {
+			if (rsubstcharwith2_refnum(src_refnum, dst_refnum, n)) {
 				IsOk = trueblnr;
 			}
 			(void) MyCloseFile(dst_refnum);
@@ -118,7 +122,7 @@ static blnr rinscharafter_DF(CInfoPBRec *cPB, MyDir_R *dst_d, StringPtr dst_s)
 	return IsOk;
 }
 
-static blnr rinscharafter_File(CInfoPBRec *cPB, MyDir_R *dst_d, ps3p dst_s)
+static blnr rsubstcharwith2_File(CInfoPBRec *cPB, MyDir_R *dst_d, ps3p dst_s)
 {
 	HParamBlockRec r;
 	blnr IsOk = falseblnr;
@@ -128,7 +132,7 @@ static blnr rinscharafter_File(CInfoPBRec *cPB, MyDir_R *dst_d, ps3p dst_s)
 	r.fileParam.ioDirID = dst_d->DirId;
 	r.fileParam.ioNamePtr = dst_s;
 	if (CheckSysErr(PBHCreate(&r, false))) {
-		if (rinscharafter_DF(cPB, dst_d, dst_s))
+		if (rsubstcharwith2_DF(cPB, dst_d, dst_s))
 		if (MyCatInfoCopyInfo(cPB, dst_d, dst_s))
 		{
 			IsOk = trueblnr;
@@ -141,15 +145,15 @@ static blnr rinscharafter_File(CInfoPBRec *cPB, MyDir_R *dst_d, ps3p dst_s)
 	return IsOk;
 }
 
-static blnr rinscharafter_ProcessOne(MyDir_R *dst_d, ps3p dst_s)
+static blnr rsubstcharwith2_ProcessOne(MyDir_R *dst_d, ps3p dst_s)
 {
 	blnr IsOk = falseblnr;
 
-	if (! CatInfoIsFolder(&rinscharafter_gd()->cPB)) {
-		if ('TEXT' == rinscharafter_gd()->cPB.hFileInfo.ioFlFndrInfo.fdType) {
-			IsOk = rinscharafter_File(&rinscharafter_gd()->cPB, dst_d, dst_s);
+	if (! CatInfoIsFolder(&rsubstcharwith2_gd()->cPB)) {
+		if ('TEXT' == rsubstcharwith2_gd()->cPB.hFileInfo.ioFlFndrInfo.fdType) {
+			IsOk = rsubstcharwith2_File(&rsubstcharwith2_gd()->cPB, dst_d, dst_s);
 		} else {
-			IsOk = MyCatInfoCopyFile(&rinscharafter_gd()->cPB, dst_d, dst_s);
+			IsOk = MyCatInfoCopyFile(&rsubstcharwith2_gd()->cPB, dst_d, dst_s);
 		}
 	} else {
 		blnr FinishOk;
@@ -157,12 +161,12 @@ static blnr rinscharafter_ProcessOne(MyDir_R *dst_d, ps3p dst_s)
 		MyDir_R new_d;
 		int index = 1;
 
-		MyCatInfoGetMyDir(&rinscharafter_gd()->cPB, &old_d);
+		MyCatInfoGetMyDir(&rsubstcharwith2_gd()->cPB, &old_d);
 		if (MyMakeNamedDir(dst_d, dst_s, &new_d)) {
-			while (MyCatGetNextChild(&rinscharafter_gd()->cPB,
+			while (MyCatGetNextChild(&rsubstcharwith2_gd()->cPB,
 				&old_d, &index, &FinishOk)
-				&& rinscharafter_ProcessOne(&new_d,
-					rinscharafter_gd()->cPB.hFileInfo.ioNamePtr))
+				&& rsubstcharwith2_ProcessOne(&new_d,
+					rsubstcharwith2_gd()->cPB.hFileInfo.ioNamePtr))
 			{
 			}
 			if (FinishOk) {
@@ -177,24 +181,25 @@ static blnr rinscharafter_ProcessOne(MyDir_R *dst_d, ps3p dst_s)
 	return IsOk;
 }
 
-GLOBALFUNC blnr rinscharafter_WriteFile(
+GLOBALFUNC blnr rsubstcharwith2_WriteFile(
 	MyDir_R *src_d, StringPtr src_s,
 	MyDir_R *dst_d, StringPtr dst_s,
-	ui3r after_c, ui3r insert_c)
+	ui3r find_c, ui3r subst1_c, ui3r subst2_c)
 {
 	MyPStr itemName;
-	rinscharafter_r r;
+	rsubstcharwith2_r r;
 	blnr IsOk = falseblnr;
 
 	r.SavepDt = pDt;
 	pDt = (MyPtr)&r;
 
-	r.after_c = after_c;
-	r.insert_c = insert_c;
+	r.find_c = find_c;
+	r.subst1_c = subst1_c;
+	r.subst2_c = subst2_c;
 
 	if (MyFileGetCatInfo(src_d, src_s,
 		itemName, &r.cPB))
-	if (rinscharafter_ProcessOne(dst_d, dst_s))
+	if (rsubstcharwith2_ProcessOne(dst_d, dst_s))
 	{
 		(void) MyFileClearInitted(dst_d, dst_s);
 		IsOk = trueblnr;

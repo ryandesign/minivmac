@@ -27,8 +27,6 @@
 #include "MYOSGLUE.h"
 #include "EMCONFIG.h"
 #include "GLOBGLUE.h"
-#include "ADDRSPAC.h"
-#include "PROGMAIN.h"
 #endif
 
 #include "KBRDEMDV.h"

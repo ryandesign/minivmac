@@ -1,36 +1,31 @@
 # make PowerPC application with MPW 3.6b2, Universal Interfaces 3.4.1
 
-TheDefaultOutput Ä "::::Build"
+TheDefaultOutput Ä ":Build"
 
-":program.o" Ä ":program.c"
-	MrC ":program.c" -o ":program.o" ¶
+":bld:program.o" Ä ":src:program.c"
+	MrC ":src:program.c" -o ":bld:program.o" ¶
 		-proto strict -w 17 ¶
-		-i ":::source:" -i "::::source:build:"
+		-i ":::source:build:c_src:" -i ":::source:app:build:"
 
-":opt.o" Ä ":::source:opt.a"
-	asm -case on ":::source:opt.a" -o ":opt.o"
-
-":main.rsrc" Ä ":main.r"
-	Rez -t rsrc -c RSED -i "{RIncludes}" ":main.r" -o ":main.rsrc"
+":bld:main.rsrc" Ä ":src:main.r"
+	Rez -t rsrc -c RSED -i "{RIncludes}" ":src:main.r" -o ":bld:main.rsrc"
 
 ObjFiles = ¶
-	":program.o" ¶
-	":opt.o" ¶
+	":bld:program.o" ¶
 
 
-"::::Build" Ä {ObjFiles} ":main.rsrc"
-	Duplicate -y ":main.rsrc" "::::Build"
+":Build" Ä {ObjFiles} ":bld:main.rsrc"
+	Duplicate -y ":bld:main.rsrc" ":Build"
 	PPCLink -t APPL -c GrBl ¶
-		-o "::::Build" ¶
+		-o ":Build" ¶
 		"{PPCLibraries}PPCCRuntime.o" ¶
 		"{PPCLibraries}StdCRuntime.o" ¶
 		"{SharedLibraries}InterfaceLib" ¶
 		"{SharedLibraries}StdCLib" ¶
 		{ObjFiles}
-	SetFile -d . -m . -a B "::::Build"
+	SetFile -d . -m . -a B ":Build"
 
 clean Ä
 	Delete -i {ObjFiles}
-	Delete -i "::::Build"
-	Delete -i ":main.rsrc"
-
+	Delete -i ":Build"
+	Delete -i ":bld:main.rsrc"

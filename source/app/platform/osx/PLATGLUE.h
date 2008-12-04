@@ -80,6 +80,20 @@ LOCALFUNC blnr HaveHIToolboxBunRef(void)
 	return (HIToolboxBunRef != NULL);
 }
 
+LOCALVAR CFBundleRef AGLBunRef;
+
+LOCALVAR blnr DidAGLBunRef = falseblnr;
+
+LOCALFUNC blnr HaveAGLBunRef(void)
+{
+	if (! DidAGLBunRef) {
+		AGLBunRef = CFBundleGetBundleWithIdentifier(
+			CFSTR("com.apple.agl"));
+		DidAGLBunRef = trueblnr;
+	}
+	return (AGLBunRef != NULL);
+}
+
 
 /* SetSystemUIModeProcPtr API always not available */
 
@@ -138,6 +152,49 @@ LOCALFUNC blnr HaveMyLSCopyDisplayNameForRef(void)
 		DidLSCopyDisplayNameForRef = trueblnr;
 	}
 	return (MyLSCopyDisplayNameForRef != NULL);
+}
+
+/* In 10.5 or later */
+
+typedef GLboolean (*aglSetWindowRefProcPtr)
+	(AGLContext ctx, WindowRef window);
+LOCALVAR aglSetWindowRefProcPtr MyaglSetWindowRef = NULL;
+LOCALVAR blnr DidaglSetWindowRef = falseblnr;
+
+LOCALFUNC blnr HaveMyaglSetWindowRef(void)
+{
+	if (! DidaglSetWindowRef) {
+		if (HaveAGLBunRef()) {
+			MyaglSetWindowRef =
+				(aglSetWindowRefProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AGLBunRef, CFSTR("aglSetWindowRef"));
+		}
+		DidaglSetWindowRef = trueblnr;
+	}
+	return (MyaglSetWindowRef != NULL);
+}
+
+/* Deprecated as of 10.5 */
+
+typedef CGrafPtr My_AGLDrawable;
+typedef GLboolean (*aglSetDrawableProcPtr)
+	(AGLContext ctx, My_AGLDrawable draw);
+LOCALVAR aglSetDrawableProcPtr MyaglSetDrawable = NULL;
+LOCALVAR blnr DidaglSetDrawable = falseblnr;
+
+LOCALFUNC blnr HaveMyaglSetDrawable(void)
+{
+	if (! DidaglSetDrawable) {
+		if (HaveAGLBunRef()) {
+			MyaglSetDrawable =
+				(aglSetDrawableProcPtr)
+				CFBundleGetFunctionPointerForName(
+					AGLBunRef, CFSTR("aglSetDrawable"));
+		}
+		DidaglSetDrawable = trueblnr;
+	}
+	return (MyaglSetDrawable != NULL);
 }
 
 /* routines not in carbon lib */
@@ -2465,7 +2522,6 @@ LOCALPROC InsertADisk0(void)
 	NavTypeListHandle openList = NULL;
 	NavEventUPP gEventProc = NewNavEventUPP(NavigationEventProc);
 	NavObjectFilterUPP filterUPP = NewNavObjectFilterUPP(NavigationFilterProc);
-	NavEventUPP eventUPP = NewNavEventUPP(NavigationEventProc);
 
 	if (noErr == NavGetDefaultDialogCreationOptions(&dialogOptions)) {
 		dialogOptions.modality = kWindowModalityAppModal;
@@ -2493,7 +2549,6 @@ LOCALPROC InsertADisk0(void)
 
 	DisposeNavEventUPP(gEventProc);
 	DisposeNavObjectFilterUPP(filterUPP);
-	DisposeNavEventUPP(eventUPP);
 }
 
 #if IncludeSonyNew
@@ -2615,8 +2670,6 @@ LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 	NavDialogCreationOptions dialogOptions;
 	NavReplyRecord theReply;
 	NavEventUPP gEventProc = NewNavEventUPP(NavigationEventProc);
-	NavObjectFilterUPP filterUPP = NewNavObjectFilterUPP(NavigationFilterProc);
-	NavEventUPP eventUPP = NewNavEventUPP(NavigationEventProc);
 
 	if (noErr == NavGetDefaultDialogCreationOptions(&dialogOptions)) {
 		dialogOptions.modality = kWindowModalityAppModal;
@@ -2656,8 +2709,6 @@ LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 	}
 
 	DisposeNavEventUPP(gEventProc);
-	DisposeNavObjectFilterUPP(filterUPP);
-	DisposeNavEventUPP(eventUPP);
 
 	if (NewDiskName != NULL) {
 		CFRelease(NewDiskName);
@@ -3130,7 +3181,13 @@ LOCALFUNC blnr MyCreateNewWindow(Rect *Bounds, WindowPtr *theWindow)
 	blnr IsOk = falseblnr;
 
 	if (noErr == CreateNewWindow(
-#if EnableFullScreen
+#if EnableFullScreen && 0
+		/*
+			appears not to work properly with aglSetWindowRef
+			at least in OS X 10.5.5
+			also doesn't seem to be needed. maybe dates from when
+			didn't cover all screens in full screen mode.
+		*/
 		UseFullScreen ? kPlainWindowClass :
 #endif
 			kDocumentWindowClass,
@@ -3338,7 +3395,11 @@ LOCALFUNC blnr CreateMainWindow(void)
 
 				ShowWindow(gMyMainWindow);
 
-				if (GL_TRUE != aglSetDrawable(window_ctx, GetWindowPort(gMyMainWindow)))
+				if (GL_TRUE != (HaveMyaglSetWindowRef()
+					? MyaglSetWindowRef(window_ctx, gMyMainWindow)
+					: HaveMyaglSetDrawable()
+					? MyaglSetDrawable(window_ctx, GetWindowPort(gMyMainWindow))
+					: GL_FALSE))
 				{
 					/* err = aglReportError() */
 				} else {

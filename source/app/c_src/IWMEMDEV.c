@@ -31,7 +31,7 @@
 
 #include "MYOSGLUE.h"
 #include "EMCONFIG.h"
-#include "ADDRSPAC.h"
+#include "GLOBGLUE.h"
 #endif
 
 #include "IWMEMDEV.h"

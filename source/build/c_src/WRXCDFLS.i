@@ -971,7 +971,11 @@ LOCALPROC DoProductAPBXCDaddFileRef(void)
 
 LOCALPROC WritePlistAPBXCDtype(void)
 {
-	WriteCStrToDestFile("text.xml");
+	if (ide_vers >= 3100) {
+		WriteCStrToDestFile("text.plist.xml");
+	} else {
+		WriteCStrToDestFile("text.xml");
+	}
 }
 
 LOCALPROC DoPlistAPBXCDaddFileRefBody(void)
@@ -1067,6 +1071,9 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		WriteDestFileLn("GCC_PREFIX_HEADER = \"\";");
 		WriteDestFileLn("GCC_SYMBOLS_PRIVATE_EXTERN = NO;");
 	}
+	if (ide_vers >= 3100) {
+		WriteDestFileLn("GCC_VERSION = 4.0;");
+	}
 	if (ide_vers >= 1000) {
 		WriteDestFileLn("GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;");
 	}
@@ -1120,7 +1127,11 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 	WriteCStrToDestFile(";");
 	WriteEndDestFileLn();
 	if (ide_vers >= 2200) {
-		WriteDestFileLn("SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;");
+		if (ide_vers >= 3100) {
+			WriteDestFileLn("SDKROOT = macosx10.5;");
+		} else {
+			WriteDestFileLn("SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;");
+		}
 	}
 	if (ide_vers < 1500) {
 		WriteAPBQuotedField("SECTORDER_FLAGS", "");
@@ -1144,10 +1155,10 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 	} else {
 		WriteAPBQuotedField("WARNING_CFLAGS", "-Wall -Wstrict-prototypes -Wno-uninitialized -Wno-four-char-constants -Wno-unknown-pragmas");
 	}
-	if (HaveMacBundleApp) {
+	if ((HaveMacBundleApp) && (ide_vers < 3100)) {
 		WriteDestFileLn("WRAPPER_EXTENSION = app;");
 	}
-	if (ide_vers >= 1000) {
+	if ((ide_vers >= 1000) && (ide_vers < 3100)) {
 		WriteDestFileLn("ZERO_LINK = NO;");
 	}
 }
@@ -1323,7 +1334,9 @@ static void WriteXCDSpecificFiles(void)
 		WriteDestFileLn("archiveVersion = 1;");
 		WriteDestFileLn("classes = {");
 		WriteDestFileLn("};");
-		if (ide_vers >= 2100) {
+		if (ide_vers >= 3100) {
+			WriteDestFileLn("objectVersion = 45;");
+		} else if (ide_vers >= 2100) {
 			WriteDestFileLn("objectVersion = 42;");
 		} else if (ide_vers >= 1000) {
 			WriteDestFileLn("objectVersion = 39;");
@@ -1700,7 +1713,9 @@ static void WriteXCDSpecificFiles(void)
 					WriteAPBXCDobjlistelmp(APBospcBuildStyle, 0, WriteXCDconfigname);
 				WriteAPBXCDEndObjList();
 			}
-
+			if (ide_vers >= 3100) {
+				WriteDestFileLn("compatibilityVersion = \"Xcode 3.1\";");
+			}
 			WriteDestFileLn("hasScannedForEncodings = 1;");
 
 			if (! HaveAPBXCD_IsaFirst) {
@@ -1712,6 +1727,10 @@ static void WriteXCDSpecificFiles(void)
 				WriteStrAppAbbrev);
 
 			WriteDestFileLn("projectDirPath = \"\";");
+
+			if (ide_vers >= 3100) {
+				WriteDestFileLn("projectRoot = \"\";");
+			}
 
 			WriteAPBXCDBgnObjList("targets");
 				WriteAPBXCDobjlistelmp(APBospcTarget, 0, WriteStrAppAbbrev);

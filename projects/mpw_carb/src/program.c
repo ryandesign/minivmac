@@ -1,4 +1,4 @@
-#include <Carbon/Carbon.h>
+#include <Carbon.h>
 #include <Limits.h>
 
 #define useUPP 1
@@ -6,7 +6,5 @@
 #define MayHaveMnvmExtns 0
 
 #define IsAnApp 1
-#define MyAppIsBundle 1
-#define src_eol src_eol_unx
 
 #include <app.c>

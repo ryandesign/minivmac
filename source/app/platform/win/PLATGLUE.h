@@ -1334,7 +1334,11 @@ enum {
 };
 
 
+#if (1 == vMacScreenDepth) || (vMacScreenDepth >= 4)
+#define EnableScalingBuff 1
+#else
 #define EnableScalingBuff (1 && EnableMagnify && (MyWindowScale == 2))
+#endif
 
 #if EnableScalingBuff
 LOCALVAR char *ScalingBuff = NULL;
@@ -1798,7 +1802,11 @@ LOCALFUNC blnr AlreadyRunningCheck(void)
 
 typedef struct BITMAPINFOHEADER256 {
 	BITMAPINFOHEADER bmi;
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+	RGBQUAD colors[CLUT_size];
+#else
 	RGBQUAD colors[2];
+#endif
 } BITMAPINFOHEADER256;
 
 #if EnableMagnify
@@ -1810,7 +1818,6 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 {
 	BITMAPINFOHEADER256 bmh;
 	ui3b *cdb = (ui3b *)GetCurDrawBuff();
-	ui3b *p = cdb + top * (vMacScreenWidth >> 3);
 	int XDest = 0;
 	int YDest = top;
 
@@ -1841,86 +1848,281 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 		}
 	}
 #endif
-	memset(&bmh, 0, sizeof (bmh));
-	bmh.bmi.biSize = sizeof(BITMAPINFOHEADER);
-	bmh.bmi.biWidth = vMacScreenWidth;
-	bmh.bmi.biHeight = - (bottom - top);
-	bmh.bmi.biPlanes = 1;
-	bmh.bmi.biBitCount = 1;
-	bmh.bmi.biCompression= BI_RGB;
-	bmh.bmi.biSizeImage = 0;
-	bmh.bmi.biXPelsPerMeter = 0;
-	bmh.bmi.biYPelsPerMeter = 0;
-	bmh.bmi.biClrUsed = 0;
-	bmh.bmi.biClrImportant = 0;
-#if ! UseWinCE
-	bmh.colors[0].rgbRed = 255;
-	bmh.colors[0].rgbGreen = 255;
-	bmh.colors[0].rgbBlue = 255;
-	bmh.colors[0].rgbReserved = 0;
-	bmh.colors[1].rgbRed = 0;
-	bmh.colors[1].rgbGreen = 0;
-	bmh.colors[1].rgbBlue = 0;
-	bmh.colors[1].rgbReserved = 0;
+#if 0 != vMacScreenDepth
+	if (UseColorMode) {
+		int i;
+		int nDestWidth = vMacScreenWidth;
+		int nDestHeight = (bottom - top);
+#if 1 == vMacScreenDepth
+		ui3b *p = (ui3b *)ScalingBuff + ((ui5r)vMacScreenWidth / 4) * top;
+#elif vMacScreenDepth >= 4
+		ui3b *p = (ui3b *)ScalingBuff + (ui5r)vMacScreenByteWidth * top;
+#else
+		ui3b *p = cdb + (ui5r)vMacScreenByteWidth * top;
+#endif
+
+		memset(&bmh, 0, sizeof (bmh));
+		bmh.bmi.biSize = sizeof(BITMAPINFOHEADER);
+		bmh.bmi.biWidth = vMacScreenWidth;
+		bmh.bmi.biHeight = - (bottom - top);
+		bmh.bmi.biPlanes = 1;
+#if 1 == vMacScreenDepth
+		bmh.bmi.biBitCount = 4;
+#else
+		bmh.bmi.biBitCount = (1 << vMacScreenDepth);
+#endif
+		bmh.bmi.biCompression= BI_RGB;
+		bmh.bmi.biSizeImage = 0;
+		bmh.bmi.biXPelsPerMeter = 0;
+		bmh.bmi.biYPelsPerMeter = 0;
+#if 1 == vMacScreenDepth
+		bmh.bmi.biClrUsed = 4;
+#else
+		bmh.bmi.biClrUsed = 0;
+#endif
+		bmh.bmi.biClrImportant = 0;
+
+#if vMacScreenDepth < 4
+		for (i = 0; i < CLUT_size; ++i) {
+			bmh.colors[i].rgbRed = CLUT_reds[i] >> 8;
+			bmh.colors[i].rgbGreen = CLUT_greens[i] >> 8;
+			bmh.colors[i].rgbBlue = CLUT_blues[i] >> 8;
+			bmh.colors[i].rgbReserved = 0;
+		}
+#endif
+
+#if 1 == vMacScreenDepth
+		{
+			int j;
+			ui3b *p1 = (ui3b *)(cdb + (ui5r)vMacScreenByteWidth * top);
+			ui4b *p2 = (ui4b *)p;
+			for (i = bottom - top; --i >= 0; ) {
+				for (j = vMacScreenWidth / 4; --j >= 0; ) {
+					ui4r t0 = *p1++;
+					*p2 ++
+						= ((t0 & 0xC0) >> 2)
+						| ((t0 & 0x30) >> 4)
+						| ((t0 & 0x0C) << 10)
+						| ((t0 & 0x03) << 8);
+				}
+			}
+		}
+#elif 4 == vMacScreenDepth
+		{
+			int j;
+			ui4b *p1 = (ui4b *)(cdb + (ui5r)vMacScreenByteWidth * top);
+			ui4b *p2 = (ui4b *)p;
+			for (i = bottom - top; --i >= 0; ) {
+				for (j = vMacScreenWidth; --j >= 0; ) {
+					ui4r t0 = *p1++;
+					*p2 ++ = ((t0 & 0xFF00) >> 8) | ((t0 & 0x00FF) << 8);
+				}
+			}
+		}
+#elif 5 == vMacScreenDepth
+		{
+			int j;
+			ui5b *p1 = (ui5b *)(cdb + (ui5r)vMacScreenByteWidth * top);
+			ui5b *p2 = (ui5b *)p;
+			for (i = bottom - top; --i >= 0; ) {
+				for (j = vMacScreenWidth; --j >= 0; ) {
+					ui5r t0 = *p1++;
+					*p2++
+						= ((t0 & 0xFF000000) >> 24)
+						| ((t0 & 0x00FF0000) >> 8)
+						| ((t0 & 0x0000FF00) << 8)
+						| ((t0 & 0x000000FF) << 24);
+				}
+			}
+		}
 #endif
 
 #if EnableMagnify
-	if (UseMagnify) {
+		if (UseMagnify) {
+			nDestWidth *= MyWindowScale;
+			nDestHeight *= MyWindowScale;
+		}
+#endif
+
+		if (StretchDIBits(
+			MainWndDC, /* handle of device context */
+			XDest, /* x-coordinate of upper-left corner of dest. rect. */
+			YDest, /* y-coordinate of upper-left corner of dest. rect. */
+			nDestWidth, /* dest. rectangle width */
+			nDestHeight, /* dest. rectangle height */
+			0, /* x-coordinate of lower-left corner of source rect. */
+			0, /* y-coordinate of lower-left corner of source rect. */
+			vMacScreenWidth, /* source rectangle width */
+			(bottom - top), /* source rectangle height */
+			(CONST VOID *)p, /* address of array with DIB bits */
+			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+			DIB_RGB_COLORS, /* RGB or palette indices */
+			SRCCOPY
+		) == 0) {
+			/* ReportWinLastError(); */
+		}
+	} else
+#endif
+	{
+		ui3b *p = cdb + (ui5r)vMacScreenMonoByteWidth * top;
+
+		memset(&bmh, 0, sizeof (bmh));
+		bmh.bmi.biSize = sizeof(BITMAPINFOHEADER);
+		bmh.bmi.biWidth = vMacScreenWidth;
+		bmh.bmi.biHeight = - (bottom - top);
+		bmh.bmi.biPlanes = 1;
+		bmh.bmi.biBitCount = 1;
+		bmh.bmi.biCompression= BI_RGB;
+		bmh.bmi.biSizeImage = 0;
+		bmh.bmi.biXPelsPerMeter = 0;
+		bmh.bmi.biYPelsPerMeter = 0;
+		bmh.bmi.biClrUsed = 0;
+		bmh.bmi.biClrImportant = 0;
+#if ! UseWinCE
+		bmh.colors[0].rgbRed = 255;
+		bmh.colors[0].rgbGreen = 255;
+		bmh.colors[0].rgbBlue = 255;
+		bmh.colors[0].rgbReserved = 0;
+		bmh.colors[1].rgbRed = 0;
+		bmh.colors[1].rgbGreen = 0;
+		bmh.colors[1].rgbBlue = 0;
+		bmh.colors[1].rgbReserved = 0;
+#endif
+
+#if EnableMagnify
+		if (UseMagnify) {
 #if EnableScalingBuff
-		if (ScalingBuff != NULL) {
-			int i;
-			int j;
-			int k;
-			ui3b *p1 = cdb + top * (vMacScreenWidth >> 3);
-			ui3b *p2 = (ui3b *)ScalingBuff /* + MyWindowScale * MyWindowScale * vMacScreenWidth / 8 * top */;
-			ui3b *p3;
-			ui3b t0;
-			ui3b t1;
-			ui3b t2;
-			ui3b m;
+			if (ScalingBuff != NULL) {
+				int i;
+				int j;
+				int k;
+				ui3b *p1 = cdb + top * (vMacScreenWidth >> 3);
+				ui3b *p2 = (ui3b *)ScalingBuff /* + MyWindowScale * MyWindowScale * vMacScreenWidth / 8 * top */;
+				ui3b *p3;
+				ui3b t0;
+				ui3b t1;
+				ui3b t2;
+				ui3b m;
 
-			for (i = bottom - top; --i >= 0; ) {
-				p3 = p2;
-				for (j = vMacScreenWidth / 8; --j >= 0; ) {
-					t0 = *p1++;
-					t1 = t0;
-					m = 0x80;
-					t2 = 0;
-					for (k = 4; --k >= 0; ) {
-						t2 |= t1 & m;
-						t1 >>= 1;
-						m >>= 2;
-					}
-					*p2++ = t2 | (t2 >> 1);
+				for (i = bottom - top; --i >= 0; ) {
+					p3 = p2;
+					for (j = vMacScreenWidth / 8; --j >= 0; ) {
+						t0 = *p1++;
+						t1 = t0;
+						m = 0x80;
+						t2 = 0;
+						for (k = 4; --k >= 0; ) {
+							t2 |= t1 & m;
+							t1 >>= 1;
+							m >>= 2;
+						}
+						*p2++ = t2 | (t2 >> 1);
 
-					t1 = t0 << 4;
-					m = 0x80;
-					t2 = 0;
-					for (k = 4; --k >= 0; ) {
-						t2 |= t1 & m;
-						t1 >>= 1;
-						m >>= 2;
+						t1 = t0 << 4;
+						m = 0x80;
+						t2 = 0;
+						for (k = 4; --k >= 0; ) {
+							t2 |= t1 & m;
+							t1 >>= 1;
+							m >>= 2;
+						}
+						*p2++ = t2 | (t2 >> 1);
 					}
-					*p2++ = t2 | (t2 >> 1);
+					for (j = MyScaledWidth / 8; --j >= 0; ) {
+						*p2++ = *p3++;
+					}
 				}
-				for (j = MyScaledWidth / 8; --j >= 0; ) {
-					*p2++ = *p3++;
+
+				bmh.bmi.biWidth = vMacScreenWidth * MyWindowScale;
+				bmh.bmi.biHeight = - ((bottom - top) * MyWindowScale);
+				if (SetDIBitsToDevice(
+					MainWndDC, /* handle of device context */
+					XDest, /* x-coordinate of upper-left corner of dest. rect. */
+					YDest, /* y-coordinate of upper-left corner of dest. rect. */
+					vMacScreenWidth * MyWindowScale, /* source rectangle width */
+					(bottom - top) * MyWindowScale, /* source rectangle height */
+					0, /* x-coordinate of lower-left corner of source rect. */
+					0, /* y-coordinate of lower-left corner of source rect. */
+					0, /* first scan line in array */
+					(bottom - top) * MyWindowScale, /* number of scan lines */
+					(CONST VOID *)ScalingBuff, /* address of array with DIB bits */
+					(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
+					DIB_RGB_COLORS /* RGB or palette indices */
+#else
+					DIB_PAL_COLORS /* palette indices */
+#endif
+				) == 0) {
+					/* ReportWinLastError(); */
 				}
 			}
-
-			bmh.bmi.biWidth = vMacScreenWidth * MyWindowScale;
-			bmh.bmi.biHeight = - ((bottom - top) * MyWindowScale);
-			if (SetDIBitsToDevice(
+#else
+			if (StretchDIBits(
 				MainWndDC, /* handle of device context */
 				XDest, /* x-coordinate of upper-left corner of dest. rect. */
 				YDest, /* y-coordinate of upper-left corner of dest. rect. */
-				vMacScreenWidth * MyWindowScale, /* source rectangle width */
-				(bottom - top) * MyWindowScale, /* source rectangle height */
+				vMacScreenWidth * MyWindowScale, /* dest. rectangle width */
+				(bottom - top) * MyWindowScale, /* dest. rectangle height */
+				0, /* x-coordinate of lower-left corner of source rect. */
+				0, /* y-coordinate of lower-left corner of source rect. */
+				vMacScreenWidth, /* source rectangle width */
+				(bottom - top), /* source rectangle height */
+				(CONST VOID *)p, /* address of array with DIB bits */
+				(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
+				DIB_RGB_COLORS, /* RGB or palette indices */
+#else
+				DIB_PAL_COLORS, /* palette indices */
+#endif
+				SRCCOPY
+			) == 0) {
+				/* ReportWinLastError(); */
+			}
+#endif
+		} else
+#endif
+#if UseWinCE && EnableFullScreen
+		if (UseFullScreen) {
+			if (StretchDIBits(
+				MainWndDC, /* handle of device context */
+				XDest, /* x-coordinate of upper-left corner of dest. rect. */
+				YDest, /* y-coordinate of upper-left corner of dest. rect. */
+				hRes, /* dest. rectangle width */
+				vRes, /* dest. rectangle height */
+				0, /* x-coordinate of lower-left corner of source rect. */
+				0, /* y-coordinate of lower-left corner of source rect. */
+				vMacScreenWidth, /* source rectangle width */
+				bottom, /* source rectangle height */
+				(CONST VOID *)p, /* address of array with DIB bits */
+				(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
+#if ! UseWinCE
+				DIB_RGB_COLORS, /* RGB or palette indices */
+#else
+				DIB_PAL_COLORS, /* palette indices */
+#endif
+				SRCCOPY
+			) == 0) {
+				/* ReportWinLastError(); */
+			}
+		} else
+#endif
+		{
+			if (SetDIBitsToDevice(
+				MainWndDC, /* handle of device context */
+#if UseWinCE
+				XDest - hOffset, /* x-coordinate of upper-left corner of dest. rect. */
+				YDest - vOffset, /* y-coordinate of upper-left corner of dest. rect. */
+#else
+				XDest, /* x-coordinate of upper-left corner of dest. rect. */
+				YDest, /* y-coordinate of upper-left corner of dest. rect. */
+#endif
+				vMacScreenWidth, /* source rectangle width */
+				(bottom - top), /* source rectangle height */
 				0, /* x-coordinate of lower-left corner of source rect. */
 				0, /* y-coordinate of lower-left corner of source rect. */
 				0, /* first scan line in array */
-				(bottom - top) * MyWindowScale, /* number of scan lines */
-				(CONST VOID *)ScalingBuff, /* address of array with DIB bits */
+				(bottom - top), /* number of scan lines */
+				(CONST VOID *)p, /* address of array with DIB bits */
 				(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
 #if ! UseWinCE
 				DIB_RGB_COLORS /* RGB or palette indices */
@@ -1930,82 +2132,6 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left, si4b bottom, si4b right)
 			) == 0) {
 				/* ReportWinLastError(); */
 			}
-		}
-#else
-		if (StretchDIBits(
-			MainWndDC, /* handle of device context */
-			XDest, /* x-coordinate of upper-left corner of dest. rect. */
-			YDest, /* y-coordinate of upper-left corner of dest. rect. */
-			vMacScreenWidth * MyWindowScale, /* dest. rectangle width */
-			(bottom - top) * MyWindowScale, /* dest. rectangle height */
-			0, /* x-coordinate of lower-left corner of source rect. */
-			0, /* y-coordinate of lower-left corner of source rect. */
-			vMacScreenWidth, /* source rectangle width */
-			(bottom - top), /* source rectangle height */
-			(CONST VOID *)p, /* address of array with DIB bits */
-			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
-#if ! UseWinCE
-			DIB_RGB_COLORS, /* RGB or palette indices */
-#else
-			DIB_PAL_COLORS, /* palette indices */
-#endif
-			SRCCOPY
-		) == 0) {
-			/* ReportWinLastError(); */
-		}
-#endif
-	} else
-#endif
-#if UseWinCE && EnableFullScreen
-	if (UseFullScreen) {
-		if (StretchDIBits(
-			MainWndDC, /* handle of device context */
-			XDest, /* x-coordinate of upper-left corner of dest. rect. */
-			YDest, /* y-coordinate of upper-left corner of dest. rect. */
-			hRes, /* dest. rectangle width */
-			vRes, /* dest. rectangle height */
-			0, /* x-coordinate of lower-left corner of source rect. */
-			0, /* y-coordinate of lower-left corner of source rect. */
-			vMacScreenWidth, /* source rectangle width */
-			bottom, /* source rectangle height */
-			(CONST VOID *)p, /* address of array with DIB bits */
-			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
-#if ! UseWinCE
-			DIB_RGB_COLORS, /* RGB or palette indices */
-#else
-			DIB_PAL_COLORS, /* palette indices */
-#endif
-			SRCCOPY
-		) == 0) {
-			/* ReportWinLastError(); */
-		}
-	} else
-#endif
-	{
-		if (SetDIBitsToDevice(
-			MainWndDC, /* handle of device context */
-#if UseWinCE
-			XDest - hOffset, /* x-coordinate of upper-left corner of dest. rect. */
-			YDest - vOffset, /* y-coordinate of upper-left corner of dest. rect. */
-#else
-			XDest, /* x-coordinate of upper-left corner of dest. rect. */
-			YDest, /* y-coordinate of upper-left corner of dest. rect. */
-#endif
-			vMacScreenWidth, /* source rectangle width */
-			(bottom - top), /* source rectangle height */
-			0, /* x-coordinate of lower-left corner of source rect. */
-			0, /* y-coordinate of lower-left corner of source rect. */
-			0, /* first scan line in array */
-			(bottom - top), /* number of scan lines */
-			(CONST VOID *)p, /* address of array with DIB bits */
-			(const struct tagBITMAPINFO *)&bmh, /* address of structure with bitmap info. */
-#if ! UseWinCE
-			DIB_RGB_COLORS /* RGB or palette indices */
-#else
-			DIB_PAL_COLORS /* palette indices */
-#endif
-		) == 0) {
-			/* ReportWinLastError(); */
 		}
 	}
 }
@@ -4120,7 +4246,19 @@ LOCALPROC ReserveAllocAll(void)
 	ReserveAllocOneBlock((ui3p *)&CntrlDisplayBuff, vMacScreenNumBytes, 5, falseblnr);
 #endif
 #if EnableScalingBuff
-	ReserveAllocOneBlock((ui3p *)&ScalingBuff, vMacScreenNumBytes * MyWindowScale * MyWindowScale, 5, falseblnr);
+	{
+		ui5r n = vMacScreenMonoNumBytes * MyWindowScale * MyWindowScale;
+#if 1 == vMacScreenDepth
+		if (vMacScreenNumBytes * 2 > n) {
+			n = vMacScreenNumBytes * 2;
+		}
+#elif vMacScreenDepth >= 4
+		if (vMacScreenNumBytes > n) {
+			n = vMacScreenNumBytes;
+		}
+#endif
+		ReserveAllocOneBlock((ui3p *)&ScalingBuff, n, 5, falseblnr);
+	}
 #endif
 
 	EmulationReserveAlloc();

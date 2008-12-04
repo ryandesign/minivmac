@@ -26,20 +26,37 @@ LOCALFUNC blnr rConverTextInThing(
 
 	switch (cur_eol) {
 		case gbk_eol_mac:
+#if src_eol_mac == src_eol
 			IsOk = duplib_WriteFile(src_d, src_s,
 				dst_d, dst_s);
+#elif src_eol_unx == src_eol
+			IsOk = rsubstchar_WriteFile(src_d, src_s,
+				dst_d, dst_s,
+				((char)10), ((char)13));
+#endif
 			break;
 #if SupportWinIDE
 		case gbk_eol_win:
-			IsOk = rinscharafter_WriteFile(src_d, src_s,
+#if src_eol_mac == src_eol
+			IsOk = rsubstcharwith2_WriteFile(src_d, src_s,
 				dst_d, dst_s,
-				'\n', '\r');
+				((char)13), ((char)13), ((char)10));
+#elif src_eol_unx == src_eol
+			IsOk = rsubstcharwith2_WriteFile(src_d, src_s,
+				dst_d, dst_s,
+				((char)10), ((char)13), ((char)10));
+#endif
 			break;
 #endif
 		case gbk_eol_unx:
+#if src_eol_mac == src_eol
 			IsOk = rsubstchar_WriteFile(src_d, src_s,
 				dst_d, dst_s,
-				'\n', '\r');
+				((char)13), ((char)10));
+#elif src_eol_unx == src_eol
+			IsOk = duplib_WriteFile(src_d, src_s,
+				dst_d, dst_s);
+#endif
 			break;
 	}
 

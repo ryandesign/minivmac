@@ -27,8 +27,7 @@
 
 #include "MYOSGLUE.h"
 #include "EMCONFIG.h"
-#include "ADDRSPAC.h"
-#include "PROGMAIN.h"
+#include "GLOBGLUE.h"
 #endif
 
 #include "VIA2EMDV.h"

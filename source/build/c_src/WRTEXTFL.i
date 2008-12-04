@@ -67,16 +67,16 @@ LOCALPROC MyWriteEolChar(void)
 {
 	switch (cur_eol) {
 		case gbk_eol_mac:
-			MyWriteChar('\n');
+			MyWriteChar(((char)13));
 			break;
 #if SupportWinIDE
 		case gbk_eol_win:
-			MyWriteChar('\n');
-			MyWriteChar('\r');
+			MyWriteChar(((char)13));
+			MyWriteChar(((char)10));
 			break;
 #endif
 		case gbk_eol_unx:
-			MyWriteChar('\r');
+			MyWriteChar(((char)10));
 			break;
 	}
 }

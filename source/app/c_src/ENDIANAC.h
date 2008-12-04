@@ -31,29 +31,27 @@
 #define ENDIANAC_H
 #endif
 
-#define do_get_mem_byte(a) (*((ui3b *)(a)))
+#define do_get_mem_byte(a) ((ui3r)*((ui3b *)(a)))
 
 #if BigEndianUnaligned
-#define do_get_mem_word(a) (*((ui4b *)(a)))
+#define do_get_mem_word(a) ((ui4r)*((ui4b *)(a)))
 #else
-static MayInline ui4b do_get_mem_word(ui3p a)
+static MayInline ui4r do_get_mem_word(ui3p a)
 {
 #if LittleEndianUnaligned
 	ui4b b = (*((ui4b *)(a)));
 
 	return ((b & 0x00FF) << 8) | ((b >> 8) & 0x00FF);
 #else
-	ui3b *b = a;
-
-	return (*b << 8) | (*(b + 1));
+	return (((ui4r)*a) << 8) | ((ui4r)*(a + 1));
 #endif
 }
 #endif
 
 #if BigEndianUnaligned
-#define do_get_mem_long(a) (*((ui5b *)(a)))
+#define do_get_mem_long(a) ((ui5r)*((ui5b *)(a)))
 #else
-static MayInline ui5b do_get_mem_long(ui3p a)
+static MayInline ui5r do_get_mem_long(ui3p a)
 {
 #if LittleEndianUnaligned
 #if 0
@@ -72,16 +70,14 @@ static MayInline ui5b do_get_mem_long(ui3p a)
 	ui4b c1 = ((b1 & 0x00FF) << 8) | ((b1 >> 8) & 0x00FF);
 	ui4b c2 = ((b2 & 0x00FF) << 8) | ((b2 >> 8) & 0x00FF);
 
-	return (c1 << 16) | c2;
+	return (((ui5r)c1) << 16) | ((ui5r)c2);
 	/*
 		better, though still doesn't use BSWAP
 		instruction with apple tools for intel.
 	*/
 #else
-	ui3b *b = a;
-
-	return (*b << 24) | (*(b + 1) << 16)
-		| (*(b + 2) << 8) | (*(b + 3));
+	return (((ui5r)*a) << 24) | (((ui5r)*(a + 1)) << 16)
+		| (((ui5r)*(a + 2)) << 8) | ((ui5r)*(a + 3));
 #endif
 }
 #endif
@@ -91,17 +87,15 @@ static MayInline ui5b do_get_mem_long(ui3p a)
 #if BigEndianUnaligned
 #define do_put_mem_word(a, v) ((*((ui4b *)(a))) = (v))
 #else
-static MayInline void do_put_mem_word(ui3p a, ui4b v)
+static MayInline void do_put_mem_word(ui3p a, ui4r v)
 {
 #if LittleEndianUnaligned
 	ui4b b = ((v & 0x00FF) << 8) | ((v >> 8) & 0x00FF);
 
 	*(ui4b *)a = b;
 #else
-	ui3b *b = a;
-
-	*b = v >> 8;
-	*(b + 1) = v;
+	*a = v >> 8;
+	*(a + 1) = v;
 #endif
 }
 #endif
@@ -109,7 +103,7 @@ static MayInline void do_put_mem_word(ui3p a, ui4b v)
 #if BigEndianUnaligned
 #define do_put_mem_long(a, v) ((*((ui5b *)(a))) = (v))
 #else
-static MayInline void do_put_mem_long(ui3p a, ui5b v)
+static MayInline void do_put_mem_long(ui3p a, ui5r v)
 {
 #if LittleEndianUnaligned
 	ui4b b1 = v;
@@ -119,12 +113,10 @@ static MayInline void do_put_mem_long(ui3p a, ui5b v)
 
 	*(ui5b *)a = (c1 << 16) | c2;
 #else
-	ui3b *b = a;
-
-	*b = v >> 24;
-	*(b + 1) = v >> 16;
-	*(b + 2) = v >> 8;
-	*(b + 3) = v;
+	*a = v >> 24;
+	*(a + 1) = v >> 16;
+	*(a + 2) = v >> 8;
+	*(a + 3) = v;
 #endif
 }
 #endif

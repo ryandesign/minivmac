@@ -66,7 +66,12 @@ LOCALPROC WriteXCDBgcCompileLinkCommonOptions(void)
 		} else {
 			WriteCStrToDestFile(" -mmacosx-version-min=10.1");
 		}
-		WriteCStrToDestFile(" -isysroot /Developer/SDKs/MacOSX10.4u.sdk");
+		WriteCStrToDestFile(" -isysroot");
+		if (ide_vers >= 3100) {
+			WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.5.sdk");
+		} else {
+			WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.4u.sdk");
+		}
 	}
 }
 

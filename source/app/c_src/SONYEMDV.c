@@ -28,7 +28,7 @@
 #include "MYOSGLUE.h"
 #include "ENDIANAC.h"
 #include "EMCONFIG.h"
-#include "ADDRSPAC.h"
+#include "GLOBGLUE.h"
 #include "MINEM68K.h"
 #endif
 
@@ -336,7 +336,7 @@ LOCALPROC ExtnFind_Access(CPTR p)
 			break;
 		case kCmndFindExtnId2Code:
 			{
-				ui4b extn = get_vm_word(p + kParamFindExtnTheId);
+				ui4r extn = get_vm_word(p + kParamFindExtnTheId);
 
 				if (extn == kExtnDisk) {
 					put_vm_long(p + kParamFindExtnTheExtn, kDiskDriverExtension);
@@ -598,7 +598,7 @@ LOCALPROC ExtnDisk_Access(CPTR p)
 			break;
 		case kCmndDiskFeatures:
 			{
-				ui5b v = (0
+				ui5r v = (0
 #if IncludeSonyRawMode
 					| ((ui5b)1 << kFeatureCmndDisk_RawMode)
 #endif
