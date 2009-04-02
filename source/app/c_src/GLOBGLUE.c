@@ -48,6 +48,8 @@ IMPORTPROC VIA1_Zap(void);
 IMPORTPROC VIA2_Zap(void);
 #endif
 
+IMPORTPROC Sony_EjectAllDisks(void);
+
 IMPORTPROC m68k_reset(void);
 IMPORTPROC IWM_Reset(void);
 IMPORTPROC SCC_Reset(void);
@@ -56,8 +58,10 @@ IMPORTPROC VIA1_Reset(void);
 #if EmVIA2
 IMPORTPROC VIA2_Reset(void);
 #endif
-IMPORTPROC Memory_Reset(void);
 IMPORTPROC Sony_Reset(void);
+FORWARDPROC Memory_Reset(void);
+FORWARDPROC ICT_Zap(void);
+FORWARDPROC Extn_Reset(void);
 
 IMPORTPROC Mouse_Update(void);
 #if EmClassicKbrd
@@ -76,6 +80,14 @@ IMPORTPROC Vid_Update(void);
 #if EmRTC
 IMPORTPROC RTC_Interrupt(void);
 #endif
+
+IMPORTPROC ExtnDisk_Access(CPTR p);
+IMPORTPROC ExtnSony_Access(CPTR p);
+#if EmVidCard
+IMPORTPROC ExtnVideo_Access(CPTR p);
+#endif
+
+IMPORTPROC Sony_SetQuitOnEject(void);
 
 IMPORTPROC MacSound_SubTick(int SubTick);
 
@@ -110,7 +122,7 @@ IMPORTFUNC ui5b VIA2_Access(ui5b Data, blnr WriteMem, CPTR addr);
 #if EmASC
 IMPORTFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr);
 #endif
-IMPORTPROC Sony_Access(ui5b Data, CPTR addr);
+FORWARDPROC Extn_Access(ui5b Data, CPTR addr);
 
 #if EmClassicKbrd
 IMPORTPROC DoKybd_ReceiveEndCommand(void);
@@ -128,6 +140,8 @@ IMPORTPROC VIA1_DoTimer2Check(void);
 IMPORTPROC VIA2_DoTimer1Check(void);
 IMPORTPROC VIA2_DoTimer2Check(void);
 #endif
+
+GLOBALVAR ui5r my_disk_icon_addr;
 
 GLOBALFUNC blnr InitEmulation(void)
 {
@@ -162,6 +176,7 @@ GLOBALPROC EmulationReserveAlloc(void)
 LOCALPROC EmulatedHardwareZap(void)
 {
 	Memory_Reset();
+	ICT_Zap();
 	IWM_Reset();
 	SCC_Reset();
 	SCSI_Reset();
@@ -170,6 +185,7 @@ LOCALPROC EmulatedHardwareZap(void)
 	VIA2_Zap();
 #endif
 	Sony_Reset();
+	Extn_Reset();
 	m68k_reset();
 }
 
@@ -183,6 +199,7 @@ GLOBALPROC customreset(void)
 	VIA2_Reset();
 #endif
 	Sony_Reset();
+	Extn_Reset();
 #if CurEmMd <= kEmMd_128K
 	WantMacReset = trueblnr;
 	/*
@@ -294,17 +311,6 @@ GLOBALPROC DoReportAbnormal(void)
 #define kRAM_ln2Spc 22
 #endif
 
-#if CurEmMd == kEmMd_PB100
-#define kROM_Base 0x00900000
-#define kROM_ln2Spc 20
-#elif (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)
-#define kROM_Base 0x00800000
-#define kROM_ln2Spc 20
-#else
-#define kROM_Base 0x00400000
-#define kROM_ln2Spc 20
-#endif
-
 #if IncludeVidMem
 #if CurEmMd == kEmMd_PB100
 #define kVidMem_Base 0x00FA0000
@@ -361,8 +367,6 @@ GLOBALPROC DoReportAbnormal(void)
 #endif
 #define kASC_Mask 0x00000FFF
 
-#define kDSK_Block_Base 0x00F40000
-#define kDSK_ln2Spc 5
 
 /* implementation of read/write for everything but RAM and ROM */
 
@@ -679,7 +683,7 @@ LOCALFUNC ui5b MM_IOAccess(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 		} else if (! WriteMem) {
 			ReportAbnormal("access Sony read");
 		} else {
-			Sony_Access(Data, (addr >> 1) & 0x0F);
+			Extn_Access(Data, (addr >> 1) & 0x0F);
 		}
 	} else
 	if ((addr >= 0x10000) && (addr < 0x12000)) {
@@ -825,7 +829,7 @@ GLOBALFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 				Data = SCC_Access(Data, WriteMem, (mAddressBus >> 1) & kSCC_Mask);
 			}
 		} else
-		if ((mAddressBus >> kDSK_ln2Spc) == (kDSK_Block_Base >> kDSK_ln2Spc)) {
+		if ((mAddressBus >> kExtn_ln2Spc) == (kExtn_Block_Base >> kExtn_ln2Spc)) {
 			if (ByteSize) {
 				ReportAbnormal("access Sony byte");
 			} else if ((mAddressBus & 1) != 0) {
@@ -833,7 +837,7 @@ GLOBALFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr)
 			} else if (! WriteMem) {
 				ReportAbnormal("access Sony read");
 			} else {
-				Sony_Access(Data, (mAddressBus >> 1) & 0x0F);
+				Extn_Access(Data, (mAddressBus >> 1) & 0x0F);
 			}
 		} else
 #if CurEmMd == kEmMd_PB100
@@ -1020,43 +1024,67 @@ LOCALPROC get_address_realblock(blnr WriteMem, CPTR addr,
 	}
 }
 
-GLOBALFUNC ui3p get_real_address(ui5b L, blnr WritableMem, CPTR addr)
+GLOBALFUNC ui3p get_real_address0(ui5b L, blnr WritableMem, CPTR addr,
+	ui5b *actL)
 {
 	ui3p RealStart;
 	ui5b RealSize;
+	ui3p p;
 
 	get_address_realblock(WritableMem, addr,
 		&RealStart, &RealSize);
 	if (nullpr == RealStart) {
-		return nullpr;
+		*actL = 0;
+		p = nullpr;
 	} else {
 		ui5b bankoffset = addr & (RealSize - 1);
 		ui5b bankleft = RealSize - bankoffset;
-		ui3p p = bankoffset + RealStart;
-label_1:
+		p = bankoffset + RealStart;
 		if (bankleft >= L) {
-			return p; /* ok */
+			/* this block is big enough (by far the most common case) */
+			*actL = L;
 		} else {
-			ui3p bankend = RealSize + RealStart;
-
+			/*
+				not big enough, look if following block
+				is contiguous in real memory.
+			*/
+			ui3p bankend;
+			ui5b n = L;
+label_1:
 			addr += bankleft;
+			n -= bankleft;
+			bankend = RealSize + RealStart;
+
 			get_address_realblock(WritableMem, addr,
 				&RealStart, &RealSize);
 			if ((nullpr == RealStart)
 				|| (RealStart != bankend))
 			{
-				return nullpr;
+				/* following block not contiguous */
+				*actL = L - n;
+			} else if (RealSize >= n) {
+				/* following block is contiguous and big enough */
+				*actL = L; /* ok */
 			} else {
 				bankoffset = addr & (RealSize - 1);
 				if (bankoffset != 0) {
 					ReportAbnormal("problem with get_address_realblock");
 				}
-				L -= bankleft;
 				bankleft = RealSize;
 				goto label_1;
 			}
 		}
 	}
+
+	return p;
+}
+
+GLOBALFUNC ui3p get_real_address(ui5b L, blnr WritableMem, CPTR addr)
+{
+	ui5b actL;
+	ui3p p = get_real_address0(L, WritableMem, addr, &actL);
+
+	return (L == actL) ? p : nullpr;
 }
 
 GLOBALVAR blnr InterruptButton = falseblnr;
@@ -1069,23 +1097,9 @@ GLOBALPROC SetInterruptButton(blnr v)
 	}
 }
 
-LOCALPROC vSonyEjectAllDisks(void)
-{
-	tDrive i;
-
-	for (i = 0; i < NumDrives; ++i) {
-		if (vSonyIsInserted(i)) {
-			(void) vSonyEject(i);
-		}
-	}
-	vSonyWritableMask = 0;
-	vSonyInsertedMask = 0;
-	vSonyMountedMask = 0;
-}
-
 LOCALPROC DoMacReset(void)
 {
-	vSonyEjectAllDisks();
+	Sony_EjectAllDisks();
 	EmulatedHardwareZap();
 }
 
@@ -1151,6 +1165,391 @@ LOCALFUNC blnr AddrSpac_Init(void)
 	EmulatedHardwareZap();
 	return trueblnr;
 }
+
+LOCALPROC Memory_Reset(void)
+{
+	MemOverlay = 1;
+	SetUpMemBanks();
+}
+
+#if (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)
+EXPORTPROC PowerOff_ChangeNtfy(void);
+GLOBALPROC PowerOff_ChangeNtfy(void)
+{
+	if (! VIA2_iB2) {
+		ForceMacOff = trueblnr;
+	}
+}
+#endif
+
+/* extension mechanism */
+
+#if IncludePbufs
+LOCALFUNC tMacErr PbufTransferVM(CPTR Buffera,
+	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
+{
+	tMacErr result;
+	ui5b contig;
+	ui3p Buffer;
+
+label_1:
+	if (0 == count) {
+		result = mnvm_noErr;
+	} else {
+		Buffer = get_real_address0(count, ! IsWrite, Buffera, &contig);
+		if (0 == contig) {
+			result = mnvm_miscErr;
+		} else {
+			PbufTransfer(Buffer, i, offset, contig, IsWrite);
+			offset += contig;
+			Buffera += contig;
+			count -= contig;
+			goto label_1;
+		}
+	}
+
+	return result;
+}
+#endif
+
+#if IncludePbufs
+GLOBALFUNC tMacErr CheckPbuf(tPbuf Pbuf_No)
+{
+	tMacErr result;
+
+	if (Pbuf_No >= NumPbufs) {
+		result = mnvm_nsDrvErr;
+	} else if (! PbufIsAllocated(Pbuf_No)) {
+		result = mnvm_offLinErr;
+	} else {
+		result = mnvm_noErr;
+	}
+
+	return result;
+}
+#endif
+
+#if IncludePbufs
+#define kCmndPbufFeatures 1
+#define kCmndPbufNew 2
+#define kCmndPbufDispose 3
+#define kCmndPbufGetSize 4
+#define kCmndPbufTransfer 5
+#endif
+
+#if IncludePbufs
+LOCALPROC ExtnParamBuffers_Access(CPTR p)
+{
+	tMacErr result = mnvm_controlErr;
+
+	switch (get_vm_word(p + ExtnDat_commnd)) {
+		case kCmndVersion:
+			put_vm_word(p + ExtnDat_version, 1);
+			result = mnvm_noErr;
+			break;
+		case kCmndPbufFeatures:
+			put_vm_long(p + ExtnDat_params + 0, 0);
+			result = mnvm_noErr;
+			break;
+		case kCmndPbufNew:
+			{
+				tPbuf Pbuf_No;
+				ui5b count = get_vm_long(p + ExtnDat_params + 4);
+				/* reserved word at offset 2, should be zero */
+				result = PbufNew(count, &Pbuf_No);
+				put_vm_word(p + ExtnDat_params + 0, Pbuf_No);
+			}
+			break;
+		case kCmndPbufDispose:
+			{
+				tPbuf Pbuf_No = get_vm_word(p + ExtnDat_params + 0);
+				/* reserved word at offset 2, should be zero */
+				result = CheckPbuf(Pbuf_No);
+				if (mnvm_noErr == result) {
+					PbufDispose(Pbuf_No);
+				}
+			}
+			break;
+		case kCmndPbufGetSize:
+			{
+				tPbuf Pbuf_No = get_vm_word(p + ExtnDat_params + 0);
+				/* reserved word at offset 2, should be zero */
+
+				result = CheckPbuf(Pbuf_No);
+				if (mnvm_noErr == result) {
+					put_vm_long(p + ExtnDat_params + 4, PbufSize[Pbuf_No]);
+				}
+			}
+			break;
+		case kCmndPbufTransfer:
+			{
+				tPbuf Pbuf_No = get_vm_word(p + ExtnDat_params + 0);
+				/* reserved word at offset 2, should be zero */
+				ui5r offset = get_vm_long(p + ExtnDat_params + 4);
+				ui5r count = get_vm_long(p + ExtnDat_params + 8);
+				CPTR Buffera = get_vm_long(p + ExtnDat_params + 12);
+				blnr IsWrite = (get_vm_word(p + ExtnDat_params + 16) != 0);
+				result = CheckPbuf(Pbuf_No);
+				if (mnvm_noErr == result) {
+					ui5r endoff = offset + count;
+					if ((endoff < offset) /* overflow */
+						|| (endoff > PbufSize[Pbuf_No]))
+					{
+						result = mnvm_eofErr;
+					} else {
+						result = PbufTransferVM(Buffera,
+							Pbuf_No, offset, count, IsWrite);
+					}
+				}
+			}
+			break;
+	}
+
+	put_vm_word(p + ExtnDat_result, result);
+}
+#endif
+
+#if IncludeHostTextClipExchange
+#define kCmndHTCEFeatures 1
+#define kCmndHTCEExport 2
+#define kCmndHTCEImport 3
+#endif
+
+#if IncludeHostTextClipExchange
+LOCALPROC ExtnHostTextClipExchange_Access(CPTR p)
+{
+	tMacErr result = mnvm_controlErr;
+
+	switch (get_vm_word(p + ExtnDat_commnd)) {
+		case kCmndVersion:
+			put_vm_word(p + ExtnDat_version, 1);
+			result = mnvm_noErr;
+			break;
+		case kCmndHTCEFeatures:
+			put_vm_long(p + ExtnDat_params + 0, 0);
+			result = mnvm_noErr;
+			break;
+		case kCmndHTCEExport:
+			{
+				tPbuf Pbuf_No = get_vm_word(p + ExtnDat_params + 0);
+
+				result = CheckPbuf(Pbuf_No);
+				if (mnvm_noErr == result) {
+					result = HTCEexport(Pbuf_No);
+				}
+			}
+			break;
+		case kCmndHTCEImport:
+			{
+				tPbuf Pbuf_No;
+				result = HTCEimport(&Pbuf_No);
+				put_vm_word(p + ExtnDat_params + 0, Pbuf_No);
+			}
+			break;
+	}
+
+	put_vm_word(p + ExtnDat_result, result);
+}
+#endif
+
+#define kFindExtnExtension 0x64E1F58A
+#define kDiskDriverExtension 0x4C9219E6
+#if EmVidCard
+#define kHostVideoExtension 0x163DA5A9
+#endif
+#if IncludePbufs
+#define kHostParamBuffersExtension 0x314C87BF
+#endif
+#if IncludeHostTextClipExchange
+#define kHostClipExchangeExtension 0x27B130CA
+#endif
+
+#define kCmndFindExtnFind 1
+#define kCmndFindExtnId2Code 2
+#define kCmndFindExtnCount 3
+
+#define kParamFindExtnTheExtn 8
+#define kParamFindExtnTheId 12
+
+LOCALPROC ExtnFind_Access(CPTR p)
+{
+	tMacErr result = mnvm_controlErr;
+
+	switch (get_vm_word(p + ExtnDat_commnd)) {
+		case kCmndVersion:
+			put_vm_word(p + ExtnDat_version, 1);
+			result = mnvm_noErr;
+			break;
+		case kCmndFindExtnFind:
+			{
+				ui5b extn = get_vm_long(p + kParamFindExtnTheExtn);
+
+				if (extn == kDiskDriverExtension) {
+					put_vm_word(p + kParamFindExtnTheId, kExtnDisk);
+					result = mnvm_noErr;
+				} else
+#if EmVidCard
+				if (extn == kHostVideoExtension) {
+					put_vm_word(p + kParamFindExtnTheId, kExtnVideo);
+					result = mnvm_noErr;
+				} else
+#endif
+#if IncludePbufs
+				if (extn == kHostParamBuffersExtension) {
+					put_vm_word(p + kParamFindExtnTheId, kExtnParamBuffers);
+					result = mnvm_noErr;
+				} else
+#endif
+#if IncludeHostTextClipExchange
+				if (extn == kHostClipExchangeExtension) {
+					put_vm_word(p + kParamFindExtnTheId, kExtnHostTextClipExchange);
+					result = mnvm_noErr;
+				} else
+#endif
+				if (extn == kFindExtnExtension) {
+					put_vm_word(p + kParamFindExtnTheId, kExtnFindExtn);
+					result = mnvm_noErr;
+				} else
+				{
+					/* not found */
+				}
+			}
+			break;
+		case kCmndFindExtnId2Code:
+			{
+				ui4r extn = get_vm_word(p + kParamFindExtnTheId);
+
+				if (extn == kExtnDisk) {
+					put_vm_long(p + kParamFindExtnTheExtn, kDiskDriverExtension);
+					result = mnvm_noErr;
+				} else
+#if EmVidCard
+				if (extn == kExtnVideo) {
+					put_vm_long(p + kParamFindExtnTheExtn, kHostVideoExtension);
+					result = mnvm_noErr;
+				} else
+#endif
+#if IncludePbufs
+				if (extn == kExtnParamBuffers) {
+					put_vm_long(p + kParamFindExtnTheExtn, kHostParamBuffersExtension);
+					result = mnvm_noErr;
+				} else
+#endif
+#if IncludeHostTextClipExchange
+				if (extn == kExtnHostTextClipExchange) {
+					put_vm_long(p + kParamFindExtnTheExtn, kHostClipExchangeExtension);
+					result = mnvm_noErr;
+				} else
+#endif
+				if (extn == kExtnFindExtn) {
+					put_vm_long(p + kParamFindExtnTheExtn, kFindExtnExtension);
+					result = mnvm_noErr;
+				} else
+				{
+					/* not found */
+				}
+			}
+			break;
+		case kCmndFindExtnCount:
+			put_vm_word(p + kParamFindExtnTheId, kNumExtns);
+			result = mnvm_noErr;
+			break;
+	}
+
+	put_vm_word(p + ExtnDat_result, result);
+}
+
+#define kDSK_Params_Hi 0
+#define kDSK_Params_Lo 1
+#define kDSK_QuitOnEject 3 /* obsolete */
+
+LOCALVAR ui4b ParamAddrHi;
+
+LOCALPROC Extn_Access(ui5b Data, CPTR addr)
+{
+	switch (addr) {
+		case kDSK_Params_Hi:
+			ParamAddrHi = Data;
+			break;
+		case kDSK_Params_Lo:
+			{
+				CPTR p = ParamAddrHi << 16 | Data;
+
+				ParamAddrHi = (ui4b) - 1;
+				if (kcom_callcheck == get_vm_word(p + ExtnDat_checkval)) {
+					put_vm_word(p + ExtnDat_checkval, 0);
+
+					switch (get_vm_word(p + ExtnDat_extension)) {
+						case kExtnFindExtn:
+							ExtnFind_Access(p);
+							break;
+#if EmVidCard
+						case kExtnVideo:
+							ExtnVideo_Access(p);
+							break;
+#endif
+#if IncludePbufs
+						case kExtnParamBuffers:
+							ExtnParamBuffers_Access(p);
+							break;
+#endif
+#if IncludeHostTextClipExchange
+						case kExtnHostTextClipExchange:
+							ExtnHostTextClipExchange_Access(p);
+							break;
+#endif
+						case kExtnDisk:
+							ExtnDisk_Access(p);
+							break;
+						case kExtnSony:
+							ExtnSony_Access(p);
+							break;
+						default:
+							put_vm_word(p + ExtnDat_result, mnvm_controlErr);
+							break;
+					}
+				}
+			}
+			break;
+		case kDSK_QuitOnEject:
+			/* obsolete, kept for compatibility */
+			Sony_SetQuitOnEject();
+			break;
+	}
+}
+
+LOCALPROC Extn_Reset(void)
+{
+	ParamAddrHi = (ui4b) - 1;
+}
+
+/* user event queue utilities */
+
+GLOBALFUNC MyEvtQEl * MyEvtQOutP(void)
+{
+	MyEvtQEl *p = nullpr;
+	if (MyEvtQIn != MyEvtQOut) {
+		p = &MyEvtQA[MyEvtQOut & MyEvtQIMask];
+	}
+	return p;
+}
+
+GLOBALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
+{
+	MyEvtQEl *p = MyEvtQOutP();
+	if (nullpr != p) {
+		if (MyEvtQElKindKey == p->kind) {
+			*VirtualKey = p->u.press.key;
+			*KeyDown = p->u.press.down;
+			++MyEvtQOut;
+			return trueblnr;
+		}
+	}
+
+	return falseblnr;
+}
+
+/* task management */
 
 LOCALPROC ICT_DoTask(int taskid)
 {
@@ -1295,37 +1694,6 @@ LOCALPROC m68k_go_nInstructions_1(ui5b n)
 		m68k_go_nInstructions(n2);
 		n = StopiCount - NextiCount;
 	} while (n != 0);
-}
-
-GLOBALPROC Memory_Reset(void)
-{
-	MemOverlay = 1;
-	SetUpMemBanks();
-	ICT_Zap();
-}
-
-GLOBALFUNC MyEvtQEl * MyEvtQOutP(void)
-{
-	MyEvtQEl *p = nullpr;
-	if (MyEvtQIn != MyEvtQOut) {
-		p = &MyEvtQA[MyEvtQOut & MyEvtQIMask];
-	}
-	return p;
-}
-
-GLOBALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
-{
-	MyEvtQEl *p = MyEvtQOutP();
-	if (nullpr != p) {
-		if (MyEvtQElKindKey == p->kind) {
-			*VirtualKey = p->u.press.key;
-			*KeyDown = p->u.press.down;
-			++MyEvtQOut;
-			return trueblnr;
-		}
-	}
-
-	return falseblnr;
 }
 
 #define InstructionsPerSubTick (InstructionsPerTick / kNumSubTicks)

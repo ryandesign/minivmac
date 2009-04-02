@@ -2199,9 +2199,9 @@ LOCALPROC DrawCell(unsigned int h, unsigned int v, int x)
 				}
 #elif 4 == vMacScreenDepth
 				int k;
+				ui4r v;
 				ui3b t0 = *p0;
 				ui3p p2 = p;
-				ui4r v;
 				for (k = 8; --k >= 0; ) {
 					v = ((t0 >> k) & 0x01) ? 0x0000 : 0x7FFF;
 						/* black RRGGBBAA, white RRGGBBAA */
@@ -2211,9 +2211,9 @@ LOCALPROC DrawCell(unsigned int h, unsigned int v, int x)
 				}
 #elif 5 == vMacScreenDepth
 				int k;
+				ui5r v;
 				ui3b t0 = *p0;
 				ui3p p2 = p;
-				ui5r v;
 				for (k = 8; --k >= 0; ) {
 					v = ((t0 >> k) & 0x01) ? 0x00000000 : 0x00FFFFFF;
 						/* black RRGGBBAA, white RRGGBBAA */

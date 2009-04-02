@@ -20,17 +20,12 @@
 #define SONYEMDV_H
 #endif
 
-#define ExtnDat_checkval 0
-#define ExtnDat_extension 2
-#define ExtnDat_commnd 4
-#define ExtnDat_result 6
-#define ExtnDat_params 8
+EXPORTPROC ExtnDisk_Access(CPTR p);
+EXPORTPROC ExtnSony_Access(CPTR p);
 
-#define kCmndVersion 0
-#define ExtnDat_version 8
+EXPORTPROC Sony_SetQuitOnEject(void);
 
+EXPORTPROC Sony_EjectAllDisks(void);
 EXPORTPROC Sony_Reset(void);
-
-EXPORTPROC Sony_Access(ui5b Data, CPTR addr);
 
 EXPORTPROC Sony_Update(void);

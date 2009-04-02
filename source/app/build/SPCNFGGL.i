@@ -22,6 +22,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBlankLineToDestFile();
 
 	WriteCompCondBool("DetailedAbnormalReport", falseblnr);
+	WriteCompCondBool("ExtraAbnormalReports", falseblnr);
 	WriteCompCondBool("MakeDumpFile", falseblnr);
 
 	WriteBlankLineToDestFile();

@@ -67,8 +67,11 @@ EXPORTVAR(ui3p, ROM)
 #define mnvm_miscErr    ((tMacErr) 0xFFFF) /* (ui4b) -  1 - Should probably replace these */
 #define mnvm_controlErr ((tMacErr) 0xFFEF) /* (ui4b) - 17 - I/O System Errors */
 #define mnvm_statusErr  ((tMacErr) 0xFFEE) /* (ui4b) - 18 - Driver can't respond to Status call */
+#define mnvm_closErr    ((tMacErr) 0xFFE8) /* (ui4b) - 24 - I/O System Errors*/
 #define mnvm_eofErr     ((tMacErr) 0xFFD9) /* (ui4b) - 39 - End of file */
+#define mnvm_wPrErr     ((tMacErr) 0xFFD4) /* (ui4b) - 44 - diskette is write protected */
 #define mnvm_vLckdErr   ((tMacErr) 0xFFD2) /* (ui4b) - 46 - volume is locked */
+#define mnvm_opWrErr    ((tMacErr) 0xFFCF) /* (ui4b) - 49 - file already open with with write permission */
 #define mnvm_paramErr   ((tMacErr) 0xFFCE) /* (ui4b) - 50 - error in parameter list */
 #define mnvm_nsDrvErr   ((tMacErr) 0xFFC8) /* (ui4b) - 56 - No Such Drive */
 #define mnvm_offLinErr  ((tMacErr) 0xFFBF) /* (ui4b) - 65 - off-line drive */
@@ -95,10 +98,8 @@ EXPORTPROC PbufTransfer(ui3p Buffer,
 
 EXPORTVAR(ui5b, vSonyWritableMask)
 EXPORTVAR(ui5b, vSonyInsertedMask)
-EXPORTVAR(ui5b, vSonyMountedMask)
 
 #define vSonyIsInserted(Drive_No) ((vSonyInsertedMask & ((ui5b)1 << (Drive_No))) != 0)
-#define vSonyIsMounted(Drive_No) ((vSonyMountedMask & ((ui5b)1 << (Drive_No))) != 0)
 
 EXPORTFUNC tMacErr vSonyRead(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count);
 EXPORTFUNC tMacErr vSonyWrite(ui3p Buffer, tDrive Drive_No, ui5r Sony_Start, ui5r *Sony_Count);

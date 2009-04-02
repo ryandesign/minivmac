@@ -23,7 +23,8 @@ LOCALPROC WriteAppSpecificConfigFiles(void)
 
 	WriteDestFileLn("/*");
 	++DestFileIndent;
-		WriteDestFileLn("configuration options used by platform independent code");
+		WriteDestFileLn("Configuration options used by platform independent code.");
+		WriteConfigurationWarning();
 	--DestFileIndent;
 	WriteDestFileLn("*/");
 
@@ -106,6 +107,13 @@ LOCALPROC WriteAppSpecificConfigFiles(void)
 	if (EmVidCard) {
 		WriteDestFileLn("#define kVidROM_Size 0x000800");
 	}
+
+	WriteBlankLineToDestFile();
+
+	WriteCompCondBool("Sony_SupportDC42", SonySupportDC42);
+	WriteCompCondBool("Sony_SupportTags", SonySupportTags);
+	WriteCompCondBool("Sony_WantChecksumsUpdated", SonyWantChecksumsUpdated);
+	WriteDestFileLn("#define Sony_VerifyChecksums 0");
 
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
@@ -525,6 +533,24 @@ LOCALPROC WriteAppSpecificConfigFiles(void)
 		WriteDestFileLn("#define ADB_ShiftInData VIA1_ShiftOutData");
 		WriteDestFileLn("#define ADB_ShiftOutData VIA1_ShiftInData");
 	}
+
+	WriteBlankLineToDestFile();
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		WriteDestFileLn("#define kExtn_Block_Base 0x50F0C000");
+	} else {
+		WriteDestFileLn("#define kExtn_Block_Base 0x00F40000");
+	}
+	WriteDestFileLn("#define kExtn_ln2Spc 5");
+
+	WriteBlankLineToDestFile();
+	if (gbk_mdl_PB100 == cur_mdl) {
+		WriteDestFileLn("#define kROM_Base 0x00900000");
+	} else if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		WriteDestFileLn("#define kROM_Base 0x00800000");
+	} else {
+		WriteDestFileLn("#define kROM_Base 0x00400000");
+	}
+	WriteDestFileLn("#define kROM_ln2Spc 20");
 
 	WriteCloseDestFile();
 	}

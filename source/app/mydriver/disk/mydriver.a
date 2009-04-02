@@ -39,15 +39,14 @@ killCode   EQU 1 ; KillIO requested
 noQueueBit EQU 9 ; trap word modifier
 JIODone    EQU $08FC
 
-		IMPORT Sony_Open : CODE
-		IMPORT Sony_Prime : CODE
-		IMPORT Sony_Control : CODE
-		IMPORT Sony_Status : CODE
-		IMPORT Sony_Close : CODE
-		IMPORT Sony_Update : CODE
-
-		EXPORT DUpdate
-		EXPORT my_drive_icon
+kCmndSonyPrime    EQU $0001
+kCmndSonyControl  EQU $0002
+kCmndSonyStatus   EQU $0003
+kCmndSonyClose    EQU $0004
+kCmndSonyOpenA    EQU $0005
+kCmndSonyOpenB    EQU $0006
+kCmndSonyOpenC    EQU $0007
+kCmndSonyMount    EQU $0008
 
 DHeader
 DFlags   DC.W  $4F00              ; need lock, responds to all requests
@@ -63,38 +62,43 @@ Name     DC.B  5 ; length of name
          DC.B  '.Sony'
          ALIGN 2                  ; word alignment
 
-DOpen
-	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
-	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
-	BSR      Sony_Open      ; call linked C function
-	ADDQ     #8,SP          ; clean up the stack
-	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
-	RTS                     ; open is always immediate, must return via RTS
-
 DPrime
-	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
-	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
-	BSR      Sony_Prime     ; call linked C function
-	ADDQ     #8,SP          ; clean up the stack
-	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
-	BRA.B    IOReturn
+	MOVEM.L    A0-A1, -(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	SUBQ       #2, A7 ; result code
+	MOVE.W     #kCmndSonyPrime, -(A7)
+	BRA.B      DPrimeStatusCommon
 
 DControl
-	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
-	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
-	BSR      Sony_Control   ; call linked C function
-	ADDQ     #8,SP          ; clean up the stack
-	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
-	CMPI.W   #killCode,kcsCode(A0) ; test for KillIO call (special case)
-	BNE.B    IOReturn
+	MOVEM.L    A0-A1, -(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	SUBQ       #2, A7 ; result code
+	MOVE.W     #kCmndSonyControl, -(A7)
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D0 ; save result code
+	MOVEM.L    (SP)+, A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	CMPI.W     #killCode,kcsCode(A0) ; test for KillIO call (special case)
+	BNE.B      IOReturn
 	RTS                     ; KillIO must always return via RTS
 
 DStatus
-	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
-	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
-	BSR      Sony_Status    ; call linked C function
-	ADDQ     #8,SP          ; clean up the stack
-	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	MOVEM.L    A0-A1, -(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	SUBQ       #2, A7 ; result code
+	MOVE.W     #kCmndSonyStatus, -(A7)
+DPrimeStatusCommon
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D0 ; save result code
+	MOVEM.L    (SP)+, A0-A1    ; restore ParmBlkPtr, DCtlPtr
 
 IOReturn
 	MOVE.W   kioTrap(A0),D1
@@ -122,99 +126,51 @@ IOReturn
 	RTS
 
 DClose
-	MOVEM.L  A0-A1,-(SP)    ; save ParmBlkPtr, DCtlPtr across function call
-	MOVEM.L  A0-A1,-(SP)    ; push ParmBlkPtr, DCtlPtr for C
-	BSR      Sony_Close     ; call linked C function
-	ADDQ     #8,SP          ; clean up the stack
-	MOVEM.L  (SP)+,A0-A1    ; restore ParmBlkPtr, DCtlPtr
-	RTS                     ; close is always immediate, must return via RTS
+	MOVEM.L    A0-A1, -(SP)    ; push ParmBlkPtr, DCtlPtr for C
+	SUBQ       #2, A7 ; result code
+	MOVE.W     #kCmndSonyClose, -(A7)
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D0 ; save result code
+	MOVEM.L    (SP)+, A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	RTS
 
 DUpdate
-	MOVEM.L  D0-D2/A0-A1,-(SP)
-	MOVE.L   20(A7),-(A7)   ; push what was on top of stack before 5 registers pushed
-	BSR      Sony_Update
-	ADDQ     #4,A7
-	MOVEM.L  (SP)+,D0-D2/A0-A1
-	ADDA.W   #4,A7          ; remove arguments from stack
+	MOVEM.L    D0-D2/A0-A1,-(SP)
+	MOVE.L     20(A7),D0 ; data = what was on top of stack before 5 registers pushed
+
+	SUBQ       #4, A7 ; room for eventMsg
+	MOVE.L     D0,-(A7) ; data
+	SUBQ       #2, A7 ; room for result code
+	MOVE.W     #kCmndSonyMount, -(A7)
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D1 ; result code
+	ADDQ       #4, A7 ; skip over data
+	MOVE.L     (A7)+, D0 ; eventMsg
+	TST.W      D1 ; result code
+	BNE.S      @1
+	MOVEA.W    #$0007,A0
+	DC.W       $A02F ; _PostEvent
+@1
+
+	MOVEM.L    (SP)+,D0-D2/A0-A1
+	ADDA.W     #4,A7          ; remove arguments from stack
 	RTE
 
-my_drive_icon
-; icon
-	DC.L  $7FFFFFF0
-	DC.L  $81000108
-	DC.L  $81007104
-	DC.L  $81008902
-	DC.L  $81008901
-	DC.L  $81008901
-	DC.L  $81008901
-	DC.L  $81008901
-	DC.L  $81008901
-	DC.L  $81007101
-	DC.L  $81000101
-	DC.L  $80FFFE01
-	DC.L  $80000001
-	DC.L  $80000001
-	DC.L  $80000001
-	DC.L  $80000001
-	DC.L  $83FFFFC1
-	DC.L  $84000021
-	DC.L  $84000021
-	DC.L  $84000021
-	DC.L  $84000021
-	DC.L  $84000021
-	DC.L  $84063021
-	DC.L  $84066021
-	DC.L  $8406C021
-	DC.L  $84078021
-	DC.L  $84070021
-	DC.L  $84060021
-	DC.L  $84000021
-	DC.L  $84000021
-	DC.L  $84000021
-	DC.L  $7FFFFFFE
-; mask
-	DC.L  $3FFFFFF0
-	DC.L  $7FFFFFF0
-	DC.L  $FFFFFFFC
-	DC.L  $FFFFFFFC
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $FFFFFFFF
-	DC.L  $7FFFFFFC
-	DC.L  $3FFFFFFC
-; empty pascal string
-	DC.W  $0000
-
-		ENDMAIN
-
-MyAddDrive64k PROC	EXPORT
+MyAddDrive64k
 
 ; This is only needed for the 64k ROM.
-; should be eliminated by the linker
-; otherwise.
 
 DrvQHdr EQU 776
 RomBase EQU $00400000
@@ -223,6 +179,124 @@ RomBase EQU $00400000
 	Lea.L     (DrvQHdr),A1
 	Jmp       (RomBase + 2848)
 
-		ENDPROC
+
+NullTaskProc
+	RTS
+
+DOpen
+	MOVEM.L    D3-D7/A3,-(A7)
+	MOVEM.L    A0-A1, -(SP)    ; push ParmBlkPtr, DCtlPtr for C
+
+	SUBQ       #6, A7 ; room for result code, L
+	MOVE.W     #kCmndSonyOpenA, -(A7)
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D0 ; result code
+	MOVE.L     (A7)+, D7 ; L
+
+	CMPI.W     #$FFCF,D0
+	BNE.S      @1
+	; driver already open, change to no error and leave
+	CLR.W      D0
+	BRA        @2
+@1
+	TST.W      D0
+	BNE        @2
+	MOVE.L     D7,D0
+	DC.W       $A71E ; _NewPtr    ,Sys,Clear
+	MOVEA.L    A0,A3
+	MOVE.L     A3,D0
+	BEQ        @6
+
+	SUBA       #16, A7 ; room for various results
+	MOVE.L     A3, -(A7)
+	MOVE.L     D7, -(A7)
+	SUBQ       #2, A7 ; room for result code
+	MOVE.W     #kCmndSonyOpenB, -(A7)
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D0 ; result code
+	ADDA.W     #8, A7
+	MOVE.L     (A7)+, D7 ; dvl
+	MOVEQ      #$00, D3
+	MOVE.W     (A7)+, D3 ; step
+	MOVE.W     (A7)+, D4 ; n
+	MOVE.W     (A7)+, D6 ; i
+	MOVE.W     (A7)+, D5 ; driver
+	MOVEA.L    (A7)+, A3 ; NullTask
+
+	TST.W      D0
+	BNE.S      @2
+
+	MOVE.L     A3,D0
+	BEQ.S      @3
+
+	; There is apparently a bug in the time manager
+	; in System 6.0.8, which will cause a crash
+	; if there are no installed time
+	; tasks. So create a time task, since
+	; real disk driver does.
+
+	LEA        NullTaskProc,A0     ; id: 102
+	MOVE.L     A0,$0006(A3)
+	MOVEA.L    A3,A0
+	DC.W       $A058 ; _InsTime
+	BRA.S      @4
+@3
+	LEA        MyAddDrive64k,A0    ; id: 106
+	MOVE.W     #$A04E,D0
+	DC.W       $A047 ; _SetTrapAddress
+	BRA.S      @4
+@5
+	MOVEA.L    D7,A0
+
+	MOVE.W     D6,D0 ; drive number in high word
+	SWAP       D0
+	MOVE.W     D5,D0 ; driver in low word
+
+	DC.W       $A04E ; _AddDrive
+	ADD.L      D3,D7
+	ADDQ.W     #$1,D6
+@4
+	DBF        D4, @5
+
+	PEA        DUpdate
+	SUBQ       #2, A7 ; room for result code
+	MOVE.W     #kCmndSonyOpenC, -(A7)
+
+	LEA        TailData, A0
+	MOVE.L     (A0)+, -(A7)
+	MOVEA.L    (A0), A0
+	MOVE.L     A7, (A0)
+
+	ADDA.W     #6, A7
+	MOVE.W     (A7)+, D0 ; result code
+	ADDA.W     #4, A7
+
+@2
+	; result code should be in D0 when reach here
+
+	MOVEM.L    (A7)+, A0-A1    ; restore ParmBlkPtr, DCtlPtr
+	MOVEM.L    (A7)+, D3-D7/A3
+
+	RTS                     ; open is always immediate, must return via RTS
+@6
+	; _NewPtr failed
+	MOVE.W     #-1, D0
+	BRA.S      @2
+
+TailData
+
+		ENDMAIN
 
 		END

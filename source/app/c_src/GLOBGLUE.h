@@ -61,8 +61,6 @@ EXPORTVAR(ui3p, VidMem)
 
 
 
-EXPORTPROC Memory_Reset(void);
-
 EXPORTPROC MemOverlay_ChangeNtfy(void);
 
 #if (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)
@@ -92,6 +90,8 @@ GLOBALPROC put_vm_long(CPTR addr, ui5r l);
 	mapping of address space to real memory
 */
 
+EXPORTFUNC ui3p get_real_address0(ui5b L, blnr WritableMem, CPTR addr,
+	ui5b *actL);
 EXPORTFUNC ui3p get_real_address(ui5b L, blnr WritableMem, CPTR addr);
 
 /*
@@ -140,12 +140,6 @@ EXPORTFUNC ui3p get_real_address(ui5b L, blnr WritableMem, CPTR addr);
 
 EXPORTFUNC ui5b MM_Access(ui5b Data, blnr WriteMem, blnr ByteSize, CPTR addr);
 
-
-#ifndef ExtraAbnormalReports
-#define ExtraAbnormalReports DetailedAbnormalReport
-#endif
-	/* Additional reports for situations that
-	occur because of bugs in some programs */
 
 #if DetailedAbnormalReport
 #define ReportAbnormal DoReportAbnormal
@@ -207,3 +201,41 @@ EXPORTVAR(ui3b, Wires[kNumWires])
 
 EXPORTFUNC MyEvtQEl * MyEvtQOutP(void);
 EXPORTFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown);
+
+
+/* minivmac extensions */
+
+#define ExtnDat_checkval 0
+#define ExtnDat_extension 2
+#define ExtnDat_commnd 4
+#define ExtnDat_result 6
+#define ExtnDat_params 8
+
+#define kCmndVersion 0
+#define ExtnDat_version 8
+
+enum {
+	kExtnFindExtn, /* must be first */
+
+	kExtnDisk,
+	kExtnSony,
+#if EmVidCard
+	kExtnVideo,
+#endif
+#if IncludePbufs
+	kExtnParamBuffers,
+#endif
+#if IncludeHostTextClipExchange
+	kExtnHostTextClipExchange,
+#endif
+
+	kNumExtns
+};
+
+#define kcom_callcheck 0x5B17
+
+#if IncludePbufs
+EXPORTFUNC tMacErr CheckPbuf(tPbuf Pbuf_No);
+#endif
+
+EXPORTVAR(ui5r, my_disk_icon_addr)

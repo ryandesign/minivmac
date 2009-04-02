@@ -753,7 +753,9 @@ LOCALPROC WriteMSVCCompilerToolConfig(void)
 	}
 	WriteDestFileLn("UsePrecompiledHeader=\"0\"");
 	WriteDestFileLn("WarningLevel=\"4\"");
-	WriteDestFileLn("Detect64BitPortabilityProblems=\"true\"");
+	if (ide_vers < 9000) {
+		WriteDestFileLn("Detect64BitPortabilityProblems=\"true\"");
+	}
 	if (gbo_dbg == gbk_dbg_on) {
 		WriteDestFileLn("DebugInformationFormat=\"4\"");
 	} else {
@@ -782,6 +784,10 @@ LOCALPROC WriteMSVCLinkerToolConfig(void)
 		WriteDestFileLn("OptimizeReferences=\"2\"");
 		WriteDestFileLn("EnableCOMDATFolding=\"2\"");
 	}
+	if (ide_vers >= 9000) {
+		WriteDestFileLn("RandomizedBaseAddress=\"1\"");
+		WriteDestFileLn("DataExecutionPrevention=\"0\"");
+	}
 	WriteDestFileLn("TargetMachine=\"1\"");
 }
 
@@ -803,7 +809,9 @@ LOCALPROC WriteMSVCXMLConfigurationBody(void)
 	WriteMSVCToolConfig("VCBscMakeTool", NULL);
 	WriteMSVCToolConfig("VCFxCopTool", NULL);
 	WriteMSVCToolConfig("VCAppVerifierTool", NULL);
-	WriteMSVCToolConfig("VCWebDeploymentTool", NULL);
+	if (ide_vers < 9000) {
+		WriteMSVCToolConfig("VCWebDeploymentTool", NULL);
+	}
 	WriteMSVCToolConfig("VCPostBuildEventTool", NULL);
 }
 
@@ -911,11 +919,18 @@ LOCALPROC WriteMSVCXMLFiles(void)
 LOCALPROC WriteMSVCXMLProjectProps(void)
 {
 	WriteDestFileLn("ProjectType=\"Visual C++\"");
-	WriteDestFileLn("Version=\"8.00\"");
+	if (ide_vers >= 9000) {
+		WriteDestFileLn("Version=\"9.00\"");
+	} else {
+		WriteDestFileLn("Version=\"8.00\"");
+	}
 	WriteXMLQuotedProp("Name", WriteStrAppAbbrev);
 	WriteDestFileLn("ProjectGUID=\"{00010000-0000-0000-0000-000000000000}\"");
 	WriteXMLQuotedProp("RootNamespace", WriteStrAppAbbrev);
 	WriteDestFileLn("Keyword=\"Win32Proj\"");
+	if (ide_vers >= 9000) {
+		WriteDestFileLn("TargetFrameworkVersion=\"131072\"");
+	}
 }
 
 LOCALPROC WriteMSVCXMLProjectBody(void)
@@ -932,8 +947,13 @@ LOCALPROC WriteMSVCXMLSpecificFiles(void)
 {
 	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".sln")) {
 	WriteDestFileLn("\357\273\277"); /* UTF-8 byte-order mark */
-	WriteDestFileLn("Microsoft Visual Studio Solution File, Format Version 9.00");
-	WriteDestFileLn("# Visual C++ Express 2005");
+	if (ide_vers >= 9000) {
+		WriteDestFileLn("Microsoft Visual Studio Solution File, Format Version 10.00");
+		WriteDestFileLn("# Visual C++ Express 2008");
+	} else {
+		WriteDestFileLn("Microsoft Visual Studio Solution File, Format Version 9.00");
+		WriteDestFileLn("# Visual C++ Express 2005");
+	}
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("Project(\"{00000000-0000-0000-0000-000000000000}\") = \"");
 	WriteStrAppAbbrev();

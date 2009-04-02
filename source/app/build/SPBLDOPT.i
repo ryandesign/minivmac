@@ -532,6 +532,69 @@ LOCALFUNC blnr TryAsWantMinExtnNot(void)
 	return FlagTryAsOptionNot("-min-extn", &WantMinExtn);
 }
 
+/* option: disk driver - support tags */
+
+LOCALVAR blnr SonySupportTags;
+
+LOCALPROC ResetSonySupportTags(void)
+{
+	SonySupportTags = nanblnr;
+}
+
+LOCALFUNC blnr TryAsSonySupportTagsNot(void)
+{
+	return BooleanTryAsOptionNot("-sony-tag", &SonySupportTags);
+}
+
+LOCALPROC ChooseSonySupportTags(void)
+{
+	if (nanblnr == SonySupportTags) {
+		SonySupportTags = falseblnr;
+	}
+}
+
+/* option: disk driver - calculate checksums */
+
+LOCALVAR blnr SonyWantChecksumsUpdated;
+
+LOCALPROC ResetSonyWantChecksumsUpdated(void)
+{
+	SonyWantChecksumsUpdated = nanblnr;
+}
+
+LOCALFUNC blnr TryAsSonyWantChecksumsUpdatedNot(void)
+{
+	return BooleanTryAsOptionNot("-sony-sum", &SonyWantChecksumsUpdated);
+}
+
+LOCALPROC ChooseSonyWantChecksumsUpdated(void)
+{
+	if (nanblnr == SonyWantChecksumsUpdated) {
+		SonyWantChecksumsUpdated = falseblnr;
+	}
+}
+
+/* option: disk driver - support tags */
+
+LOCALVAR blnr SonySupportDC42;
+
+LOCALPROC ResetSonySupportDC42(void)
+{
+	SonySupportDC42 = nanblnr;
+}
+
+LOCALFUNC blnr TryAsSonySupportDC42Not(void)
+{
+	return BooleanTryAsOptionNot("-sony-dc42", &SonySupportDC42);
+}
+
+LOCALPROC ChooseSonySupportDC42(void)
+{
+	if (nanblnr == SonySupportDC42) {
+		SonySupportDC42 = trueblnr;
+	}
+}
+
 /* option: horizontal resolution */
 
 LOCALVAR uimr cur_hres;
@@ -730,6 +793,9 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetHResOption();
 	ResetVResOption();
 	ResetScrnDpthOption();
+	ResetSonySupportTags();
+	ResetSonyWantChecksumsUpdated();
+	ResetSonySupportDC42();
 }
 
 LOCALFUNC blnr TryAsSPOptionNot(void)
@@ -749,6 +815,9 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsHResOptionNot())
 	if (TryAsVResOptionNot())
 	if (TryAsScrnDpthOptionNot())
+	if (TryAsSonySupportTagsNot())
+	if (TryAsSonyWantChecksumsUpdatedNot())
+	if (TryAsSonySupportDC42Not())
 	{
 		return trueblnr;
 	}
@@ -773,6 +842,9 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 		ChooseInitBackground();
 		ChooseInitSpeed();
 		ChooseMiscEmHardware();
+		ChooseSonySupportTags();
+		ChooseSonyWantChecksumsUpdated();
+		ChooseSonySupportDC42();
 		return trueblnr;
 	}
 
