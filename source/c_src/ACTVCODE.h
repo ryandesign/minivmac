@@ -126,12 +126,13 @@ LOCALVAR ui3b ActvCodeDigits[ActvCodeMaxLen];
 FORWARDFUNC tMacErr ActvCodeFileSave(ui3p p);
 FORWARDFUNC tMacErr ActvCodeFileLoad(ui3p p);
 
+LOCALVAR ui3b CurActvCode[ActvCodeFileLen];
+
 LOCALPROC DoActvCodeModeKey(int key)
 {
 	ui3r digit;
 	ui3r L;
 	int i;
-	ui3b Key[ActvCodeFileLen];
 	blnr Trial;
 
 	if (MKC_BackSpace == key) {
@@ -156,16 +157,16 @@ LOCALPROC DoActvCodeModeKey(int key)
 					v1 = v1 * 10 + ActvCodeDigits[i];
 				}
 
-				do_put_mem_long(&Key[0], v0);
-				do_put_mem_long(&Key[4], v1);
+				do_put_mem_long(&CurActvCode[0], v0);
+				do_put_mem_long(&CurActvCode[4], v1);
 
-				if (CheckActvCode(Key, &Trial)) {
+				if (CheckActvCode(CurActvCode, &Trial)) {
 					SpecialModeClr(SpclModeActvCode);
 					NeedWholeScreenDraw = trueblnr;
 					if (Trial) {
 						MacMsg("Using temporary code.", "Thank you for trying Mini vMac!", falseblnr);
 					} else {
-						if (mnvm_noErr != ActvCodeFileSave(Key)) {
+						if (mnvm_noErr != ActvCodeFileSave(CurActvCode)) {
 							MacMsg("Oops", "I could not save the activation code to disk.", falseblnr);
 						} else {
 							MacMsg("Activation succeeded.", "Thank you!", falseblnr);
@@ -222,13 +223,83 @@ LOCALPROC DrawActvCodeMode(void)
 	DrawSpclMode0("Activation Code", DrawCellsActvCodeModeBody);
 }
 
+LOCALPROC ClStrAppendHexNib(int *L0, ui3b *r, ui3r v)
+{
+	if (v < 10) {
+		ClStrAppendChar(L0, r, kCellDigit0 + v);
+	} else {
+		ClStrAppendChar(L0, r, kCellUpA + (v - 10));
+	}
+}
+
+LOCALPROC ClStrAppendHexByte(int *L0, ui3b *r, ui3r v)
+{
+	ClStrAppendHexNib(L0, r, (v >> 4) & 0x0F);
+	ClStrAppendHexNib(L0, r, v & 0x0F);
+}
+
+LOCALPROC ClStrAppendHexWord(int *L0, ui3b *r, ui4r v)
+{
+	ClStrAppendHexByte(L0, r, (v >> 8) & 0xFF);
+	ClStrAppendHexByte(L0, r, v & 0xFF);
+}
+
+LOCALPROC ClStrAppendHexLong(int *L0, ui3b *r, ui5r v)
+{
+	ClStrAppendHexWord(L0, r, (v >> 16) & 0xFFFF);
+	ClStrAppendHexWord(L0, r, v & 0xFFFF);
+}
+
+LOCALPROC CopyActvInfo(void)
+{
+	int i;
+	int L0;
+	int L;
+	ui3b ps[ClStrMaxLength];
+	tPbuf j;
+	ui5r sum;
+
+	ClStrFromSubstCStr(&L0, ps, "^v ");
+
+	for (i = 0; i < L0; ++i) {
+		ps[i] = Cell2MacAsciiMap[ps[i]];
+	}
+	L = L0;
+
+	sum = 0;
+	for (i = 0; i < L; ++i) {
+		sum += ps[i];
+		sum = (sum << 5) | ((sum >> (32 - 5)) & 0x1F);
+		sum += (sum << 8);
+	}
+
+	sum &= 0x1FFFFFFF;
+
+	sum = KeyFun0(sum, do_get_mem_long(&CurActvCode[0]), KeyCon4);
+
+	ClStrAppendHexLong(&L, ps, sum);
+
+	sum = KeyFun0(sum, do_get_mem_long(&CurActvCode[4]), KeyCon4);
+	sum = KeyFun2(sum, KeyCon3, KeyCon4);
+
+	ClStrAppendHexLong(&L, ps, sum);
+
+	for (i = L0; i < L; ++i) {
+		ps[i] = Cell2MacAsciiMap[ps[i]];
+	}
+
+	if (mnvm_noErr == PbufNew(L, &j)) {
+		PbufTransfer(ps, j, 0, L, trueblnr);
+		HTCEexport(j);
+	}
+}
+
 LOCALFUNC blnr ActvCodeInit(void)
 {
-	ui3b Key[ActvCodeFileLen];
 	blnr Trial;
 
-	if ((mnvm_noErr != ActvCodeFileLoad(Key))
-		|| (! CheckActvCode(Key, &Trial))
+	if ((mnvm_noErr != ActvCodeFileLoad(CurActvCode))
+		|| (! CheckActvCode(CurActvCode, &Trial))
 		|| Trial
 		)
 	{

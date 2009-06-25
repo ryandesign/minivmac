@@ -775,7 +775,11 @@ enum {
 };
 
 #ifndef NeedCell2MacAsciiMap
+#if UseActvCode
+#define NeedCell2MacAsciiMap 1
+#else
 #define NeedCell2MacAsciiMap 0
+#endif
 #endif
 
 #if NeedCell2MacAsciiMap
@@ -2228,6 +2232,9 @@ LOCALPROC SetSpeedValue(ui3b i)
 #if EnableFullScreen
 FORWARDPROC ToggleWantFullScreen(void);
 #endif
+#if UseActvCode
+FORWARDPROC CopyActvInfo(void);
+#endif
 
 LOCALPROC DoControlModeKey(int key)
 {
@@ -2285,6 +2292,11 @@ LOCALPROC DoControlModeKey(int key)
 				case MKC_F:
 					ToggleWantFullScreen();
 					ControlMessage = kCntrlMsgFullScreen;
+					break;
+#endif
+#if UseActvCode
+				case MKC_P:
+					CopyActvInfo();
 					break;
 #endif
 			}

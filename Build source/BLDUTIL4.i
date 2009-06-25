@@ -93,16 +93,16 @@ LOCALFUNC blnr FindOutPutDir(void)
 	MyDir_R BuildDirR;
 
 	if (noErr == (err = FindPrefFolder(&PrefDirR)))
-	if (noErr == (err = MyFindNamedChildDir0(&PrefDirR, "\pGryphel", &GryphelDirR)))
-	if (noErr == (err = MyFindNamedChildDir0(&GryphelDirR, "\pBuild", &BuildDirR)))
+	if (noErr == (err = MyResolveNamedChildDir0(&PrefDirR, "\pGryphel", &GryphelDirR)))
+	if (noErr == (err = MyResolveNamedChildDir0(&GryphelDirR, "\pBuild", &BuildDirR)))
 	{
 		/* ok */
 	}
 
 	if (noErr == err) {
-		return DelMakeSubDirectory(&OutputDir0R, &BuildDirR, "output", "");
+		return FindOrMakeSubDirectory(&OutputDir0R, &BuildDirR, "output", "");
 	} else {
-		return DelMakeSubDirectory(&OutputDir0R, &BaseDirR, "output", "");
+		return FindOrMakeSubDirectory(&OutputDir0R, &BaseDirR, "output", "");
 	}
 }
 
@@ -114,14 +114,14 @@ LOCALFUNC blnr WriteMakeOutputDirectories(void)
 	HandToPStr(hVariationName, s);
 	if (MyHGetDir(&BaseDirR))
 	if (FindOutPutDir())
-	if (MyMakeNamedDir(&OutputDir0R, s, &OutputDirR))
+	if (DelMakeNamedDir(&OutputDirR, &OutputDir0R, s))
 	if (rConverTextInThingXtn(&BaseDirR,
 		&OutputDirR, "README", ".txt"))
 	if (rConverTextInThingXtn(&BaseDirR,
 		&OutputDirR, "COPYING", ".txt"))
 	{
 		if ((cur_ide == gbk_ide_xcd) && (! UseCmndLine)) {
-			IsOk = MakeSubDirectory(&ProjDirR, &OutputDirR, kStrAppAbbrev,
+			IsOk = MakeSubDirectory(&ProjDirR, &OutputDirR, vStrAppAbbrev,
 				(ide_vers >= 2100) ? ".xcodeproj" : ".pbproj");
 		} else if (cur_ide != gbk_ide_mw8) {
 			if (MakeSubDirectory(&ObjDirR, &OutputDirR, obj_d_name, "")) {
@@ -236,7 +236,7 @@ LOCALPROC ArchiveAndExport(void)
 
 	if (rMakeArchiveThing(
 		&OutputDirR, NULL,
-		&BaseDirR, sarc))
+		&OutputDir0R, sarc))
 	{
 		(void) dellib_DeleteOne(&OutputDirR, NULL);
 		if (! HaveDiskExtenstion()) {
@@ -252,8 +252,8 @@ LOCALPROC ArchiveAndExport(void)
 		} else if (0 == (features & ((ui5b)1 << kFeatureCmndDisk_RawMode))) {
 			DisplayRunErr("Raw mode access not enabled");
 		} else {
-			if (ExportFromFile2HostFile2(&BaseDirR, sarc)) {
-				(void) dellib_DeleteOne(&BaseDirR, sarc);
+			if (ExportFromFile2HostFile2(&OutputDir0R, sarc)) {
+				(void) dellib_DeleteOne(&OutputDir0R, sarc);
 			}
 		}
 	}
@@ -271,7 +271,12 @@ LOCALFUNC blnr ProcessCommandLineArguments(void)
 		if (TryAsSPOptionNot())
 #endif
 		{
-			ReportParseFailure("unknown switch");
+			if (CurArgIsCStr(";")) {
+				AdvanceTheArg();
+				return trueblnr;
+			} else {
+				ReportParseFailure("unknown switch");
+			}
 		}
 		if (ParseArgsFailed) {
 			return falseblnr;
@@ -542,7 +547,7 @@ LOCALFUNC blnr ScanSourceSettings(void)
 	return trueblnr;
 }
 
-LOCALPROC DoTheCommand(void)
+LOCALPROC DoTheCommand0(void)
 {
 	if (ProcessCommandLineArguments())
 	if (AutoChooseGNSettings())
@@ -565,4 +570,13 @@ LOCALPROC DoTheCommand(void)
 			}
 		}
 	}
+}
+
+LOCALPROC DoTheCommand(void)
+{
+	do {
+		DoTheCommand0();
+	} while ((! The_arg_end)
+		&& (! ParseArgsFailed)
+		&& (noErr == SavedSysErr));
 }

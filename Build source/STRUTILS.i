@@ -143,6 +143,18 @@ GLOBALFUNC blnr CStrEq(char *s1, char *s2)
 	return falseblnr;
 }
 
+GLOBALPROC CStrFromPtr(MyPtr p, uimr L, char *s)
+{
+	MyMoveBytes(p, (MyPtr)s, SizeOfListMyChar(L));
+	s[L] = (MyCharR)0;
+}
+
+GLOBALPROC CStrCopy(char *r, char *s)
+{
+	while (0 != (*r++ = *s++)) {
+	}
+}
+
 LOCALPROC ReversePStr(ps3p s)
 {
 	MyCharR c;

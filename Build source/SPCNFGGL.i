@@ -97,7 +97,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteBlankLineToDestFile();
 
-	WriteCompCondBool("IncludePbufs", (! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+	WriteCompCondBool("IncludePbufs", ((! WantMinExtn) || WantActvCode) && (gbk_apifam_gtk != gbo_apifam));
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define NumPbufs ");
@@ -111,7 +111,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteBlankLineToDestFile();
 
-	WriteCompCondBool("IncludeHostTextClipExchange", (! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+	WriteCompCondBool("IncludeHostTextClipExchange", ((! WantMinExtn) || WantActvCode) && (gbk_apifam_gtk != gbo_apifam));
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define WantInitSpeedValue ");

@@ -107,6 +107,8 @@ LOCALPROC WriteAppSpecificConfigFiles(void)
 	if (EmVidCard) {
 		WriteDestFileLn("#define kVidROM_Size 0x000800");
 	}
+	WriteCompCondBool("IncludeExtnPbufs", (! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+	WriteCompCondBool("IncludeExtnHostTextClipExchange", (! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
 
 	WriteBlankLineToDestFile();
 
@@ -262,6 +264,9 @@ LOCALPROC WriteAppSpecificConfigFiles(void)
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("\tWire_VIA1_iB7_Unknown,");
 		WriteDestFileLn("#define VIA1_iB7 (Wires[Wire_VIA1_iB7_Unknown])");
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("\tWire_VIA1_iCB2_Unknown,");
+		WriteDestFileLn("#define VIA1_iCB2 (Wires[Wire_VIA1_iCB2_Unknown])");
 	} else {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("\tWire_VIA1_iA5_IWMvSel,");

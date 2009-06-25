@@ -326,7 +326,7 @@ LOCALFUNC char * MSVCProjectExt(void)
 LOCALPROC WriteMSVCSpecificFiles(void)
 {
 	blnr WinCE = ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ));
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, MSVCWorkspaceExt()))
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, MSVCWorkspaceExt()))
 	{ /* workspace file */
 
 	if (WinCE) {
@@ -378,7 +378,7 @@ LOCALPROC WriteMSVCSpecificFiles(void)
 	WriteCloseDestFile();
 	}
 
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, MSVCProjectExt()))
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, MSVCProjectExt()))
 	{ /* project file */
 
 	WriteBgnDestFileLn();
@@ -945,7 +945,7 @@ LOCALPROC WriteMSVCXMLProjectBody(void)
 
 LOCALPROC WriteMSVCXMLSpecificFiles(void)
 {
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".sln")) {
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, ".sln")) {
 	WriteDestFileLn("\357\273\277"); /* UTF-8 byte-order mark */
 	if (ide_vers >= 9000) {
 		WriteDestFileLn("Microsoft Visual Studio Solution File, Format Version 10.00");
@@ -1000,7 +1000,7 @@ LOCALPROC WriteMSVCXMLSpecificFiles(void)
 	WriteCloseDestFile();
 	}
 
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".vcproj")) {
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, ".vcproj")) {
 		WriteDestFileLn("<?xml version=\"1.0\" encoding=\"Windows-1252\"?>");
 		WriteXMLtaggedLinesWithProps("VisualStudioProject",
 			WriteMSVCXMLProjectProps,
@@ -1072,11 +1072,7 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("TheDefaultOutput :");
-	if (CurPackageOut) {
-		WriteMakeDependFile(WriteAppBinZipPath);
-	} else {
-		WriteMakeDependFile(WriteAppNamePath);
-	}
+	WriteMakeDependFile(WriteAppNamePath);
 	WriteEndDestFileLn();
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
@@ -1139,57 +1135,12 @@ LOCALPROC WriteNMakeSpecificFiles(void)
 	WriteBlankLineToDestFile();
 
 
-	if (CurPackageOut) {
-		WriteBlankLineToDestFile();
-		WriteBgnDestFileLn();
-		WriteQuoteToDestFile();
-		WriteAppBinZipPath();
-		WriteQuoteToDestFile();
-		WriteCStrToDestFile(" : ");
-		WriteQuoteToDestFile();
-		WriteAppNamePath();
-		WriteQuoteToDestFile();
-		WriteEndDestFileLn();
-		++DestFileIndent;
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("rename");
-			WritePathArgInMakeCmnd(WriteAppNamePath);
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("zip -q");
-			WritePathArgInMakeCmnd(WriteAppBinZipPath);
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("rename");
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WritePathArgInMakeCmnd(WriteAppNamePath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("md5sum");
-			WritePathArgInMakeCmnd(WriteAppBinZipPath);
-			WriteCStrToDestFile(">");
-			WriteQuoteToDestFile();
-			WriteCheckSumFilePath();
-			WriteQuoteToDestFile();
-			WriteEndDestFileLn();
-		--DestFileIndent;
-	}
-
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("CLEAN :");
 	++DestFileIndent;
 		DoAllSrcFilesWithSetup(DoSrcFileNMakeEraseFile);
 		WriteRmFile(WriteMainRsrcObjPath);
 		WriteRmFile(WriteAppNamePath);
-		if (CurPackageOut) {
-			WriteRmFile(WriteAppBinZipPath);
-			WriteRmFile(WriteCheckSumFilePath);
-		}
 	--DestFileIndent;
 
 	WriteCloseDestFile();

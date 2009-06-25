@@ -217,7 +217,7 @@ LOCALPROC WriteMyInfoPListContents(void)
 			DoAllDocTypesWithSetup(WriteOneCFBundleDocumentType);
 		WritePListEndKeyArray();
 
-		WritePListKeyString("CFBundleExecutable", kStrAppAbbrev);
+		WritePListKeyString("CFBundleExecutable", vStrAppAbbrev);
 		WritePListKeyProcString("CFBundleGetInfoString", WriteGetInfoString);
 		WritePListKeyString("CFBundleIconFile", "AppIcon.icns");
 		WritePListKeyProcString("CFBundleIdentifier", WriteTheBundleIdentifier);

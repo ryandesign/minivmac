@@ -105,11 +105,7 @@ static void WriteMPWSpecificFiles(void)
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("TheDefaultOutput \304");
-	if (CurPackageOut) {
-		WriteMakeDependFile(WriteAppBinZipPath);
-	} else {
-		WriteMakeDependFile(Write_machobinpath_ToDestFile);
-	}
+	WriteMakeDependFile(Write_machobinpath_ToDestFile);
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -234,57 +230,6 @@ static void WriteMPWSpecificFiles(void)
 			WriteMainRsrcObjDeps, WriteMainRsrcObjMPWbody);
 	}
 
-	if (CurPackageOut) {
-		WriteBlankLineToDestFile();
-		WriteBgnDestFileLn();
-		WriteCStrToDestFile("\"");
-		WriteAppBinZipPath();
-		WriteCStrToDestFile("\" \304");
-		WriteMakeDependFile(Write_machobinpath_ToDestFile);
-		WriteEndDestFileLn();
-		++DestFileIndent;
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("Rename");
-			WritePathArgInMakeCmnd(WriteAppNamePath);
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("minisit");
-			WritePathArgInMakeCmnd(WriteAppBinSitPath);
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("Rename");
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WritePathArgInMakeCmnd(WriteAppNamePath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("minizip");
-			WritePathArgInMakeCmnd(WriteAppBinZipPath);
-			WritePathArgInMakeCmnd(WriteAppBinSitPath);
-			WriteEndDestFileLn();
-
-			WriteRmFile(WriteAppBinSitPath);
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("minimd5 <");
-			WritePathArgInMakeCmnd(WriteAppBinZipPath);
-			WriteCStrToDestFile(" >");
-			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("Echo -n \" ");
-			WriteAppBinZipName();
-			WriteCStrToDestFile("\" >>");
-			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
-			WriteEndDestFileLn();
-		--DestFileIndent;
-	}
-
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("clean \304");
 	++DestFileIndent;
@@ -294,11 +239,6 @@ static void WriteMPWSpecificFiles(void)
 		} else {
 			WriteRmFile(WriteAppNamePath);
 			WriteRmFile(WriteMainRsrcObjPath);
-		}
-
-		if (CurPackageOut) {
-			WriteRmFile(WriteAppBinZipPath);
-			WriteRmFile(WriteCheckSumFilePath);
 		}
 	--DestFileIndent;
 	WriteBlankLineToDestFile();

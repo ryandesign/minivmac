@@ -24,7 +24,7 @@ struct MyDir_R {
 };
 typedef struct MyDir_R MyDir_R;
 
-GLOBALFUNC blnr MyHGetDir(MyDir_R *d)
+GLOBALFUNC OSErr MyHGetDir_v2(MyDir_R *d)
 {
 	OSErr err;
 	WDPBRec r;
@@ -44,7 +44,12 @@ GLOBALFUNC blnr MyHGetDir(MyDir_R *d)
 		d->VRefNum = r.ioWDVRefNum;
 		d->DirId = r.ioWDDirID;
 	}
-	return CheckSysErr(err);
+	return err;
+}
+
+GLOBALFUNC blnr MyHGetDir(MyDir_R *d)
+{
+	return CheckSysErr(MyHGetDir_v2(d));
 }
 
 GLOBALFUNC blnr MyMakeNamedDir(MyDir_R *d, StringPtr s,
@@ -523,7 +528,11 @@ GLOBALFUNC OSErr MyFileGetCatInfo0(MyDir_R *d, StringPtr s,
 			cPB->hFileInfo.ioNamePtr = NameBuffer;
 			PStrCopy(NameBuffer, s);
 		}
-		cPB->dirInfo.ioFDirIndex = 0;
+		if (0 == PStrLength(s)) {
+			cPB->dirInfo.ioFDirIndex = (short)(- 1);
+		} else {
+			cPB->dirInfo.ioFDirIndex = 0;
+		}
 	}
 
 	return PBGetCatInfoSync(cPB);
@@ -544,13 +553,7 @@ GLOBALFUNC blnr MyFileExists(MyDir_R *d, StringPtr s,
 	OSErr err;
 	blnr IsOk = falseblnr;
 
-	cPB.hFileInfo.ioCompletion = NULL;
-	cPB.hFileInfo.ioVRefNum = d->VRefNum;
-	cPB.dirInfo.ioDrDirID = d->DirId;
-	cPB.hFileInfo.ioNamePtr = NameBuffer;
-	PStrCopy(NameBuffer, s);
-	cPB.dirInfo.ioFDirIndex = 0;
-	err = PBGetCatInfoSync(&cPB);
+	err = MyFileGetCatInfo0(d, s, NameBuffer, &cPB);
 	if (noErr == err) {
 		*Exists = trueblnr;
 		IsOk = trueblnr;
@@ -665,6 +668,47 @@ GLOBALFUNC blnr MyCatGetNextChild(CInfoPBRec *cPB,
 	return GotOne;
 }
 
+GLOBALFUNC OSErr MyGetNamedVolDir(StringPtr s, MyDir_R *d)
+{
+	OSErr err;
+	ParamBlockRec r;
+	MyPStr NameBuffer;
+
+	PStrCopy(NameBuffer, s);
+	PStrApndChar(NameBuffer, ':');
+
+	r.volumeParam.ioCompletion = NULL;
+	r.volumeParam.ioNamePtr = NameBuffer;
+	r.volumeParam.ioVRefNum = 0;
+	r.volumeParam.ioVolIndex = -1;
+	err = PBGetVInfoSync(&r);
+	if (noErr == err) {
+		d->VRefNum = r.volumeParam.ioVRefNum;
+		d->DirId = 2;
+	}
+
+	return err;
+}
+
+GLOBALFUNC OSErr MyFindParentDir(MyDir_R *src_d, MyDir_R *dst_d)
+{
+	OSErr err;
+	MyPStr NameBuffer;
+	CInfoPBRec cPB;
+
+	err = MyFileGetCatInfo0(src_d, NULL, NameBuffer, &cPB);
+	if (noErr == err) {
+		if (! CatInfoIsFolder(&cPB)) {
+			err = dirNFErr;
+		} else {
+			dst_d->VRefNum = cPB.hFileInfo.ioVRefNum;
+			dst_d->DirId = cPB.hFileInfo.ioFlParID;
+		}
+	}
+
+	return err;
+}
+
 GLOBALFUNC OSErr MyFindNamedChildDir0(MyDir_R *src_d, StringPtr s, MyDir_R *dst_d)
 {
 	OSErr err;
@@ -686,6 +730,73 @@ GLOBALFUNC OSErr MyFindNamedChildDir0(MyDir_R *src_d, StringPtr s, MyDir_R *dst_
 GLOBALFUNC blnr MyFindNamedChildDir(MyDir_R *src_d, StringPtr s, MyDir_R *dst_d)
 {
 	return CheckSysErr(MyFindNamedChildDir0(src_d, s, dst_d));
+}
+
+GLOBALFUNC OSErr MyResolveAliasDir0(MyDir_R *src_d, StringPtr s, MyDir_R *dst_d)
+{
+	OSErr err;
+	FSSpec spec;
+	Boolean isFolder;
+	Boolean isAlias;
+	MyDir_R src2_d;
+
+	spec.vRefNum = src_d->VRefNum;
+	spec.parID = src_d->DirId;
+	PStrCopy(spec.name, s);
+	err = ResolveAliasFile(&spec, true, &isFolder, &isAlias);
+	if (noErr == err) {
+		if (! isAlias) {
+			err = dirNFErr;
+		} else {
+			src2_d.VRefNum = spec.vRefNum;
+			src2_d.DirId = spec.parID;
+			err = MyFindNamedChildDir0(&src2_d, spec.name, dst_d);
+		}
+	}
+
+	return err;
+}
+
+GLOBALFUNC OSErr MyResolveNamedChildDir0(MyDir_R *src_d, StringPtr s, MyDir_R *dst_d)
+{
+	OSErr err;
+
+	err = MyFindNamedChildDir0(src_d, s, dst_d);
+	if (dirNFErr == err) {
+		if (HaveAliasMgrAvail()) {
+			err = MyResolveAliasDir0(src_d, s, dst_d);
+		}
+	}
+
+	return err;
+}
+
+GLOBALFUNC OSErr MyResolveIfAlias(MyDir_R *d, StringPtr s)
+{
+	OSErr err;
+	FSSpec spec;
+	Boolean isFolder;
+	Boolean isAlias;
+
+	if ((! HaveAliasMgrAvail())
+		|| (0 == PStrLength(s))) /* means the directory, which can't be alias anyway */
+	{
+		err = noErr;
+	} else {
+		spec.vRefNum = d->VRefNum;
+		spec.parID = d->DirId;
+		PStrCopy(spec.name, s);
+		err = ResolveAliasFile(&spec, true, &isFolder, &isAlias);
+		if (noErr == err) {
+			if (isAlias) {
+				d->VRefNum = spec.vRefNum;
+				d->DirId = spec.parID;
+				PStrCopy(s, spec.name);
+			}
+		}
+	}
+
+	return err;
 }
 
 LOCALFUNC OSErr MyDirFromWD0(short VRefNum, MyDir_R *d)

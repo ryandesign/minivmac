@@ -18,136 +18,119 @@
 */
 
 
-/*
-FSpLocationFromFullPath was originally part of More Files version 1.4.8
-
-More Files fixes many of the broken or underfunctional
-parts of the file system.
-
-More Files
-
-A collection of File Manager and related routines
-
-by Jim Luther (Apple Macintosh Developer Technical Support Emeritus)
-with significant code contributions by Nitin Ganatra
-(Apple Macintosh Developer Technical Support Emeritus)
-Copyright  1992-1998 Apple Computer, Inc.
-Portions copyright  1995 Jim Luther
-All rights reserved.
-
-The Package "More Files" is distributed under the following
-license terms:
-
-	"You may incorporate this sample code into your
-	applications without restriction, though the
-	sample code has been provided "AS IS" and the
-	responsibility for its operation is 100% yours.
-	However, what you are not permitted to do is to
-	redistribute the source as "DSC Sample Code" after
-	having made changes. If you're going to
-	redistribute the source, we require that you make
-	it clear in the source that the code was descended
-	from Apple Sample Code, but that you've made
-	changes."
-
-More Files can be found on the MetroWerks CD and Developer CD from
-Apple. You can also download the latest version from:
-
-	http://members.aol.com/JumpLong/#MoreFiles
-
-Jim Luther's Home-page:
-	http://members.aol.com/JumpLong/
-
-*/
-
-/*
-	Get a FSSpec from a full pathname.
-	The FSpLocationFromFullPath function returns a FSSpec to the object
-	specified by full pathname. This function requires the Alias Manager.
-
-	fullPathLength  input:  The number of characters in the full pathname
-		of the target.
-	fullPath        input:  A pointer to a buffer that contains the full
-		pathname of the target. The full pathname
-		starts with the name of the volume, includes
-		all of the directory names in the path to the
-		target, and ends with the target name.
-	spec            output: An FSSpec record specifying the object.
-
-	Result Codes
-		noErr               0       No error
-		nsvErr              -35     The volume is not mounted
-		fnfErr              -43     Target not found, but volume and parent
-			directory found
-		paramErr            -50     Parameter error
-		usrCanceledErr      -128    The user canceled the operation
-
-	__________
-
-	See also:   LocationFromFullPath
-*/
-
-static OSErr FSpLocationFromFullPath(short fullPathLength,
-	const void *fullPath,
-	FSSpec *spec)
+GLOBALFUNC OSErr PathArgToDirName(char *path,
+	MyDir_R *d, ps3p s)
 {
-	AliasHandle alias;
-	OSErr       result;
-	Boolean     wasChanged;
-	Str32       nullString;
+	OSErr err;
+	char c;
 
-	/* Create a minimal alias from the full pathname */
-	nullString[0] = (char)0;  /* null string to indicate no zone or server name */
-	result = NewAliasMinimalFromFullPath(fullPathLength, fullPath, nullString,
-		nullString, &alias);
+	PStrClear(s);
 
-	if (result == noErr) {
-		/* Let the Alias Manager resolve the alias. */
-		result = ResolveAlias(NULL, alias, spec, &wasChanged);
-
-		DisposeHandle((Handle)alias);   /* Free up memory used */
+label_1:
+	c = *path++;
+	if (0 == c) {
+		/* no ':' anywhere in path */
+		err = MyHGetDir_v2(d);
+	} else if (':' != c) {
+		PStrApndChar(s, c);
+		goto label_1;
+	} else {
+		if (0 == PStrLength(s)) {
+			/* path begins with ':' */
+			err = MyHGetDir_v2(d);
+		} else {
+			/* absolute path, begins with volume */
+			err = MyGetNamedVolDir(s, d);
+			PStrClear(s);
+		}
+		if (noErr == err) {
+			c = *path++;
+			if (0 == c) {
+				/* done , ok as is */
+				err = noErr;
+			} else {
+label_2:
+				if (':' == c) {
+					/* double ':', or more */
+					if (noErr == (err = MyFindParentDir(d, d))) {
+						c = *path++;
+						if (0 == c) {
+							/* done */
+							err = noErr;
+						} else {
+							goto label_2;
+						}
+					}
+				} else {
+label_3:
+					PStrApndChar(s, c);
+					c = *path++;
+					if (0 == c) {
+						err = noErr; /* done */
+					} else if (':' != c) {
+						goto label_3;
+					} else {
+						c = *path++;
+						if (0 == c) {
+							/* done , path with one trailing ':' */
+							err = noErr;
+						} else {
+							err = MyResolveNamedChildDir0(d, s, d);
+							if (noErr == err) {
+								PStrClear(s);
+								goto label_2;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
-	return result;
+	return err;
 }
 
 GLOBALFUNC blnr PathArgToNewFileNameDir(char *path,
 	MyDir_R *d, ps3p s)
 {
-	FSSpec Spec;
-	OSErr   err;
-	blnr IsOk = falseblnr;
-
-	err = FSpLocationFromFullPath(CStrLength(path), path, &Spec);
-	if ((fnfErr == err) || CheckSysErr(err)) {
-		d->VRefNum = Spec.vRefNum;
-		d->DirId = Spec.parID;
-		PStrCopy(s, Spec.name);
-		IsOk = trueblnr;
-	}
-	return IsOk;
+	return CheckSysErr(PathArgToDirName(path, d, s));
 }
 
-GLOBALFUNC blnr PathArgToOldFileNameDir(char *path,
+GLOBALFUNC OSErr PathArgToOldDir(char *path, MyDir_R *d)
+{
+	OSErr err;
+	MyPStr s;
+
+	err = PathArgToDirName(path, d, s);
+	if (noErr == err) {
+		err = MyResolveNamedChildDir0(d, s, d);
+	}
+
+	return err;
+}
+
+GLOBALFUNC blnr PathArgToOldDir_v0(char *path, MyDir_R *d)
+{
+	return CheckSysErr(PathArgToOldDir(path, d));
+}
+
+GLOBALFUNC OSErr PathArgToOldNameDir_v2(char *path,
 	MyDir_R *d, ps3p s)
 {
-	FSSpec Spec;
-	OSErr   err;
-	Boolean wasAlias;
-	Boolean isFolder;
-	blnr IsOk = falseblnr;
+	OSErr err;
 
-	err = FSpLocationFromFullPath(CStrLength(path), path, &Spec);
-	if (CheckSysErr(err)) {
-		err = ResolveAliasFile(&Spec, true, &isFolder, &wasAlias);
-		if (CheckSysErr(err)) {
-			d->VRefNum = Spec.vRefNum;
-			d->DirId = Spec.parID;
-			PStrCopy(s, Spec.name);
-			IsOk = trueblnr;
-		}
+	if (noErr == (err = PathArgToDirName(path, d, s)))
+	if (noErr == (err = MyResolveIfAlias(d, s)))
+	{
 	}
-	return IsOk;
+
+	return err;
+}
+
+GLOBALFUNC blnr PathArgToOldNameDir(char *path,
+	MyDir_R *d, ps3p s)
+{
+	return CheckSysErr(PathArgToOldNameDir_v2(path, d, s));
 }
 
 GLOBALPROC ToolReportAnySavedError(int argc, char **argv)
@@ -156,6 +139,6 @@ GLOBALPROC ToolReportAnySavedError(int argc, char **argv)
 	if (SavedSysErr != noErr) {
 		char *msg = GetTextForSavedSysErr();
 
-		fprintf(stderr, "\n\nError in %s: %s", argv[0], msg);
+		fprintf(stderr, "Error in %s: %s\n", argv[0], msg);
 	}
 }

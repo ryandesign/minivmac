@@ -2364,6 +2364,7 @@ LOCALVAR const ui3b Native2MacRomanTab[] = {
 	0xBF, 0x9D, 0x9C, 0x9E, 0x9F, 0xFE, 0xFF, 0xD8
 };
 
+#if IncludePbufs
 LOCALFUNC tMacErr NativeTextToMacRomanPbuf(HGLOBAL x, tPbuf *r)
 {
 #if MyUseUni
@@ -2422,6 +2423,7 @@ LOCALFUNC tMacErr NativeTextToMacRomanPbuf(HGLOBAL x, tPbuf *r)
 
 	return err;
 }
+#endif
 
 LOCALVAR const ui3b MacRoman2NativeTab[] = {
 	0xC4, 0xC5, 0xC7, 0xC9, 0xD1, 0xD6, 0xDC, 0xE1,
@@ -2442,6 +2444,7 @@ LOCALVAR const ui3b MacRoman2NativeTab[] = {
 	0xAF, 0xD7, 0xDD, 0xDE, 0xB8, 0xF0, 0xFD, 0xFE
 };
 
+#if IncludePbufs
 LOCALFUNC blnr MacRomanTextToNativeHand(tPbuf Pbuf_no, blnr IsFileName, HGLOBAL *r)
 {
 	HGLOBAL h;
@@ -2518,6 +2521,7 @@ LOCALFUNC blnr MacRomanTextToNativeHand(tPbuf Pbuf_no, blnr IsFileName, HGLOBAL 
 
 	return IsOk;
 }
+#endif
 
 #if IncludeHostTextClipExchange
 GLOBALFUNC tMacErr HTCEexport(tPbuf i)
@@ -2583,7 +2587,10 @@ GLOBALFUNC tMacErr HTCEimport(tPbuf *r)
 #define NotAfileRef INVALID_HANDLE_VALUE
 
 LOCALVAR HANDLE Drives[NumDrives]; /* open disk image files */
-#if IncludeSonyGetName || IncludeSonyNew
+
+#define NeedDriveNames (IncludeSonyGetName || IncludeSonyNew)
+
+#if NeedDriveNames
 LOCALVAR HGLOBAL DriveNames[NumDrives];
 	/*
 		It is supposed to be possible to use
@@ -2603,7 +2610,7 @@ LOCALPROC InitDrives(void)
 
 	for (i = 0; i < NumDrives; ++i) {
 		Drives[i] = NotAfileRef;
-#if IncludeSonyGetName || IncludeSonyNew
+#if NeedDriveNames
 		DriveNames[i] = NULL;
 #endif
 	}
@@ -2701,6 +2708,11 @@ GLOBALFUNC tMacErr vSonyGetSize(tDrive Drive_No, ui5r *Sony_Count)
 LOCALFUNC tMacErr vSonyEject0(tDrive Drive_No, blnr deleteit)
 {
 	HANDLE refnum = Drives[Drive_No];
+
+#if ! NeedDriveNames
+	UnusedParam(deleteit);
+#endif
+
 	Drives[Drive_No] = NotAfileRef; /* not really needed */
 
 	DiskEjectedNotify(Drive_No);
@@ -2708,7 +2720,7 @@ LOCALFUNC tMacErr vSonyEject0(tDrive Drive_No, blnr deleteit)
 	(void) FlushFileBuffers(refnum);
 	(void) CloseHandle(refnum);
 
-#if IncludeSonyGetName || IncludeSonyNew
+#if NeedDriveNames
 	{
 		HGLOBAL h = DriveNames[Drive_No];
 		if (NULL != h) {
@@ -2751,7 +2763,7 @@ LOCALPROC UnInitDrives(void)
 	}
 }
 
-#if IncludeSonyGetName || IncludeSonyNew
+#if NeedDriveNames
 LOCALFUNC blnr LPTSTRtoHand(LPTSTR s, HGLOBAL *r)
 {
 	blnr IsOk = falseblnr;
@@ -2807,6 +2819,10 @@ LOCALFUNC blnr Sony_Insert0(HANDLE refnum, blnr locked, LPTSTR drivepath)
 {
 	tDrive Drive_No;
 
+#if ! NeedDriveNames
+	UnusedParam(drivepath);
+#endif
+
 	if (! FirstFreeDisk(&Drive_No)) {
 		(void) CloseHandle(refnum);
 		MacMsg(kStrTooManyImagesTitle, kStrTooManyImagesMessage, falseblnr);
@@ -2814,7 +2830,7 @@ LOCALFUNC blnr Sony_Insert0(HANDLE refnum, blnr locked, LPTSTR drivepath)
 	} else {
 		Drives[Drive_No] = refnum;
 		DiskInsertNotify(Drive_No, locked);
-#if IncludeSonyGetName || IncludeSonyNew
+#if NeedDriveNames
 		{
 			HGLOBAL h;
 
@@ -3083,6 +3099,84 @@ LOCALFUNC blnr ResolveNamedChildFile(LPTSTR pathName, char *Child)
 		&& ! directory;
 }
 
+LOCALFUNC blnr GetAppDir(LPTSTR pathName)
+/* be sure at least _MAX_PATH long! */
+{
+	if (GetModuleFileName(AppInstance, pathName, _MAX_PATH) == 0) {
+		MacMsg("error", "GetModuleFileName failed", falseblnr);
+	} else {
+		LPTSTR p = FindLastTerm(pathName,
+			(TCHAR)('\\'));
+		if (p == nullpr) {
+			MacMsg("error", "strrchr failed", falseblnr);
+		} else {
+			*--p = (TCHAR)('\0');
+			return trueblnr;
+		}
+	}
+	return falseblnr;
+}
+
+#define My_CSIDL_APPDATA 0x001a
+
+typedef HRESULT (WINAPI *SHGetSpecialFolderPathProcPtr) (
+	HWND hwndOwner,
+	LPTSTR lpszPath,
+	int nFolder,
+	BOOL fCreate
+);
+LOCALVAR SHGetSpecialFolderPathProcPtr MySHGetSpecialFolderPath = NULL;
+LOCALVAR blnr DidSHGetSpecialFolderPath = falseblnr;
+
+LOCALFUNC blnr HaveMySHGetSpecialFolderPath(void)
+{
+	if (! DidSHGetSpecialFolderPath) {
+		HMODULE hLibModule = LoadLibrary(TEXT("shell32.dll"));
+		if (NULL != hLibModule) {
+			MySHGetSpecialFolderPath =
+				(SHGetSpecialFolderPathProcPtr)
+				GetProcAddress(hLibModule,
+#if MyUseUni
+					TEXT("SHGetSpecialFolderPathW")
+#else
+					TEXT("SHGetSpecialFolderPathA")
+#endif
+				);
+			/* FreeLibrary(hLibModule); */
+		}
+		DidSHGetSpecialFolderPath = trueblnr;
+	}
+	return (MySHGetSpecialFolderPath != NULL);
+}
+
+LOCALFUNC blnr MyGetAppDataPath(LPTSTR lpszPath,
+	BOOL fCreate)
+{
+	blnr IsOk = falseblnr;
+
+	if (HaveMySHGetSpecialFolderPath())
+	if (MySHGetSpecialFolderPath(
+		NULL /* HWND hwndOwner */,
+		lpszPath, My_CSIDL_APPDATA, fCreate))
+	{
+		IsOk = trueblnr;
+	}
+	/*
+		if not available, could perhaps
+		use GetWindowsDirectory.
+	*/
+	/*
+		SHGetFolderPath is more recent,
+		could perhaps check for it first.
+		might also be in "SHFolder.dll".
+
+		SHGetKnownFolderPath is even
+		more recent.
+	*/
+
+	return IsOk;
+}
+
 LOCALPROC InsertADisk0(void)
 {
 	OPENFILENAME ofn;
@@ -3150,24 +3244,6 @@ LOCALPROC InsertADisk0(void)
 #endif
 }
 
-LOCALFUNC blnr GetAppDir(LPTSTR pathName)
-/* be sure at least _MAX_PATH long! */
-{
-	if (GetModuleFileName(AppInstance, pathName, _MAX_PATH) == 0) {
-		MacMsg("error", "GetModuleFileName failed", falseblnr);
-	} else {
-		LPTSTR p = FindLastTerm(pathName,
-			(TCHAR)('\\'));
-		if (p == nullpr) {
-			MacMsg("error", "strrchr failed", falseblnr);
-		} else {
-			*--p = (TCHAR)('\0');
-			return trueblnr;
-		}
-	}
-	return falseblnr;
-}
-
 LOCALFUNC blnr LoadInitialImageFromName(char *ImageName)
 {
 	TCHAR ImageFile[_MAX_PATH];
@@ -3209,18 +3285,7 @@ LOCALFUNC tMacErr ActvCodeFileLoad(ui3p p)
 	HANDLE refnum = INVALID_HANDLE_VALUE;
 	blnr IsOk = falseblnr;
 
-	if (SHGetSpecialFolderPath(
-		NULL /* HWND hwndOwner */,
-		pathName, CSIDL_APPDATA, TRUE))
-#if 0
-	if (S_OK == SHGetFolderPath(
-		NULL /* HWND hwndOwner */,
-		CSIDL_APPDATA /* int nFolder */,
-		NULL  /* HANDLE hToken */,
-		0 /* DWORD dwFlags */,
-		pathName /* LPTSTR pszPath */
-		))
-#endif
+	if (MyGetAppDataPath(pathName, FALSE))
 	if (ResolveNamedChildDir(pathName, "Gryphel"))
 	if (ResolveNamedChildDir(pathName, "mnvm_act"))
 	if (ResolveNamedChildFile(pathName, ActvCodeFileName))
@@ -3302,18 +3367,7 @@ LOCALFUNC tMacErr ActvCodeFileSave(ui3p p)
 	HANDLE refnum = INVALID_HANDLE_VALUE;
 	blnr IsOk = falseblnr;
 
-	if (SHGetSpecialFolderPath(
-		NULL /* HWND hwndOwner */,
-		pathName, CSIDL_APPDATA, TRUE))
-#if 0
-	if (S_OK == SHGetFolderPath(
-		NULL /* HWND hwndOwner */,
-		CSIDL_APPDATA /* int nFolder */,
-		NULL  /* HANDLE hToken */,
-		0 /* DWORD dwFlags */,
-		pathName /* LPTSTR pszPath */
-		))
-#endif
+	if (MyGetAppDataPath(pathName, TRUE))
 	if (MakeNamedChildDir(pathName, "Gryphel"))
 	if (MakeNamedChildDir(pathName, "mnvm_act"))
 	if (NewNamedChildFile(pathName, ActvCodeFileName))
@@ -3493,18 +3547,7 @@ LOCALFUNC blnr LoadMacRom(void)
 	}
 
 	if (! IsOk) {
-		if (SHGetSpecialFolderPath(
-			NULL /* HWND hwndOwner */,
-			ROMFile, CSIDL_APPDATA, TRUE))
-#if 0
-		if (S_OK == SHGetFolderPath(
-			NULL /* HWND hwndOwner */,
-			CSIDL_APPDATA /* int nFolder */,
-			NULL  /* HANDLE hToken */,
-			0 /* DWORD dwFlags */,
-			ROMFile /* LPTSTR pszPath */
-			))
-#endif
+		if (MyGetAppDataPath(ROMFile, FALSE))
 		if (ResolveNamedChildDir(ROMFile, "Gryphel"))
 		if (ResolveNamedChildDir(ROMFile, "mnvm_rom"))
 		if (ResolveNamedChildFile(ROMFile, RomFileName))

@@ -222,10 +222,10 @@ enum {
 #if EmVidCard
 	kExtnVideo,
 #endif
-#if IncludePbufs
+#if IncludeExtnPbufs
 	kExtnParamBuffers,
 #endif
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 	kExtnHostTextClipExchange,
 #endif
 

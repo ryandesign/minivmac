@@ -42,7 +42,7 @@ LOCALPROC WriteLccErrFilePath(void)
 
 static void WriteLccW32SpecificFiles(void)
 {
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".prj")) { /* workspace file */
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, ".prj")) { /* workspace file */
 
 	WriteDestFileLn("; Wedit project file. Syntax: Name = value");
 
@@ -200,11 +200,7 @@ LOCALPROC WriteLccW32clSpecificFiles(void)
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("TheDefaultOutput:");
-	if (CurPackageOut) {
-		WriteMakeDependFile(WriteAppBinZipPath);
-	} else {
-		WriteMakeDependFile(WriteAppNamePath);
-	}
+	WriteMakeDependFile(WriteAppNamePath);
 	WriteEndDestFileLn();
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
@@ -250,10 +246,6 @@ LOCALPROC WriteLccW32clSpecificFiles(void)
 		DoAllSrcFilesWithSetup(DoSrcFileLccW32clEraseFile);
 		WriteRmFile(WriteMainRsrcObjPath);
 		WriteRmFile(WriteAppNamePath);
-		if (CurPackageOut) {
-			WriteRmFile(WriteAppBinZipPath);
-			WriteRmFile(WriteCheckSumFilePath);
-		}
 	--DestFileIndent;
 
 	WriteCloseDestFile();

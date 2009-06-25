@@ -219,6 +219,14 @@ LOCALPROC HandRangeToPStr(Handle x,
 #endif
 
 #ifdef Have_STRUTILS
+LOCALPROC HandRangeToCStr(Handle x,
+	uimr offset, uimr L, char *s)
+{
+	CStrFromPtr(((MyPtr)*x + offset), L, s);
+}
+#endif
+
+#ifdef Have_STRUTILS
 LOCALPROC HandToPStr(Handle x, ps3p s)
 {
 	HandRangeToPStr(x, 0, GetHandleSize(x), s);

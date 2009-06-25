@@ -262,13 +262,9 @@ LOCALFUNC blnr MyDeleteOneIfExists(MyDir_R *d, StringPtr s)
 	return IsOk;
 }
 
-LOCALFUNC blnr DelMakeSubDirectory(MyDir_R *new_d, MyDir_R *d, char *name, char *FileExt)
+LOCALFUNC blnr DelMakeNamedDir(MyDir_R *new_d, MyDir_R *d, StringPtr s)
 {
-	Str255 s;
 	blnr IsOk = falseblnr;
-
-	PStrFromCStr(s, name);
-	PStrApndCStr(s, FileExt);
 
 	if (MyDeleteOneIfExists(d, s)) {
 		IsOk = MyMakeNamedDir(d, s, new_d);
@@ -277,11 +273,46 @@ LOCALFUNC blnr DelMakeSubDirectory(MyDir_R *new_d, MyDir_R *d, char *name, char 
 	return IsOk;
 }
 
+LOCALFUNC blnr DelMakeSubDirectory(MyDir_R *new_d, MyDir_R *d, char *name, char *FileExt)
+{
+	Str255 s;
+
+	PStrFromCStr(s, name);
+	PStrApndCStr(s, FileExt);
+
+	return DelMakeNamedDir(new_d, d, s);
+}
+
+LOCALFUNC blnr FindOrMakeMakeNamedDir(MyDir_R *new_d, MyDir_R *d, StringPtr s)
+{
+	blnr IsOk = falseblnr;
+	OSErr err;
+
+	err = MyResolveNamedChildDir0(d, s, new_d);
+	if (fnfErr == err) {
+		IsOk = MyMakeNamedDir(d, s, new_d);
+	} else {
+		IsOk = CheckSysErr(err);
+	}
+
+	return IsOk;
+}
+
+LOCALFUNC blnr FindOrMakeSubDirectory(MyDir_R *new_d, MyDir_R *d, char *name, char *FileExt)
+{
+	Str255 s;
+
+	PStrFromCStr(s, name);
+	PStrApndCStr(s, FileExt);
+
+	return FindOrMakeMakeNamedDir(new_d, d, s);
+}
+
 LOCALFUNC blnr FindSubDirectory(MyDir_R *new_d, MyDir_R *d, char *name, char *FileExt)
 {
 	Str255 s;
 
 	PStrFromCStr(s, name);
 	PStrApndCStr(s, FileExt);
-	return MyFindNamedChildDir(d, s, new_d);
+	return CheckSysErr(MyResolveNamedChildDir0(d, s, new_d));
 }

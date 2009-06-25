@@ -58,6 +58,15 @@ LOCALFUNC blnr CurArgIsCStrAdvance(char *s)
 	}
 }
 
+LOCALPROC GetCurArgAsCStr(char *s, uimr MaxN)
+{
+	if (CStrLength(Cur_args) > MaxN) {
+		s[0] = 0;
+	} else {
+		CStrCopy(s, Cur_args);
+	}
+}
+
 LOCALPROC GetCurArgAsPStr(ps3p s)
 {
 	PStrFromCStr(s, Cur_args);

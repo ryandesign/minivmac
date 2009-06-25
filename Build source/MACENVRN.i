@@ -102,6 +102,23 @@ LOCALFUNC blnr HaveCustomPutFileAvail(void)
 	return MyEnvrAttrCustomPutFileAvail;
 }
 
+LOCALVAR blnr MyEnvrAttrAliasMgrAvail;
+LOCALVAR blnr HaveEnvrAttrAliasMgrAvail = falseblnr;
+
+LOCALFUNC blnr HaveAliasMgrAvail(void)
+{
+	if (! HaveEnvrAttrAliasMgrAvail) {
+		long reply;
+
+		MyEnvrAttrAliasMgrAvail =
+			HaveGestaltAvail()
+			&& (noErr == Gestalt(gestaltAliasMgrAttr, &reply))
+			&& TestBit(reply, gestaltAliasMgrPresent);
+		HaveEnvrAttrAliasMgrAvail = trueblnr;
+	}
+	return MyEnvrAttrAliasMgrAvail;
+}
+
 LOCALVAR blnr MyEnvrAttrAppleEvtMgrAvail;
 LOCALVAR blnr HaveEnvrAttrAppleEvtMgrAvail = falseblnr;
 

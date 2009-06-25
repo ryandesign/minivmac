@@ -77,23 +77,6 @@ LOCALFUNC tMacErr CheckReadableDrive(tDrive Drive_No)
 	return result;
 }
 
-LOCALFUNC tMacErr CheckWriteableDrive(tDrive Drive_No)
-{
-	tMacErr result;
-
-	if (Drive_No >= NumDrives) {
-		result = mnvm_nsDrvErr;
-	} else if (! vSonyIsMounted(Drive_No)) {
-		result = mnvm_offLinErr;
-	} else if (vSonyIsLocked(Drive_No)) {
-		result = mnvm_vLckdErr;
-	} else {
-		result = mnvm_noErr;
-	}
-
-	return result;
-}
-
 LOCALFUNC tMacErr vSonyTransfer(blnr IsWrite, ui3p Buffer, tDrive Drive_No,
 	ui5r Sony_Start, ui5r Sony_Count, ui5r *Sony_ActCount)
 {
@@ -513,18 +496,24 @@ LOCALFUNC tMacErr Drive_Eject(tDrive Drive_No)
 	return result;
 }
 
+#if IncludeSonyNew
 LOCALFUNC tMacErr Drive_EjectDelete(tDrive Drive_No)
 {
 	tMacErr result;
 
-	result = CheckWriteableDrive(Drive_No);
+	result = CheckReadableDrive(Drive_No);
 	if (mnvm_noErr == result) {
-		vSonyMountedMask &= ~ ((ui5b)1 << Drive_No);
-		result = vSonyEjectDelete(Drive_No);
+		if (vSonyIsLocked(Drive_No)) {
+			result = mnvm_vLckdErr;
+		} else {
+			vSonyMountedMask &= ~ ((ui5b)1 << Drive_No);
+			result = vSonyEjectDelete(Drive_No);
+		}
 	}
 
 	return result;
 }
+#endif
 
 GLOBALPROC Sony_EjectAllDisks(void)
 {
@@ -1015,7 +1004,14 @@ LOCALFUNC tMacErr Sony_Prime(CPTR p)
 		}
 
 		if (0 != (PosMode & 64)) {
+#if ExtraAbnormalReports
+			/*
+				This is used when copy to floppy
+				disk with Finder. But not implemented
+				yet.
+			*/
 			ReportAbnormal("read verify mode requested");
+#endif
 			PosMode &= ~ 64;
 		}
 

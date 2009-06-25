@@ -326,7 +326,7 @@ LOCALPROC WriteLProjFolderPath(void)
 
 LOCALPROC WriteStrAppAbbrev(void)
 {
-	WriteCStrToDestFile(kStrAppAbbrev);
+	WriteCStrToDestFile(vStrAppAbbrev);
 }
 
 LOCALPROC WriteAppNameStr(void)
@@ -358,37 +358,6 @@ LOCALPROC WriteAppNamePath(void)
 LOCALPROC WriteStrAppUnabrevName(void)
 {
 	WriteCStrToDestFile(kStrAppName);
-}
-
-LOCALPROC WriteAppUnabrevName(void)
-{
-	switch (gbo_apifam) {
-		case gbk_apifam_mac:
-			WriteStrAppUnabrevName();
-			break;
-		case gbk_apifam_osx:
-			WriteStrAppUnabrevName();
-			if (HaveMacBundleApp) {
-				WriteCStrToDestFile(".app");
-			}
-			break;
-		case gbk_apifam_win:
-			WriteStrAppUnabrevName();
-			WriteCStrToDestFile(".exe");
-			break;
-		default:
-			WriteStrAppAbbrev();
-			break;
-	}
-}
-
-LOCALPROC WriteAppUnabrevPath(void)
-{
-	if (HaveMacBundleApp) {
-		Write_toplevel_d_ToDestFile(WriteAppUnabrevName);
-	} else {
-		Write_toplevel_f_ToDestFile(WriteAppUnabrevName);
-	}
 }
 
 LOCALPROC Write_contents_d_Name(void)
@@ -631,61 +600,6 @@ LOCALPROC WriteCNFGRAPIName(void)
 LOCALPROC WriteCNFGRAPIPath(void)
 {
 	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WriteCNFGRAPIName);
-}
-
-LOCALPROC WriteAppBinTarName(void)
-{
-	WriteAppVariationStr();
-	WriteCStrToDestFile(".bin.tar");
-}
-
-LOCALPROC WriteAppBinTarPath(void)
-{
-	Write_toplevel_f_ToDestFile(WriteAppBinTarName);
-}
-
-LOCALPROC WriteAppBinTgzName(void)
-{
-	WriteAppVariationStr();
-	WriteCStrToDestFile(".bin.tgz");
-}
-
-LOCALPROC WriteAppBinTgzPath(void)
-{
-	Write_toplevel_f_ToDestFile(WriteAppBinTgzName);
-}
-
-LOCALPROC WriteAppBinSitName(void)
-{
-	WriteAppVariationStr();
-	WriteCStrToDestFile(".bin.sit");
-}
-
-LOCALPROC WriteAppBinSitPath(void)
-{
-	Write_toplevel_f_ToDestFile(WriteAppBinSitName);
-}
-
-LOCALPROC WriteAppBinZipName(void)
-{
-	WriteAppVariationStr();
-	WriteCStrToDestFile(".bin.zip");
-}
-
-LOCALPROC WriteAppBinZipPath(void)
-{
-	Write_toplevel_f_ToDestFile(WriteAppBinZipName);
-}
-
-LOCALPROC WriteCheckSumFileName(void)
-{
-	WriteAppVariationStr();
-	WriteCStrToDestFile(".md5.txt");
-}
-
-LOCALPROC WriteCheckSumFilePath(void)
-{
-	Write_toplevel_f_ToDestFile(WriteCheckSumFileName);
 }
 
 LOCALPROC WritePathArgInMakeCmnd(MyProc p)

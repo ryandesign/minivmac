@@ -263,6 +263,9 @@ GLOBALFUNC blnr ROM_Init(void)
 #elif CurEmMd <= kEmMd_II
 	if (CheckSum == 0x9779D2C4) {
 	} else
+	if (CheckSum == 0x97221136) {
+		/* accept IIx ROM */
+	} else
 #elif CurEmMd <= kEmMd_IIx
 	if (CheckSum == 0x97221136) {
 	} else

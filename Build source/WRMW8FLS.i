@@ -262,7 +262,7 @@ static void WriteMetrowerksSpecificFiles(void)
 		WritePListData();
 	}
 
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".mcp.xml")) { /* Project Import */
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, ".mcp.xml")) { /* Project Import */
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("<?xml version=");
@@ -573,7 +573,7 @@ static void WriteMetrowerksSpecificFiles(void)
 				WriteEndXMLtagLine("SETTING");
 			} else {
 				WriteMWSettingsPanelComment("PPC Project");
-				WriteXMLtagSettingNameVal("MWProject_PPC_outfile", kStrAppAbbrev);
+				WriteXMLtagSettingNameVal("MWProject_PPC_outfile", vStrAppAbbrev);
 				WriteXMLtagSettingNameVal("MWProject_PPC_filecreator", kMacCreatorSig);
 				WriteXMLtagSettingNameVal("MWProject_PPC_size", "6000");
 				WriteXMLtagSettingNameVal("MWProject_PPC_minsize", "3000");

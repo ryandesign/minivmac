@@ -48,7 +48,7 @@ static void DoSrcFileDvcAddFile(void)
 
 static void WriteDevCSpecificFiles(void)
 {
-	if (WriteOpenDestFile(&OutputDirR, kStrAppAbbrev, ".dev")) { /* project file */
+	if (WriteOpenDestFile(&OutputDirR, vStrAppAbbrev, ".dev")) { /* project file */
 
 	WriteDestFileLn("[Project]");
 

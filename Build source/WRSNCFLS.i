@@ -55,11 +55,7 @@ static void WriteSncSpecificFiles(void)
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("TheDefaultOutput : ");
-	if (CurPackageOut) {
-		WriteAppBinTgzPath();
-	} else {
-		Write_machobinpath_ToDestFile();
-	}
+	Write_machobinpath_ToDestFile();
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -122,84 +118,11 @@ static void WriteSncSpecificFiles(void)
 		}
 	--DestFileIndent;
 
-	if (CurPackageOut) {
-		WriteBlankLineToDestFile();
-		WriteBgnDestFileLn();
-		WriteAppBinTgzPath();
-		WriteCStrToDestFile(" : ");
-		Write_machobinpath_ToDestFile();
-		WriteEndDestFileLn();
-		++DestFileIndent;
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("touch -am -r README.txt");
-			WritePathArgInMakeCmnd(WriteAppNamePath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("tar -cf");
-			WritePathArgInMakeCmnd(WriteAppBinTarPath);
-			WritePathArgInMakeCmnd(WriteAppUnabrevPath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("touch -am -r README.txt");
-			WritePathArgInMakeCmnd(WriteAppBinTarPath);
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("gzip <");
-			WritePathArgInMakeCmnd(WriteAppBinTarPath);
-			WriteCStrToDestFile(" >");
-			WritePathArgInMakeCmnd(WriteAppBinTgzPath);
-			WriteEndDestFileLn();
-
-			WriteRmFile(WriteAppBinTarPath);
-
-			WriteBgnDestFileLn();
-			switch (cur_targ) {
-				case gbk_targ_slrs:
-				case gbk_targ_sl86:
-					WriteCStrToDestFile("digest -a md5");
-					break;
-				default:
-					if (cur_ide == gbk_ide_xcd) {
-						WriteCStrToDestFile("md5 -r");
-					} else {
-						WriteCStrToDestFile("md5sum");
-					}
-					break;
-			}
-			WritePathArgInMakeCmnd(WriteAppBinTgzPath);
-			WriteCStrToDestFile(" >");
-			WritePathArgInMakeCmnd(WriteCheckSumFilePath);
-			WriteEndDestFileLn();
-
-			switch (cur_targ) {
-				case gbk_targ_slrs:
-				case gbk_targ_sl86:
-					WriteBgnDestFileLn();
-					WriteCStrToDestFile("echo \" ");
-					WriteAppBinTgzName();
-					WriteCStrToDestFile("\" >>");
-					WritePathArgInMakeCmnd(WriteCheckSumFilePath);
-					WriteEndDestFileLn();
-					break;
-				default:
-					break;
-			}
-		--DestFileIndent;
-	}
-
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("clean :");
 	++DestFileIndent;
 		WriteDestFileLn("rm -f $(ObjFiles)");
 		WriteRmFile(WriteAppNamePath);
-
-		if (CurPackageOut) {
-			WriteRmFile(WriteAppBinTgzPath);
-			WriteRmFile(WriteCheckSumFilePath);
-		}
 	--DestFileIndent;
 
 	WriteCloseDestFile();

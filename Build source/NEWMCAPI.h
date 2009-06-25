@@ -106,6 +106,11 @@ enum {
 	gestaltDragMgrPresent  = 0,
 };
 
+enum {
+	gestaltAliasMgrAttr = FOUR_CHAR_CODE('alis'),
+	gestaltAliasMgrPresent  = 0,
+};
+
 /* From MacMemory.h */
 
 #define DisposeHandle DisposHandle
@@ -135,6 +140,7 @@ enum {
 #define PBGetCatInfoSync(paramBlock) PBGetCatInfo(paramBlock, false)
 #define PBSetCatInfoSync(paramBlock) PBSetCatInfo(paramBlock, false)
 #define PBGetWDInfoSync(paramBlock) PBGetWDInfo(paramBlock, false)
+#define PBGetVInfoSync(paramBlock) PBGetVInfo(paramBlock, false)
 
 #define hFileInfo hfileInfo
 

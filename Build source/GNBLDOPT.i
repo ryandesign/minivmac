@@ -385,20 +385,6 @@ LOCALPROC ChooseIdeVers(void)
 	}
 }
 
-/* option: print file list */
-
-LOCALVAR blnr CurPackageOut;
-
-LOCALPROC ResetPackageOut(void)
-{
-	CurPackageOut = falseblnr;
-}
-
-LOCALFUNC blnr TryAsPackageOutNot(void)
-{
-	return FlagTryAsOptionNot("-pk", &CurPackageOut);
-}
-
 /* option: use command line tools */
 
 LOCALVAR blnr UseCmndLine;
@@ -411,13 +397,6 @@ LOCALPROC ResetCmndLine(void)
 LOCALFUNC blnr TryAsCmndLineOptionNot(void)
 {
 	return FlagTryAsOptionNot("-cl", &UseCmndLine);
-}
-
-LOCALPROC ChooseCmndLine(void)
-{
-	if (! UseCmndLine) {
-		UseCmndLine = CurPackageOut;
-	}
 }
 
 /* derived option: target cpu family */
@@ -905,6 +884,38 @@ LOCALPROC ChooseHaveMacRrscs(void)
 	HaveMacRrscs = (gbo_apifam == gbk_apifam_mac) || ((cur_targ == gbk_targ_carb) && ! (cur_ide == gbk_ide_mpw)) || HaveExtraRrscs;
 }
 
+/* option: Abbrev Name */
+
+LOCALVAR char vStrAppAbbrev[8 + 1];
+
+LOCALPROC ResetAbbrevName(void)
+{
+	vStrAppAbbrev[0] = 0;
+}
+
+LOCALFUNC blnr TryAsAbbrevNameOptionNot(void)
+{
+	if (! CurArgIsCStr("-an")) {
+		return trueblnr;
+	} else {
+		if (0 != vStrAppAbbrev[0]) {
+			ReportParseFailure("This option has already been defined");
+		} else {
+			AdvanceTheArg();
+			GetCurArgAsCStr(vStrAppAbbrev, 8);
+			AdvanceTheArg();
+		}
+		return falseblnr;
+	}
+}
+
+LOCALPROC ChooseAbbrevName(void)
+{
+	if (0 == vStrAppAbbrev[0]) {
+		CStrCopy(vStrAppAbbrev, kStrAppAbbrev);
+	}
+}
+
 /* option: Variation Name */
 
 LOCALVAR Handle hVariationName = NULL;
@@ -924,7 +935,7 @@ LOCALPROC ChooseVariationName(void)
 	if (NULL == hVariationName) {
 		MyPStr s;
 
-		PStrFromCStr(s, kStrAppAbbrev);
+		PStrFromCStr(s, vStrAppAbbrev);
 		PStrApndCStr(s, "-");
 		PStrApndCStr(s, kMajorVersion);
 		PStrApndCStr(s, ".");
@@ -1000,7 +1011,6 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetTargetOption();
 	ResetIdeOption();
 	ResetIdeVersOption();
-	ResetPackageOut();
 	ResetCmndLine();
 	ResetDbgOption();
 	ResetLangOption();
@@ -1010,6 +1020,7 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetListOption();
 	ResetMaintainerName();
 	ResetHomePage();
+	ResetAbbrevName();
 	ResetVariationName();
 	ResetIconMaster();
 	ResetNoAsm();
@@ -1021,7 +1032,6 @@ LOCALFUNC blnr TryAsGNOptionNot(void)
 	if (TryAsTargetOptionNot())
 	if (TryAsIdeOptionNot())
 	if (TryAsIdeVersOptionNot())
-	if (TryAsPackageOutNot())
 	if (TryAsCmndLineOptionNot())
 	if (TryAsDbgOptionNot())
 	if (TryAsEolOptionNot())
@@ -1031,6 +1041,7 @@ LOCALFUNC blnr TryAsGNOptionNot(void)
 	if (TryAsMaintainerNameOptionNot())
 	if (TryAsHomePageOptionNot())
 	if (TryAsListOptionNot())
+	if (TryAsAbbrevNameOptionNot())
 	if (TryAsVariationNameOptionNot())
 	if (TryAsIconMasterNot())
 	if (TryAsNoAsmNot())
@@ -1047,7 +1058,6 @@ LOCALFUNC blnr AutoChooseGNSettings(void)
 	{
 		ChooseIde();
 		ChooseIdeVers();
-		ChooseCmndLine();
 		ChooseCPUFam();
 		ChooseAPIFam();
 		ChooseDbgOption();
@@ -1058,6 +1068,7 @@ LOCALFUNC blnr AutoChooseGNSettings(void)
 		ChooseHomePage();
 		ChooseHaveMacBundleApp();
 		ChooseHaveMacRrscs();
+		ChooseAbbrevName();
 		ChooseVariationName();
 		ChooseIconMaster();
 		ChooseAsmPossible();

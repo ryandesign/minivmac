@@ -1184,7 +1184,7 @@ GLOBALPROC PowerOff_ChangeNtfy(void)
 
 /* extension mechanism */
 
-#if IncludePbufs
+#if IncludeExtnPbufs
 LOCALFUNC tMacErr PbufTransferVM(CPTR Buffera,
 	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
 {
@@ -1229,7 +1229,7 @@ GLOBALFUNC tMacErr CheckPbuf(tPbuf Pbuf_No)
 }
 #endif
 
-#if IncludePbufs
+#if IncludeExtnPbufs
 #define kCmndPbufFeatures 1
 #define kCmndPbufNew 2
 #define kCmndPbufDispose 3
@@ -1237,7 +1237,7 @@ GLOBALFUNC tMacErr CheckPbuf(tPbuf Pbuf_No)
 #define kCmndPbufTransfer 5
 #endif
 
-#if IncludePbufs
+#if IncludeExtnPbufs
 LOCALPROC ExtnParamBuffers_Access(CPTR p)
 {
 	tMacErr result = mnvm_controlErr;
@@ -1309,13 +1309,13 @@ LOCALPROC ExtnParamBuffers_Access(CPTR p)
 }
 #endif
 
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 #define kCmndHTCEFeatures 1
 #define kCmndHTCEExport 2
 #define kCmndHTCEImport 3
 #endif
 
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 LOCALPROC ExtnHostTextClipExchange_Access(CPTR p)
 {
 	tMacErr result = mnvm_controlErr;
@@ -1354,10 +1354,10 @@ LOCALPROC ExtnHostTextClipExchange_Access(CPTR p)
 
 #define kFindExtnExtension 0x64E1F58A
 #define kDiskDriverExtension 0x4C9219E6
-#if IncludePbufs
+#if IncludeExtnPbufs
 #define kHostParamBuffersExtension 0x314C87BF
 #endif
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 #define kHostClipExchangeExtension 0x27B130CA
 #endif
 
@@ -1385,13 +1385,13 @@ LOCALPROC ExtnFind_Access(CPTR p)
 					put_vm_word(p + kParamFindExtnTheId, kExtnDisk);
 					result = mnvm_noErr;
 				} else
-#if IncludePbufs
+#if IncludeExtnPbufs
 				if (extn == kHostParamBuffersExtension) {
 					put_vm_word(p + kParamFindExtnTheId, kExtnParamBuffers);
 					result = mnvm_noErr;
 				} else
 #endif
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 				if (extn == kHostClipExchangeExtension) {
 					put_vm_word(p + kParamFindExtnTheId, kExtnHostTextClipExchange);
 					result = mnvm_noErr;
@@ -1414,13 +1414,13 @@ LOCALPROC ExtnFind_Access(CPTR p)
 					put_vm_long(p + kParamFindExtnTheExtn, kDiskDriverExtension);
 					result = mnvm_noErr;
 				} else
-#if IncludePbufs
+#if IncludeExtnPbufs
 				if (extn == kExtnParamBuffers) {
 					put_vm_long(p + kParamFindExtnTheExtn, kHostParamBuffersExtension);
 					result = mnvm_noErr;
 				} else
 #endif
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 				if (extn == kExtnHostTextClipExchange) {
 					put_vm_long(p + kParamFindExtnTheExtn, kHostClipExchangeExtension);
 					result = mnvm_noErr;
@@ -1473,12 +1473,12 @@ LOCALPROC Extn_Access(ui5b Data, CPTR addr)
 							ExtnVideo_Access(p);
 							break;
 #endif
-#if IncludePbufs
+#if IncludeExtnPbufs
 						case kExtnParamBuffers:
 							ExtnParamBuffers_Access(p);
 							break;
 #endif
-#if IncludeHostTextClipExchange
+#if IncludeExtnHostTextClipExchange
 						case kExtnHostTextClipExchange:
 							ExtnHostTextClipExchange_Access(p);
 							break;

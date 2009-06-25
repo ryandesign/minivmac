@@ -1652,6 +1652,17 @@ LOCALFUNC blnr CurArgIsCStrAdvance(char *s)
 	}
 }
 
+LOCALPROC GetCurArgAsCStr(char *s, uimr MaxN)
+{
+	uimr L = The_arg_rangestop - The_arg_rangestart;
+
+	if (L > MaxN) {
+		L = MaxN;
+	}
+	HandRangeToCStr(ParseHandle, The_arg_rangestart,
+		L, s);
+}
+
 LOCALPROC GetCurArgAsPStr(ps3p s)
 {
 	HandRangeToPStr(ParseHandle, The_arg_rangestart,
