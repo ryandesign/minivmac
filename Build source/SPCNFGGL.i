@@ -21,6 +21,11 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 {
 	WriteBlankLineToDestFile();
 
+	WriteCompCondBool("MySoundRecenterSilence", falseblnr);
+	WriteDestFileLn("#define kLn2SoundSampSz 3");
+
+	WriteBlankLineToDestFile();
+
 #if 0 /* not used currently */
 	WriteCompCondBool("Debug", gbo_dbg != gbk_dbg_off);
 #endif

@@ -32,38 +32,62 @@
 
 #include "SNDEMDEV.h"
 
+
+#if MySoundEnabled
+
 #define kSnd_Main_Offset   0x0300
 #define kSnd_Alt_Offset    0x5F00
 
 #define kSnd_Main_Buffer (kRAM_Size - kSnd_Main_Offset)
 #define kSnd_Alt_Buffer (kRAM_Size - kSnd_Alt_Offset)
 
-
-#if MySoundEnabled
-
-LOCALVAR const ui4b vol_mult[] = {
-	8192, 9362, 10922, 13107, 16384, 21845, 32768
-};
-
-LOCALVAR const ui3b vol_offset[] = {
-	112, 110, 107, 103, 96, 86, 64, 0
-};
-
 /*
 	approximate volume levels of vMac, so:
 
 	x * vol_mult[SoundVolume] >> 16
 		+ vol_offset[SoundVolume]
-	= {approx} (x - 128) / (8 - SoundVolume) + 128;
+	= {approx} (x - kCenterSound) / (8 - SoundVolume) + kCenterSound;
 */
 
-LOCALVAR const ui4b SubTick_offset[kNumSubTicks + 1] = {
-	0,    23,  46,  69,  92, 115, 138, 161,
-	185, 208, 231, 254, 277, 300, 323, 346,
-	370
+LOCALVAR const ui4b vol_mult[] = {
+	8192, 9362, 10922, 13107, 16384, 21845, 32768
 };
 
-LOCALVAR ui3p TheCurSoundBuff = nullpr;
+LOCALVAR const trSoundSamp vol_offset[] = {
+#if 3 == kLn2SoundSampSz
+	112, 110, 107, 103, 96, 86, 64, 0
+#elif 4 == kLn2SoundSampSz
+	28672, 28087, 27307, 26215, 24576, 21846, 16384, 0
+#else
+#error "unsupported kLn2SoundSampSz"
+#endif
+};
+
+LOCALVAR const ui4b SubTick_offset[kNumSubTicks] = {
+	0,    23,  46,  69,  92, 115, 138, 161,
+	185, 208, 231, 254, 277, 300, 323, 346
+};
+
+LOCALVAR const ui3r SubTick_n[kNumSubTicks] = {
+	23,  23,  23,  23,  23,  23,  23,  24,
+	23,  23,  23,  23,  23,  23,  23,  24
+};
+
+#if 0
+/*
+	This is probably more correct, but makes it more
+	timing sensitive. Wait for cycle accurate emulation.
+*/
+LOCALVAR const ui4b SubTick_offset[kNumSubTicks] = {
+	342,   0,  19,  42,  65,  88, 111, 134,
+	157, 181, 204, 227, 250, 273, 296, 319
+};
+
+LOCALVAR const ui3r SubTick_n[kNumSubTicks] = {
+	28,  19,  23,  23,  23,  23,  23,  23,
+	24,  23,  23,  23,  23,  23,  23,  23
+};
+#endif
 
 LOCALVAR ui5b SoundInvertPhase = 0;
 LOCALVAR ui4b SoundInvertState = 0;
@@ -72,67 +96,52 @@ IMPORTFUNC ui4b GetSoundInvertTime(void);
 
 GLOBALPROC MacSound_SubTick(int SubTick)
 {
-	if (SubTick == 0) {
-		TheCurSoundBuff = GetCurSoundOutBuff();
-	}
-
-	if (TheCurSoundBuff != nullpr) {
-		ui4r i;
-		ui4b SoundInvertTime = GetSoundInvertTime();
-		ui5b StartOffset = SubTick_offset[SubTick];
-		ui4r n = SubTick_offset[SubTick + 1] - StartOffset;
-		unsigned long addy =
+	ui4r actL;
+	tpSoundSamp p;
+	ui4r i;
+	ui5b StartOffset = SubTick_offset[SubTick];
+	ui4r n = SubTick_n[SubTick];
+	unsigned long addy =
 #ifdef SoundBuffer
-			(SoundBuffer == 0) ? kSnd_Alt_Buffer :
+		(SoundBuffer == 0) ? kSnd_Alt_Buffer :
 #endif
-			kSnd_Main_Buffer;
-		ui3p addr = addy + (2 * StartOffset) + RAM;
-		ui3p p = StartOffset + TheCurSoundBuff;
+		kSnd_Main_Buffer;
+	ui3p addr = addy + (2 * StartOffset) + RAM;
+	ui4b SoundInvertTime = GetSoundInvertTime();
+	ui3b SoundVolume = SoundVolb0
+		| (SoundVolb1 << 1)
+		| (SoundVolb2 << 2);
 
+label_retry:
+	p = MySound_BeginWrite(n, &actL);
+	if (actL > 0) {
 		if (SoundDisable && (SoundInvertTime == 0)) {
-			for (i = 0; i < n; i++) {
-#if 1
-				*p++ = 0x80;
+			for (i = 0; i < actL; i++) {
+#if 0
+				*p++ = 0x00; /* this is believed more accurate */
 #else
-				*p++ = 0x00;
+				/* But this avoids more clicks. */
+				*p++ = kCenterSound;
 #endif
-				/*
-					0x00 would be more acurate, but 0x80 works
-					nicer, so can pause emulation without click.
-				*/
 			}
 		} else {
-			ui3b SoundVolume = SoundVolb0
-				| (SoundVolb1 << 1)
-				| (SoundVolb2 << 2);
-			ui3b offset = vol_offset[SoundVolume];
+			for (i = 0; i < actL; i++) {
+				/* Copy sound data, high byte of each word */
+				*p++ = *addr
+#if 4 == kLn2SoundSampSz
+					<< 8
+#endif
+					;
 
-			if (SoundVolume >= 7) {
-				/* Volume is full, so we can do it the fast way */
-
-				for (i = 0; i < n; i++) {
-					/* Copy the buffer over */
-					*p++ = *addr;
-
-					/* Move the address on */
-					addr += 2;
-				}
-			} else {
-				ui5b mult = (ui5b)vol_mult[SoundVolume];
-
-				for (i = 0; i < n; i++) {
-					/* Copy the buffer over */
-					*p++ = (ui3b)((ui5b)(*addr) * mult >> 16);
-
-					/* Move the address on */
-					addr += 2;
-				}
+				/* Move the address on */
+				addr += 2;
 			}
+
 			if (SoundInvertTime != 0) {
 				ui5b PhaseIncr = (ui5b)SoundInvertTime * (ui5b)20;
-				p -= n;
+				p -= actL;
 
-				for (i = 0; i < n; i++) {
+				for (i = 0; i < actL; i++) {
 					if (SoundInvertPhase < 704) {
 						ui5b OnPortion = 0;
 						ui5b LastPhase = 0;
@@ -157,15 +166,29 @@ GLOBALPROC MacSound_SubTick(int SubTick)
 					p++;
 				}
 			}
-#if 1
-			if (offset != 0) {
-				p -= n;
-				for (i = 0; i < n; i++) {
-					*p++ += offset;
-				}
+		}
+
+		if (SoundVolume < 7) {
+			/*
+				Usually have volume at 7, so this
+				is just for completeness.
+			*/
+			ui5b mult = (ui5b)vol_mult[SoundVolume];
+			trSoundSamp offset = vol_offset[SoundVolume];
+
+			p -= actL;
+			for (i = 0; i < actL; i++) {
+				*p = (trSoundSamp)((ui5b)(*p) * mult >> 16) + offset;
+				++p;
 			}
-#endif
+		}
+
+		MySound_EndWrite(actL);
+		n -= actL;
+		if (n > 0) {
+			goto label_retry;
 		}
 	}
 }
+
 #endif

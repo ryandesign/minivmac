@@ -945,7 +945,6 @@ LOCALPROC MyTimer_UnInit(void)
 
 #if MySoundEnabled
 
-#define SOUND_SAMPLERATE /* 22050 */ 22255 /* = round(7833600 * 2 / 704) */
 
 #define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
 #define kSoundBuffers (1 << kLn2SoundBuffers)
@@ -957,11 +956,27 @@ LOCALPROC MyTimer_UnInit(void)
 		if too small then sound will have pauses.
 	*/
 
-#define kLn2BuffLen 9
-#define My_Sound_Len (1UL << kLn2BuffLen)
-#define kBufferSize (1UL << (kLn2SoundBuffers + kLn2BuffLen))
-#define kBufferMask (kBufferSize - 1)
-#define dbhBufferSize (kBufferSize + SOUND_LEN)
+#define kLnOneBuffLen 9
+#define kLnAllBuffLen (kLn2SoundBuffers + kLnOneBuffLen)
+#define kOneBuffLen (1UL << kLnOneBuffLen)
+#define kAllBuffLen (1UL << kLnAllBuffLen)
+#define kLnOneBuffSz (kLnOneBuffLen + kLn2SoundSampSz - 3)
+#define kLnAllBuffSz (kLnAllBuffLen + kLn2SoundSampSz - 3)
+#define kOneBuffSz (1UL << kLnOneBuffSz)
+#define kAllBuffSz (1UL << kLnAllBuffSz)
+#define kOneBuffMask (kOneBuffLen - 1)
+#define kAllBuffMask (kAllBuffLen - 1)
+#define dbhBufferSize (kAllBuffSz + kOneBuffSz)
+
+LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
+LOCALVAR ui4b ThePlayOffset;
+LOCALVAR ui4b TheFillOffset;
+LOCALVAR blnr wantplaying;
+LOCALVAR ui4b MinFilledSoundBuffs;
+LOCALVAR ui4b TheWriteOffset;
+
+#define SOUND_SAMPLERATE /* 22050 */ 22255 /* = round(7833600 * 2 / 704) */
+
 
 LOCALPROC FillWithSilence(ui3p p, int n, ui3b v)
 {
@@ -972,14 +987,17 @@ LOCALPROC FillWithSilence(ui3p p, int n, ui3b v)
 	}
 }
 
-LOCALVAR ui4b CurFillOffset;
-LOCALVAR ui4b CurPlayOffset;
-LOCALVAR ui4b MinFilledSoundBuffs;
 
 LOCALVAR HWAVEOUT hWaveOut = NULL;
 LOCALVAR WAVEHDR whdr[kSoundBuffers];
 
-LOCALVAR ui3p MyBuffer = NULL;
+
+LOCALPROC MySound_BeginPlaying(void)
+{
+#if DbgLog_SoundStuff
+	fprintf(stderr, "MySound_BeginPlaying\n");
+#endif
+}
 
 LOCALPROC MySound_Start(void)
 {
@@ -989,7 +1007,6 @@ LOCALPROC MySound_Start(void)
 		int i;
 		ui3p p;
 		WAVEHDR *pwh;
-		ui4b CurFillBuffer;
 
 		wfex.wFormatTag = WAVE_FORMAT_PCM;
 		wfex.nChannels = 1;
@@ -1003,11 +1020,11 @@ LOCALPROC MySound_Start(void)
 		if (mmr != MMSYSERR_NOERROR) {
 			/* not recursive: MacMsg("waveOutOpen failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
 		} else {
-			p = MyBuffer;
+			p = TheSoundBuffer;
 			pwh = whdr;
 			for (i = 0; i < kSoundBuffers; ++i) {
 				pwh->lpData = (LPSTR)p;
-				pwh->dwBufferLength = My_Sound_Len;
+				pwh->dwBufferLength = kOneBuffLen;
 				pwh->dwBytesRecorded = 0;
 				pwh->dwUser = 0;
 				pwh->dwFlags = 0;
@@ -1018,25 +1035,15 @@ LOCALPROC MySound_Start(void)
 				} else {
 					pwh->dwFlags |= WHDR_DONE;
 				}
-				p += My_Sound_Len;
+				p += kOneBuffLen;
 				++pwh;
 			}
 
-			FillWithSilence(MyBuffer, dbhBufferSize, 0x80);
-
-			CurFillOffset = 0;
-			CurPlayOffset = 0;
-			CurFillBuffer = kSoundBuffers >> 1;
-			CurFillOffset = CurFillBuffer * My_Sound_Len;
+			TheFillOffset = 0;
+			ThePlayOffset = 0;
+			TheWriteOffset = 0;
 			MinFilledSoundBuffs = kSoundBuffers;
-
-			for (i = 0; i < CurFillBuffer; ++i) {
-				mmr = waveOutWrite(hWaveOut, &whdr[i], sizeof(WAVEHDR));
-				if (mmr != MMSYSERR_NOERROR) {
-					whdr[i].dwFlags |= WHDR_DONE; /* make sure */
-					/* not recursive: MacMsg("waveOutWrite failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
-				}
-			}
+			wantplaying = falseblnr;
 		}
 	}
 }
@@ -1046,6 +1053,7 @@ LOCALPROC MySound_Stop(void)
 	MMRESULT mmr;
 	int i;
 
+	wantplaying = falseblnr;
 	if (hWaveOut != NULL) {
 		DWORD StartTime = GetTickCount();
 		for (i = 0; i < kSoundBuffers; ++i) {
@@ -1069,98 +1077,109 @@ LOCALPROC MySound_Stop(void)
 	}
 }
 
-LOCALFUNC blnr MySound_Init(void)
-{
-	MyBuffer = (ui3p)GlobalAlloc(GMEM_FIXED, dbhBufferSize);
-	if (MyBuffer == NULL) {
-		return falseblnr;
-	}
-	return trueblnr;
-}
-
-LOCALPROC MySound_UnInit(void)
-{
-	if (MyBuffer != NULL) {
-		if (GlobalFree(MyBuffer) != NULL) {
-			/* MacMsg("error", "GlobalFree failed", falseblnr); */
-		}
-	}
-}
-
 LOCALPROC SoundCheckVeryOften(void)
 {
+	if ((hWaveOut != NULL) && (wantplaying)) {
 label_retry:
-	if (hWaveOut != NULL) {
-		ui4b FilledSoundBuffs;
-		ui4b ToPlaySize = CurFillOffset - CurPlayOffset;
-		ui4b CurPlayBuffer = (CurPlayOffset >> kLn2BuffLen) & kSoundBuffMask;
-
-		if ((ToPlaySize > My_Sound_Len)
-			&& ((whdr[CurPlayBuffer].dwFlags & WHDR_DONE) != 0))
 		{
-			CurPlayOffset += My_Sound_Len;
-			goto label_retry;
-		}
-		FilledSoundBuffs = ToPlaySize >> kLn2BuffLen;
+			ui4b FilledSoundBuffs;
+			ui4b ToPlaySize = TheFillOffset - ThePlayOffset;
+			ui4b CurPlayBuffer = (ThePlayOffset >> kLnOneBuffLen) & kSoundBuffMask;
 
-		if (FilledSoundBuffs < MinFilledSoundBuffs) {
-			MinFilledSoundBuffs = FilledSoundBuffs;
-		}
-
-		if (FilledSoundBuffs < 2) {
-			MMRESULT mmr;
-			ui4b PrevPlayOffset = CurPlayOffset - My_Sound_Len;
-			ui4b PrevPlayBuffer = (PrevPlayOffset >> kLn2BuffLen) & kSoundBuffMask;
-			ui4b LastPlayedOffset = ((CurFillOffset >> kLn2BuffLen) << kLn2BuffLen) - 1;
-
-			FillWithSilence(MyBuffer + (PrevPlayOffset & kBufferMask),
-				My_Sound_Len,
-				*(MyBuffer + (LastPlayedOffset & kBufferMask)));
-			mmr = waveOutWrite(hWaveOut, &whdr[PrevPlayBuffer], sizeof(WAVEHDR));
-			if (mmr != MMSYSERR_NOERROR) {
-				whdr[PrevPlayBuffer].dwFlags |= WHDR_DONE;
-				/* not recursive: MacMsg("waveOutWrite failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
+			if ((ToPlaySize > kOneBuffLen)
+				&& ((whdr[CurPlayBuffer].dwFlags & WHDR_DONE) != 0))
+			{
+				ThePlayOffset += kOneBuffLen;
+				goto label_retry;
 			}
-			CurPlayOffset = PrevPlayOffset;
-			goto label_retry;
+			FilledSoundBuffs = ToPlaySize >> kLnOneBuffLen;
+
+			if (FilledSoundBuffs < MinFilledSoundBuffs) {
+				MinFilledSoundBuffs = FilledSoundBuffs;
+			}
+
+			if (FilledSoundBuffs < 2) {
+				MMRESULT mmr;
+				ui4b PrevPlayOffset = ThePlayOffset - kOneBuffLen;
+				ui4b PrevPlayBuffer = (PrevPlayOffset >> kLnOneBuffLen) & kSoundBuffMask;
+				ui4b LastPlayedOffset = ((TheFillOffset >> kLnOneBuffLen) << kLnOneBuffLen) - 1;
+
+				FillWithSilence(TheSoundBuffer + (PrevPlayOffset & kAllBuffMask),
+					kOneBuffLen,
+					*(TheSoundBuffer + (LastPlayedOffset & kAllBuffMask)));
+				mmr = waveOutWrite(hWaveOut, &whdr[PrevPlayBuffer], sizeof(WAVEHDR));
+				if (mmr != MMSYSERR_NOERROR) {
+					whdr[PrevPlayBuffer].dwFlags |= WHDR_DONE;
+					/* not recursive: MacMsg("waveOutWrite failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
+				}
+				ThePlayOffset = PrevPlayOffset;
+				goto label_retry;
+			}
 		}
 	}
 }
 
-GLOBALFUNC ui3p GetCurSoundOutBuff(void)
+LOCALPROC MySound_FilledBlocks(void)
 {
-	if (hWaveOut == NULL) {
-		return nullpr;
-	} else {
-		MMRESULT mmr;
-		ui4b NextFillOffset = CurFillOffset + SOUND_LEN;
-		ui4b ToPlaySize = NextFillOffset - CurPlayOffset;
+	while (0 != ((TheWriteOffset - TheFillOffset) >> kLnOneBuffLen)) {
+		ui4b CurFillBuffer = (TheFillOffset >> kLnOneBuffLen) & kSoundBuffMask;
+		blnr IsOk = falseblnr;
 
-		if (ToPlaySize < kBufferSize) {
-			ui4b CurFillBuffer = CurFillOffset >> kLn2BuffLen;
-			ui4b NextFillBuffer = NextFillOffset >> kLn2BuffLen;
-
-			if (NextFillBuffer != CurFillBuffer) {
-				ui4b CurFillSeq = CurFillBuffer >> kLn2SoundBuffers;
-				ui4b NextFillSeq = NextFillBuffer >> kLn2SoundBuffers;
-
-				mmr = waveOutWrite(hWaveOut, &whdr[CurFillBuffer & kSoundBuffMask], sizeof(WAVEHDR));
-				if (mmr != MMSYSERR_NOERROR) {
-					whdr[CurFillBuffer & kSoundBuffMask].dwFlags |= WHDR_DONE;
-					/* not recursive: MacMsg("waveOutWrite failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
-				}
-
-				if (CurFillSeq != NextFillSeq) {
-					MyMoveBytes((anyp)(MyBuffer + kBufferSize),
-						(anyp)MyBuffer,
-						NextFillOffset & kBufferMask);
-				}
+		if (hWaveOut != NULL) {
+			MMRESULT mmr = waveOutWrite(hWaveOut, &whdr[CurFillBuffer], sizeof(WAVEHDR));
+			if (mmr == MMSYSERR_NOERROR) {
+				IsOk = trueblnr;
 			}
-
-			CurFillOffset = NextFillOffset;
 		}
-		return MyBuffer + (CurFillOffset & kBufferMask);
+
+		if (! IsOk) {
+			/* not recursive: MacMsg("waveOutWrite failed", "Sorry, Mini vMac encountered errors and cannot continue.", trueblnr); */
+			whdr[CurFillBuffer].dwFlags |= WHDR_DONE;
+		}
+
+		TheFillOffset += kOneBuffLen;
 	}
+}
+
+LOCALPROC MySound_WroteABlock(void)
+{
+	if (wantplaying) {
+		MySound_FilledBlocks();
+	} else if (((TheWriteOffset - ThePlayOffset) >> kLnOneBuffLen) < 12) {
+		/* just wait */
+	} else {
+		MySound_FilledBlocks();
+		wantplaying = trueblnr;
+		MySound_BeginPlaying();
+	}
+}
+
+GLOBALPROC MySound_EndWrite(ui4r actL)
+{
+	TheWriteOffset += actL;
+
+	if (0 == (TheWriteOffset & kOneBuffMask)) {
+		/* just finished a block */
+
+		MySound_WroteABlock();
+	}
+}
+
+GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
+{
+	ui4b ToFillLen = kAllBuffLen - (TheWriteOffset - ThePlayOffset);
+	ui4b WriteBuffContig = kOneBuffLen - (TheWriteOffset & kOneBuffMask);
+
+	if (WriteBuffContig < n) {
+		n = WriteBuffContig;
+	}
+	if (ToFillLen < n) {
+		/* overwrite previous buffer */
+		TheWriteOffset -= kOneBuffLen;
+	}
+
+	*actL = n;
+	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
 }
 
 LOCALPROC MySound_SecondNotify(void)
@@ -1193,9 +1212,6 @@ LOCALPROC GrabTheMachine(void)
 #if EnableGrabSpecialKeys
 	GrabSpecialKeys();
 #endif
-#if MySoundEnabled && MySoundFullScreenOnly
-	MySound_Start();
-#endif
 }
 #endif
 
@@ -1210,9 +1226,6 @@ LOCALPROC UnGrabTheMachine(void)
 #endif
 #if EnableChangePriority
 	LowerMyPriority();
-#endif
-#if MySoundEnabled && MySoundFullScreenOnly
-	MySound_Stop();
 #endif
 }
 #endif
@@ -3860,7 +3873,7 @@ LOCALPROC EnterBackground(void)
 
 LOCALPROC LeaveSpeedStopped(void)
 {
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Start();
 #endif
 #if UseTimerThread
@@ -3870,7 +3883,7 @@ LOCALPROC LeaveSpeedStopped(void)
 
 LOCALPROC EnterSpeedStopped(void)
 {
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Stop();
 #endif
 #if UseTimerThread
@@ -4523,6 +4536,9 @@ LOCALPROC ReserveAllocAll(void)
 		ReserveAllocOneBlock((ui3p *)&ScalingBuff, n, 5, falseblnr);
 	}
 #endif
+#if MySoundEnabled
+	ReserveAllocOneBlock((ui3p *)&TheSoundBuffer, dbhBufferSize, 5, falseblnr);
+#endif
 
 	EmulationReserveAlloc();
 }
@@ -4574,9 +4590,6 @@ LOCALFUNC blnr InitOSGLU(void)
 #if UseActvCode
 	if (ActvCodeInit())
 #endif
-#if MySoundEnabled
-	if (MySound_Init())
-#endif
 	if (ReCreateMainWindow())
 	if (InitWinKey2Mac())
 	if (InitTheCursor())
@@ -4613,11 +4626,8 @@ LOCALPROC UnInitOSGLU(void)
 #if EnableFullScreen
 	UnGrabTheMachine();
 #endif
-#if MySoundEnabled && (! MySoundFullScreenOnly)
-	MySound_Stop();
-#endif
 #if MySoundEnabled
-	MySound_UnInit();
+	MySound_Stop();
 #endif
 #if IncludePbufs
 	UnInitPbufs();

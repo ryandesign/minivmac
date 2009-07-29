@@ -61,20 +61,20 @@ LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 		AltKeysTrueShift = down;
 		CheckAltKeyUseMode();
 		Keyboard_UpdateKeyMap(key, down);
-	} else if (AltKeysTextOn) {
-		if ((MKC_SemiColon == key) && (! AltKeysModOn)) {
-			if (down) {
-				if (AltKeysLockText) {
-					AltKeysLockText = falseblnr;
-					NeedWholeScreenDraw = trueblnr;
-					SpecialModeClr(SpclModeAltKeyText);
+	} else if (MKC_SemiColon == key) {
+		if (down && ! AltKeysModOn) {
+			if (AltKeysLockText) {
+				AltKeysLockText = falseblnr;
+				NeedWholeScreenDraw = trueblnr;
+				SpecialModeClr(SpclModeAltKeyText);
 
-					CheckAltKeyUseMode();
-				}
+				CheckAltKeyUseMode();
 			}
 		} else {
 			Keyboard_UpdateKeyMap(key, down);
 		}
+	} else if (AltKeysTextOn) {
+		Keyboard_UpdateKeyMap(key, down);
 	} else if (MKC_M == key) {
 		if (down) {
 			if (! AltKeysLockText) {
@@ -84,8 +84,6 @@ LOCALPROC Keyboard_UpdateKeyMap1(int key, blnr down)
 				CheckAltKeyUseMode();
 			}
 		}
-	} else if (MKC_SemiColon == key) {
-		/* ignore */
 	} else {
 		switch (key) {
 			case MKC_A:

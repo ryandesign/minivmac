@@ -212,10 +212,25 @@ EXPORTVAR(ui4b, CurMouseV)
 EXPORTVAR(ui4b, CurMouseH)
 
 #if MySoundEnabled
-EXPORTFUNC ui3p GetCurSoundOutBuff(void);
 
-/* Length of the audio buffer */
-#define SOUND_LEN 370
+#if 3 == kLn2SoundSampSz
+#define trSoundSamp ui3r
+#define tbSoundSamp ui3b
+#define tpSoundSamp ui3p
+#define kCenterSound 0x80
+#elif 4 == kLn2SoundSampSz
+#define trSoundSamp ui4r
+#define tbSoundSamp ui4b
+#define tpSoundSamp ui4p
+#define kCenterSound 0x8000
+#else
+#error "unsupported kLn2SoundSampSz"
+#endif
+
+EXPORTFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL);
+EXPORTPROC MySound_EndWrite(ui4r actL);
+
+/* 370 samples per tick = 22,254.54 per second */
 #endif
 
 #if IncludeHostTextClipExchange

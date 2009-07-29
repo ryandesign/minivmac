@@ -130,6 +130,10 @@ typedef si5b si5r;
 #define si5beqr 1
 #endif
 
+typedef ui3b *ui3p;
+typedef ui4b *ui4p;
+typedef ui5b *ui5p;
+
 /*
 	Largest efficiently supported
 	representation types. uimr should be
@@ -145,7 +149,6 @@ typedef long simr;
 
 #define nullpr ((void *) 0)
 
-typedef ui3b *ui3p;
 #define anyp ui3p
 
 /* pascal string, single byte characters */

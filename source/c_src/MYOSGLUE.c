@@ -98,12 +98,6 @@ GLOBALVAR ui4b CurMouseH = 0;
 LOCALVAR blnr HaveMouseMotion = falseblnr;
 #endif
 
-#if MySoundEnabled
-#ifndef MySoundFullScreenOnly
-#define MySoundFullScreenOnly 0
-#endif
-#endif
-
 #if IncludePbufs
 LOCALFUNC blnr FirstFreePbuf(tPbuf *r)
 {

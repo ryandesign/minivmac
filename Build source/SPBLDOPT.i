@@ -760,6 +760,34 @@ LOCALFUNC blnr ChooseScrnDpth(void)
 	return trueblnr;
 }
 
+/* option: Screen VSync */
+
+LOCALVAR blnr WantScreenVSync;
+
+LOCALPROC ResetScreenVSync(void)
+{
+	WantScreenVSync = nanblnr;
+}
+
+LOCALFUNC blnr TryAsScreenVSyncNot(void)
+{
+	return BooleanTryAsOptionNot("-vsync", &WantScreenVSync);
+}
+
+LOCALFUNC blnr ChooseScreenVSync(void)
+{
+	if (nanblnr == WantScreenVSync) {
+		WantScreenVSync = falseblnr;
+	} else {
+		if (WantScreenVSync && (gbo_apifam != gbk_apifam_osx)) {
+			ReportParseFailure("-vsync is so far only implemented for OS X");
+			return falseblnr;
+		}
+	}
+
+	return trueblnr;
+}
+
 /* ------ */
 
 LOCALVAR blnr NeedScrnHack;
@@ -832,6 +860,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetHResOption();
 	ResetVResOption();
 	ResetScrnDpthOption();
+	ResetScreenVSync();
 	ResetSonySupportTags();
 	ResetSonyWantChecksumsUpdated();
 	ResetSonySupportDC42();
@@ -855,6 +884,7 @@ LOCALFUNC blnr TryAsSPOptionNot(void)
 	if (TryAsHResOptionNot())
 	if (TryAsVResOptionNot())
 	if (TryAsScrnDpthOptionNot())
+	if (TryAsScreenVSyncNot())
 	if (TryAsSonySupportTagsNot())
 	if (TryAsSonyWantChecksumsUpdatedNot())
 	if (TryAsSonySupportDC42Not())
@@ -875,6 +905,7 @@ LOCALFUNC blnr AutoChooseSPSettings(void)
 	if (ChooseHRes())
 	if (ChooseVRes())
 	if (ChooseScrnDpth())
+	if (ChooseScreenVSync())
 	if (ChooseScreenOpts())
 	{
 		ChooseEmCpuVers();

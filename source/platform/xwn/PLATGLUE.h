@@ -1572,7 +1572,6 @@ LOCALFUNC blnr CheckDateTime(void)
 
 #if MySoundEnabled
 
-#define SOUND_SAMPLERATE 22255 /* = round(7833600 * 2 / 704) */
 
 #define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
 #define kSoundBuffers (1 << kLn2SoundBuffers)
@@ -1584,15 +1583,29 @@ LOCALFUNC blnr CheckDateTime(void)
 		if too small then sound will have pauses.
 	*/
 
-#define kLn2BuffLen 9
-#define kLnBuffSz (kLn2SoundBuffers + kLn2BuffLen)
-#define My_Sound_Len (1UL << kLn2BuffLen)
-#define kBufferSize (1UL << kLnBuffSz)
-#define kBufferMask (kBufferSize - 1)
-#define dbhBufferSize (kBufferSize + SOUND_LEN)
+#define kLnOneBuffLen 9
+#define kLnAllBuffLen (kLn2SoundBuffers + kLnOneBuffLen)
+#define kOneBuffLen (1UL << kLnOneBuffLen)
+#define kAllBuffLen (1UL << kLnAllBuffLen)
+#define kLnOneBuffSz (kLnOneBuffLen + kLn2SoundSampSz - 3)
+#define kLnAllBuffSz (kLnAllBuffLen + kLn2SoundSampSz - 3)
+#define kOneBuffSz (1UL << kLnOneBuffSz)
+#define kAllBuffSz (1UL << kLnAllBuffSz)
+#define kOneBuffMask (kOneBuffLen - 1)
+#define kAllBuffMask (kAllBuffLen - 1)
+#define dbhBufferSize (kAllBuffSz + kOneBuffSz)
 
-#define desired_alsa_buffer_size kBufferSize
-#define desired_alsa_period_size My_Sound_Len
+LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
+LOCALVAR ui4b ThePlayOffset;
+LOCALVAR ui4b TheFillOffset;
+LOCALVAR blnr wantplaying;
+LOCALVAR ui4b MinFilledSoundBuffs;
+LOCALVAR ui4b TheWriteOffset;
+
+#define SOUND_SAMPLERATE 22255 /* = round(7833600 * 2 / 704) */
+
+#define desired_alsa_buffer_size kAllBuffLen
+#define desired_alsa_period_size kOneBuffLen
 
 LOCALVAR char *alsadev_name = NULL;
 
@@ -1600,11 +1613,6 @@ LOCALVAR snd_pcm_t *pcm_handle = NULL;
 LOCALVAR snd_pcm_uframes_t buffer_size;
 LOCALVAR snd_pcm_uframes_t period_size;
 
-LOCALVAR ui3p MyBuffer = NULL;
-
-LOCALVAR ui4b MinFilledSoundBuffs;
-LOCALVAR ui4b CurPlayOffset;
-LOCALVAR ui4b CurFillOffset;
 
 /*
 	The elaborate private buffer is mostly
@@ -1633,51 +1641,46 @@ label_retry:
 		snd_pcm_sframes_t avail;
 		snd_pcm_sframes_t delayp;
 		int err;
-		ui4b ToPlaySize = CurFillOffset - CurPlayOffset;
 		snd_pcm_state_t cur_state = snd_pcm_state(pcm_handle);
 
 		if (SND_PCM_STATE_RUNNING != cur_state) {
-			if ((ToPlaySize >> kLn2BuffLen) < 12) {
-				/* just wait */
-			} else {
-				switch (cur_state) {
-					case SND_PCM_STATE_SETUP:
-					case SND_PCM_STATE_XRUN:
-						err = snd_pcm_prepare(pcm_handle);
-						if (err < 0) {
-							fprintf(stderr, "pcm prepare error: %s\n",
-								snd_strerror(err));
-						} else {
-							/* fprintf(stderr, "prepare succeeded\n"); */
-							goto label_retry;
-						}
-						break;
-					case SND_PCM_STATE_PREPARED:
-						if ((err = snd_pcm_start(pcm_handle)) < 0) {
-							fprintf(stderr, "pcm start error: %s\n",
-								snd_strerror(err));
-						} else {
-							/* fprintf(stderr, "start succeeded\n"); */
-							goto label_retry;
-						}
-						break;
-					case SND_PCM_STATE_SUSPENDED:
-						err = snd_pcm_resume(pcm_handle);
-						if (err < 0) {
-							fprintf(stderr, "pcm resume error: %s\n",
-								snd_strerror(err));
-						} else {
-							/* fprintf(stderr, "resume succeeded\n"); */
-							goto label_retry;
-						}
-						break;
-					case SND_PCM_STATE_DISCONNECTED:
-						/* just abort ? */
-						break;
-					default:
-						fprintf(stderr, "unknown alsa pcm state\n");
-						break;
-				}
+			switch (cur_state) {
+				case SND_PCM_STATE_SETUP:
+				case SND_PCM_STATE_XRUN:
+					err = snd_pcm_prepare(pcm_handle);
+					if (err < 0) {
+						fprintf(stderr, "pcm prepare error: %s\n",
+							snd_strerror(err));
+					} else {
+						/* fprintf(stderr, "prepare succeeded\n"); */
+						goto label_retry;
+					}
+					break;
+				case SND_PCM_STATE_PREPARED:
+					if ((err = snd_pcm_start(pcm_handle)) < 0) {
+						fprintf(stderr, "pcm start error: %s\n",
+							snd_strerror(err));
+					} else {
+						/* fprintf(stderr, "start succeeded\n"); */
+						goto label_retry;
+					}
+					break;
+				case SND_PCM_STATE_SUSPENDED:
+					err = snd_pcm_resume(pcm_handle);
+					if (err < 0) {
+						fprintf(stderr, "pcm resume error: %s\n",
+							snd_strerror(err));
+					} else {
+						/* fprintf(stderr, "resume succeeded\n"); */
+						goto label_retry;
+					}
+					break;
+				case SND_PCM_STATE_DISCONNECTED:
+					/* just abort ? */
+					break;
+				default:
+					fprintf(stderr, "unknown alsa pcm state\n");
+					break;
 			}
 		} else if ((err = snd_pcm_delay(pcm_handle, &delayp)) < 0) {
 			fprintf(stderr, "snd_pcm_delay error: %s\n",
@@ -1688,8 +1691,8 @@ label_retry:
 		} else {
 			ui3p NextPlayPtr;
 			ui4b PlayNowSize = 0;
-			ui4b MaskedFillOffset = CurPlayOffset & (My_Sound_Len - 1);
-			ui4b TotPendBuffs = delayp >> kLn2BuffLen;
+			ui4b MaskedFillOffset = ThePlayOffset & kOneBuffMask;
+			ui4b TotPendBuffs = delayp >> kLnOneBuffLen;
 
 			if (TotPendBuffs < MinFilledSoundBuffs) {
 				MinFilledSoundBuffs = TotPendBuffs;
@@ -1697,19 +1700,19 @@ label_retry:
 
 			if (MaskedFillOffset != 0) {
 				/* take care of left overs */
-				PlayNowSize = My_Sound_Len - MaskedFillOffset;
-				NextPlayPtr = MyBuffer + (CurPlayOffset & kBufferMask);
-			} else if (0 != (ToPlaySize >> kLn2BuffLen)) {
-				PlayNowSize = My_Sound_Len;
-				NextPlayPtr = MyBuffer + (CurPlayOffset & kBufferMask);
+				PlayNowSize = kOneBuffLen - MaskedFillOffset;
+				NextPlayPtr = TheSoundBuffer + (ThePlayOffset & kAllBuffMask);
+			} else if (0 != ((TheFillOffset - ThePlayOffset) >> kLnOneBuffLen)) {
+				PlayNowSize = kOneBuffLen;
+				NextPlayPtr = TheSoundBuffer + (ThePlayOffset & kAllBuffMask);
 			} else {
 				if (delayp < 1024) {
 					/* low on sound to play. play a bit of silence */
-					CurPlayOffset -= My_Sound_Len;
-					NextPlayPtr = MyBuffer + (CurPlayOffset & kBufferMask);
-					PlayNowSize = My_Sound_Len;
-					FillWithSilence(NextPlayPtr, My_Sound_Len,
-						/* 0x80 */ *((ui3p)NextPlayPtr + My_Sound_Len - 1));
+					ThePlayOffset -= kOneBuffLen;
+					NextPlayPtr = TheSoundBuffer + (ThePlayOffset & kAllBuffMask);
+					PlayNowSize = kOneBuffLen;
+					FillWithSilence(NextPlayPtr, kOneBuffLen,
+						/* 0x80 */ *((ui3p)NextPlayPtr + kOneBuffLen - 1));
 					/* fprintf(stderr, "need silence\n"); */
 				}
 			}
@@ -1738,7 +1741,7 @@ label_retry:
 							snd_strerror(err));
 					}
 				} else {
-					CurPlayOffset += err;
+					ThePlayOffset += err;
 					goto label_retry;
 				}
 			}
@@ -1749,18 +1752,18 @@ label_retry:
 LOCALPROC MySound_Start(void)
 {
 	if (pcm_handle != NULL) {
-		/* Fill buffer with silence */
-		FillWithSilence(MyBuffer, dbhBufferSize, 0x80);
-
 		/* Reset variables */
-		CurPlayOffset = 0;
-		CurFillOffset = 0;
+		ThePlayOffset = 0;
+		TheFillOffset = 0;
+		TheWriteOffset = 0;
 		MinFilledSoundBuffs = kSoundBuffers;
+		wantplaying = falseblnr;
 	}
 }
 
 LOCALPROC MySound_Stop(void)
 {
+	wantplaying = falseblnr;
 	if (pcm_handle != NULL) {
 		snd_pcm_drop(pcm_handle);
 	}
@@ -1900,13 +1903,8 @@ LOCALPROC MySound_Init0(void)
 
 LOCALFUNC blnr MySound_Init(void)
 {
-	MyBuffer = (ui3p)malloc(dbhBufferSize);
-	if (NULL == MyBuffer) {
-		return falseblnr;
-	} else {
-		MySound_Init0();
-		return trueblnr;
-	}
+	MySound_Init0();
+	return trueblnr;
 }
 
 LOCALPROC MySound_UnInit(void)
@@ -1915,36 +1913,56 @@ LOCALPROC MySound_UnInit(void)
 		snd_pcm_close(pcm_handle);
 		pcm_handle = NULL;
 	}
-	if (MyBuffer != NULL) {
-		free(MyBuffer);
+}
+
+LOCALPROC MySound_FilledBlocks(void)
+{
+	TheFillOffset = TheWriteOffset;
+
+	if (NULL != pcm_handle) {
+		MySound_WriteOut();
 	}
 }
 
-GLOBALFUNC ui3p GetCurSoundOutBuff(void)
+LOCALPROC MySound_WroteABlock(void)
 {
-	if (NULL == pcm_handle) {
-		return nullpr;
+	if (wantplaying) {
+		MySound_FilledBlocks();
+	} else if (((TheWriteOffset - ThePlayOffset) >> kLnOneBuffLen) < 12) {
+		/* just wait */
 	} else {
-		ui4b NextFillOffset = CurFillOffset + SOUND_LEN;
-		ui4b ToPlaySize = NextFillOffset - CurPlayOffset;
-
-		if (ToPlaySize < kBufferSize) {
-			ui4b CurFillSeq = CurFillOffset >> kLnBuffSz;
-			ui4b NextFillSeq = NextFillOffset >> kLnBuffSz;
-
-			if (CurFillSeq != NextFillSeq) {
-				MyMoveBytes((anyp)(MyBuffer + kBufferSize),
-					(anyp)MyBuffer,
-					NextFillOffset & kBufferMask);
-			}
-
-			CurFillOffset = NextFillOffset;
-		}
-
-		MySound_WriteOut();
-
-		return MyBuffer + (CurFillOffset & kBufferMask);
+		MySound_FilledBlocks();
+		wantplaying = trueblnr;
+		/* MySound_BeginPlaying(); */
 	}
+}
+
+GLOBALPROC MySound_EndWrite(ui4r actL)
+{
+	TheWriteOffset += actL;
+
+	if (0 == (TheWriteOffset & kOneBuffMask)) {
+		/* just finished a block */
+
+		MySound_WroteABlock();
+	}
+}
+
+GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
+{
+	ui4b ToFillLen = kAllBuffLen - (TheWriteOffset - ThePlayOffset);
+	ui4b WriteBuffContig = kOneBuffLen - (TheWriteOffset & kOneBuffMask);
+
+	if (WriteBuffContig < n) {
+		n = WriteBuffContig;
+	}
+	if (ToFillLen < n) {
+		/* overwrite previous buffer */
+		TheWriteOffset -= kOneBuffLen;
+	}
+
+	*actL = n;
+	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
 }
 
 LOCALPROC MySound_SecondNotify(void)
@@ -3217,7 +3235,7 @@ LOCALPROC EnterBackground(void)
 
 LOCALPROC LeaveSpeedStopped(void)
 {
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Start();
 #endif
 
@@ -3226,7 +3244,7 @@ LOCALPROC LeaveSpeedStopped(void)
 
 LOCALPROC EnterSpeedStopped(void)
 {
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Stop();
 #endif
 }
@@ -3238,9 +3256,6 @@ LOCALPROC GrabTheMachine(void)
 	StartSaveMouseMotion();
 #endif
 	MyGrabKeyboard();
-#if MySoundEnabled && MySoundFullScreenOnly
-	MySound_Start();
-#endif
 }
 #endif
 
@@ -3251,9 +3266,6 @@ LOCALPROC UnGrabTheMachine(void)
 	StopSaveMouseMotion();
 #endif
 	MyUnGrabKeyboard();
-#if MySoundEnabled && MySoundFullScreenOnly
-	MySound_Stop();
-#endif
 }
 #endif
 
@@ -3556,6 +3568,9 @@ LOCALPROC ZapOSGLUVars(void)
 LOCALPROC ReserveAllocAll(void)
 {
 	ReserveAllocOneBlock((ui3p *)&ROM, kROM_Size, 5, falseblnr);
+#if MySoundEnabled
+	ReserveAllocOneBlock((ui3p *)&TheSoundBuffer, dbhBufferSize, 5, falseblnr);
+#endif
 
 	EmulationReserveAlloc();
 }
@@ -3623,7 +3638,7 @@ LOCALPROC UnInitOSGLU(void)
 #if EnableFullScreen
 	UnGrabTheMachine();
 #endif
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Stop();
 #endif
 #if MySoundEnabled
@@ -3672,5 +3687,6 @@ int main(int argc, char **argv)
 		MainEventLoop();
 	}
 	UnInitOSGLU();
+
 	return 0;
 }

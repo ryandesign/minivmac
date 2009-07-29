@@ -2189,6 +2189,9 @@ enum {
 	kCntrlMsgNewRunInBack,
 	kCntrlMsgAbout,
 	kCntrlMsgHelp,
+#if UseActvCode
+	kCntrlMsgRegStrCopied,
+#endif
 
 	kNumCntrlMsgs
 };
@@ -2233,7 +2236,7 @@ LOCALPROC SetSpeedValue(ui3b i)
 FORWARDPROC ToggleWantFullScreen(void);
 #endif
 #if UseActvCode
-FORWARDPROC CopyActvInfo(void);
+FORWARDPROC CopyRegistrationStr(void);
 #endif
 
 LOCALPROC DoControlModeKey(int key)
@@ -2296,7 +2299,8 @@ LOCALPROC DoControlModeKey(int key)
 #endif
 #if UseActvCode
 				case MKC_P:
-					CopyActvInfo();
+					CopyRegistrationStr();
+					ControlMessage = kCntrlMsgRegStrCopied;
 					break;
 #endif
 			}
@@ -2485,6 +2489,11 @@ LOCALPROC DrawCellsControlModeBody(void)
 #if EnableFullScreen
 		case kCntrlMsgFullScreen:
 			DrawCellsOneLineStr(kStrNewFullScreen);
+			break;
+#endif
+#if UseActvCode
+		case kCntrlMsgRegStrCopied:
+			DrawCellsOneLineStr("Registration String copied.");
 			break;
 #endif
 		case kCntrlMsgConfirmResetStart:

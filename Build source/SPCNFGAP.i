@@ -79,6 +79,10 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WriteDestFileLn("#define EnableFullScreen 1");
 	}
 
+	if (WantScreenVSync) {
+		WriteDestFileLn("#define UseAGLdoublebuff 1");
+	}
+
 	WriteCompCondBool("NeedRequestInsertDisk",
 		(gbk_apifam_gtk == gbo_apifam)
 		|| (gbk_apifam_mac == gbo_apifam)

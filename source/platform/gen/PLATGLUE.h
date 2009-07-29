@@ -1503,7 +1503,7 @@ LOCALPROC EnterBackground(void)
 
 LOCALPROC LeaveSpeedStopped(void)
 {
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Start();
 #endif
 
@@ -1512,7 +1512,7 @@ LOCALPROC LeaveSpeedStopped(void)
 
 LOCALPROC EnterSpeedStopped(void)
 {
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Stop();
 #endif
 }
@@ -1524,9 +1524,6 @@ LOCALPROC GrabTheMachine(void)
 	StartSaveMouseMotion();
 #endif
 	MyGrabKeyboard();
-#if MySoundEnabled && MySoundFullScreenOnly
-	MySound_Start();
-#endif
 }
 #endif
 
@@ -1537,9 +1534,6 @@ LOCALPROC UnGrabTheMachine(void)
 	StopSaveMouseMotion();
 #endif
 	MyUnGrabKeyboard();
-#if MySoundEnabled && MySoundFullScreenOnly
-	MySound_Stop();
-#endif
 }
 #endif
 
@@ -1964,7 +1958,7 @@ LOCALPROC UnInitOSGLU(void)
 #if EnableFullScreen
 	UnGrabTheMachine();
 #endif
-#if MySoundEnabled && (! MySoundFullScreenOnly)
+#if MySoundEnabled
 	MySound_Stop();
 #endif
 #if MySoundEnabled

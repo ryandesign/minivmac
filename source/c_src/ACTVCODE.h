@@ -250,7 +250,7 @@ LOCALPROC ClStrAppendHexLong(int *L0, ui3b *r, ui5r v)
 	ClStrAppendHexWord(L0, r, v & 0xFFFF);
 }
 
-LOCALPROC CopyActvInfo(void)
+LOCALPROC CopyRegistrationStr(void)
 {
 	int i;
 	int L0;

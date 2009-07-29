@@ -215,6 +215,10 @@ GLOBALPROC customreset(void)
 
 LOCALPROC SixtiethSecondNotify(void)
 {
+#if 0
+	DumpACStr("begin new Sixtieth");
+	DumpANewLine();
+#endif
 	Mouse_Update();
 	InterruptReset_Update();
 #if EmClassicKbrd
@@ -237,6 +241,11 @@ LOCALPROC SixtiethSecondNotify(void)
 
 LOCALPROC SubTickNotify(int SubTick)
 {
+#if 0
+	DumpACStr("ending sub tick ");
+	DumpANum(KiloInstructionsCounter);
+	DumpANewLine();
+#endif
 #if MySoundEnabled && (CurEmMd != kEmMd_PB100)
 	MacSound_SubTick(SubTick);
 #else
@@ -246,6 +255,10 @@ LOCALPROC SubTickNotify(int SubTick)
 
 LOCALPROC ExtraTimeBeginNotify(void)
 {
+#if 0
+	DumpACStr("begin extra time");
+	DumpANewLine();
+#endif
 	VIA1_ExtraTimeBegin();
 #if EmVIA2
 	VIA2_ExtraTimeBegin();
@@ -257,6 +270,10 @@ LOCALPROC ExtraTimeEndNotify(void)
 	VIA1_ExtraTimeEnd();
 #if EmVIA2
 	VIA2_ExtraTimeEnd();
+#endif
+#if 0
+	DumpACStr("end extra time");
+	DumpANewLine();
 #endif
 }
 
