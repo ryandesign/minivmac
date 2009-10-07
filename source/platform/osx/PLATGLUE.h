@@ -837,7 +837,8 @@ LOCALPROC UpdateLuminanceCopy(si4b top, si4b left, si4b bottom, si4b right)
 		for (i = bottom - top; --i >= 0; ) {
 #if 4 == vMacScreenDepth
 			for (j = vMacScreenWidth; --j >= 0; ) {
-				t0 = *((ui4b *)p1)++;
+				t0 = do_get_mem_word(p1);
+				p1 += 2;
 				*p2++ =
 					((t0 & 0x7C00) << 17) |
 					((t0 & 0x7000) << 12) |
@@ -856,7 +857,8 @@ LOCALPROC UpdateLuminanceCopy(si4b top, si4b left, si4b bottom, si4b right)
 			}
 #elif 5 == vMacScreenDepth
 			for (j = vMacScreenWidth; --j >= 0; ) {
-				t0 = *((ui5b *)p1)++;
+				t0 = do_get_mem_long(p1);
+				p1 += 4;
 				*p2++ = t0 << 8;
 			}
 #else
@@ -3238,6 +3240,8 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 	}
 }
 
+FORWARDPROC PostIfStoppedLowPriorityEvent(void);
+
 /* call back */ static pascal OSErr OpenOrPrintFiles(AppleEvent *theAppleEvent, AppleEvent *reply, long aRefCon)
 {
 	/*Adapted from IM VI: AppleEvent Manager: Handling Required AppleEvents*/
@@ -3253,6 +3257,9 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 		}
 		/* vCheckSysCode */ (void) (AEDisposeDesc(&docList));
 	}
+
+	PostIfStoppedLowPriorityEvent();
+
 	return /* GetASysResultCode() */ 0;
 }
 
@@ -3274,6 +3281,9 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 	if (GotRequiredParams(theAppleEvent)) {
 		RequestMacOff = trueblnr;
 	}
+
+	PostIfStoppedLowPriorityEvent();
+
 	return /* GetASysResultCode() */ 0;
 }
 
@@ -3385,6 +3395,8 @@ static pascal OSErr GlobalReceiveHandler(WindowRef pWindow, void *handlerRefCon,
 		}
 	}
 
+	PostIfStoppedLowPriorityEvent();
+
 	return noErr;
 }
 
@@ -3441,6 +3453,13 @@ LOCALPROC PostMyLowPriorityTasksEvent(void)
 	}
 }
 
+LOCALPROC PostIfStoppedLowPriorityEvent(void)
+{
+	if (CurSpeedStopped) {
+		PostMyLowPriorityTasksEvent();
+	}
+}
+
 LOCALPROC HandleEventLocation(EventRef theEvent)
 {
 	Point NewMousePos;
@@ -3488,9 +3507,7 @@ static pascal OSStatus windowEventHandler(EventHandlerCallRef nextHandler,
 				case kEventWindowClose:
 					RequestMacOff = trueblnr;
 					result = noErr;
-					if (CurSpeedStopped) {
-						PostMyLowPriorityTasksEvent();
-					}
+					PostIfStoppedLowPriorityEvent();
 					break;
 				case kEventWindowDrawContent:
 					Update_Screen();
@@ -4154,9 +4171,7 @@ LOCALPROC CheckStateAfterEvents(void)
 			RequestInsertDisk = falseblnr;
 			InsertADisk0();
 
-			if (CurSpeedStopped) {
-				PostMyLowPriorityTasksEvent();
-			}
+			PostIfStoppedLowPriorityEvent();
 		}
 
 		/* CheckSavedMacMsg(); */
@@ -4441,16 +4456,12 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 				case kEventAppActivated:
 					gTrueBackgroundFlag = falseblnr;
 					result = noErr;
-					if (CurSpeedStopped) {
-						PostMyLowPriorityTasksEvent();
-					}
+					PostIfStoppedLowPriorityEvent();
 					break;
 				case kEventAppDeactivated:
 					gTrueBackgroundFlag = trueblnr;
 					result = noErr;
-					if (CurSpeedStopped) {
-						PostMyLowPriorityTasksEvent();
-					}
+					PostIfStoppedLowPriorityEvent();
 					break;
 			}
 			break;
@@ -4463,9 +4474,7 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 						GetEventParameter(theEvent, kEventParamDirectObject, typeHICommand, NULL,
 							sizeof(HICommand), NULL, &hiCommand);
 						result = MyProcessCommand(hiCommand.commandID);
-						if (CurSpeedStopped) {
-							PostMyLowPriorityTasksEvent();
-						}
+						PostIfStoppedLowPriorityEvent();
 					}
 					break;
 			}
@@ -4477,22 +4486,16 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler, EventRef 
 				switch (eventKind) {
 					case kEventRawKeyDown:
 						result = Keyboard_UpdateKeyMap3(theEvent, trueblnr);
-						if (CurSpeedStopped) {
-							PostMyLowPriorityTasksEvent();
-						}
+						PostIfStoppedLowPriorityEvent();
 						break;
 					case kEventRawKeyUp:
 						result = Keyboard_UpdateKeyMap3(theEvent, falseblnr);
-						if (CurSpeedStopped) {
-							PostMyLowPriorityTasksEvent();
-						}
+						PostIfStoppedLowPriorityEvent();
 						break;
 					case kEventRawKeyModifiersChanged:
 						HandleEventModifiers(theEvent);
 						result = noErr;
-						if (CurSpeedStopped) {
-							PostMyLowPriorityTasksEvent();
-						}
+						PostIfStoppedLowPriorityEvent();
 						break;
 					default:
 						break;

@@ -105,7 +105,7 @@ resource 'DITL' (128, purgeable) {
 		{32, 8, 48, 237},
 		StaticText {
 			disabled,
-			"Copyright © 2007"
+			"Copyright © 2009"
 		},
 		/* [4] */
 		{53, 8, 90, 308},
@@ -153,7 +153,7 @@ resource 'vers' (1, purgeable) {
 	0x0,
 	verUs,
 	"1.1",
-	"Copyright © 2007, maintained by Paul C. "
+	"Copyright © 2009, maintained by Paul C. "
 	"Pratt"
 };
 

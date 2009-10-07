@@ -199,6 +199,12 @@ EXPORTVAR(ui3b, Wires[kNumWires])
 
 #define kNumSubTicks 16
 
+
+#define HaveMasterMyEvtQLock EmClassicKbrd
+#if HaveMasterMyEvtQLock
+EXPORTVAR(ui4r, MasterMyEvtQLock)
+#endif
+
 EXPORTFUNC MyEvtQEl * MyEvtQOutP(void);
 EXPORTFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown);
 

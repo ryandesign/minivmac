@@ -34,31 +34,30 @@
 
 #include "MOUSEMDV.h"
 
-#ifdef MouseBtnUp
-LOCALVAR ui4r MyMouseDebounceLock = 0;
-#endif
-
 GLOBALPROC Mouse_Update(void)
 {
-#ifdef MouseBtnUp
-	if (MyMouseDebounceLock != 0) {
-		--MyMouseDebounceLock;
-	} else {
-		MyEvtQEl *p = MyEvtQOutP();
-		if (nullpr != p) {
-			if (MyEvtQElKindMouseButton == p->kind) {
-				MouseBtnUp = p->u.press.down ? 0 : 1;
-				++MyEvtQOut;
-				MyMouseDebounceLock = 2;
-			}
-		}
+#if HaveMasterMyEvtQLock
+	if (0 != MasterMyEvtQLock) {
+		--MasterMyEvtQLock;
 	}
 #endif
 
+	/*
+		Check mouse position first. After mouse button or key event, can't
+		process another mouse position until following tick, otherwise
+		button or key will be in wrong place.
+	*/
+
 	/* if start doing this too soon after boot, will mess up memory check */
 	if (Mouse_Enabled()) {
-		MyEvtQEl *p = MyEvtQOutP();
-		if (nullpr != p) {
+		MyEvtQEl *p;
+
+		if (
+#if HaveMasterMyEvtQLock
+			(0 == MasterMyEvtQLock) &&
+#endif
+			(nullpr != (p = MyEvtQOutP())))
+		{
 #if EmClassicKbrd
 #if EnableMouseMotion
 			if (MyEvtQElKindMouseDelta == p->kind) {
@@ -96,4 +95,23 @@ GLOBALPROC Mouse_Update(void)
 		CurMouseV = get_ram_word(0x082C);
 		CurMouseH = get_ram_word(0x082E);
 	}
+
+#if EmClassicKbrd
+	{
+		MyEvtQEl *p;
+
+		if (
+#if HaveMasterMyEvtQLock
+			(0 == MasterMyEvtQLock) &&
+#endif
+			(nullpr != (p = MyEvtQOutP())))
+		{
+			if (MyEvtQElKindMouseButton == p->kind) {
+				MouseBtnUp = p->u.press.down ? 0 : 1;
+				++MyEvtQOut;
+				MasterMyEvtQLock = 4;
+			}
+		}
+	}
+#endif
 }

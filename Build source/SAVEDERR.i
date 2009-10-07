@@ -77,10 +77,10 @@ GLOBALFUNC char * GetTextForSavedSysErr(void)
 			s = "The file is busy";
 			break;
 		case dupFNErr:
-			s = "duplicate filename";
+			s = "duplicate file name";
 			break;
 		case bdNamErr:
-			s = "Bad Volume Name";
+			s = "Bad file name (too long or invalid characters)";
 			break;
 		case opWrErr:
 			s = "File is already open for writing";

@@ -1527,6 +1527,15 @@ LOCALPROC Extn_Reset(void)
 
 /* user event queue utilities */
 
+#if HaveMasterMyEvtQLock
+GLOBALVAR ui4r MasterMyEvtQLock = 0;
+	/*
+		Takes a few ticks to process button event because
+		of debounce code of Mac. So have this mechanism
+		to prevent processing further events meanwhile.
+	*/
+#endif
+
 GLOBALFUNC MyEvtQEl * MyEvtQOutP(void)
 {
 	MyEvtQEl *p = nullpr;
@@ -1538,8 +1547,14 @@ GLOBALFUNC MyEvtQEl * MyEvtQOutP(void)
 
 GLOBALFUNC blnr FindKeyEvent(int *VirtualKey, blnr *KeyDown)
 {
-	MyEvtQEl *p = MyEvtQOutP();
-	if (nullpr != p) {
+	MyEvtQEl *p;
+
+	if (
+#if HaveMasterMyEvtQLock
+		(0 == MasterMyEvtQLock) &&
+#endif
+		(nullpr != (p = MyEvtQOutP())))
+	{
 		if (MyEvtQElKindKey == p->kind) {
 			*VirtualKey = p->u.press.key;
 			*KeyDown = p->u.press.down;

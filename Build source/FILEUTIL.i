@@ -560,6 +560,8 @@ GLOBALFUNC blnr MyFileExists(MyDir_R *d, StringPtr s,
 	} else if (fnfErr == err) {
 		*Exists = falseblnr;
 		IsOk = trueblnr;
+	} else {
+		vCheckSysErr(err);
 	}
 
 	return IsOk;
