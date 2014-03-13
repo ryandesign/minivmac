@@ -170,6 +170,11 @@ LOCALFUNC tMyErr ChooseMemSiz(void)
 				cur_msz = gbk_msz_4M;
 				break;
 		}
+		if (gbk_targfam_lnds == gbo_targfam) {
+			if (cur_msz > gbk_msz_2M) {
+				cur_msz = gbk_msz_2M;
+			}
+		}
 	} else {
 		/* should error check here */
 	}
@@ -311,9 +316,77 @@ LOCALPROC ChooseSoundEnabled(void)
 	if (nanblnr == MySoundEnabled) {
 		MySoundEnabled = ((gbo_apifam == gbk_apifam_mac)
 			|| (gbo_apifam == gbk_apifam_osx)
-			|| (gbo_apifam == gbk_apifam_win))
+			|| (gbo_apifam == gbk_apifam_win)
+			|| (gbo_apifam == gbk_apifam_sdl)
+			|| (gbo_apifam == gbk_apifam_cco)
+			|| ((gbo_apifam == gbk_apifam_xwn)
+				&& ((gbo_targfam == gbk_targfam_linx)
+					|| (gbo_targfam == gbk_targfam_fbsd)
+					|| (gbo_targfam == gbk_targfam_nbsd))))
 			&& (gbk_mdl_II != cur_mdl) && (gbk_mdl_IIx != cur_mdl);
 	}
+}
+
+/* option: sound api */
+
+enum {
+	gbk_sndapi_none,
+	gbk_sndapi_alsa,
+	gbk_sndapi_ddsp,
+	kNumSndApiLevels
+};
+
+LOCALVAR int gbo_sndapi;
+
+LOCALPROC ResetSndApiOption(void)
+{
+	gbo_sndapi = kListOptionAuto;
+}
+
+LOCALFUNC char * GetSndApiName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_sndapi_none:
+			s = "none";
+			break;
+		case gbk_sndapi_alsa:
+			s = "alsa";
+			break;
+		case gbk_sndapi_ddsp:
+			s = "ddsp";
+			break;
+		default:
+			s = "(unknown sound api)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC tMyErr TryAsSndApiOptionNot(void)
+{
+	return FindNamedOption("-snd-api",
+		kNumSndApiLevels, GetSndApiName, &gbo_sndapi);
+}
+
+LOCALFUNC blnr ChooseSndApiOption(void)
+{
+	tMyErr err = noErr;
+
+	if (kListOptionAuto == gbo_sndapi) {
+		if (! MySoundEnabled) {
+			gbo_sndapi = gbk_sndapi_none;
+		} else if (gbo_apifam != gbk_apifam_xwn) {
+			gbo_sndapi = gbk_sndapi_none;
+		} else if (gbo_targfam == gbk_targfam_linx) {
+			gbo_sndapi = gbk_sndapi_alsa;
+		} else {
+			gbo_sndapi = gbk_sndapi_ddsp;
+		}
+	}
+
+	return err;
 }
 
 /* option: number of drives */
@@ -400,7 +473,7 @@ LOCALFUNC tMyErr TryAsInitFullScreenNot(void)
 LOCALPROC ChooseInitFullScreen(void)
 {
 	if (nanblnr == WantInitFullScreen) {
-		WantInitFullScreen = falseblnr;
+		WantInitFullScreen = (gbk_targfam_wnce == gbo_targfam);
 	}
 }
 
@@ -422,32 +495,13 @@ LOCALFUNC tMyErr TryAsVarFullScreenNot(void)
 LOCALPROC ChooseVarFullScreen(void)
 {
 	if (nanblnr == WantVarFullScreen) {
-		if (gbk_apifam_gtk == gbo_apifam) {
+		if ((gbk_apifam_gtk == gbo_apifam)
+			|| (gbk_targfam_wnce == gbo_targfam))
+		{
 			WantVarFullScreen = falseblnr;
 		} else {
 			WantVarFullScreen = trueblnr;
 		}
-	}
-}
-
-/* option: Initial Magnify */
-
-LOCALVAR blnr WantInitMagnify;
-
-LOCALPROC ResetInitMagnify(void)
-{
-	WantInitMagnify = nanblnr;
-}
-
-LOCALFUNC tMyErr TryAsInitMagnifyNot(void)
-{
-	return BooleanTryAsOptionNot("-magnify", &WantInitMagnify);
-}
-
-LOCALPROC ChooseInitMagnify(void)
-{
-	if (nanblnr == WantInitMagnify) {
-		WantInitMagnify = falseblnr;
 	}
 }
 
@@ -479,6 +533,20 @@ LOCALFUNC tMyErr TryAsCmndOptSwapNot(void)
 	return FlagTryAsOptionNot("-ccs", &WantCmndOptSwap);
 }
 
+/* option: LocalTalk emulation */
+
+LOCALVAR blnr WantLocalTalk;
+
+LOCALPROC ResetLocalTalk(void)
+{
+	WantLocalTalk = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsLocalTalkNot(void)
+{
+	return FlagTryAsOptionNot("-lt", &WantLocalTalk);
+}
+
 /* option: Initial Run In Background */
 
 LOCALVAR blnr WantInitBackground;
@@ -496,7 +564,11 @@ LOCALFUNC tMyErr TryAsInitBackgroundNot(void)
 LOCALPROC ChooseInitBackground(void)
 {
 	if (nanblnr == WantInitBackground) {
-		WantInitBackground = falseblnr;
+		if (WantLocalTalk) {
+			WantInitBackground = trueblnr;
+		} else {
+			WantInitBackground = falseblnr;
+		}
 	}
 }
 
@@ -517,7 +589,8 @@ LOCALFUNC tMyErr TryAsInitAutoSlowNot(void)
 LOCALPROC ChooseInitAutoSlow(void)
 {
 	if (nanblnr == WantInitAutoSlow) {
-		WantInitAutoSlow = trueblnr;
+		WantInitAutoSlow = (gbk_mdl_II != cur_mdl)
+			&& (gbk_mdl_IIx != cur_mdl);
 	}
 }
 
@@ -577,7 +650,9 @@ LOCALFUNC char * GetInitSpeedName(int i)
 LOCALPROC ChooseInitSpeed(void)
 {
 	if (CurInitSpeed == kListOptionAuto) {
-		if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		if ((gbk_mdl_II == cur_mdl)
+			|| (gbk_mdl_IIx == cur_mdl))
+		{
 			CurInitSpeed = gbk_speed_4X;
 		} else {
 			CurInitSpeed = gbk_speed_8X;
@@ -832,8 +907,7 @@ LOCALFUNC tMyErr ChooseScrnDpth(void)
 	err = noErr;
 	if (! have_ScrnDpth) {
 		if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-			cur_ScrnDpth = /* 3 */ 0
-				/* until implement color for all platforms */;
+			cur_ScrnDpth = 3;
 		} else {
 			cur_ScrnDpth = 0;
 		}
@@ -849,6 +923,77 @@ LOCALFUNC tMyErr ChooseScrnDpth(void)
 				ReportParseFailure("-depth must be 0 for this model");
 				err = kMyErrReported;
 			}
+		}
+	}
+
+	return err;
+}
+
+/* option: magnification factor */
+
+LOCALVAR uimr cur_MagFctr;
+LOCALVAR blnr have_MagFctr;
+
+LOCALPROC ResetMagFctrOption(void)
+{
+	have_MagFctr = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsMagFctrOptionNot(void)
+{
+	return NumberTryAsOptionNot("-mf",
+		(long *)&cur_MagFctr, &have_MagFctr);
+}
+
+LOCALFUNC tMyErr ChooseMagFctr(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_MagFctr) {
+		if (gbk_apifam_gtk == gbo_apifam) {
+			/* temporary, until implemented */
+			cur_MagFctr = 1;
+		} else {
+			cur_MagFctr = 2;
+		}
+		have_MagFctr = trueblnr;
+	} else {
+		if (cur_MagFctr < 1) {
+			ReportParseFailure("-mf must be >= 1");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
+/* option: Initial Magnify */
+
+LOCALVAR blnr WantInitMagnify;
+
+LOCALPROC ResetInitMagnify(void)
+{
+	WantInitMagnify = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsInitMagnifyNot(void)
+{
+	return BooleanTryAsOptionNot("-magnify", &WantInitMagnify);
+}
+
+LOCALFUNC tMyErr ChooseInitMagnify(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (nanblnr == WantInitMagnify) {
+		WantInitMagnify = falseblnr;
+	} else {
+		if (WantInitMagnify && (cur_MagFctr == 1)) {
+			ReportParseFailure(
+				"-magnify 1 does not make sense with -mf 1");
+			err = kMyErrReported;
 		}
 	}
 
@@ -912,6 +1057,56 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 	return err;
 }
 
+LOCALVAR blnr EmVidCard;
+
+/* video memory size */
+
+LOCALVAR uimr VidMemSize;
+
+LOCALFUNC tMyErr ChooseVidMemSize(void)
+{
+	tMyErr err;
+
+	EmVidCard = (cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx);
+
+	VidMemSize = (((cur_hres * cur_vres) << cur_ScrnDpth) + 7) >> 3;
+
+	--VidMemSize;
+	VidMemSize |= (VidMemSize >> 1);
+	VidMemSize |= (VidMemSize >> 2);
+	VidMemSize |= (VidMemSize >> 4);
+	VidMemSize |= (VidMemSize >> 8);
+	VidMemSize |= (VidMemSize >> 16);
+	++VidMemSize;
+
+	err = noErr;
+	if (! NeedVidMem) {
+		VidMemSize = 0;
+	} else if (EmVidCard) {
+		if (VidMemSize > 4 * 1024 * 1024) {
+			ReportParseFailure(
+				"video memory must be <= 4M");
+			err = kMyErrReported;
+		} else if (VidMemSize <= 0x00008000) {
+			VidMemSize = 0x00008000;
+		}
+	} else if (gbk_mdl_PB100 == cur_mdl) {
+		VidMemSize = 0x00008000;
+	} else {
+		/* VidMemSize = 0x00020000; */
+
+		if (VidMemSize > 256 * 1024) {
+			ReportParseFailure(
+				"video memory must be <= 4M");
+			err = kMyErrReported;
+		} else if (VidMemSize <= 0x00004000) {
+			VidMemSize = 0x00004000;
+		}
+	}
+
+	return err;
+}
+
 /* figure out what hardware to emulate */
 
 LOCALVAR blnr EmClassicKbrd;
@@ -920,7 +1115,6 @@ LOCALVAR blnr EmRTC;
 LOCALVAR blnr EmPMU;
 LOCALVAR blnr EmVIA2;
 LOCALVAR blnr EmASC;
-LOCALVAR blnr EmVidCard;
 
 LOCALPROC ChooseMiscEmHardware(void)
 {
@@ -945,7 +1139,27 @@ LOCALPROC ChooseMiscEmHardware(void)
 	EmVIA2 = (cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx);
 	EmASC = (cur_mdl == gbk_mdl_PB100) || (cur_mdl == gbk_mdl_II)
 		|| (cur_mdl == gbk_mdl_IIx);
-	EmVidCard = (cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx);
+}
+
+/* option: Want Disassembly */
+
+LOCALVAR blnr WantDisasm;
+
+LOCALPROC ResetWantDisasm(void)
+{
+	WantDisasm = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsWantDisasmNot(void)
+{
+	return BooleanTryAsOptionNot("-dis", &WantDisasm);
+}
+
+LOCALPROC ChooseWantDisasm(void)
+{
+	if (nanblnr == WantDisasm) {
+		WantDisasm = falseblnr;
+	}
 }
 
 /* option: dbglog_HAVE */
@@ -965,39 +1179,8 @@ LOCALFUNC tMyErr TryAsDbgLogHAVENot(void)
 LOCALPROC ChooseDbgLogHAVE(void)
 {
 	if (nanblnr == DbgLogHAVE) {
-		DbgLogHAVE = falseblnr;
+		DbgLogHAVE = WantDisasm;
 	}
-}
-
-/* option: Want Disassembly */
-
-LOCALVAR blnr WantDisasm;
-
-LOCALPROC ResetWantDisasm(void)
-{
-	WantDisasm = nanblnr;
-}
-
-LOCALFUNC tMyErr TryAsWantDisasmNot(void)
-{
-	return BooleanTryAsOptionNot("-dis", &WantDisasm);
-}
-
-LOCALFUNC tMyErr ChooseWantDisasm(void)
-{
-	tMyErr err;
-
-	err = noErr;
-	if (nanblnr == WantDisasm) {
-		WantDisasm = falseblnr;
-	} else {
-		if (DbgLogHAVE && ! WantDisasm) {
-			ReportParseFailure("-dis requires -log");
-			err = kMyErrReported;
-		}
-	}
-
-	return err;
 }
 
 /* option: Timing Accuracy */
@@ -1087,51 +1270,79 @@ LOCALPROC ChooseRomSize(void)
 	}
 }
 
-/* video memory size */
-
-LOCALVAR uimr VidMemSize;
-
-LOCALPROC ChooseVidMemSize(void)
-{
-	if (! NeedVidMem) {
-		VidMemSize = 0;
-	} else if (EmVidCard) {
-		VidMemSize = ((cur_hres * cur_vres) << cur_ScrnDpth) >> 3;
-		--VidMemSize;
-		VidMemSize |= (VidMemSize >> 1);
-		VidMemSize |= (VidMemSize >> 2);
-		VidMemSize |= (VidMemSize >> 4);
-		VidMemSize |= (VidMemSize >> 8);
-		VidMemSize |= (VidMemSize >> 16);
-		++VidMemSize;
-		if (VidMemSize <= 0x00008000) {
-			VidMemSize = 0x00008000;
-		}
-	} else if (gbk_mdl_PB100 == cur_mdl) {
-		VidMemSize = 0x00008000;
-	} else {
-		VidMemSize = 0x00020000;
-	}
-}
-
 /* total memory size */
+
+#define dbglog_buflnsz 18
+
+#define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
+#define kLnOneBuffLen 9
+#define kLn2SoundSampSz 3
+
+#define dbhBufferSize (((1UL << kLn2SoundBuffers) + 1UL) \
+	<< (kLnOneBuffLen + kLn2SoundSampSz - 3))
+
+#define vMacScreenNumBytes ((((cur_hres * cur_vres) \
+	<< cur_ScrnDpth) + 7) >> 3)
 
 LOCALVAR uimr TotMemSize;
 
 LOCALPROC ChooseTotMemSize(void)
 {
-	TotMemSize = 1 << RAMa_Size;
+	TotMemSize = 0;
+
+	if (DbgLogHAVE) {
+		TotMemSize += (1 << dbglog_buflnsz);
+	}
+
+
+	/* CntrlDisplayBuff */
+	TotMemSize += vMacScreenNumBytes;
+
+	/* screencomparebuff */
+	TotMemSize += vMacScreenNumBytes;
+
+	if (1 != cur_MagFctr) {
+		/* ScalingBuff */
+		TotMemSize += vMacScreenNumBytes * cur_MagFctr * cur_MagFctr;
+
+		/* ScalingTabl */
+		TotMemSize += 256 * cur_MagFctr;
+	}
+
+	if (MySoundEnabled) {
+		/* TheSoundBuffer */
+		TotMemSize += dbhBufferSize;
+	}
+
+	TotMemSize += (1 << RAMa_Size);
 	if (0 != RAMb_Size) {
 		TotMemSize += (1 << RAMb_Size);
 	}
-	TotMemSize += RomSize;
+
+	if (EmVidCard) {
+		TotMemSize += 0x000800; /* kVidROM_Size */
+	}
+
 	if (NeedVidMem) {
 		TotMemSize += VidMemSize;
 	}
+
 	TotMemSize += 512 * 1024UL;
 		/* for M68KITAB */
 }
 
+/* Use assembly code for 68k emulation */
+
+LOCALVAR blnr UseAsm68k;
+
+LOCALPROC ChooseUseAsm68k(void)
+{
+	UseAsm68k = (gbk_asm_none != cur_asm)
+		&& (em_cpu_vers == 0) && (timingacc < 2)
+		&& ((gbo_cpufam == gbk_cpufam_x86)
+			|| (gbo_cpufam == gbk_cpufam_ppc))
+		&& (! WantDisasm);
+}
 
 /* ------ */
 
@@ -1141,12 +1352,14 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetMemSizOption();
 	ResetNumDrivesOption();
 	ResetSoundOption();
+	ResetSndApiOption();
 	ResetEmCpuVersOption();
 	ResetInitFullScreen();
 	ResetVarFullScreen();
 	ResetInitMagnify();
 	ResetAltKeysMode();
 	ResetCmndOptSwap();
+	ResetLocalTalk();
 	ResetInitBackground();
 	ResetInitAutoSlow();
 	ResetInitSpeedOption();
@@ -1154,13 +1367,14 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetHResOption();
 	ResetVResOption();
 	ResetScrnDpthOption();
+	ResetMagFctrOption();
 	ResetScreenVSync();
 	ResetSonySupportTags();
 	ResetSonyWantChecksumsUpdated();
 	ResetSonySupportDC42();
 	ResetActvCode();
-	ResetDbgLogHAVE();
 	ResetWantDisasm();
+	ResetDbgLogHAVE();
 	ResetTimingAccuracyOption();
 	ResetMouseMotionOption();
 	ResetNeedIntl();
@@ -1174,12 +1388,14 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsMemSizOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsNumDrivesOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSoundOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsSndApiOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsEmCpuVersOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsInitFullScreenNot()))
 	if (kMyErrNoMatch == (err = TryAsVarFullScreenNot()))
 	if (kMyErrNoMatch == (err = TryAsInitMagnifyNot()))
 	if (kMyErrNoMatch == (err = TryAsAltKeysModeNot()))
 	if (kMyErrNoMatch == (err = TryAsCmndOptSwapNot()))
+	if (kMyErrNoMatch == (err = TryAsLocalTalkNot()))
 	if (kMyErrNoMatch == (err = TryAsInitBackgroundNot()))
 	if (kMyErrNoMatch == (err = TryAsInitAutoSlowNot()))
 	if (kMyErrNoMatch == (err = TryAsInitSpeedOptionNot()))
@@ -1187,13 +1403,14 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsHResOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsVResOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsScrnDpthOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsMagFctrOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportTagsNot()))
 	if (kMyErrNoMatch == (err = TryAsSonyWantChecksumsUpdatedNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportDC42Not()))
 	if (kMyErrNoMatch == (err = TryAsActvCodeNot()))
-	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsWantDisasmNot()))
+	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsTimingAccuracyOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsMouseMotionOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsNeedIntlNot()))
@@ -1215,13 +1432,16 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseHRes()))
 	if (noErr == (err = ChooseVRes()))
 	if (noErr == (err = ChooseScrnDpth()))
+	if (noErr == (err = ChooseMagFctr()))
+	if (noErr == (err = ChooseInitMagnify()))
 	if (noErr == (err = ChooseScreenVSync()))
 	if (noErr == (err = ChooseScreenOpts()))
+	if (noErr == (err = ChooseVidMemSize()))
+	if (noErr == (err = ChooseSndApiOption()))
 	{
 		ChooseEmCpuVers();
 		ChooseInitFullScreen();
 		ChooseVarFullScreen();
-		ChooseInitMagnify();
 		ChooseInitBackground();
 		ChooseInitAutoSlow();
 		ChooseInitSpeed();
@@ -1229,15 +1449,13 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 		ChooseSonySupportTags();
 		ChooseSonyWantChecksumsUpdated();
 		ChooseSonySupportDC42();
+		ChooseWantDisasm();
 		ChooseDbgLogHAVE();
-		if (noErr == (err = ChooseWantDisasm()))
-		{
-			ChooseTimingAccuracy();
-			ChooseRomSize();
-			ChooseVidMemSize();
-			ChooseTotMemSize();
-			ChooseMouseMotion();
-		}
+		ChooseTimingAccuracy();
+		ChooseRomSize();
+		ChooseTotMemSize();
+		ChooseUseAsm68k();
+		ChooseMouseMotion();
 	}
 
 	return err;

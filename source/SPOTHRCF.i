@@ -557,10 +557,22 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	if (EmVidCard) {
 		WriteDestFileLn("#define kVidROM_Size 0x000800");
 	}
+
+	WriteBlankLineToDestFile();
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		WriteDestFileLn("#define MaxATTListN 20");
+	} else {
+		WriteDestFileLn("#define MaxATTListN 16");
+	}
+
 	WriteCompCondBool("IncludeExtnPbufs",
-		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
+		&& (gbk_apifam_nds != gbo_apifam));
 	WriteCompCondBool("IncludeExtnHostTextClipExchange",
-		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
+		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteBlankLineToDestFile();
 

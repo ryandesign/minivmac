@@ -63,7 +63,7 @@ typedef void (*tWriteMWLib)(char *s);
 
 static void WriteMWLibs(tWriteMWLib p)
 {
-	if (cur_targ == gbk_targ_wx86) {
+	if (gbk_targfam_mswn == gbo_targfam) {
 		p("kernel32.lib");
 		p("user32.lib");
 		p("gdi32.lib");
@@ -76,13 +76,11 @@ static void WriteMWLibs(tWriteMWLib p)
 			p("advapi32.lib");
 		}
 		p("MSL_All_x86.lib");
-	} else if ((cur_targ == gbk_targ_mach)
-		|| (cur_targ == gbk_targ_imch))
-	{
+	} else if (gbk_targfam_mach == gbo_targfam) {
 		p("crt1.o");
 		p("MSL_All_Mach-O_D.lib");
 	} else {
-		if (cur_targ == gbk_targ_carb) {
+		if (gbk_targfam_carb == gbo_targfam) {
 			p("CarbonLib");
 #if UseOpenGLinOSX
 				p("OpenGLLibraryStub");
@@ -106,7 +104,7 @@ static void WriteMWLibAddFile(char *s)
 		WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 		WriteXMLtagBeginValEndLine("PATH", s);
 		WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
-		if (cur_targ == gbk_targ_wx86) {
+		if (gbk_targfam_mswn == gbo_targfam) {
 			WriteXMLtagBeginValEndLine("FILEKIND", "Unknown");
 		} else {
 			WriteXMLtagBeginValEndLine("FILEKIND", "Library");
@@ -298,9 +296,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 		WriteXMLtagBeginProcValEndLine("NAME", WriteAppVariationStr);
 		WriteBeginXMLtagLine("SETTINGLIST");
 			WriteMWSettingsPanelComment("Access Paths");
-			if ((cur_targ == gbk_targ_mach)
-				|| (cur_targ == gbk_targ_imch))
-			{
+			if (gbk_targfam_mach == gbo_targfam) {
 				WriteXMLtagSettingNameVal(
 					"InterpretDOSAndUnixPaths", "true");
 				WriteXMLtagSettingNameVal(
@@ -308,15 +304,13 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			}
 			WriteBeginNamedSettingXMLtagLine("UserSearchPaths");
 				WriteMWProjRelSearchPath(Write_src_d_ToDestFile);
-				if ((cur_targ == gbk_targ_mach)
-					|| (cur_targ == gbk_targ_imch))
-				{
+				if (gbk_targfam_mach == gbo_targfam) {
 					/* seems to be wanted by property list compiler */
 					WriteMWDrvRelSearchPath(":");
 				}
 			WriteEndXMLtagLine("SETTING");
 			WriteBeginNamedSettingXMLtagLine("SystemSearchPaths");
-				if (cur_targ == gbk_targ_wx86) {
+				if (gbk_targfam_mswn == gbo_targfam) {
 					WriteBeginXMLtagLine("SETTING");
 						WriteBeginNamedSettingXMLtagLine("SearchPath");
 							WriteXMLtagSettingNameVal("Path", ":MSL:");
@@ -361,9 +355,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 						WriteXMLtagSettingNameVal("HostFlags", "All");
 					WriteEndXMLtagLine("SETTING");
 
-					if ((cur_targ == gbk_targ_mach)
-						|| (cur_targ == gbk_targ_imch))
-					{
+					if (gbk_targfam_mach == gbo_targfam) {
 						WriteBeginXMLtagLine("SETTING");
 							WriteBeginNamedSettingXMLtagLine(
 								"SearchPath");
@@ -491,7 +483,8 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			WriteXMLtagSettingNameVal("MWFrontEnd_C_checkprotos", "1");
 			WriteXMLtagSettingNameVal("MWFrontEnd_C_enableexceptions",
 				"0");
-			if ((gbo_dbg == gbk_dbg_on) || (cur_targ == gbk_targ_wx86))
+			if ((gbo_dbg == gbk_dbg_on)
+				|| (gbk_targfam_mswn == gbo_targfam))
 			{
 				/* inlining seems to give bad code for x86 version */
 				WriteXMLtagSettingNameVal("MWFrontEnd_C_dontinline",
@@ -527,7 +520,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 				"MWWarning_C_pedantic", "1");
 
 			WriteBlankLineToDestFile();
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteMWSettingsPanelComment("x86 CodeGen");
 				if (gbo_dbg == gbk_dbg_on) {
 					WriteXMLtagSettingNameVal(
@@ -576,7 +569,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			}
 
 			WriteBlankLineToDestFile();
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteMWSettingsPanelComment("x86 Global Optimizer");
 				if (gbo_dbg == gbk_dbg_on) {
 					WriteXMLtagSettingNameVal(
@@ -625,7 +618,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			}
 
 			WriteBlankLineToDestFile();
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteMWSettingsPanelComment("x86 Linker");
 				WriteXMLtagSettingNameVal(
 					"MWLinker_X86_subsystem", "WinGUI");
@@ -669,11 +662,11 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			}
 
 			WriteBlankLineToDestFile();
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteMWSettingsPanelComment("x86 Project");
 				WriteXMLtagSettingNameProcVal(
 					"MWProject_X86_outfile", WriteAppNameStr);
-			} else if (cur_targ == gbk_targ_mach) {
+			} else if (gbk_targ_mach == cur_targ) {
 				WriteMWSettingsPanelComment("PPC Mac OS X Project");
 				WriteXMLtagSettingNameVal(
 					"MWProject_MacOSX_type", "ApplicationPackage");
@@ -713,7 +706,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 		WriteBeginXMLtagLine("FILELIST");
 			WriteMWLibs(WriteMWLibAddFile);
 
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteBeginXMLtagLine("FILE");
 					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 					WriteXMLtagBeginValEndLine("PATH", "main.RC");
@@ -721,9 +714,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 					WriteXMLtagBeginValEndLine("FILEKIND", "Text");
 					WriteXMLtagBeginValEndLine("FILEFLAGS", "");
 				WriteEndXMLtagLine("FILE");
-			} else if ((cur_targ == gbk_targ_mach)
-				|| (cur_targ == gbk_targ_imch))
-			{
+			} else if (gbk_targfam_mach == gbo_targfam) {
 				WriteBeginXMLtagLine("FILE");
 					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 					WriteXMLtagBeginValEndLine("PATH", "main.plc");
@@ -749,15 +740,13 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 
 		WriteBeginXMLtagLine("LINKORDER");
 			WriteMWLibs(WriteMWLibMakeObjects);
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteBeginXMLtagLine("FILEREF");
 					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 					WriteXMLtagBeginValEndLine("PATH", "main.RC");
 					WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
 				WriteEndXMLtagLine("FILEREF");
-			} else if ((cur_targ == gbk_targ_mach)
-				|| (cur_targ == gbk_targ_imch))
-			{
+			} else if (gbk_targfam_mach == gbo_targfam) {
 				WriteBeginXMLtagLine("FILEREF");
 					WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
 					WriteXMLtagBeginValEndLine("PATH", "main.plc");
@@ -773,11 +762,10 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 				WriteEndXMLtagLine("FILEREF");
 			}
 			vCheckWriteDestErr(
-				DoAllSrcFilesWithSetup(DoSrcFileMW8sMakeObjects));
+				DoAllSrcFilesSortWithSetup(DoSrcFileMW8sMakeObjects));
 		WriteEndXMLtagLine("LINKORDER");
 
-		if ((cur_targ == gbk_targ_mach) || (cur_targ == gbk_targ_imch))
-		{
+		if (gbk_targfam_mach == gbo_targfam) {
 			WriteBeginXMLtagLine("FRAMEWORKLIST");
 				WriteBeginXMLtagLine("FRAMEWORK");
 					WriteBeginXMLtagLine("FILEREF");
@@ -828,7 +816,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 						"DYNAMICLIBRARY", "System");
 				WriteEndXMLtagLine("FRAMEWORK");
 			WriteEndXMLtagLine("FRAMEWORKLIST");
-		} /* (cur_targ == gbk_targ_mach or gbk_targ_imch) */
+		} /* (gbk_targfam_mach == gbo_targfam) */
 	WriteEndXMLtagLine("TARGET");
 	WriteEndXMLtagLine("TARGETLIST");
 
@@ -852,7 +840,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			WriteBeginXMLtagLine("FILEREF");
 				WriteAllMWTargetName();
 				WriteXMLtagBeginValEndLine("PATHTYPE", "Name");
-				if (cur_targ == gbk_targ_wx86) {
+				if (gbk_targfam_mswn == gbo_targfam) {
 					WriteXMLtagBeginValEndLine("PATH", "main.RC");
 				} else {
 					if (HaveMacBundleApp) {

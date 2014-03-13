@@ -46,7 +46,7 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("/* adapt to current compiler/host processor */");
 
-	if (cur_ide == gbk_ide_mw8) {
+	if (gbk_ide_mw8 == cur_ide) {
 		WriteDestFileLn("/* make sure this is correct CNFGGLOB */");
 
 		WriteCheckPreDef("__MWERKS__");
@@ -64,6 +64,21 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 				break;
 			case gbk_cpufam_x86:
 				WriteCheckPreDef("__INTEL__");
+				break;
+		}
+	} else if ((gbk_ide_bgc == cur_ide) || (gbk_ide_xcd == cur_ide)) {
+		switch (gbo_cpufam) {
+			case gbk_cpufam_x86:
+				WriteDestFileLn("#ifdef __x86_64__");
+				WriteDestFileLn("#error \"source is configured for"
+					" 32 bit compiler\"");
+				WriteDestFileLn("#endif");
+				break;
+			case gbk_cpufam_x64:
+				WriteDestFileLn("#ifdef __i386__");
+				WriteDestFileLn("#error \"source is configured for"
+					" 64 bit compiler\"");
+				WriteDestFileLn("#endif");
 				break;
 		}
 	}
@@ -104,7 +119,9 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 	}
 
 	if ((cur_ide == gbk_ide_bgc) || (cur_ide == gbk_ide_xcd)
-		|| (cur_ide == gbk_ide_snc))
+		|| (cur_ide == gbk_ide_snc)
+		|| (cur_ide == gbk_ide_cyg)
+		|| (cur_ide == gbk_ide_dkp))
 	{
 		WriteDestFileLn("#define MayInline inline");
 	} else
@@ -122,7 +139,10 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 		WriteDestFileLn("#define MayInline");
 	}
 
-	if ((cur_ide == gbk_ide_bgc) || (cur_ide == gbk_ide_xcd)) {
+	if ((cur_ide == gbk_ide_bgc) || (cur_ide == gbk_ide_xcd)
+		|| (cur_ide == gbk_ide_cyg)
+		|| (cur_ide == gbk_ide_dkp))
+	{
 		WriteDestFileLn(
 			"#define MayNotInline __attribute__((noinline))");
 	} else
@@ -139,8 +159,11 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 		|| (cur_ide == gbk_ide_xcd)
 		|| (cur_ide == gbk_ide_ccc)
 		|| (cur_ide == gbk_ide_dvc)
+		|| (cur_ide == gbk_ide_mgw)
 		|| (cur_ide == gbk_ide_dmc)
 		|| (cur_ide == gbk_ide_lcc)
+		|| (cur_ide == gbk_ide_cyg)
+		|| (cur_ide == gbk_ide_dkp)
 		)
 	{
 		WriteDestFileLn("#define cIncludeUnused 0");
@@ -174,6 +197,19 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 			"/* ignore unary minus operator"
 			" applied to unsigned type warning */");
 		WriteDestFileLn("#pragma warning(disable : 4146)");
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)
+		|| (em_cpu_vers >= 2))
+	{
+		/* C4127: conditional expression is constant */
+		/*
+			C4701: local variable may have been used without having
+			been initialized
+		*/
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("/* more warnings */");
+		WriteDestFileLn("#pragma warning(disable : 4127 4701)");
+	}
 
 #if IgnoreMoreWarnings
 		WriteBlankLineToDestFile();

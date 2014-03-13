@@ -19,8 +19,599 @@
 	inspired by Apple's TESample that came with MPW 3
 */
 
+
+LOCALPROC ResumeSystemCursor(void)
+{
+	SetCursor(&(qd.arrow));
+}
+
+/* -- error reporting -- */
+
+#define EmptyStrConst ((StringPtr)"\000")
+
+#define MouseOrKeyMask \
+	(mDownMask | mUpMask | keyDownMask | keyUpMask | autoKeyMask)
+
+#define rAboutAlert 128 /* about alert */
+#define rTextAlert  129 /* user error alert */
+
+LOCALPROC MyAlertFromIdPStr(SInt16 alertID, StringPtr s)
+{
+	ResumeSystemCursor();
+	ParamText(s, EmptyStrConst, EmptyStrConst, EmptyStrConst);
+	FlushEvents(MouseOrKeyMask, 0);
+	ResetAlertStage();
+	(void) Alert(alertID, NULL);
+}
+
+LOCALPROC MyAlertFromPStr(ps3p message)
+{
+	MyAlertFromIdPStr(rTextAlert, message);
+}
+
+GLOBALPROC MyAlertFromCStr(char *s)
+{
+	MyPStr t;
+
+	PStrFromCStr(t, s);
+	MyAlertFromPStr(t);
+}
+
+LOCALPROC GetVersLongStr(StringPtr s)
+{
+	ui3p p;
+	Handle h = GetResource('vers', 1);
+	if (NULL == h) {
+		PStrClear(s);
+	} else {
+		HLock(h);
+		p = (ui3p)*h;
+		p += 6;
+		p += *p + 1;
+		PStrFromPtr((MyPtr)p + 1, *p, s);
+		HUnlock(h);
+	}
+}
+
+LOCALPROC ShowAboutMessage(void)
+{
+	MyPStr s;
+
+	GetVersLongStr(s);
+	MyAlertFromIdPStr(rAboutAlert, s);
+}
+
+LOCALVAR blnr AbortRequested = falseblnr;
+
+LOCALVAR WindowRef MyMainWind = NULL;
+
+LOCALVAR blnr ProgramDone = falseblnr;
+
+#ifndef WantRealInputFile
+#define WantRealInputFile 0
+#endif
+
+#ifndef AutoQuitIfStartUpFile
+#define AutoQuitIfStartUpFile WantRealInputFile
+#endif
+
+#if AutoQuitIfStartUpFile
+LOCALVAR blnr PastStartUpFiles = falseblnr;
+LOCALVAR blnr SawStartUpFile = falseblnr;
+#endif
+
+#if WantRealInputFile
+struct input_r { /* 16 bytes */
+	MyDir_R d;
+	ui4b filler1;
+	Handle Name;
+	ui5b filler2;
+};
+typedef struct input_r input_r;
+#endif
+
+#if WantRealInputFile
+LOCALPROC DisposeInputR(input_r *r)
+{
+	DisposeHandle(r->Name);
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr Create_input_r_v2(MyDir_R *d, ps3p s, input_r *r)
+{
+	tMyErr err;
+	Handle Name;
+
+	if (noErr == (err = PStr2Hand_v2(s, &Name))) {
+		r->d = *d;
+		r->Name = Name;
+	}
+
+	return err;
+}
+#endif
+
+#if WantRealInputFile
+LOCALVAR xbh_r InputA = xbh_ZapVal;
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr InitInputA(void)
+{
+	return xbh_Init_v2(0, &InputA);
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC blnr PopFromInputA(input_r *r)
+{
+	return (noErr == xbh_PopToPtr_v2(&InputA,
+		(MyPtr)r, sizeof(input_r)));
+}
+#endif
+
+#if WantRealInputFile
+LOCALPROC ClearInputA(void)
+{
+	input_r r;
+
+	while (PopFromInputA(&r)) {
+		DisposeInputR(&r);
+	}
+}
+#endif
+
+#if WantRealInputFile
+LOCALPROC UnInitInputA(void)
+{
+	if (xbh_Initted(&InputA)) {
+		ClearInputA();
+		xbh_UnInit(&InputA);
+	}
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr ProcessInputFile_v2(MyDir_R *d, ps3p s)
+{
+	tMyErr err;
+	input_r r;
+
+#if AutoQuitIfStartUpFile
+	if (! PastStartUpFiles) {
+		SawStartUpFile = trueblnr;
+	}
+#endif
+
+	if (noErr == (err = Create_input_r_v2(d, s, &r))) {
+		if (noErr != (err = xbh_AppendPtr_v2(&InputA,
+			(MyPtr)&r, sizeof(input_r))))
+		{
+			DisposeInputR(&r);
+		} else {
+			/* ok */
+		}
+	}
+
+	return err;
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr ProcessInputFileFSSpec_v2(FSSpec *spec)
+{
+	MyDir_R d;
+
+	d.VRefNum = spec->vRefNum;
+	d.DirId = spec->parID;
+
+	return ProcessInputFile_v2(&d, spec->name);
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr ProcessInputFileNameNamevRef_v2(
+	ConstStr255Param fileName, short vRefNum)
+{
+	tMyErr err;
+	MyDir_R d;
+
+	if (noErr == (err = MyDirFromWD_v2(vRefNum, &d)))
+	if (noErr == (err = ProcessInputFile_v2(&d, (ps3p)fileName)))
+	{
+		/* ok */
+	}
+
+	return err;
+}
+#endif
+
+#ifndef InputMayBeFolder
+#define InputMayBeFolder 0
+#endif
+
+#ifndef InputMayBeFile
+#define InputMayBeFile 1
+#endif
+
+#ifndef InputFileIsGeneric
+#define InputFileIsGeneric 1
+#endif
+
+#if WantRealInputFile
+LOCALPROC DoGetOldFile(void)
+{
+	tMyErr err;
+	MyDir_R d;
+	Str255 s;
+#if ! InputMayBeFolder
+#if InputFileIsGeneric
+#define pfInputType NULL
+#define nInputTypes (-1)
+#else
+	long fInputType = InputFileType;
+#define pfInputType ((ConstSFTypeListPtr)&fInputType)
+#define nInputTypes 1
+#endif
+#endif
+
+#if AutoQuitIfStartUpFile
+	PastStartUpFiles = trueblnr;
+#endif
+
+#if InputMayBeFolder
+	err = MySelectFolder(&d, s);
+#else
+	err = MyFileGetOld_v2(nInputTypes, pfInputType,
+		&d, s);
+#endif
+	if (kMyErrUsrAbort == err) {
+	} else {
+		if (noErr == err) {
+			err = ProcessInputFile_v2(&d, s);
+		}
+
+		(void) CheckSysErr(err);
+	}
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr MyAppFilesInit_v2(void)
+{
+	tMyErr err = noErr;
+	short i;
+	short message;
+	short count;
+	AppFile theFile;
+
+	CountAppFiles(&message, &count);
+	for (i = 1; i <= count; ++i) {
+		GetAppFiles(i, &theFile);
+
+		if (noErr != (err = ProcessInputFileNameNamevRef_v2(
+			theFile.fName, theFile.vRefNum)))
+		{
+			goto error_exit;
+		}
+
+		ClrAppFiles(i);
+	}
+
+error_exit:
+	return err;
+}
+#endif
+
+#if WantRealInputFile
+LOCALFUNC tMyErr ProcessInputFileFSSpecOrAlias_v2(FSSpec *spec)
+{
+	tMyErr err;
+	Boolean isFolder;
+	Boolean isAlias;
+
+	if (noErr == (err = ResolveAliasFile(spec, true,
+		&isFolder, &isAlias)))
+	{
+#if ! InputMayBeFolder
+		if (isFolder) {
+			err = paramErr;
+		} else
+#endif
+#if ! InputMayBeFile
+		if (! isFolder) {
+			err = paramErr;
+		} else
+#endif
+		{
+			err = ProcessInputFileFSSpec_v2(spec);
+		}
+	}
+
+	return err;
+}
+#endif
+
+LOCALFUNC tMyErr GotRequiredParams_v2(const AppleEvent *theAppleEvent)
+{
+	tMyErr err;
+	DescType typeCode;
+	Size actualSize;
+
+	/* Make sure there are no additional "required" parameters. */
+
+	err = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
+		typeWildCard, &typeCode, NULL, 0, &actualSize);
+	if (errAEDescNotFound == err) {
+		/* no more required params */
+		err = noErr;
+	} else if (noErr == err) {
+		/* missed required param */
+		err = errAEEventNotHandled;
+	} else {
+		/* other error */
+	}
+
+	return err;
+}
+
+#if WantRealInputFile
+#define openOnly 1
+#define openPrint 2
+#endif
+
+#if WantRealInputFile
+static pascal OSErr OpenOrPrintFiles(const AppleEvent *theAppleEvent,
+	AppleEvent *reply, long aRefCon)
+{
+#pragma unused(reply, aRefCon)
+
+	/*
+		Adapted from IM VI: AppleEvent Manager:
+			Handling Required AppleEvents
+	*/
+	tMyErr err;
+	AEDescList docList;
+	simr itemsInList;
+	simr index;
+	AEKeyword keywd;
+	DescType typeCode;
+	FSSpec myFSS;
+	Size actualSize;
+
+	/* put the direct parameter (a list of descriptors) into docList */
+	if (noErr == (err = AEGetParamDesc(theAppleEvent, keyDirectObject,
+		typeAEList, &docList)))
+	{
+		if (noErr == (err = GotRequiredParams_v2(theAppleEvent)))
+			/* Check for missing required parameters */
+		{
+			if (noErr == (err = AECountItems(&docList, &itemsInList)))
+			{
+				for (index = 1; index <= itemsInList; ++index) {
+					/*
+						Get each descriptor from the list,
+						get the alias record, open the file,
+						maybe print it.
+					*/
+					if (noErr == (err = AEGetNthPtr(&docList, index,
+						typeFSS, &keywd, &typeCode,
+						(Ptr)&myFSS, sizeof(myFSS), &actualSize)))
+					if (noErr == (err = ProcessInputFileFSSpec_v2(
+						&myFSS /* , aRefCon == openPrint */)))
+					{
+						/* ok */
+					}
+					if (noErr != err) {
+						goto label_fail;
+					}
+				}
+label_fail:
+				;
+			}
+		}
+		err = CombineErr(err, AEDisposeDesc(&docList));
+	}
+
+	vCheckSysErr(err);
+
+	return noErr;
+}
+#endif
+
+static pascal OSErr DoOpenEvent(const AppleEvent *theAppleEvent,
+	AppleEvent *reply, long aRefCon)
+/*
+	This is the alternative to getting an open document event
+	on startup.
+*/
+{
+#pragma unused(reply, aRefCon)
+	tMyErr err;
+
+#if AutoQuitIfStartUpFile
+	PastStartUpFiles = trueblnr;
+#endif
+	err = GotRequiredParams_v2(theAppleEvent);
+
+	vCheckSysErr(err);
+
+	return noErr;
+}
+
+static pascal OSErr DoQuitEvent(const AppleEvent *theAppleEvent,
+	AppleEvent *reply, long aRefCon)
+{
+#pragma unused(reply, aRefCon)
+	tMyErr err;
+
+	if (noErr == (err = GotRequiredParams_v2(theAppleEvent)))
+	{
+		ProgramDone = trueblnr;
+	}
+
+	vCheckSysErr(err);
+
+	return noErr;
+}
+
+LOCALFUNC tMyErr MyInstallEventHandler(AEEventClass theAEEventClass,
+	AEEventID theAEEventID, AEEventHandlerProcPtr p,
+	long handlerRefcon, blnr isSysHandler)
+{
+	return AEInstallEventHandler(theAEEventClass,
+		theAEEventID, p, handlerRefcon, isSysHandler);
+}
+
+LOCALFUNC tMyErr InstallAppleEventHandlers(void)
+{
+	tMyErr err;
+
+	if (! HaveAppleEvtMgrAvail()) {
+		err = noErr;
+	} else {
+		if (noErr == (err = AESetInteractionAllowed(
+			kAEInteractWithLocal)))
+		if (noErr == (err = MyInstallEventHandler(
+			kCoreEventClass, kAEOpenApplication,
+			DoOpenEvent, 0, false)))
+#if WantRealInputFile
+		if (noErr == (err = MyInstallEventHandler(
+			kCoreEventClass, kAEOpenDocuments,
+			OpenOrPrintFiles, openOnly, false)))
+		if (noErr == (err = MyInstallEventHandler(
+			kCoreEventClass, kAEPrintDocuments,
+			OpenOrPrintFiles, openPrint, false)))
+#endif
+		if (noErr == (err = MyInstallEventHandler(
+			kCoreEventClass, kAEQuitApplication,
+			DoQuitEvent, 0, false)))
+		{
+		}
+	}
+
+	return err;
+}
+
+
 #define My_GetWindowBounds(window, r) \
 	GetPortBounds(GetWindowPort(window), (r))
+
+#if WantRealInputFile
+static pascal OSErr GlobalTrackingHandler(short message,
+	WindowRef pWindow, void *handlerRefCon, DragRef theDragRef)
+{
+#pragma unused(pWindow, handlerRefCon)
+	RgnHandle hilightRgn;
+	Rect Bounds;
+
+	switch(message) {
+		case kDragTrackingEnterWindow:
+			hilightRgn = NewRgn();
+			if (hilightRgn != NULL) {
+				My_GetWindowBounds(MyMainWind, &Bounds);
+				RectRgn(hilightRgn, &Bounds);
+				ShowDragHilite(theDragRef, hilightRgn, true);
+				DisposeRgn(hilightRgn);
+			}
+			break;
+		case kDragTrackingLeaveWindow:
+			HideDragHilite(theDragRef);
+			break;
+	}
+
+	return noErr;
+
+}
+#endif
+
+#if WantRealInputFile
+static pascal OSErr GlobalReceiveHandler(WindowRef pWindow,
+	void *handlerRefCon, DragRef theDragRef)
+{
+#pragma unused(pWindow, handlerRefCon)
+	tMyErr err;
+	unsigned short items;
+	unsigned short index;
+	DragItemRef theItem;
+	Size SentSize;
+	HFSFlavor r;
+
+	if (noErr == (err = CountDragItems(theDragRef, &items))) {
+		for (index = 1; index <= items; index++) {
+			if (noErr == (err = GetDragItemReferenceNumber(theDragRef,
+				index, &theItem)))
+			if (noErr == (err = GetFlavorDataSize(theDragRef,
+				theItem, kDragFlavorTypeHFS, &SentSize)))
+			/*
+				SentSize may be only big enough to hold the actual
+				file name. So use '<=' instead of '=='.
+			*/
+			if (SentSize <= sizeof(HFSFlavor))
+			if (noErr == (err = GetFlavorData(theDragRef, theItem,
+				kDragFlavorTypeHFS, (Ptr)&r, &SentSize, 0)))
+			if (noErr == (err = ProcessInputFileFSSpecOrAlias_v2(
+				&r.fileSpec)))
+			{
+				/* ok */
+			}
+			if (noErr != err) {
+				goto label_fail;
+			}
+		}
+
+		{
+			ProcessSerialNumber currentProcess = {0, kCurrentProcess};
+
+			err = SetFrontProcess(&currentProcess);
+		}
+label_fail:
+		;
+	}
+
+	vCheckSysErr(err);
+
+	return noErr;
+}
+#endif
+
+#if WantRealInputFile
+LOCALVAR blnr gHaveDragMgr = falseblnr;
+#endif
+
+#if WantRealInputFile
+LOCALPROC PrepareForDragging(void)
+{
+	if (HaveDragMgrAvail()) {
+		if (noErr == InstallTrackingHandler(
+			GlobalTrackingHandler, MyMainWind, nil))
+		{
+			if (noErr == InstallReceiveHandler(
+				GlobalReceiveHandler, MyMainWind, nil))
+			{
+				gHaveDragMgr = trueblnr;
+				return;
+				/*
+					RemoveReceiveHandler(
+						GlobalReceiveHandler, MyMainWind);
+				*/
+			}
+			RemoveTrackingHandler(GlobalTrackingHandler, MyMainWind);
+		}
+	}
+}
+#endif
+
+#if WantRealInputFile
+LOCALPROC UnPrepareForDragging(void)
+{
+	if (gHaveDragMgr) {
+		RemoveReceiveHandler(GlobalReceiveHandler, MyMainWind);
+		RemoveTrackingHandler(GlobalTrackingHandler, MyMainWind);
+	}
+}
+#endif
 
 
 #define kControlInvisible 0
@@ -35,14 +626,6 @@ GLOBALPROC MyGetGrayRgnBounds(Rect *r)
 {
 	GetRegionBounds(GetGrayRgn(), r);
 }
-
-LOCALPROC ResumeSystemCursor(void)
-{
-	SetCursor(&(qd.arrow));
-}
-
-LOCALVAR WindowRef gMyMainWindow = NULL;
-LOCALVAR blnr ProgramDone = falseblnr;
 
 LOCALVAR blnr GoRequested = falseblnr;
 LOCALVAR Handle ParseHandle;
@@ -60,7 +643,9 @@ LOCALVAR EventRecord curevent;
 #define kAppleAboutItem 1
 
 #define kFileGoItem 1
-#define kFileQuitItem 3
+#define kFileImportItem 3
+#define kFileExportItem 4
+#define kFileQuitItem 6
 
 #define kEditUndoItem 1
 #define kEditCutItem 3
@@ -71,18 +656,11 @@ LOCALVAR EventRecord curevent;
 
 #define kTextMargin 2
 
-#define TEWidthFromWindow 1
 
-#if ! TEWidthFromWindow
-#define kMaxDocWidth 576
-#endif
+#define ScrollWidth 14
+#define BorderWidth 1
 
 #define kMinDocDim 64
-
-#define kScrollbarWidth 16
-#define kScrollbarAdjust (kScrollbarWidth - 1)
-
-#define kScrollTweek 2
 
 #define kCrChar 13
 #define kDelChar 8
@@ -95,8 +673,6 @@ LOCALVAR EventRecord curevent;
 
 #define kSuspendResumeMessage 1
 	/* high byte of suspend/resume event message */
-#define kResumeMask 1
-	/* bit of message field for resume vs. suspend */
 #define kMouseMovedMessage 0xFA
 	/* high byte of mouse-moved event message */
 
@@ -118,19 +694,14 @@ LOCALVAR EventRecord curevent;
 #define eExceedChar   10
 #define eNoPaste      11
 
-#define rAboutAlert 128 /* about alert */
-#define rUserAlert  129 /* user error alert */
 #define kErrStrings 128 /* error string list */
 
 
 LOCALVAR TEHandle MyDocTE = NULL;
 LOCALVAR ControlRef MyDocVScroll = NULL;
-#if ! TEWidthFromWindow
-LOCALVAR ControlRef MyDocHScroll = NULL;
-#endif
 
 
-LOCALVAR Boolean gInBackground = falseblnr;
+LOCALVAR Boolean gBackgroundFlag = falseblnr;
 
 
 #define TopLeft(aRect)  (* (Point *) &(aRect).top)
@@ -148,9 +719,9 @@ LOCALPROC GetLocalUpdateRgn(RgnHandle localRgn)
 {
 	Point p;
 
-	CopyRgn(((WindowPeek) gMyMainWindow)->updateRgn, localRgn);
+	CopyRgn(((WindowPeek) MyMainWind)->updateRgn, localRgn);
 		/* save old update region */
-	GetWindowPortGlobalOffset(gMyMainWindow, &p);
+	GetWindowPortGlobalOffset(MyMainWind, &p);
 	OffsetRgn(localRgn, - p.h, - p.v);
 }
 
@@ -161,9 +732,9 @@ LOCALFUNC unsigned long GetSleep(void)
 	TEHandle te;
 
 	sleep = LONG_MAX; /* default value for sleep */
-	if (! gInBackground) {
+	if (! gBackgroundFlag) {
 		window = FrontWindow(); /* and the front window is ours... */
-		if (window == gMyMainWindow) {
+		if (window == MyMainWind) {
 			te = MyDocTE;
 				/* and the selection is an insertion point... */
 			if ((*te)->selStart == (*te)->selEnd) {
@@ -223,38 +794,7 @@ static pascal void VActionProc(ControlRef control, ControlPartCode part)
 }
 
 
-#if ! TEWidthFromWindow
-static pascal void HActionProc(ControlRef control, ControlPartCode part)
-{
-	short amount;
-	TEPtr te;
-
-	if (part != 0) {
-		te = *MyDocTE;
-		switch (part) {
-			case kControlUpButtonPart:
-			case kControlDownButtonPart: /* a few pixels */
-				amount = kButtonScroll;
-				break;
-			case kControlPageUpPart: /* a page */
-			case kControlPageDownPart:
-				amount = te->viewRect.right - te->viewRect.left;
-				break;
-		}
-		if ((part == kControlDownButtonPart)
-			|| (part == kControlPageDownPart))
-		{
-			amount = - amount; /* reverse direction */
-		}
-		CommonAction(control, &amount);
-		if (amount != 0) {
-			TEScroll(amount, 0, MyDocTE);
-		}
-	}
-}
-#endif
-
-LOCALPROC MyDrawGrowIcon(WindowRef w)
+LOCALPROC MyDrawGrowIcon(WindowRef w, Rect *r)
 {
 	/* Assuming w is the current port */
 	RgnHandle SaveRgn;
@@ -265,12 +805,7 @@ LOCALPROC MyDrawGrowIcon(WindowRef w)
 		GetClip(SaveRgn);
 		growr = NewRgn();
 		if (NULL != growr) {
-			Rect r;
-
-			My_GetWindowBounds(w, &r);
-			r.top = r.bottom - 14;
-			r.left = r.right - 14;
-			RectRgn(growr, &r);
+			RectRgn(growr, r);
 			SectRgn(SaveRgn, growr, growr);
 			SetClip(growr);
 			DrawGrowIcon(w);
@@ -285,29 +820,63 @@ LOCALPROC DrawTheLines(void)
 {
 	Rect r;
 
-	My_GetWindowBounds(gMyMainWindow, &r);
-	r.left = r.right - 15;
+	My_GetWindowBounds(MyMainWind, &r);
+	r.left = r.right - (ScrollWidth + BorderWidth);
 	r.right = r.left + 1;
 	PaintRect(&r);
 
-	My_GetWindowBounds(gMyMainWindow, &r);
-	r.top = r.bottom - 15;
+	My_GetWindowBounds(MyMainWind, &r);
+	r.top = r.bottom - (ScrollWidth + BorderWidth);
 	r.bottom = r.top + 1;
-#if TEWidthFromWindow
-	r.left = r.right - 14;
-#endif
 	PaintRect(&r);
+}
+
+struct MyWindRectsR {
+	Rect rW;
+	Rect rContent;
+	Rect rVScroll;
+	Rect rProgBar;
+	Rect rGrow;
+};
+typedef struct MyWindRectsR MyWindRectsR;
+
+GLOBALPROC GetMyWindRects(MyWindRectsR *r)
+{
+	My_GetWindowBounds(MyMainWind, &r->rW);
+
+	SetRect(&r->rVScroll,
+		r->rW.right - ScrollWidth - BorderWidth,
+		r->rW.top - BorderWidth,
+		r->rW.right + BorderWidth,
+		r->rW.bottom - ScrollWidth);
+	SetRect(&r->rProgBar,
+		r->rW.left,
+		r->rW.bottom - ScrollWidth,
+		r->rW.right - ScrollWidth - BorderWidth,
+		r->rW.bottom);
+
+	r->rContent = r->rW;
+	r->rContent.bottom -= (ScrollWidth + BorderWidth);
+	r->rContent.right -= (ScrollWidth + BorderWidth);
+	InsetRect(&r->rContent, kTextMargin, kTextMargin);
+		/* adjust for margin */
+
+	SetRect(&r->rGrow,
+		r->rW.right - ScrollWidth, r->rW.bottom - ScrollWidth,
+		r->rW.right, r->rW.bottom);
 }
 
 LOCALPROC DrawWindow(void)
 {
-	Rect r;
+	MyWindRectsR r;
+
+	GetMyWindRects(&r);
 
 	DrawTheLines();
-	DrawControls(gMyMainWindow);
-	MyDrawGrowIcon(gMyMainWindow);
-	My_GetWindowBounds(gMyMainWindow, &r);
-	TEUpdate(&r, MyDocTE);
+	DrawControls(MyMainWind);
+	MyDrawGrowIcon(MyMainWind, &r.rGrow);
+	TEUpdate(&r.rContent, MyDocTE);
+	ProgressBar_Draw();
 }
 
 LOCALFUNC Boolean IsDAWindow(WindowRef window)
@@ -352,7 +921,7 @@ LOCALPROC CloseAllExtraWindows(void)
 
 LOCALPROC MyMainWindowUnInit(void)
 {
-	if (gMyMainWindow != NULL) {
+	if (MyMainWind != NULL) {
 		if (MyDocTE != nil) {
 			TEDispose(MyDocTE);
 				/*
@@ -360,26 +929,8 @@ LOCALPROC MyMainWindowUnInit(void)
 					far enough to make one
 				*/
 		}
-		DisposeWindow(gMyMainWindow);
+		DisposeWindow(MyMainWind);
 	}
-}
-
-#define EmptyStrConst ((StringPtr)"\000")
-#define MouseOrKeyMask \
-	(mDownMask | mUpMask | keyDownMask | keyUpMask | autoKeyMask)
-
-LOCALPROC MyAlertFromIdPStr(SInt16 alertID, StringPtr s)
-{
-	ResumeSystemCursor();
-	ParamText(s, EmptyStrConst, EmptyStrConst, EmptyStrConst);
-	FlushEvents(MouseOrKeyMask, 0);
-
-	(void) Alert(alertID, NULL);
-}
-
-LOCALPROC AlertUserFromPStr(ps3p message)
-{
-	MyAlertFromIdPStr(rUserAlert, message);
 }
 
 LOCALPROC AlertUser(short error)
@@ -387,68 +938,28 @@ LOCALPROC AlertUser(short error)
 	Str255 message;
 
 	GetIndString(message, kErrStrings, error);
-	AlertUserFromPStr(message);
+	MyAlertFromPStr(message);
 }
 
 GLOBALPROC AppReportAnySavedError(void)
 {
-	if (noErr != SavedSysErr) {
-		if (kMyErrReported != SavedSysErr) {
-			MyPStr t;
-
-			PStrFromCStr(t, GetTextForSavedSysErr_v2(SavedSysErr));
-			AlertUserFromPStr(t);
+	if ((SavedSysErr != noErr) || AbortRequested) {
+		if (AbortRequested) {
+			MyAlertFromCStr("Aborted!");
+		} else if ((kMyErrReported == SavedSysErr)
+			|| (kMyErrUsrCancel == SavedSysErr))
+		{
+			/* nothing more needed */
+		} else if (SavedSysErr != noErr) {
+			MyAlertFromCStr(GetTextForSavedSysErr_v2(SavedSysErr));
 		}
-
 		SavedSysErr = noErr;
-	}
-}
-
-LOCALPROC GetVersLongStr(StringPtr s)
-{
-	ui3p p;
-	Handle h = GetResource('vers', 1);
-	if (NULL == h) {
-		PStrClear(s);
-	} else {
-		HLock(h);
-		p = (ui3p)*h;
-		p += 6;
-		p += *p + 1;
-		PStrFromPtr((MyPtr)p + 1, *p, s);
-		HUnlock(h);
-	}
-}
-
-LOCALPROC ShowAboutMessage(void)
-{
-	MyPStr s;
-
-	GetVersLongStr(s);
-	MyAlertFromIdPStr(rAboutAlert, s);
-}
-
-LOCALPROC GetTERect(Rect *teRect)
-{
-	My_GetWindowBounds(gMyMainWindow, teRect);
-	InsetRect(teRect, kTextMargin, kTextMargin); /* adjust for margin */
-#if ! TEWidthFromWindow
-	teRect->bottom = teRect->bottom - 15; /* and for the scrollbars */
+		AbortRequested = falseblnr;
+		SawStartUpFile = falseblnr;
+#if WantRealInputFile
+		ClearInputA();
 #endif
-	teRect->right = teRect->right - 15;
-}
-
-LOCALPROC AdjustViewRect(void)
-{
-#if 0
-	/* snap to nearest line */
-	TEPtr te;
-
-	te = *MyDocTE;
-	te->viewRect.bottom = (((te->viewRect.bottom - te->viewRect.top)
-		/ te->lineHeight)
-		* te->lineHeight) + te->viewRect.top;
-#endif
+	}
 }
 
 LOCALPROC AdjustTE(void)
@@ -457,13 +968,7 @@ LOCALPROC AdjustTE(void)
 
 	te = *MyDocTE;
 	TEScroll(
-#if TEWidthFromWindow
-		0
-#else
-		(te->viewRect.left - te->destRect.left) -
-			GetControlValue(MyDocHScroll)
-#endif
-			,
+		0,
 		(te->viewRect.top - te->destRect.top) -
 			(GetControlValue(MyDocVScroll) *
 			te->lineHeight),
@@ -519,103 +1024,25 @@ LOCALPROC AdjustV(Boolean canRedraw)
 	}
 }
 
-#if ! TEWidthFromWindow
-LOCALPROC AdjustH(Boolean canRedraw)
-{
-	short value;
-	short lines;
-	short max;
-	short oldValue, oldMax;
-	TEPtr te;
-
-	oldValue = GetControlValue(MyDocHScroll);
-	oldMax = GetControlMaximum(MyDocHScroll);
-	te = *MyDocTE; /* point to TERec for convenience */
-	max = kMaxDocWidth - (te->viewRect.right - te->viewRect.left);
-
-	if (max < 0) {
-		max = 0;
-	}
-	SetControlMaximum(MyDocHScroll, max);
-
-	/*
-		Must deref. after SetControlMaximum since, technically, it
-		could draw and therefore move memory. This is why we do not
-		just do it once at the beginning.
-	*/
-	te = *MyDocTE;
-	value = te->viewRect.left - te->destRect.left;
-
-	if (value < 0) {
-		value = 0;
-	} else if (value > max) {
-		value = max;
-	}
-
-	SetControlValue(MyDocHScroll, value);
-
-	if (canRedraw || (max != oldMax) || (value != oldValue)) {
-		ShowControl(MyDocHScroll);
-	}
-}
-#endif
-
 LOCALPROC AdjustScrollValues(Boolean canRedraw)
 {
 	AdjustV(canRedraw);
-#if ! TEWidthFromWindow
-	AdjustH(canRedraw);
-#endif
 }
 
-LOCALPROC AdjustScrollSizes(void)
-{
-	Rect teRect;
-	Rect r;
-
-	GetTERect(&teRect); /* start with TERect */
-	(*MyDocTE)->viewRect = teRect;
-
-	AdjustViewRect();
-	My_GetWindowBounds(gMyMainWindow, &r);
-	MoveControl(MyDocVScroll, r.right - kScrollbarAdjust, -1);
-	SizeControl(MyDocVScroll, kScrollbarWidth, (r.bottom -
-		r.top) - (kScrollbarAdjust - kScrollTweek));
-#if ! TEWidthFromWindow
-	MoveControl(MyDocHScroll, -1, r.bottom - kScrollbarAdjust);
-	SizeControl(MyDocHScroll, (r.right -
-		r.left) - (kScrollbarAdjust - kScrollTweek),
-		kScrollbarWidth);
-#endif
-#if TEWidthFromWindow
-	(*MyDocTE)->destRect.right = teRect.right;
-	TECalText(MyDocTE);
-#endif
-}
-
-LOCALPROC AdjustScrollbars(Boolean needsResize)
+LOCALPROC AdjustScrollbars(void)
 {
 	/*
 		First, turn visibility of scrollbars off so we won't get
 		unwanted redrawing
 	*/
 	My_SetControlVisibilityFalse(MyDocVScroll); /* turn them off */
-#if ! TEWidthFromWindow
-	My_SetControlVisibilityFalse(MyDocHScroll);
-#endif
-	if (needsResize) { /* move & size as needed */
-		AdjustScrollSizes();
-	}
-	AdjustScrollValues(needsResize);
+	AdjustScrollValues(falseblnr);
 		/* fool with max and current value */
 	/*
 		Now, restore visibility in case we never had to ShowControl
 		during adjustment
 	*/
 	My_SetControlVisibilityTrue(MyDocVScroll); /* turn them on */
-#if ! TEWidthFromWindow
-	My_SetControlVisibilityTrue(MyDocHScroll);
-#endif
 }
 
 extern pascal void PascalClikLoop(void); /* export to ASM code */
@@ -628,7 +1055,7 @@ pascal void PascalClikLoop(void)
 	region = NewRgn();
 	if (NULL != region) {
 		GetClip(region); /* save clip */
-		My_GetWindowBounds(gMyMainWindow, &r);
+		My_GetWindowBounds(MyMainWind, &r);
 		ClipRect(&r);
 		AdjustScrollValues(true); /* pass true for canRedraw */
 		SetClip(region); /* restore clip */
@@ -647,7 +1074,7 @@ LOCALPROC AdjustCursor(Point mouse, RgnHandle region)
 
 	window = FrontWindow();
 		/* we only adjust the cursor when we are in front */
-	if ((! gInBackground) && (! IsDAWindow(window))) {
+	if ((! gBackgroundFlag) && (! IsDAWindow(window))) {
 		/* calculate regions for different cursor shapes */
 		arrowRgn = NewRgn();
 		iBeamRgn = NewRgn();
@@ -658,7 +1085,7 @@ LOCALPROC AdjustCursor(Point mouse, RgnHandle region)
 			kExtremeNeg, kExtremeNeg, kExtremePos, kExtremePos);
 
 		/* calculate iBeamRgn */
-		if (window == gMyMainWindow) {
+		if (window == MyMainWind) {
 			iBeamRect = (*MyDocTE)->viewRect;
 			SetPortWindowPort(window);
 				/* make a global version of the viewRect */
@@ -694,7 +1121,7 @@ LOCALPROC DoIdle(void)
 	WindowRef window;
 
 	window = FrontWindow();
-	if (window == gMyMainWindow) {
+	if (window == MyMainWind) {
 		TEIdle(MyDocTE);
 	}
 }
@@ -719,7 +1146,7 @@ LOCALPROC DoUpdateMenus(void)
 		undo = true; /* all editing is enabled for DA windows */
 		cutCopyClear = true;
 		paste = true;
-	} else if (window == gMyMainWindow) {
+	} else if (window == MyMainWind) {
 		te = MyDocTE;
 		if ((*te)->selStart < (*te)->selEnd) {
 			cutCopyClear = true;
@@ -767,6 +1194,45 @@ LOCALPROC DoQuit(void)
 	ProgramDone = trueblnr;
 }
 
+LOCALPROC DoSaveNewFile(void)
+{
+	tMyErr err;
+	MyPStr s;
+	MyDir_R d;
+	short refNum;
+	Handle h = (Handle) TEGetText(MyDocTE);
+	uimr L = (*MyDocTE)->teLength;
+
+	if (noErr == (err = ProgressBar_SetStage_v2(
+		"Select destination\311", 0)))
+	{
+		UpdateProgressBar();
+		err = CreateOpenNewFile_v2((StringPtr)"\pOutput File", s,
+			'GrBl' /* creator (ExportFl) */,
+			'TEXT' /* type */,
+			&d, s, &refNum);
+		if (noErr == err) {
+			if (noErr == (err = ProgressBar_SetStage_v2(
+				"Writing\311", 0)))
+			if (noErr == (err = MyOpenFileSetEOF_v2(refNum, L)))
+			{
+				HLock(h);
+				err = MyWriteBytes_v2(refNum, *h, L);
+				HUnlock(h);
+			}
+			err = MyCloseNewFile_v3(refNum, &d, s, err);
+		}
+	}
+
+	err = CombineErr(err, ProgressBar_SetStage_v2((noErr == err)
+		? "File written."
+			: "Failed to write file.",
+		0));
+	if (kMyErrUsrCancel != err) {
+		(void) CheckSysErr(err);
+	}
+}
+
 LOCALPROC DecodeSysMenus(long theMenuItem)
 {
 	short menuID;
@@ -806,6 +1272,14 @@ LOCALPROC DecodeSysMenus(long theMenuItem)
 					ParseRangeStart = 0;
 					ParseRangeStop = (*MyDocTE)->teLength;
 					GoRequested = trueblnr;
+					break;
+				case kFileImportItem:
+#if WantRealInputFile
+					DoGetOldFile();
+#endif
+					break;
+				case kFileExportItem:
+					DoSaveNewFile();
 					break;
 				case kFileQuitItem:
 					DoQuit();
@@ -888,7 +1362,7 @@ LOCALPROC DecodeSysMenus(long theMenuItem)
 						TESetSelect(0, 32767, MyDocTE);
 						break;
 				}
-				AdjustScrollbars(false);
+				AdjustScrollbars();
 				AdjustTE();
 			}
 			break;
@@ -900,14 +1374,7 @@ LOCALPROC DecodeSysMenus(long theMenuItem)
 static pascal void MyTrackActionProc(ControlRef control,
 	ControlPartCode part)
 {
-#if ! TEWidthFromWindow
-	if (control == MyDocHScroll) {
-		HActionProc(control, part);
-	} else
-#endif
-	{
-		VActionProc(control, part);
-	}
+	VActionProc(control, part);
 }
 
 LOCALPROC DoContentClick(void)
@@ -917,7 +1384,9 @@ LOCALPROC DoContentClick(void)
 	ControlPartCode part;
 	short value;
 	Boolean shiftDown;
-	Rect teRect;
+	MyWindRectsR r;
+
+	GetMyWindRects(&r);
 
 	mouse = curevent.where; /* get the click position */
 	GlobalToLocal(&mouse);
@@ -925,14 +1394,24 @@ LOCALPROC DoContentClick(void)
 			see if we are in the viewRect.
 			if so, we won't check the controls
 		*/
-	GetTERect(&teRect);
-	if (PtInRect(mouse, &teRect)) {
+	if (PtInRect(mouse, &r.rContent)) {
 		/* see if we need to extend the selection */
 		shiftDown = (curevent.modifiers & shiftKey) != 0;
 			/* extend if Shift is down */
 		TEClick(mouse, shiftDown, MyDocTE);
+	} else if (PtInRect(mouse, &r.rProgBar)) {
+#if WantRealInputFile
+		ProgressBar_InvertAll();
+		while (Button()) {
+		}
+		ProgressBar_InvertAll();
+		ParseHandle = (Handle) TEGetText(MyDocTE);
+		ParseRangeStart = 0;
+		ParseRangeStop = (*MyDocTE)->teLength;
+		GoRequested = trueblnr;
+#endif
 	} else {
-		part = FindControl(mouse, gMyMainWindow, &control);
+		part = FindControl(mouse, MyMainWind, &control);
 		switch (part) {
 			case 0: /* do nothing for viewRect case */
 				break;
@@ -946,15 +1425,8 @@ LOCALPROC DoContentClick(void)
 						if value changed, scroll
 					*/
 					if (value != 0) {
-#if ! TEWidthFromWindow
-						if (control == MyDocHScroll) {
-							TEScroll(value, 0, MyDocTE);
-						} else
-#endif
-						{
-							TEScroll(0, value * (*MyDocTE)->lineHeight,
-								MyDocTE);
-						}
+						TEScroll(0, value * (*MyDocTE)->lineHeight,
+							MyDocTE);
 					}
 				}
 				break;
@@ -967,12 +1439,36 @@ LOCALPROC DoContentClick(void)
 
 LOCALPROC ResizeMyWindow(void)
 {
-	Rect r;
+	MyWindRectsR r;
 
-	AdjustScrollbars(true);
+	GetMyWindRects(&r);
+	/*
+		First, turn visibility of scrollbars off so we won't get
+		unwanted redrawing
+	*/
+	My_SetControlVisibilityFalse(MyDocVScroll); /* turn them off */
+
+	MoveControl(MyDocVScroll, r.rVScroll.left, r.rVScroll.top);
+	SizeControl(MyDocVScroll, r.rVScroll.right - r.rVScroll.left,
+		r.rVScroll.bottom - r.rVScroll.top);
+
+	(*MyDocTE)->viewRect = r.rContent;
+	(*MyDocTE)->destRect.right = r.rContent.right;
+	TECalText(MyDocTE);
+
+	AdjustScrollValues(false);
+	/* fool with max and current value */
+
 	AdjustTE();
-	My_GetWindowBounds(gMyMainWindow, &r);
-	InvalRect(&r);
+	ProgressBar_Move(&r.rProgBar);
+
+	/*
+		Now, restore visibility in case we never had to ShowControl
+		during adjustment
+	*/
+	My_SetControlVisibilityTrue(MyDocVScroll); /* turn them on */
+
+	InvalRect(&r.rW);
 }
 
 LOCALPROC DoGrowWindow(void)
@@ -986,7 +1482,7 @@ LOCALPROC DoGrowWindow(void)
 	tempRect.right -= tempRect.left;
 	tempRect.top = kMinDocDim;
 	tempRect.left = kMinDocDim;
-	growResult = GrowWindow(gMyMainWindow, curevent.where, &tempRect);
+	growResult = GrowWindow(MyMainWind, curevent.where, &tempRect);
 	/* see if it really changed size */
 	if (growResult != 0) {
 		tempRect = (*MyDocTE)->viewRect; /* save old text box */
@@ -994,7 +1490,7 @@ LOCALPROC DoGrowWindow(void)
 		if (NULL != tempRgn) {
 			GetLocalUpdateRgn(tempRgn);
 				/* get localized update region */
-			SizeWindow(gMyMainWindow,
+			SizeWindow(MyMainWind,
 				LoWord(growResult), HiWord(growResult), true);
 			ResizeMyWindow();
 			/*
@@ -1002,9 +1498,6 @@ LOCALPROC DoGrowWindow(void)
 				it won't get redrawn
 			*/
 			SectRect(&tempRect, &(*MyDocTE)->viewRect, &tempRect);
-#if ! TEWidthFromWindow
-			ValidRect(&tempRect); /* take it out of update */
-#endif
 			InvalRgn(tempRgn); /* put back any prior update */
 			DisposeRgn(tempRgn);
 		}
@@ -1015,10 +1508,10 @@ LOCALPROC DoZoomWindow(short which_part)
 {
 	Rect r;
 
-	My_GetWindowBounds(gMyMainWindow, &r);
+	My_GetWindowBounds(MyMainWind, &r);
 	EraseRect(&r);
-	ZoomWindow(gMyMainWindow, which_part,
-		gMyMainWindow == FrontWindow());
+	ZoomWindow(MyMainWind, which_part,
+		MyMainWind == FrontWindow());
 	ResizeMyWindow();
 }
 
@@ -1038,7 +1531,7 @@ LOCALPROC DoKeyDown(void)
 		< kMaxTELength)
 	{
 		TEKey(key, MyDocTE);
-		AdjustScrollbars(false);
+		AdjustScrollbars();
 		AdjustTE();
 	} else {
 		AlertUser(eExceedChar);
@@ -1049,8 +1542,9 @@ LOCALPROC DoActivate(Boolean becomingActive)
 {
 	RgnHandle tempRgn;
 	RgnHandle clipRgn;
-	Rect growRect;
-	Rect r;
+	MyWindRectsR r;
+
+	GetMyWindRects(&r);
 
 	if (becomingActive) {
 		/*
@@ -1059,41 +1553,35 @@ LOCALPROC DoActivate(Boolean becomingActive)
 			out the update region before calling it.
 		*/
 		tempRgn = NewRgn();
-		clipRgn = NewRgn();
-		GetLocalUpdateRgn(tempRgn); /* get localized update region */
-		GetClip(clipRgn);
-		DiffRgn(clipRgn, tempRgn, tempRgn);
-			/* subtract updateRgn from clipRgn */
-		SetClip(tempRgn);
-		TEActivate(MyDocTE);
-		SetClip(clipRgn); /* restore the full-blown clipRgn */
-		DisposeRgn(tempRgn);
-		DisposeRgn(clipRgn);
+		if (NULL != tempRgn) {
+			clipRgn = NewRgn();
+			if (NULL != clipRgn) {
+				GetLocalUpdateRgn(tempRgn);
+					/* get localized update region */
+				GetClip(clipRgn);
+				DiffRgn(clipRgn, tempRgn, tempRgn);
+					/* subtract updateRgn from clipRgn */
+				SetClip(tempRgn);
+
+				TEActivate(MyDocTE);
+
+				SetClip(clipRgn); /* restore the full-blown clipRgn */
+				DisposeRgn(clipRgn);
+			}
+			DisposeRgn(tempRgn);
+		}
 
 		/* the controls must be redrawn on activation: */
 		My_SetControlVisibilityTrue(MyDocVScroll);
-		GetControlBounds(MyDocVScroll, &r);
-		InvalRect(&r);
-#if ! TEWidthFromWindow
-		My_SetControlVisibilityTrue(MyDocHScroll);
-		GetControlBounds(MyDocHScroll, &r);
-		InvalRect(&r);
-#endif
-		/* the growbox needs to be redrawn on activation: */
-		My_GetWindowBounds(gMyMainWindow, &growRect);
-		/* adjust for the scrollbars */
-		growRect.top = growRect.bottom - kScrollbarAdjust;
-		growRect.left = growRect.right - kScrollbarAdjust;
-		InvalRect(&growRect);
+		InvalRect(&r.rVScroll);
+
+		InvalRect(&r.rGrow);
 	} else {
 		TEDeactivate(MyDocTE);
 		/* the controls must be hidden on deactivation: */
 		HideControl(MyDocVScroll);
-#if ! TEWidthFromWindow
-		HideControl(MyDocHScroll);
-#endif
 		/* the growbox should be changed immediately on deactivation: */
-		MyDrawGrowIcon(gMyMainWindow);
+		MyDrawGrowIcon(MyMainWind, &r.rGrow);
 	}
 }
 
@@ -1112,13 +1600,13 @@ LOCALPROC inSysWindowAction(void)
 
 LOCALPROC inContentAction(void)
 {
-	if (MacEventWind == gMyMainWindow) {
+	if (MacEventWind == MyMainWind) {
 		if (MacEventWind != FrontWindow()) {
 			SelectWindow(MacEventWind);
 			/* ProcessMacEvent(); */
 				/* use this line for "do first click" */
 		} else {
-			SetPortWindowPort(gMyMainWindow);
+			SetPortWindowPort(MyMainWind);
 			DoContentClick();
 		}
 	}
@@ -1137,7 +1625,7 @@ LOCALPROC inDragAction(void)
 LOCALPROC inGoAwayAction(void)
 {
 	if (TrackGoAway(MacEventWind, curevent.where)) {
-		if (MacEventWind == gMyMainWindow) {
+		if (MacEventWind == MyMainWind) {
 			DoQuit();
 		} else {
 			CloseAWindow(MacEventWind);
@@ -1147,15 +1635,15 @@ LOCALPROC inGoAwayAction(void)
 
 LOCALPROC inGrowAction(void)
 {
-	if (MacEventWind == gMyMainWindow) {
+	if (MacEventWind == MyMainWind) {
 		DoGrowWindow();
 	}
 }
 
 LOCALPROC inZoomAction(short which_part)
 {
-	if (MacEventWind == gMyMainWindow) {
-		if (TrackBox(gMyMainWindow, curevent.where, which_part)) {
+	if (MacEventWind == MyMainWind) {
+		if (TrackBox(MyMainWind, curevent.where, which_part)) {
 			DoZoomWindow(which_part);
 		}
 	}
@@ -1208,7 +1696,7 @@ LOCALPROC ProcessKeyDown(void)
 		}
 	} else {
 		WindowRef window = FrontWindow();
-		if (window == gMyMainWindow) {
+		if (window == MyMainWind) {
 			DoKeyDown();
 		}
 	}
@@ -1226,7 +1714,7 @@ LOCALPROC ProcessUpdateEvt(void)
 	BeginUpdate(MacEventWind);
 	My_GetWindowBounds(MacEventWind, &r);
 	EraseRect(&r);
-	if (MacEventWind == gMyMainWindow) {
+	if (MacEventWind == MyMainWind) {
 		DrawWindow();
 	} else {
 		/* Unexpected update for unknown window */
@@ -1239,7 +1727,7 @@ LOCALPROC ProcessUpdateEvt(void)
 LOCALPROC ProcessActivateEvt(void)
 {
 	WindowRef window = (WindowRef) curevent.message;
-	if (window == gMyMainWindow) {
+	if (window == MyMainWind) {
 		DoActivate((curevent.modifiers & activeFlag) != 0);
 	}
 }
@@ -1305,12 +1793,11 @@ LOCALPROC ProcessMacEvent(void)
 					break;
 				case kSuspendResumeMessage:
 					/* suspend/resume is also an activate/deactivate */
-					gInBackground =
-						(curevent.message & kResumeMask) == 0;
+					gBackgroundFlag = ! TestBit(curevent.message, 0);
 					{
 						WindowRef window = FrontWindow();
-						if (window == gMyMainWindow) {
-							DoActivate(! gInBackground);
+						if (window == MyMainWind) {
+							DoActivate(! gBackgroundFlag);
 						}
 					}
 					break;
@@ -1413,7 +1900,7 @@ LOCALFUNC tMyErr MyMainWindowInit(void)
 	tMyErr err;
 	Rect rBounds;
 	Rect destRect;
-	Rect viewRect;
+	MyWindRectsR r;
 	ui5b *p;
 
 	SetRect(&rBounds, 60, 64, 460, 314);
@@ -1423,17 +1910,14 @@ LOCALFUNC tMyErr MyMainWindowInit(void)
 		Have64kROM() ? documentProc :
 #endif
 			zoomDocProc,
-		(WindowRef) -1, true, 0, &gMyMainWindow)))
+		(WindowRef) -1, true, 0, &MyMainWind)))
 	{
-		SetPortWindowPort(gMyMainWindow);
-		GetTERect(&viewRect);
-		destRect = viewRect;
-#if ! TEWidthFromWindow
-		destRect.right = destRect.left + kMaxDocWidth;
-#endif
-		if (noErr == (err = SaferTENew(&destRect, &viewRect, &MyDocTE)))
+		SetPortWindowPort(MyMainWind);
+		GetMyWindRects(&r);
+		destRect = r.rContent;
+		if (noErr == (err = SaferTENew(
+			&destRect, &r.rContent, &MyDocTE)))
 		{
-			AdjustViewRect();
 #if Support64kROM
 			if (! Have64kROM())
 #endif
@@ -1451,21 +1935,15 @@ LOCALFUNC tMyErr MyMainWindowInit(void)
 		}
 
 		if (noErr == err) { /* good document? - get scrollbars */
-			SetRect(&rBounds, 385, -1, 401, 236);
-			err = SaferNewControl(gMyMainWindow, &rBounds,
+			err = SaferNewControl(MyMainWind, &r.rVScroll,
 				(ConstStr255Param)"\p", true, 0, 0, 0, scrollBarProc,
 				0, &MyDocVScroll);
 		}
-#if ! TEWidthFromWindow
-		if (noErr == err) {
-			SetRect(&rBounds, -1, 235, 386, 251);
-			err = SaferNewControl(gMyMainWindow, &rBounds,
-				(ConstStr255Param)"\p", true, 0, 0, 0, scrollBarProc,
-				0, &MyDocHScroll);
-		}
-#endif
 
-		if (noErr == err) {
+		if (noErr == (err = ProgressBar_Init_v2(
+			MyMainWind, &r.rProgBar)))
+		if (noErr == err)
+		{
 			/* good? - adjust & draw the controls, draw the window */
 			/*
 				false to AdjustScrollValues means musn't redraw;
@@ -1473,182 +1951,12 @@ LOCALFUNC tMyErr MyMainWindowInit(void)
 				wouldn't matter whether we called ShowControl or not.
 			*/
 			AdjustScrollValues(false);
-			ShowWindow(gMyMainWindow);
+			ShowWindow(MyMainWind);
 		}
 	}
 
 	if (noErr != err) {
 		MyMainWindowUnInit();
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr GotRequiredParams(const AppleEvent *theAppleEvent)
-{
-	tMyErr err;
-	DescType typeCode;
-	Size actualSize;
-
-	err = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
-		typeWildCard, &typeCode, NULL, 0, &actualSize);
-	if (errAEDescNotFound == err) { /* No more required params. */
-		err = noErr;
-	} else if (noErr == err) { /* More required params! */
-		err = errAEEventNotHandled;
-	} else {
-		/* Unexpected Error! */
-	}
-
-	return err;
-}
-
-LOCALFUNC blnr GotRequiredParams0(const AppleEvent *theAppleEvent)
-{
-	tMyErr err;
-	DescType typeCode;
-	Size actualSize;
-
-	err = AEGetAttributePtr(theAppleEvent, keyMissedKeywordAttr,
-				typeWildCard, &typeCode, NULL, 0, &actualSize);
-	if (errAEDescNotFound == err) { /* No more required params. */
-		err = noErr;
-	}
-
-	return err;
-}
-
-LOCALFUNC OSErr GetASysResultCode(void)
-{
-#if 0
-	if (noErr == errCode) {
-		return noErr;
-	} else if (SysCodeAbort == errCode) {
-		return SysResultCode;
-	} else {
-		return -50; /*& paramErr &*/
-	}
-#endif
-	return noErr;
-}
-
-#if WantRealInputFile
-#define openOnly 1
-#define openPrint 2
-#endif
-
-#if WantRealInputFile
-static pascal OSErr OpenOrPrintFiles(const AppleEvent *theAppleEvent,
-	AppleEvent *reply, long handlerRefcon)
-{
-	tMyErr err;
-#pragma unused(reply, handlerRefcon)
-
-	/*
-		Adapted from IM VI: AppleEvent Manager:
-		Handling Required AppleEvents
-	*/
-	AEDescList docList;
-
-#if 0
-	FSSpec myFSS;
-	simr index;
-	simr itemsInList;
-	Size actualSize;
-	AEKeyword keywd;
-	DescType typeCode;
-#endif
-
-	/* put the direct parameter (a list of descriptors) into docList */
-	if (noErr == (err = AEGetParamDesc(theAppleEvent, keyDirectObject,
-		typeAEList, &docList)))
-	{
-		if (noErr == (err = GotRequiredParams0(theAppleEvent))) {
-			/* Check for missing required parameters */
-#if 0
-			if (noErr == (err = AECountItems(&docList, &itemsInList))) {
-				for (index = 1; index <= itemsInList; ++index) {
-					/*
-						Get each descriptor from the list, get the
-						alias record, open the file, maybe print it.
-					*/
-					if (noErr == (err = AEGetNthPtr(&docList, index,
-						typeFSS, &keywd, &typeCode,
-						(Ptr)&myFSS, sizeof(myFSS), &actualSize)))
-					{
-						ProcessInputFileFSSpec(&myFSS
-							/* , handlerRefcon == openPrint */);
-					}
-				}
-			}
-#endif
-		}
-		err = CombineErr(err, AEDisposeDesc(&docList));
-	}
-	vCheckSysErr(err);
-	return GetASysResultCode();
-}
-#endif
-
-static pascal OSErr DoOpenEvent(const AppleEvent *theAppleEvent,
-	AppleEvent *reply, long handlerRefcon)
-/*
-	This is the alternative to getting an open
-	document event on startup.
-*/
-{
-#pragma unused(reply, handlerRefcon)
-
-	if (CheckSysErr(GotRequiredParams0(theAppleEvent))) {
-	}
-	return GetASysResultCode();
-		/* Make sure there are no additional "required" parameters. */
-}
-
-static pascal OSErr DoQuitEvent(const AppleEvent *theAppleEvent,
-	AppleEvent *reply, long handlerRefcon)
-{
-#pragma unused(reply, handlerRefcon)
-
-	if (CheckSysErr(GotRequiredParams(theAppleEvent))) {
-		ProgramDone = trueblnr;
-	}
-	return GetASysResultCode();
-}
-
-LOCALFUNC tMyErr MyInstallEventHandler(AEEventClass theAEEventClass,
-	AEEventID theAEEventID, AEEventHandlerProcPtr p,
-	long handlerRefcon, blnr isSysHandler)
-{
-	return AEInstallEventHandler(theAEEventClass, theAEEventID,
-			p, handlerRefcon, isSysHandler);
-}
-
-LOCALFUNC tMyErr InstallAppleEventHandlers(void)
-{
-	tMyErr err;
-
-	if (! HaveAppleEvtMgrAvail()) {
-		err = noErr;
-	} else {
-		if (noErr == (err = AESetInteractionAllowed(
-			kAEInteractWithLocal)))
-		if (noErr == (err = MyInstallEventHandler(
-			kCoreEventClass, kAEOpenApplication,
-			DoOpenEvent, 0, false)))
-#if WantRealInputFile
-		if (noErr == (err = MyInstallEventHandler(
-			kCoreEventClass, kAEOpenDocuments,
-			OpenOrPrintFiles, openOnly, false)))
-		if (noErr == (err = MyInstallEventHandler(
-			kCoreEventClass, kAEPrintDocuments,
-			OpenOrPrintFiles, openPrint, false)))
-#endif
-		if (noErr == (err = MyInstallEventHandler(
-			kCoreEventClass, kAEQuitApplication,
-			DoQuitEvent, 0, false)))
-		{
-		}
 	}
 
 	return err;
@@ -1679,22 +1987,52 @@ LOCALFUNC tMyErr MyMenusInit(void)
 	return err;
 }
 
-LOCALPROC WaitForInput(void)
+
+LOCALFUNC tMyErr MyFileRead2Hand(MyDir_R *d, StringPtr s, Handle *r)
+{
+	tMyErr err;
+	short refNum;
+	uimr n;
+	Handle h = nullpr;
+
+	if (noErr == (err = MyOpenOldFileRead_v2(d, s, &refNum))) {
+		if (noErr == (err = MyOpenFileGetEOF_v2(refNum, &n))) {
+			if (noErr == (err = MyHandleNew_v2(n, &h)))  {
+				HLock(h);
+				err = MyReadBytes_v2(refNum, *h, n);
+				HUnlock(h);
+
+				if (noErr == err) {
+					*r = h;
+					h = nullpr;
+				}
+			}
+		}
+		err = CombineErr(err, MyCloseFile_v2(refNum));
+	}
+
+	if (nullpr != h) {
+		DisposeHandle(h);
+	}
+
+	return err;
+}
+
+LOCALPROC MyDoNextEvents(blnr busy)
 {
 	RgnHandle cursorRgn;
 	Boolean gotEvent;
 
 	cursorRgn = NewRgn();
 		/* we'll pass WNE an empty region the 1st time thru */
+	UpdateProgressBar();
 	do {
-		AppReportAnySavedError();
-		/* use WNE if it is available */
-		if (! HaveWaitNextEventAvail()) {
+		if (HaveWaitNextEventAvail()) {
+			gotEvent = WaitNextEvent(everyEvent, &curevent,
+				busy ? 0 : GetSleep(), cursorRgn);
+		} else {
 			SystemTask();
 			gotEvent = GetNextEvent(everyEvent, &curevent);
-		} else {
-			gotEvent = WaitNextEvent(everyEvent, &curevent,
-				GetSleep(), cursorRgn);
 		}
 		if (gotEvent) {
 			/*
@@ -1708,8 +2046,120 @@ LOCALPROC WaitForInput(void)
 		}
 		/* change the cursor (and region) if necessary */
 		AdjustCursor(curevent.where, cursorRgn);
-	} while ((! ProgramDone) && (! GoRequested));
+	} while (EventAvail(everyEvent, &curevent) && (! AbortRequested));
 	DisposeRgn(cursorRgn);
+}
+
+LOCALPROC WaitForInput(void)
+{
+	input_r InputCur;
+
+	do {
+		AppReportAnySavedError();
+		if (PopFromInputA(&InputCur)) {
+			tMyErr err;
+			Str255 s;
+			Handle h = nullpr;
+
+			HandToPStr(InputCur.Name, s);
+			if (noErr == (err = MyFileRead2Hand(&InputCur.d, s, &h))) {
+				TESetSelect(0, 32767, MyDocTE);
+				TEDelete(MyDocTE);
+				HLock(h);
+				TEInsert(*h, GetHandleSize(h), MyDocTE);
+				HUnlock(h);
+				AdjustScrollbars();
+				AdjustTE();
+				ParseHandle = (Handle) TEGetText(MyDocTE);
+				ParseRangeStart = 0;
+				ParseRangeStop = (*MyDocTE)->teLength;
+				GoRequested = trueblnr;
+			}
+
+			if (nullpr != h) {
+				DisposeHandle(h);
+			}
+
+			DisposeInputR(&InputCur);
+
+			(void) CheckSysErr(err);
+		} else
+#if AutoQuitIfStartUpFile
+		if (SawStartUpFile) {
+			ProgramDone = trueblnr;
+		} else
+#endif
+		{
+			MyDoNextEvents(falseblnr);
+		}
+	} while ((! ProgramDone) && (! GoRequested));
+}
+
+LOCALFUNC blnr EventPendingQuickCheck(void)
+{
+	EvQElPtr p = (EvQElPtr)GetEvQHdr()->qHead;
+
+	while (p != NULL) {
+		switch (p->evtQWhat) {
+			case keyDown:
+			case autoKey:
+			case mouseDown:
+
+			case updateEvt:
+			case osEvt:
+				/*
+					these two aren't actually in this queue,
+					and so won't be seen here
+				*/
+				return trueblnr;
+				break;
+			default:
+				break;
+		}
+		p = (EvQElPtr)p->qLink;
+	}
+	return falseblnr;
+}
+
+LOCALVAR long NextCheckTick;
+LOCALVAR long NextCheckEventTick;
+
+LOCALPROC CheckAbort0_v2(void)
+{
+	blnr ShouldGetEvent;
+	long CurrentTick = LMGetTicks();
+	NextCheckTick = CurrentTick + 6;
+
+	if (gBackgroundFlag) {
+		ShouldGetEvent = trueblnr;
+		/*
+			while in background, relinquish processor
+			ten times a second
+		*/
+	} else if (CurrentTick > NextCheckEventTick) {
+		ShouldGetEvent = trueblnr;
+		/*
+			while in foreground, relinquish processor
+			once a second at minimum
+		*/
+	} else {
+		ShouldGetEvent = EventPendingQuickCheck();
+	}
+	if (ShouldGetEvent) {
+		NextCheckEventTick = CurrentTick + 60;
+		MyDoNextEvents(trueblnr);
+	} else {
+		UpdateProgressBar();
+	}
+}
+
+GLOBALFUNC tMyErr CheckAbortRequested(void)
+{
+	if (LMGetTicks() >= NextCheckTick) {
+		CheckAbort0_v2();
+	}
+
+	return AbortRequested ? kMyErrUsrAbort : noErr;
 }
 
 LOCALPROC OneWindAppPreInit(void)
@@ -1728,18 +2178,27 @@ LOCALPROC OneWindAppPreInit(void)
 GLOBALFUNC tMyErr OneWindAppInit_v2(void)
 {
 	tMyErr err;
-	EventRecord event;
-	short count;
 
+#if 0
 	/*
 		Now this next bit of code may make you toss your cookies,
 		but it is necessary to allow the default button of our
 		alert be outlined.
 	*/
+	/*
+		No, don't want to lose initial apple events.
+	*/
+
+	EventRecord event;
+	short count;
 
 	for (count = 1; count <= 3; count++) {
 		GetNextEvent(everyEvent, &event);
 	}
+#endif
+
+	NextCheckTick = LMGetTicks();
+	NextCheckEventTick = NextCheckTick;
 
 #if ! Support64kROM
 	if (Have64kROM()) {
@@ -1749,10 +2208,17 @@ GLOBALFUNC tMyErr OneWindAppInit_v2(void)
 #endif
 	{
 		if (noErr == (err = MyMemory_Init_v2()))
+#if WantRealInputFile
+		if (noErr == (err = InitInputA()))
+#endif
 		if (noErr == (err = InstallAppleEventHandlers()))
 		if (noErr == (err = MyMenusInit()))
 		if (noErr == (err = MyMainWindowInit()))
 		{
+#if WantRealInputFile
+			(void) CheckSysErr(MyAppFilesInit_v2());
+			PrepareForDragging();
+#endif
 		}
 	}
 
@@ -1761,18 +2227,14 @@ GLOBALFUNC tMyErr OneWindAppInit_v2(void)
 
 LOCALPROC OneWindAppUnInit(void)
 {
+	AppReportAnySavedError();
+#if WantRealInputFile
+	UnPrepareForDragging();
+	UnInitInputA();
+#endif
 	MyMainWindowUnInit();
 	CloseAllExtraWindows();
 	MyMemory_UnInit();
-	AppReportAnySavedError();
-}
-
-LOCALPROC DisplayRunErr(char *s)
-{
-	MyPStr t;
-
-	PStrFromCStr(t, s);
-	AlertUserFromPStr(t);
 }
 
 LOCALVAR uimr ParseCharIndex;
@@ -1797,7 +2259,7 @@ LOCALVAR blnr ParseArgsFailed;
 LOCALPROC ReportParseFailure(char *s)
 {
 	if (! ParseArgsFailed) {
-		DisplayRunErr(s);
+		MyAlertFromCStr(s);
 
 		ParseArgsFailed = trueblnr;
 	}
@@ -1947,13 +2409,3 @@ LOCALPROC EndParseFromTE(void)
 		TESetSelect(0, 32767, MyDocTE);
 	}
 }
-
-LOCALVAR blnr AbortRequested = falseblnr;
-LOCALVAR uimr ProgressBarVal;
-
-#define CheckAbort()
-
-#define ProgressBar_SetStage_v2(s, n) noErr
-#define TimeForCheckAbort() falseblnr
-#define CheckAbortProgress(v) falseblnr
-#define CheckAbortRequested() noErr

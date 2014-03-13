@@ -19,6 +19,8 @@
 
 #pragma segment BashGccSupport
 
+#define WriteXCDcallgcc WriteCompileCExec
+#if 0
 LOCALPROC WriteXCDcallgcc(void)
 {
 #if 0
@@ -43,40 +45,69 @@ LOCALPROC WriteXCDcallgcc(void)
 #endif
 	WriteCStrToDestFile("gcc");
 }
+#endif
 
-LOCALPROC WriteXCDBgcCompileLinkCommonOptions(void)
+LOCALPROC WriteBgcCompileAsmLinkCommonOptions(void)
 {
-	if (ide_vers >= 2100) {
-		if (gbo_cpufam == gbk_cpufam_x86) {
-			WriteCStrToDestFile(" -arch i386");
-		} else if (gbo_cpufam == gbk_cpufam_x64) {
-			WriteCStrToDestFile(" -arch x86_64");
-		} else {
-			WriteCStrToDestFile(" -arch ppc");
+	if (cur_ide == gbk_ide_xcd) {
+		if (ide_vers >= 2100) {
+			if (gbo_cpufam == gbk_cpufam_x86) {
+				WriteCStrToDestFile(" -arch i386");
+			} else if (gbo_cpufam == gbk_cpufam_x64) {
+				WriteCStrToDestFile(" -arch x86_64");
+			} else {
+				WriteCStrToDestFile(" -arch ppc");
+			}
 		}
 	}
-	if (ide_vers >= 2200) {
-		if (gbo_cpufam == gbk_cpufam_ppc) {
-			WriteCStrToDestFile(" -mmacosx-version-min=10.1");
-		} else {
-			WriteCStrToDestFile(" -mmacosx-version-min=10.4");
+	if (gbk_targfam_oind == gbo_targfam) {
+		if (gbo_cpufam == gbk_cpufam_x64) {
+			WriteCStrToDestFile(" -m64");
 		}
-		WriteCStrToDestFile(" -isysroot");
-		if (ide_vers >= 3200) {
-			WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.6.sdk");
-		} else if (ide_vers >= 3100) {
-			WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.5.sdk");
-		} else {
-			WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.4u.sdk");
-		}
+	} else if (gbk_targfam_lnds == gbo_targfam) {
+		WriteCStrToDestFile(" -marm -mthumb-interwork");
 	}
 }
 
-static void WriteBgcCOptions(blnr fast)
+LOCALPROC WriteBgcCompileLinkCommonOptions(void)
+{
+	if ((cur_ide == gbk_ide_xcd)
+		&& ((gbk_apifam_osx == gbo_apifam)
+			|| (gbk_apifam_cco == gbo_apifam)))
+	{
+		if (ide_vers >= 2200) {
+			if (gbo_cpufam == gbk_cpufam_ppc) {
+				WriteCStrToDestFile(" -mmacosx-version-min=10.1");
+			} else {
+				WriteCStrToDestFile(" -mmacosx-version-min=10.4");
+			}
+			WriteCStrToDestFile(" -isysroot");
+			if (ide_vers >= 3200) {
+				WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.6.sdk");
+			} else if (ide_vers >= 3100) {
+				WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.5.sdk");
+			} else {
+				WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.4u.sdk");
+			}
+		}
+	}
+	if (gbo_dbg != gbk_dbg_off) {
+		WriteCStrToDestFile(" -g");
+	}
+}
+
+LOCALPROC WriteBgcCOptions(void)
 {
 	WriteCStrToDestFile(
-		" -c -Wall -Wmissing-prototypes -Wstrict-prototypes"
-		" -Wno-uninitialized");
+		" -Wall -Wmissing-prototypes -Wno-uninitialized");
+	if (gbk_apifam_nds != gbo_apifam) {
+		WriteCStrToDestFile(" -Wundef -Wstrict-prototypes");
+	}
+	if (cur_ide == gbk_ide_cyg) {
+		if (gbk_targfam_cygw != gbo_targfam) {
+			WriteCStrToDestFile(" -mno-cygwin");
+		}
+	}
 	if (cur_ide == gbk_ide_xcd) {
 		WriteCStrToDestFile(" -mdynamic-no-pic -fpascal-strings");
 #if UseAlignMac68k
@@ -91,22 +122,22 @@ static void WriteBgcCOptions(blnr fast)
 			WriteCStrToDestFile(" -Wno-deprecated-declarations");
 		}
 #endif
-		WriteXCDBgcCompileLinkCommonOptions();
+	}
+	WriteBgcCompileAsmLinkCommonOptions();
+	WriteBgcCompileLinkCommonOptions();
+
+	if (gbk_apifam_nds == gbo_apifam) {
+		WriteCStrToDestFile(" -march=armv5te -mtune=arm946e-s");
 	}
 	if (gbo_dbg != gbk_dbg_on) {
-		if (fast) {
-			WriteCStrToDestFile(" -O3");
+		/* WriteCStrToDestFile(" -O3"); */
+		if (gbk_targfam_lnds == gbo_targfam) {
+			WriteCStrToDestFile(" -O2");
 		} else {
 			WriteCStrToDestFile(" -Os");
 		}
 	} else {
-		WriteCStrToDestFile(" -g -O0");
-	}
-
-	if (cur_ide == gbk_ide_xcd) {
-		if (gbo_apifam == gbk_apifam_xwn) {
-			WriteCStrToDestFile(" -I/usr/X11R6/include/");
-		}
+		WriteCStrToDestFile(" -O0");
 	}
 }
 
@@ -150,34 +181,28 @@ LOCALPROC WriteBashGccMakeFile(void)
 	if (HaveAsm) {
 		WriteBgnDestFileLn();
 		WriteCStrToDestFile("mk_AOptions = -c");
-		if (cur_ide == gbk_ide_xcd) {
-			if (ide_vers >= 2100) {
-				if (gbo_cpufam == gbk_cpufam_x86) {
-					WriteCStrToDestFile(" -arch i386");
-				} else if (gbo_cpufam == gbk_cpufam_x64) {
-					WriteCStrToDestFile(" -arch x86_64");
-				} else {
-					WriteCStrToDestFile(" -arch ppc");
-				}
-			}
-		}
+		WriteBgcCompileAsmLinkCommonOptions();
 		WriteEndDestFileLn();
 	}
 #endif
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("mk_COptions =");
-	WriteBgcCOptions(falseblnr);
+	WriteCStrToDestFile("mk_COptions = -c");
+	WriteBgcCOptions();
 	WriteEndDestFileLn();
-	WriteBlankLineToDestFile();
 
+	WriteBlankLineToDestFile();
+	WriteDestFileLn(".PHONY: TheDefaultOutput clean");
+
+	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("TheDefaultOutput : ");
-	Write_machobinpath_ToDestFile();
+	WriteCStrToDestFile("TheDefaultOutput :");
+	WriteMakeDependFile(Write_machobinpath_ToDestFile);
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
 	vCheckWriteDestErr(DoAllSrcFilesWithSetup(DoSrcFileMakeCompile));
+
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("ObjFiles = ");
@@ -187,12 +212,32 @@ LOCALPROC WriteBashGccMakeFile(void)
 		DoAllSrcFilesStandardMakeObjects();
 		WriteBlankLineToDestFile();
 	--DestFileIndent;
+
 	if (HaveMacBundleApp) {
 		WriteBlankLineToDestFile();
 		WriteMakeRule(Write_machoAppIconPath,
 			Write_tmachoShellDeps,
 			Write_tmachoShell);
 	}
+	if (gbk_apifam_win == gbo_apifam) {
+		WriteBlankLineToDestFile();
+		WriteBgnDestFileLn();
+		WriteMainRsrcObjPath();
+		WriteCStrToDestFile(": ");
+		WriteMainRsrcSrcPath();
+		WriteEndDestFileLn();
+		++DestFileIndent;
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("windres.exe -i");
+			WritePathArgInMakeCmnd(WriteMainRsrcSrcPath);
+			WriteCStrToDestFile(" --input-format=rc -o");
+			WritePathArgInMakeCmnd(WriteMainRsrcObjPath);
+			WriteCStrToDestFile(" -O coff  --include-dir SRC");
+			WriteEndDestFileLn();
+		--DestFileIndent;
+		WriteBlankLineToDestFile();
+	}
+
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	Write_machobinpath_ToDestFile();
@@ -203,6 +248,9 @@ LOCALPROC WriteBashGccMakeFile(void)
 	if (HaveMacRrscs) {
 		WriteMakeDependFile(Write_machoRsrcPath);
 	}
+	if (gbk_apifam_win == gbo_apifam) {
+		WriteMakeDependFile(WriteMainRsrcObjPath);
+	}
 	WriteEndDestFileLn();
 	++DestFileIndent;
 		WriteBgnDestFileLn();
@@ -211,44 +259,147 @@ LOCALPROC WriteBashGccMakeFile(void)
 		WriteEndDestFileLn();
 		++DestFileIndent;
 			WriteBgnDestFileLn();
-			WriteCStrToDestFile("-o ");
-			WriteQuoteToDestFile();
-			Write_machobinpath_ToDestFile();
-			WriteQuoteToDestFile();
-
-			if (HaveMacBundleApp) {
-				DoAllFrameWorksWithSetup(DoFrameWorkBGCaddFile);
-			} else if (gbk_apifam_gtk == gbo_apifam) {
-				WriteCStrToDestFile(" `pkg-config --libs gtk+-2.0`");
+			WriteCStrToDestFile("-o");
+			if (gbk_apifam_nds == gbo_apifam) {
+				WritePathArgInMakeCmnd(WriteBinElfObjObjPath);
 			} else {
-				WriteCStrToDestFile(" -L/usr/X11R6/lib -lXext -lX11");
-				switch (cur_targ) {
-					case gbk_targ_slrs:
-					case gbk_targ_sl86:
-						WriteCStrToDestFile(" -lposix4");
-						break;
-					default:
-						break;
-				}
-				if (MySoundEnabled) {
-					WriteCStrToDestFile(" -lasound");
-				}
-			}
-			if (cur_ide == gbk_ide_xcd) {
-				WriteXCDBgcCompileLinkCommonOptions();
+				WritePathArgInMakeCmnd(Write_machobinpath_ToDestFile);
 			}
 			WriteCStrToDestFile(" \\");
 			WriteEndDestFileLn();
-			WriteDestFileLn("$(ObjFiles)");
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("$(ObjFiles)");
+			if ((gbk_apifam_osx == gbo_apifam)
+				|| (gbk_apifam_cco == gbo_apifam))
+			{
+				DoAllFrameWorksWithSetup(DoFrameWorkBGCaddFile);
+				if (ide_vers >= 4000) {
+					WriteCStrToDestFile(" -Wl,-no_pie");
+				}
+			} else if (gbk_apifam_win == gbo_apifam) {
+				WritePathArgInMakeCmnd(WriteMainRsrcObjPath);
+				WriteCStrToDestFile(
+					" -mwindows -lwinmm -lole32 -luuid");
+				if (cur_ide == gbk_ide_cyg) {
+					WriteCStrToDestFile(" -mno-cygwin");
+				}
+			} else if (gbk_apifam_gtk == gbo_apifam) {
+				WriteCStrToDestFile(" `pkg-config --libs gtk+-2.0`");
+			} else if (gbk_apifam_sdl == gbo_apifam) {
+				if (gbk_targfam_mach == gbo_targfam) {
+					WriteCStrToDestFile(" -L/usr/local/lib -lSDLmain"
+						" -lSDL -Wl,-framework,Cocoa");
+				} else {
+					WriteCStrToDestFile(" -lSDL");
+				}
+			} else  if (gbk_apifam_nds == gbo_apifam) {
+				WriteCStrToDestFile(" -L$(DEVKITPRO)/libnds/lib");
+				WriteCStrToDestFile(" -lfilesystem -lfat -lnds9");
+			} else {
+				if (gbk_targfam_slrs == gbo_targfam) {
+					WriteCStrToDestFile(" -lposix4");
+				}
+				if (gbk_sndapi_alsa == gbo_sndapi) {
+					WriteCStrToDestFile(" -ldl");
+#if 0
+					WriteCStrToDestFile(" -lasound");
+#endif
+				} else if (gbk_sndapi_ddsp == gbo_sndapi) {
+					if ((gbk_targfam_nbsd == gbo_targfam)
+						|| (gbk_targfam_obsd == gbo_targfam))
+					{
+						WriteCStrToDestFile(" -lossaudio");
+					}
+				}
+#if 0
+				WriteCStrToDestFile(" -lXext");
+#endif
+				if (gbk_targfam_nbsd == gbo_targfam) {
+					WriteCStrToDestFile(" -L/usr/X11R7/lib");
+					WriteCStrToDestFile(" -R/usr/X11R7/lib");
+				} else if (gbk_targfam_dbsd == gbo_targfam) {
+					WriteCStrToDestFile(" -L/usr/pkg/lib");
+				} else if (gbk_targfam_minx == gbo_targfam) {
+					WriteCStrToDestFile(" -L/usr/pkg/X11R6/lib");
+				} else if (gbk_targfam_irix == gbo_targfam) {
+					WriteCStrToDestFile(" -L/usr/lib/X11");
+				} else {
+					WriteCStrToDestFile(" -L/usr/X11R6/lib");
+				}
+				WriteCStrToDestFile(" -lX11");
+			}
+			if (gbk_apifam_nds == gbo_apifam) {
+				WriteCStrToDestFile(" -specs=ds_arm9.specs");
+			}
+			WriteBgcCompileAsmLinkCommonOptions();
+			WriteBgcCompileLinkCommonOptions();
+			WriteEndDestFileLn();
 		--DestFileIndent;
 		if (gbo_dbg == gbk_dbg_off) {
-			if (cur_ide == gbk_ide_xcd) {
-				WriteBgnDestFileLn();
-				WriteCStrToDestFile("strip -u -r \"");
-				Write_machobinpath_ToDestFile();
-				WriteCStrToDestFile("\"");
-				WriteEndDestFileLn();
+			switch (cur_ide) {
+				case gbk_ide_bgc:
+					if ((gbk_targfam_minx == gbo_targfam)
+						|| (gbk_targfam_linx == gbo_targfam)
+						|| (gbk_targfam_oind == gbo_targfam)
+							/*
+								for oi64, strip makes it larger!
+								but still compresses smaller.
+							*/
+						|| (gbk_targfam_fbsd == gbo_targfam)
+						|| (gbk_targfam_obsd == gbo_targfam)
+						|| (gbk_targfam_nbsd == gbo_targfam)
+						|| (gbk_targfam_dbsd == gbo_targfam)
+						)
+					{
+						WriteBgnDestFileLn();
+						WriteCStrToDestFile("strip --strip-unneeded");
+						WritePathArgInMakeCmnd(
+							Write_machobinpath_ToDestFile);
+						WriteEndDestFileLn();
+					} else if (gbk_targfam_irix == gbo_targfam) {
+						WriteBgnDestFileLn();
+						WriteCStrToDestFile("strip -s");
+						WritePathArgInMakeCmnd(
+							Write_machobinpath_ToDestFile);
+						WriteEndDestFileLn();
+					}
+					break;
+				case gbk_ide_xcd:
+					WriteBgnDestFileLn();
+					WriteCStrToDestFile("strip -u -r");
+					WritePathArgInMakeCmnd(
+						Write_machobinpath_ToDestFile);
+					WriteEndDestFileLn();
+					break;
+				case gbk_ide_dvc:
+				case gbk_ide_mgw:
+				case gbk_ide_cyg:
+					WriteBgnDestFileLn();
+					WriteCStrToDestFile("strip.exe");
+					WritePathArgInMakeCmnd(WriteAppNamePath);
+					WriteEndDestFileLn();
+					break;
+				default:
+					break;
 			}
+		}
+		if (gbk_apifam_nds == gbo_apifam) {
+			WriteBgnDestFileLn();
+				WriteCStrToDestFile(
+					"$(DEVKITARM)/bin/arm-eabi-objcopy.exe -O binary");
+				WritePathArgInMakeCmnd(WriteBinElfObjObjPath);
+				WritePathArgInMakeCmnd(WriteBinArmObjObjPath);
+			WriteEndDestFileLn();
+			WriteBgnDestFileLn();
+				WriteCStrToDestFile("$(DEVKITARM)/bin/ndstool.exe -c");
+				WritePathArgInMakeCmnd(WriteAppNamePath);
+				WriteCStrToDestFile(" -9");
+				WritePathArgInMakeCmnd(WriteBinArmObjObjPath);
+				WriteCStrToDestFile(" -b $(DEVKITPRO)/libnds/icon.bmp");
+				WriteCStrToDestFile(
+					" \";www.devkitpro.org;www.drunkencoders.com\"");
+			WriteEndDestFileLn();
 		}
 	--DestFileIndent;
 
@@ -259,37 +410,6 @@ LOCALPROC WriteBashGccMakeFile(void)
 			Write_machoRsrcBgcBuild);
 	}
 
-#if 0
-	if (HaveMacBundleApp && (cur_ide == gbk_ide_xcd)
-		&& (ide_vers >= 2100))
-	{
-		WriteBlankLineToDestFile();
-		WriteDestFileLn("universal : ");
-		Write_machobinpath_ToDestFile()
-		++DestFileIndent;
-			WriteRmDir(Write_umachobun_d_ToDestFile);
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("ditto \"");
-			WriteAppNamePath();
-			WriteCStrToDestFile("\" \"");
-			Write_umachobun_d_ToDestFile();
-			WriteCStrToDestFile("\"");
-			WriteEndDestFileLn();
-
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("lipo -create \"");
-			Write_machobinpath_ToDestFile();
-			WriteCStrToDestFile("\" \"merge.app/Contents/MacOS/");
-			WriteStrAppAbbrev();
-			WriteCStrToDestFile("\" -output \"");
-			Write_umachobinpath_ToDestFile();
-			WriteCStrToDestFile("\"");
-			WriteEndDestFileLn();
-		--DestFileIndent;
-	}
-#endif
-
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("clean :");
 	++DestFileIndent;
@@ -297,6 +417,12 @@ LOCALPROC WriteBashGccMakeFile(void)
 		if (HaveMacBundleApp) {
 			WriteRmDir(WriteAppNamePath);
 		} else {
+			if (gbk_apifam_win == gbo_apifam) {
+				WriteRmFile(WriteMainRsrcObjPath);
+			} else if (gbk_apifam_nds == gbo_apifam) {
+				WriteRmFile(WriteBinElfObjObjPath);
+				WriteRmFile(WriteBinArmObjObjPath);
+			}
 			WriteRmFile(WriteAppNamePath);
 		}
 	--DestFileIndent;

@@ -130,9 +130,7 @@ LOCALPROC WriteMacResConfigContents(void)
 {
 	WriteBlankLineToDestFile();
 	if (cur_ide == gbk_ide_mw8) {
-		if ((cur_targ == gbk_targ_mach)
-			|| (cur_targ == gbk_targ_imch))
-		{
+		if (gbk_targfam_mach == gbo_targfam) {
 			WriteDestFileLn("#include <Carbon/Carbon.r>");
 		} else {
 			WriteQuotedInclude("Types.r");
@@ -153,9 +151,8 @@ LOCALPROC WriteMacResConfigContents(void)
 	WriteCDefQuote("kStrCopyrightYear", WriteAppCopyrightYearStr);
 	WriteCDefQuote("kStrHomePage", WriteHomePage);
 
-	if (! ((cur_targ == gbk_targ_mach) || (cur_targ == gbk_targ_imch)))
-	{
-		if (cur_targ == gbk_targ_carb) {
+	if (gbk_targfam_mach != gbo_targfam) {
+		if (gbk_targfam_carb == gbo_targfam) {
 			WriteBlankLineToDestFile();
 			WriteDestFileLn("data 'plst' (0) {");
 			++DestFileIndent;

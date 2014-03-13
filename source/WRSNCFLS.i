@@ -79,13 +79,8 @@ LOCALPROC WriteSncMakeFile(void)
 
 			WriteCStrToDestFile(" -L/usr/X11R6/lib -lX11");
 #if 0
-			switch (cur_targ) {
-				case gbk_targ_slrs:
-				case gbk_targ_sl86:
-					WriteCStrToDestFile(" -lposix4");
-					break;
-				default:
-					break;
+			if (gbk_targfam_slrs == gbo_targfam) {
+				WriteCStrToDestFile(" -lposix4");
 			}
 			if (MySoundEnabled) {
 				WriteCStrToDestFile(" -lasound");

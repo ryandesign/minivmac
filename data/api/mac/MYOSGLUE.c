@@ -478,6 +478,8 @@ LOCALPROC dbglog_close0(void)
 
 #define NeedCell2MacAsciiMap 1
 
+#define WantColorTransValid 1
+
 #include "INTLCHAR.h"
 
 #include "COMOSGLU.h"
@@ -707,10 +709,6 @@ LOCALVAR blnr UseFullScreen = (WantInitFullScreen != 0);
 LOCALVAR blnr UseMagnify = (WantInitMagnify != 0);
 #endif
 
-#ifndef MyWindowScale
-#define MyWindowScale 2
-#endif
-
 #if EnableMagnify
 LOCALPROC MyScaleRect(Rect *r)
 {
@@ -760,10 +758,55 @@ LOCALPROC SetScrnRectFromCoords(Rect *r,
 #define MyScaledWidth (MyWindowScale * vMacScreenWidth)
 #endif
 
-#define EnableScalingBuff (1 && EnableMagnify && (MyWindowScale == 2))
-
-#if EnableScalingBuff
+#if EnableMagnify
 LOCALVAR ui3p ScalingBuff = nullpr;
+#endif
+
+#if EnableMagnify
+
+LOCALVAR ui3p ScalingTabl = nullpr;
+#define ScalingTablsz (256 * MyWindowScale)
+
+#define ScrnMapr_DoMap UpdateScaledBWCopy
+#define ScrnMapr_Src GetCurDrawBuff()
+#define ScrnMapr_Dst ScalingBuff
+#define ScrnMapr_SrcDepth 0
+#define ScrnMapr_DstDepth 0
+#define ScrnMapr_Map ScalingTabl
+#define ScrnMapr_Scale MyWindowScale
+
+#include "SCRNMAPR.h"
+
+#endif
+
+#if EnableMagnify
+LOCALPROC SetUpScalingTabl(void)
+{
+	ui3b *p4;
+	int i;
+	int j;
+	int k;
+	ui3r bitsRemaining;
+	ui3b t1;
+	ui3b t2;
+
+	p4 = ScalingTabl;
+	for (i = 0; i < 256; ++i) {
+		bitsRemaining = 8;
+		t2 = 0;
+		for (j = 8; --j >= 0; ) {
+			t1 = (i >> j) & 1;
+			for (k = MyWindowScale; --k >= 0; ) {
+				t2 = (t2 << 1) | t1;
+				if (--bitsRemaining == 0) {
+					*p4++ = t2;
+					bitsRemaining = 8;
+					t2 = 0;
+				}
+			}
+		}
+	}
+}
 #endif
 
 LOCALPROC DefaultDrawScreenBuff(si4b top, si4b left,
@@ -778,102 +821,28 @@ LOCALPROC DefaultDrawScreenBuff(si4b top, si4b left,
 	SrcRect.top = top;
 	SrcRect.bottom = bottom;
 
-	src.baseAddr = (Ptr)GetCurDrawBuff();
-	src.rowBytes = vMacScreenByteWidth;
+	src.rowBytes = vMacScreenMonoByteWidth;
 	SetRect(&src.bounds, 0, 0, vMacScreenWidth, vMacScreenHeight);
-#if EnableScalingBuff && EnableMagnify
+#if EnableMagnify
 	if (UseMagnify) {
-		int i;
-		int j;
-		int k;
-#if BigEndianUnaligned
-		ui5b *p1 = (ui5b *)src.baseAddr
-			+ vMacScreenWidth / 32 * top;
-		ui5b *p2 = (ui5b *)ScalingBuff
-			+ MyWindowScale * MyWindowScale * vMacScreenWidth
-				/ 32 * top;
-		ui5b *p3;
-		ui5b t0;
-		ui5b t1;
-		ui5b t2;
-		ui5b m;
 
-		for (i = bottom - top; --i >= 0; ) {
-			p3 = p2;
-			for (j = vMacScreenWidth / 32; --j >= 0; ) {
-				t0 = *p1++;
-				t1 = t0;
-				m = 0x80000000;
-				t2 = 0;
-				for (k = 16; --k >= 0; ) {
-					t2 |= t1 & m;
-					t1 >>= 1;
-					m >>= 2;
-				}
-				*p2++ = t2 | (t2 >> 1);
-
-				t1 = t0 << 16;
-				m = 0x80000000;
-				t2 = 0;
-				for (k = 16; --k >= 0; ) {
-					t2 |= t1 & m;
-					t1 >>= 1;
-					m >>= 2;
-				}
-				*p2++ = t2 | (t2 >> 1);
-			}
-			for (j = MyScaledWidth / 32; --j >= 0; ) {
-				*p2++ = *p3++;
-			}
+		if (! ColorTransValid) {
+			SetUpScalingTabl();
+			ColorTransValid = trueblnr;
 		}
-#else
-		ui3b *p1 = ((ui3b *)src.baseAddr)
-			+ top * (vMacScreenWidth >> 3);
-		ui3b *p2 = ScalingBuff
-			+ MyWindowScale * MyWindowScale * vMacScreenWidth / 8 * top;
-		ui3b *p3;
-		ui3b t0;
-		ui3b t1;
-		ui3b t2;
-		ui3b m;
 
-		for (i = bottom - top; --i >= 0; ) {
-			p3 = p2;
-			for (j = vMacScreenWidth / 8; --j >= 0; ) {
-				t0 = *p1++;
-				t1 = t0;
-				m = 0x80;
-				t2 = 0;
-				for (k = 4; --k >= 0; ) {
-					t2 |= t1 & m;
-					t1 >>= 1;
-					m >>= 2;
-				}
-				*p2++ = t2 | (t2 >> 1);
-
-				t1 = t0 << 4;
-				m = 0x80;
-				t2 = 0;
-				for (k = 4; --k >= 0; ) {
-					t2 |= t1 & m;
-					t1 >>= 1;
-					m >>= 2;
-				}
-				*p2++ = t2 | (t2 >> 1);
-			}
-			for (j = MyScaledWidth / 8; --j >= 0; ) {
-				*p2++ = *p3++;
-			}
-		}
-#endif
+		UpdateScaledBWCopy(top, left, bottom, right);
 
 		MyScaleRect(&SrcRect);
 		MyScaleRect(&src.bounds);
 
 		src.baseAddr = (Ptr)ScalingBuff;
 		src.rowBytes *= MyWindowScale;
-	}
+	} else
 #endif
+	{
+		src.baseAddr = (Ptr)GetCurDrawBuff();
+	}
 	SetScrnRectFromCoords(&DstRect, top, left, bottom, right);
 	CopyBits(&src,
 		&gMyMainWindow->portBits,
@@ -1506,18 +1475,6 @@ LOCALVAR ui5b CurEmulatedTime = 0;
 
 LOCALVAR long int LastTime;
 
-LOCALFUNC blnr InitLocationDat(void)
-{
-	MachineLocation loc;
-
-	ReadLocation(&loc);
-	CurMacLatitude = (ui5b)loc.latitude;
-	CurMacLongitude = (ui5b)loc.longitude;
-	CurMacDelta = (ui5b)loc.u.gmtDelta;
-
-	return trueblnr;
-}
-
 LOCALPROC StartUpTimeAdjust(void)
 {
 	/*
@@ -1573,6 +1530,20 @@ LOCALFUNC blnr CheckDateTime(void)
 	} else {
 		return falseblnr;
 	}
+}
+
+LOCALFUNC blnr InitLocationDat(void)
+{
+	MachineLocation loc;
+
+	ReadLocation(&loc);
+	CurMacLatitude = (ui5b)loc.latitude;
+	CurMacLongitude = (ui5b)loc.longitude;
+	CurMacDelta = (ui5b)loc.u.gmtDelta;
+
+	(void) CheckDateTime();
+
+	return trueblnr;
 }
 
 /* --- sound --- */
@@ -3319,13 +3290,9 @@ LOCALFUNC blnr InitMyApplInfo(void)
 	return falseblnr;
 }
 
-#define tMyErr tMacErr
-
-#define MyPStr Str255
-
-LOCALFUNC tMyErr MyDirFromWD_v2(short VRefNum, MyDir_R *d)
+LOCALFUNC tMacErr MyDirFromWD_v2(short VRefNum, MyDir_R *d)
 {
-	tMyErr err;
+	tMacErr err;
 	Str63 s;
 	WDPBRec pb;
 
@@ -3333,7 +3300,7 @@ LOCALFUNC tMyErr MyDirFromWD_v2(short VRefNum, MyDir_R *d)
 	if (Have64kROM()) {
 		d->VRefNum = VRefNum;
 		d->DirId = 0;
-		err = noErr;
+		err = mnvm_noErr;
 	} else
 #endif
 	{
@@ -3342,8 +3309,8 @@ LOCALFUNC tMyErr MyDirFromWD_v2(short VRefNum, MyDir_R *d)
 		pb.ioVRefNum = VRefNum;
 		pb.ioWDIndex = 0;
 		pb.ioWDProcID = 0;
-		err = PBGetWDInfoSync(&pb);
-		if (noErr == err) {
+		err = To_tMacErr(PBGetWDInfoSync(&pb));
+		if (mnvm_noErr == err) {
 			d->VRefNum = pb.ioWDVRefNum;
 			d->DirId = pb.ioWDDirID;
 		}
@@ -3352,9 +3319,9 @@ LOCALFUNC tMyErr MyDirFromWD_v2(short VRefNum, MyDir_R *d)
 	return err;
 }
 
-LOCALFUNC tMyErr FindPrefFolder(MyDir_R *d)
+LOCALFUNC tMacErr FindPrefFolder(MyDir_R *d)
 {
-	tMyErr err;
+	tMacErr err;
 	long reply;
 
 	if (HaveGestaltAvail()
@@ -3362,17 +3329,17 @@ LOCALFUNC tMyErr FindPrefFolder(MyDir_R *d)
 		&& TestBit(reply, gestaltFindFolderPresent)
 		)
 	{
-		err = FindFolder(
+		err = To_tMacErr(FindFolder(
 			kOnSystemDisk,
 			kPreferencesFolderType,
 			kDontCreateFolder,
 			&d->VRefNum,
-			&d->DirId);
+			&d->DirId));
 	} else {
 		SysEnvRec info;
 
-		err = SysEnvirons(1, &info);
-		if (noErr == err) {
+		err = To_tMacErr(SysEnvirons(1, &info));
+		if (mnvm_noErr == err) {
 			err = MyDirFromWD_v2(info.sysVRefNum, d);
 		}
 	}
@@ -3393,11 +3360,11 @@ LOCALPROC PStrCopy(ps3p r, ps3p s)
 	MyMoveBytes((anyp)s, (anyp)r, PStrToTotSize(s));
 }
 
-LOCALFUNC tMyErr MyFindNamedChildDir_v2(MyDir_R *src_d, StringPtr s,
+LOCALFUNC tMacErr MyFindNamedChildDir_v2(MyDir_R *src_d, StringPtr s,
 	MyDir_R *dst_d)
 {
-	tMyErr err;
-	MyPStr NameBuffer;
+	tMacErr err;
+	Str255 NameBuffer;
 	CInfoPBRec cPB;
 
 	cPB.hFileInfo.ioCompletion = NULL;
@@ -3407,11 +3374,11 @@ LOCALFUNC tMyErr MyFindNamedChildDir_v2(MyDir_R *src_d, StringPtr s,
 	PStrCopy(NameBuffer, s);
 	cPB.dirInfo.ioFDirIndex = 0;
 
-	err = PBGetCatInfoSync(&cPB);
+	err = To_tMacErr(PBGetCatInfoSync(&cPB));
 
-	if (noErr == err) {
+	if (mnvm_noErr == err) {
 		if (! CatInfoIsFolder(&cPB)) {
-			err = dirNFErr;
+			err = mnvm_dirNFErr;
 		} else {
 			dst_d->VRefNum = cPB.hFileInfo.ioVRefNum;
 			dst_d->DirId = cPB.dirInfo.ioDrDirID;
@@ -3421,10 +3388,10 @@ LOCALFUNC tMyErr MyFindNamedChildDir_v2(MyDir_R *src_d, StringPtr s,
 	return err;
 }
 
-LOCALFUNC tMyErr MyResolveAliasDir_v2(MyDir_R *src_d, StringPtr s,
+LOCALFUNC tMacErr MyResolveAliasDir_v2(MyDir_R *src_d, StringPtr s,
 	MyDir_R *dst_d)
 {
-	tMyErr err;
+	tMacErr err;
 	FSSpec spec;
 	Boolean isFolder;
 	Boolean isAlias;
@@ -3433,10 +3400,11 @@ LOCALFUNC tMyErr MyResolveAliasDir_v2(MyDir_R *src_d, StringPtr s,
 	spec.vRefNum = src_d->VRefNum;
 	spec.parID = src_d->DirId;
 	PStrCopy(spec.name, s);
-	err = ResolveAliasFile(&spec, true, &isFolder, &isAlias);
-	if (noErr == err) {
+	err = To_tMacErr(
+		ResolveAliasFile(&spec, true, &isFolder, &isAlias));
+	if (mnvm_noErr == err) {
 		if (! isAlias) {
-			err = dirNFErr;
+			err = mnvm_dirNFErr;
 		} else {
 			src2_d.VRefNum = spec.vRefNum;
 			src2_d.DirId = spec.parID;
@@ -3447,13 +3415,13 @@ LOCALFUNC tMyErr MyResolveAliasDir_v2(MyDir_R *src_d, StringPtr s,
 	return err;
 }
 
-LOCALFUNC tMyErr MyResolveNamedChildDir_v2(MyDir_R *src_d, StringPtr s,
+LOCALFUNC tMacErr MyResolveNamedChildDir_v2(MyDir_R *src_d, StringPtr s,
 	MyDir_R *dst_d)
 {
-	tMyErr err;
+	tMacErr err;
 
 	err = MyFindNamedChildDir_v2(src_d, s, dst_d);
-	if (dirNFErr == err) {
+	if (mnvm_dirNFErr == err) {
 		if (HaveAliasMgrAvail()) {
 			err = MyResolveAliasDir_v2(src_d, s, dst_d);
 		}
@@ -3471,7 +3439,7 @@ LOCALFUNC tMacErr OpenNamedFileInFolderCStr(MyDir_R *d,
 	return OpenNamedFileInFolder(d, fileName, refnum);
 }
 
-LOCALFUNC tMyErr MyResolveNamedChildDirCStr(MyDir_R *src_d,
+LOCALFUNC tMacErr MyResolveNamedChildDirCStr(MyDir_R *src_d,
 	char *s, MyDir_R *dst_d)
 {
 	Str255 fileName;
@@ -3559,6 +3527,246 @@ LOCALFUNC blnr LoadInitialImages(void)
 label_done:
 	return trueblnr;
 }
+
+#if UseActvFile
+
+LOCALFUNC tMacErr MyMakeNamedDir_v2(MyDir_R *d, StringPtr s,
+	MyDir_R *new_d)
+{
+	tMacErr err;
+	HParamBlockRec r;
+
+	r.fileParam.ioCompletion = NULL;
+	r.fileParam.ioVRefNum = d->VRefNum;
+	r.fileParam.ioDirID = d->DirId;
+	r.fileParam.ioNamePtr = s;
+	err = To_tMacErr(PBDirCreateSync(&r));
+	if (mnvm_noErr == err) {
+		new_d->VRefNum = d->VRefNum;
+		new_d->DirId = r.fileParam.ioDirID;
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr FindOrMakeMakeNamedDir_v2(MyDir_R *new_d,
+	MyDir_R *d, StringPtr s)
+{
+	tMacErr err;
+
+	err = MyResolveNamedChildDir_v2(d, s, new_d);
+	if (mnvm_fnfErr == err) {
+		err = MyMakeNamedDir_v2(d, s, new_d);
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr FindOrMakeChildDirCStr(MyDir_R *new_d,
+	MyDir_R *d, char *name)
+{
+	Str255 s;
+
+	PStrFromCStr(s, name);
+	return FindOrMakeMakeNamedDir_v2(new_d, d, s);
+}
+
+LOCALFUNC tMacErr MyCreateFile_v2(MyDir_R *d, StringPtr s)
+{
+	tMacErr err;
+	HParamBlockRec r;
+
+	r.fileParam.ioFlVersNum = 0;
+		/*
+			Think reference says to do this,
+			but not Inside Mac IV
+		*/
+
+	r.fileParam.ioCompletion = NULL;
+	r.fileParam.ioNamePtr = s;
+	r.fileParam.ioVRefNum = d->VRefNum;
+	r.fileParam.ioFVersNum = 0; /* needed if MFS volume */
+
+#if Support64kROM
+	if (Have64kROM()) {
+		err = To_tMacErr(PBCreateSync((ParamBlockRec *)&r));
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = To_tMacErr(PBHCreateSync(&r));
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr MyDeleteFile_v2(MyDir_R *d, StringPtr s)
+{
+	tMacErr err;
+	HParamBlockRec r;
+
+	r.fileParam.ioCompletion = NULL;
+	r.fileParam.ioVRefNum = d->VRefNum;
+	r.fileParam.ioNamePtr = s;
+	r.fileParam.ioFVersNum = 0; /* needed if MFS volume */
+
+#if Support64kROM
+	if (Have64kROM()) {
+		err = To_tMacErr(PBDeleteSync((ParamBlockRec *)&r));
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = To_tMacErr(PBHDeleteSync(&r));
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr MyCreateFileOverWrite_v2(MyDir_R *d, StringPtr s)
+{
+	tMacErr err;
+
+	err = MyCreateFile_v2(d, s);
+	if (mnvm_dupFNErr == err) {
+		if (mnvm_noErr == (err = MyDeleteFile_v2(d, s))) {
+			err = MyCreateFile_v2(d, s);
+		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr MyFileOpen_v2(MyDir_R *d, StringPtr s,
+	char Permssn, short *refnum)
+{
+	tMacErr err;
+	HParamBlockRec r;
+
+	r.ioParam.ioCompletion = NULL;
+	r.ioParam.ioNamePtr = s;
+	r.ioParam.ioVRefNum = d->VRefNum;
+	r.ioParam.ioPermssn = Permssn;
+	r.ioParam.ioMisc = 0; /* use volume buffer */
+	r.ioParam.ioVersNum = 0; /* needed if MFS volume */
+
+#if Support64kROM
+	if (Have64kROM()) {
+		err = To_tMacErr(PBOpenSync((ParamBlockRec *)&r));
+	} else
+#endif
+	{
+		r.fileParam.ioDirID = d->DirId;
+		err = To_tMacErr(PBHOpenSync(&r));
+	}
+
+	if (noErr == err) {
+		*refnum = r.ioParam.ioRefNum;
+		/*
+			Don't change *refnum unless file opened,
+			so can initialize to NotAfileRef, and
+			compare later before closing in uninit.
+		*/
+	}
+	return err;
+}
+
+LOCALFUNC tMacErr MyFileOpenWrite_v2(MyDir_R *d, StringPtr s,
+	short *refnum)
+{
+	return MyFileOpen_v2(d, s, (char)fsWrPerm, refnum);
+}
+
+LOCALFUNC tMacErr MyOpenOverWriteFile_v2(MyDir_R *d, StringPtr s,
+	short *refnum)
+{
+	tMacErr err;
+
+	err = MyCreateFileOverWrite_v2(d, s);
+	if (mnvm_noErr == err) {
+		err = MyFileOpenWrite_v2(d, s, refnum);
+
+		if (mnvm_noErr != err) {
+			(void) MyDeleteFile_v2(d, s);
+				/* ignore any error, since already got one */
+		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr MyOpenOverWriteFileCStr(MyDir_R *d, char *name,
+	short *refnum)
+{
+	Str255 s;
+
+	PStrFromCStr(s, name);
+	return MyOpenOverWriteFile_v2(d, s, refnum);
+}
+
+#define ActvCodeFileName "act_1"
+
+LOCALFUNC tMacErr OpenActvCodeFile(short *refnum)
+{
+	tMacErr err;
+	MyDir_R PrefRef;
+	MyDir_R GryphelRef;
+	MyDir_R ActRef;
+
+	if (CheckSavetMacErr(FindPrefFolder(&PrefRef)))
+	if (CheckSavetMacErr(MyResolveNamedChildDirCStr(&PrefRef,
+		"Gryphel", &GryphelRef)))
+	if (CheckSavetMacErr(MyResolveNamedChildDirCStr(&GryphelRef,
+		"mnvm_act", &ActRef)))
+	if (CheckSavetMacErr(OpenNamedFileInFolderCStr(&ActRef,
+		ActvCodeFileName, refnum)))
+	{
+		/* ok */
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr ActvCodeFileLoad(ui3p p)
+{
+	tMacErr err;
+	short refnum;
+
+	if (CheckSavetMacErr(OpenActvCodeFile(&refnum))) {
+		long count = ActvCodeFileLen;
+		err = To_tMacErr(FSRead(refnum, &count, p));
+		(void) FSClose(refnum);
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr ActvCodeFileSave(ui3p p)
+{
+	tMacErr err;
+	short refnum;
+	MyDir_R PrefRef;
+	MyDir_R GryphelRef;
+	MyDir_R ActRef;
+	long count = ActvCodeFileLen;
+
+	if (CheckSavetMacErr(FindPrefFolder(&PrefRef)))
+	if (CheckSavetMacErr(FindOrMakeChildDirCStr(&GryphelRef,
+		&PrefRef, "Gryphel")))
+	if (CheckSavetMacErr(FindOrMakeChildDirCStr(&ActRef,
+		&GryphelRef, "mnvm_act")))
+	if (CheckSavetMacErr(MyOpenOverWriteFileCStr(&ActRef,
+		ActvCodeFileName, &refnum)))
+	{
+		err = To_tMacErr(FSWrite(refnum, &count, p));
+		(void) FSClose(refnum);
+	}
+
+	return err;
+	/* return mnvm_miscErr; */
+}
+
+#endif /* UseActvFile */
 
 #define openOnly 1
 #define openPrint 2
@@ -3826,7 +4034,7 @@ LOCALFUNC blnr PrepareForDragging(void)
 }
 #endif
 
-#if EnableScalingBuff
+#if EnableMagnify
 #define ScaleBuffSzMult (MyWindowScale * MyWindowScale)
 #endif
 
@@ -3963,10 +4171,14 @@ LOCALFUNC blnr CreateMainWindow(void)
 		if (ViewHSize >= vMacScreenWidth) {
 			ViewHStart = 0;
 			ViewHSize = vMacScreenWidth;
+		} else {
+			ViewHSize &= ~ 1;
 		}
 		if (ViewVSize >= vMacScreenHeight) {
 			ViewVStart = 0;
 			ViewVSize = vMacScreenHeight;
+		} else {
+			ViewVSize &= ~ 1;
 		}
 	}
 #endif
@@ -4077,7 +4289,9 @@ struct MyWState {
 #if VarFullScreen
 	blnr f_UseFullScreen;
 #endif
+#if EnableMagnify
 	blnr f_UseMagnify;
+#endif
 #if MayNotFullScreen
 	int f_CurWinIndx;
 #endif
@@ -4100,7 +4314,9 @@ LOCALPROC GetMyWState(MyWState *r)
 #if VarFullScreen
 	r->f_UseFullScreen = UseFullScreen;
 #endif
+#if EnableMagnify
 	r->f_UseMagnify = UseMagnify;
+#endif
 #if MayNotFullScreen
 	r->f_CurWinIndx = CurWinIndx;
 #endif
@@ -4122,7 +4338,9 @@ LOCALPROC SetMyWState(MyWState *r)
 #if VarFullScreen
 	UseFullScreen = r->f_UseFullScreen;
 #endif
+#if EnableMagnify
 	UseMagnify = r->f_UseMagnify;
+#endif
 #if MayNotFullScreen
 	CurWinIndx = r->f_CurWinIndx;
 #endif
@@ -4181,6 +4399,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #if EnableMagnify
 	UseMagnify = WantMagnify;
 #endif
+
+	ColorTransValid = falseblnr;
 
 	if (! CreateMainWindow()) {
 		CloseMainWindow();
@@ -4523,13 +4743,13 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 #endif
 		MyDrawChangesAndClear();
 
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			if (n > 8) {
-				/* emulation not fast enough */
-				n = 8;
-				CurEmulatedTime = OnTrueTime - n;
-			}
+		if (n > 8) {
+			/* emulation not fast enough */
+			n = 8;
+			CurEmulatedTime = OnTrueTime - n;
+		}
 
+		if (ExtraTimeNotOver() && (--n > 0)) {
 			EmVideoDisable = trueblnr;
 
 			do {
@@ -5034,6 +5254,8 @@ LOCALPROC ZapOSGLUVars(void)
 
 LOCALPROC ReserveAllocAll(void)
 {
+	/* !! must match ChooseTotMemSize in build system !! */
+
 #if dbglog_HAVE
 	dbglog_ReserveAlloc();
 #endif
@@ -5044,9 +5266,11 @@ LOCALPROC ReserveAllocAll(void)
 	ReserveAllocOneBlock(&CntrlDisplayBuff,
 		vMacScreenNumBytes, 5, falseblnr);
 #endif
-#if EnableScalingBuff
+#if EnableMagnify
 	ReserveAllocOneBlock(&ScalingBuff,
 		vMacScreenNumBytes * (ScaleBuffSzMult), 5, falseblnr);
+	ReserveAllocOneBlock(&ScalingTabl,
+		ScalingTablsz, 5, falseblnr);
 #endif
 #if MySoundEnabled
 	ReserveAllocOneBlock((ui3p *)&TheSoundBuffer,
@@ -5105,6 +5329,9 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (ReCreateMainWindow())
 	if (LoadMacRom())
 	if (LoadInitialImages())
+#if UseActvCode
+	if (ActvCodeInit())
+#endif
 	if (InitLocationDat())
 	if (InitEmulation())
 	{
@@ -5156,6 +5383,14 @@ LOCALPROC UnInitOSGLU(void)
 
 #ifndef MainReturnsInt
 #define MainReturnsInt 0
+#endif
+
+#ifndef NeedLongGlue
+#define NeedLongGlue 0
+#endif
+
+#if NeedLongGlue
+#define main long_main
 #endif
 
 #if MainReturnsInt

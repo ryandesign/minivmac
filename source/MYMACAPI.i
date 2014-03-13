@@ -1534,7 +1534,7 @@ GetVRefNum(
 	if (L < 0) {
 		L = 30;
 	}
-	if ((offset % (UInt16)L) != 2) {
+	if (2 == (offset % (UInt16)L)) {
 		Ptr p = LMGetFCBSPtr();
 
 		if (offset < (*(UInt16 *)p)) {

@@ -33,8 +33,6 @@
 	"XDND: Drag-and-Drop Protocol for the X Window System"
 	developed by John Lindal at New Planet Software, and
 	looking at included examples, one by Paul Sheer.
-
-	ALSA sound support by Stephan Kochen.
 */
 
 #include "CNFGRAPI.h"
@@ -58,6 +56,75 @@ GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 
 #include "INTLCHAR.h"
 
+
+LOCALVAR char *d_arg = NULL;
+LOCALVAR char *n_arg = NULL;
+
+#if CanGetAppPath
+LOCALVAR char *app_parent = NULL;
+LOCALVAR char *app_name = NULL;
+#endif
+
+LOCALFUNC tMacErr ChildPath(char *x, char *y, char **r)
+{
+	tMacErr err = mnvm_miscErr;
+	int nx = strlen(x);
+	int ny = strlen(y);
+	{
+		if ((nx > 0) && ('/' == x[nx - 1])) {
+			--nx;
+		}
+		{
+			int nr = nx + 1 + ny;
+			char *p = malloc(nr + 1);
+			if (p != NULL) {
+				char *p2 = p;
+				(void) memcpy(p2, x, nx);
+				p2 += nx;
+				*p2++ = '/';
+				(void) memcpy(p2, y, ny);
+				p2 += ny;
+				*p2 = 0;
+				*r = p;
+				err = mnvm_noErr;
+			}
+		}
+	}
+
+	return err;
+}
+
+#if UseActvFile || IncludeSonyNew
+LOCALFUNC tMacErr FindOrMakeChild(char *x, char *y, char **r)
+{
+	tMacErr err = mnvm_miscErr;
+	struct stat folder_info;
+	char *r0;
+
+	if (mnvm_noErr == (err = ChildPath(x, y, &r0))) {
+		if (0 != stat(r0, &folder_info)) {
+			if (0 == mkdir(r0, S_IRWXU)) {
+				*r = r0;
+				err = mnvm_noErr;
+			}
+		} else {
+			if (S_ISDIR(folder_info.st_mode)) {
+				*r = r0;
+				err = mnvm_noErr;
+			}
+		}
+	}
+
+	return err;
+}
+#endif
+
+LOCALPROC MyMayFree(char *p)
+{
+	if (NULL != p) {
+		free(p);
+	}
+}
 
 /* --- sending debugging info to file --- */
 
@@ -191,6 +258,7 @@ LOCALPROC LoadMyXA(void)
 #endif
 }
 
+#if EnableDragDrop
 LOCALFUNC blnr NetSupportedContains(Atom x)
 {
 	/*
@@ -232,6 +300,9 @@ LOCALFUNC blnr NetSupportedContains(Atom x)
 	}
 	return foundit;
 }
+#endif
+
+#define WantColorTransValid 1
 
 #include "COMOSGLU.h"
 
@@ -313,6 +384,7 @@ GLOBALPROC PbufTransfer(ui3p Buffer,
 
 /* --- text translation --- */
 
+#if IncludePbufs
 /* this is table for Windows, any changes needed for X? */
 LOCALVAR const ui3b Native2MacRomanTab[] = {
 	0xAD, 0xB0, 0xE2, 0xC4, 0xE3, 0xC9, 0xA0, 0xE0,
@@ -332,7 +404,9 @@ LOCALVAR const ui3b Native2MacRomanTab[] = {
 	0xFD, 0x96, 0x98, 0x97, 0x99, 0x9B, 0x9A, 0xD6,
 	0xBF, 0x9D, 0x9C, 0x9E, 0x9F, 0xFE, 0xFF, 0xD8
 };
+#endif
 
+#if IncludePbufs
 LOCALFUNC tMacErr NativeTextToMacRomanPbuf(char *x, tPbuf *r)
 {
 	if (NULL == x) {
@@ -363,7 +437,9 @@ LOCALFUNC tMacErr NativeTextToMacRomanPbuf(char *x, tPbuf *r)
 		}
 	}
 }
+#endif
 
+#if IncludePbufs
 /* this is table for Windows, any changes needed for X? */
 LOCALVAR const ui3b MacRoman2NativeTab[] = {
 	0xC4, 0xC5, 0xC7, 0xC9, 0xD1, 0xD6, 0xDC, 0xE1,
@@ -383,7 +459,9 @@ LOCALVAR const ui3b MacRoman2NativeTab[] = {
 	0xBE, 0xD2, 0xDA, 0xDB, 0xD9, 0xD0, 0x88, 0x98,
 	0xAF, 0xD7, 0xDD, 0xDE, 0xB8, 0xF0, 0xFD, 0xFE
 };
+#endif
 
+#if IncludePbufs
 LOCALFUNC blnr MacRomanTextToNativePtr(tPbuf i, blnr IsFileName,
 	ui3p *r)
 {
@@ -439,6 +517,7 @@ LOCALFUNC blnr MacRomanTextToNativePtr(tPbuf i, blnr IsFileName,
 	}
 	return falseblnr;
 }
+#endif
 
 LOCALPROC NativeStrFromCStr(char *r, char *s)
 {
@@ -484,35 +563,125 @@ GLOBALFUNC tMacErr vSonyTransfer(blnr IsWrite, ui3p Buffer,
 	tDrive Drive_No, ui5r Sony_Start, ui5r Sony_Count,
 	ui5r *Sony_ActCount)
 {
-	ui5r NewSony_Count = Sony_Count;
+	tMacErr err = mnvm_miscErr;
+	FILE *refnum = Drives[Drive_No];
+	ui5r NewSony_Count = 0;
 
-	fseek(Drives[Drive_No], Sony_Start, SEEK_SET);
+	if (0 == fseek(refnum, Sony_Start, SEEK_SET)) {
+		if (IsWrite) {
+			NewSony_Count = fwrite(Buffer, 1, Sony_Count, refnum);
+		} else {
+			NewSony_Count = fread(Buffer, 1, Sony_Count, refnum);
+		}
 
-	if (IsWrite) {
-		fwrite(Buffer, 1, NewSony_Count, Drives[Drive_No]);
-	} else {
-		fread(Buffer, 1, NewSony_Count, Drives[Drive_No]);
+		if (NewSony_Count == Sony_Count) {
+			err = mnvm_noErr;
+		}
 	}
 
 	if (nullpr != Sony_ActCount) {
 		*Sony_ActCount = NewSony_Count;
 	}
 
-	return mnvm_noErr; /*& figure out what really to return &*/
+	return err; /*& figure out what really to return &*/
 }
 
 GLOBALFUNC tMacErr vSonyGetSize(tDrive Drive_No, ui5r *Sony_Count)
 {
-	fseek(Drives[Drive_No], 0, SEEK_END);
-	*Sony_Count = ftell(Drives[Drive_No]);
-	return mnvm_noErr; /*& figure out what really to return &*/
+	tMacErr err = mnvm_miscErr;
+	FILE *refnum = Drives[Drive_No];
+	long v;
+
+	if (0 == fseek(refnum, 0, SEEK_END)) {
+		v = ftell(refnum);
+		if (v >= 0) {
+			*Sony_Count = v;
+			err = mnvm_noErr;
+		}
+	}
+
+	return err; /*& figure out what really to return &*/
 }
+
+#ifndef HaveAdvisoryLocks
+#define HaveAdvisoryLocks 1
+#endif
+
+/*
+	What is the difference between fcntl(fd, F_SETLK ...
+	and flock(fd ... ?
+*/
+
+#if HaveAdvisoryLocks
+LOCALFUNC blnr MyLockFile(FILE *refnum)
+{
+	blnr IsOk = falseblnr;
+
+#if 1
+	struct flock fl;
+	int fd = fileno(refnum);
+
+	fl.l_start = 0; /* starting offset */
+	fl.l_len = 0; /* len = 0 means until end of file */
+	/* fl.pid_t l_pid; */ /* lock owner, don't need to set */
+	fl.l_type = F_WRLCK; /* lock type: read/write, etc. */
+	fl.l_whence = SEEK_SET; /* type of l_start */
+	if (-1 == fcntl(fd, F_SETLK, &fl)) {
+		MacMsg(kStrImageInUseTitle, kStrImageInUseMessage,
+			falseblnr);
+	} else {
+		IsOk = trueblnr;
+	}
+#else
+	int fd = fileno(refnum);
+
+	if (-1 == flock(fd, LOCK_EX | LOCK_NB)) {
+		MacMsg(kStrImageInUseTitle, kStrImageInUseMessage,
+			falseblnr);
+	} else {
+		IsOk = trueblnr;
+	}
+#endif
+
+	return IsOk;
+}
+#endif
+
+#if HaveAdvisoryLocks
+LOCALPROC MyUnlockFile(FILE *refnum)
+{
+#if 1
+	struct flock fl;
+	int fd = fileno(refnum);
+
+	fl.l_start = 0; /* starting offset */
+	fl.l_len = 0; /* len = 0 means until end of file */
+	/* fl.pid_t l_pid; */ /* lock owner, don't need to set */
+	fl.l_type = F_UNLCK;     /* lock type: read/write, etc. */
+	fl.l_whence = SEEK_SET;   /* type of l_start */
+	if (-1 == fcntl(fd, F_SETLK, &fl)) {
+		/* an error occurred */
+	}
+#else
+	int fd = fileno(refnum);
+
+	if (-1 == flock(fd, LOCK_UN)) {
+	}
+#endif
+}
+#endif
 
 LOCALFUNC tMacErr vSonyEject0(tDrive Drive_No, blnr deleteit)
 {
+	FILE *refnum = Drives[Drive_No];
+
 	DiskEjectedNotify(Drive_No);
 
-	fclose(Drives[Drive_No]);
+#if HaveAdvisoryLocks
+	MyUnlockFile(refnum);
+#endif
+
+	fclose(refnum);
 	Drives[Drive_No] = NotAfileRef; /* not really needed */
 
 #if IncludeSonyGetName || IncludeSonyNew
@@ -576,30 +745,41 @@ LOCALFUNC blnr Sony_Insert0(FILE *refnum, blnr locked,
 	char *drivepath)
 {
 	tDrive Drive_No;
+	blnr IsOk = falseblnr;
 
 	if (! FirstFreeDisk(&Drive_No)) {
-		fclose(refnum);
 		MacMsg(kStrTooManyImagesTitle, kStrTooManyImagesMessage,
 			falseblnr);
-		return falseblnr;
 	} else {
 		/* printf("Sony_Insert0 %d\n", (int)Drive_No); */
-		Drives[Drive_No] = refnum;
-		DiskInsertNotify(Drive_No, locked);
+
+#if HaveAdvisoryLocks
+		if (locked || MyLockFile(refnum))
+#endif
+		{
+			Drives[Drive_No] = refnum;
+			DiskInsertNotify(Drive_No, locked);
 
 #if IncludeSonyGetName || IncludeSonyNew
-		{
-			ui5b L = strlen(drivepath);
-			char *p = malloc(L + 1);
-			if (p != NULL) {
-				(void) memcpy(p, drivepath, L + 1);
+			{
+				ui5b L = strlen(drivepath);
+				char *p = malloc(L + 1);
+				if (p != NULL) {
+					(void) memcpy(p, drivepath, L + 1);
+				}
+				DriveNames[Drive_No] = p;
 			}
-			DriveNames[Drive_No] = p;
-		}
 #endif
 
-		return trueblnr;
+			IsOk = trueblnr;
+		}
 	}
+
+	if (! IsOk) {
+		fclose(refnum);
+	}
+
+	return IsOk;
 }
 
 LOCALFUNC blnr Sony_Insert1(char *drivepath, blnr silentfail)
@@ -621,17 +801,42 @@ LOCALFUNC blnr Sony_Insert1(char *drivepath, blnr silentfail)
 	return falseblnr;
 }
 
+LOCALFUNC blnr Sony_Insert2(char *s)
+{
+	char *d =
+#if CanGetAppPath
+		(NULL == d_arg) ? app_parent :
+#endif
+		d_arg;
+	blnr IsOk = falseblnr;
+
+	if (NULL == d) {
+		IsOk = Sony_Insert1(s, trueblnr);
+	} else {
+		char *t;
+
+		if (mnvm_noErr == ChildPath(d, s, &t)) {
+			IsOk = Sony_Insert1(t, trueblnr);
+			free(t);
+		}
+	}
+
+	return IsOk;
+}
+
 LOCALFUNC blnr LoadInitialImages(void)
 {
-	int n = NumDrives > 9 ? 9 : NumDrives;
-	int i;
-	char s[] = "disk?.dsk";
+	if (! AnyDiskInserted()) {
+		int n = NumDrives > 9 ? 9 : NumDrives;
+		int i;
+		char s[] = "disk?.dsk";
 
-	for (i = 1; i <= n; ++i) {
-		s[4] = '0' + i;
-		if (! Sony_Insert1(s, trueblnr)) {
-			/* stop on first error (including file not found) */
-			return trueblnr;
+		for (i = 1; i <= n; ++i) {
+			s[4] = '0' + i;
+			if (! Sony_Insert2(s)) {
+				/* stop on first error (including file not found) */
+				return trueblnr;
+			}
 		}
 	}
 
@@ -659,7 +864,7 @@ LOCALFUNC blnr WriteZero(FILE *refnum, ui5b L)
 #endif
 
 #if IncludeSonyNew
-LOCALPROC MakeNewDisk(ui5b L, char *drivepath)
+LOCALPROC MakeNewDisk0(ui5b L, char *drivepath)
 {
 	blnr IsOk = falseblnr;
 	FILE *refnum = fopen(drivepath, "wb+");
@@ -681,6 +886,34 @@ LOCALPROC MakeNewDisk(ui5b L, char *drivepath)
 #endif
 
 #if IncludeSonyNew
+LOCALPROC MakeNewDisk(ui5b L, char *drivename)
+{
+	char *d =
+#if CanGetAppPath
+		(NULL == d_arg) ? app_parent :
+#endif
+		d_arg;
+
+	if (NULL == d) {
+		MakeNewDisk0(L, drivename); /* in current directory */
+	} else {
+		tMacErr err;
+		char *t = NULL;
+		char *t2 = NULL;
+
+		if (mnvm_noErr == (err = FindOrMakeChild(d, "out", &t)))
+		if (mnvm_noErr == (err = ChildPath(t, drivename, &t2)))
+		{
+			MakeNewDisk0(L, t2);
+		}
+
+		MyMayFree(t2);
+		MyMayFree(t);
+	}
+}
+#endif
+
+#if IncludeSonyNew
 LOCALPROC MakeNewDiskAtDefault(ui5b L)
 {
 	char s[ClStrMaxLength + 1];
@@ -694,34 +927,222 @@ LOCALPROC MakeNewDiskAtDefault(ui5b L)
 
 LOCALVAR char *rom_path = NULL;
 
-LOCALFUNC blnr LoadMacRom(void)
+LOCALFUNC tMacErr LoadMacRomFrom(char *path)
 {
+	tMacErr err;
 	FILE *ROM_File;
 	int File_Size;
 
-	if (NULL == rom_path) {
-		rom_path = RomFileName;
-	}
-	ROM_File = fopen(rom_path, "rb");
+	ROM_File = fopen(path, "rb");
 	if (NULL == ROM_File) {
-		MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		SpeedStopped = trueblnr;
+		err = mnvm_fnfErr;
 	} else {
 		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
 		if (File_Size != kROM_Size) {
 			if (feof(ROM_File)) {
-				MacMsg(kStrShortROMTitle, kStrShortROMMessage,
-					trueblnr);
+				err = mnvm_eofErr;
 			} else {
-				MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage,
-					trueblnr);
+				err = mnvm_miscErr;
 			}
-			SpeedStopped = trueblnr;
+		} else {
+			err = mnvm_noErr;
 		}
 		fclose(ROM_File);
 	}
-	return trueblnr;
+
+	return err;
 }
+
+#if 0
+#include <pwd.h>
+#include <unistd.h>
+#endif
+
+LOCALFUNC tMacErr FindUserHomeFolder(char **r)
+{
+	tMacErr err = mnvm_fnfErr;
+	char *s = getenv("HOME");
+
+#if 0
+	if (NULL == s) {
+		struct passwd *user = getpwuid(getuid());
+		if (user != NULL) {
+			s = user->pw_dir;
+		}
+	} else
+#endif
+	{
+		*r = s;
+		err = mnvm_noErr;
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr LoadMacRomFromHome(void)
+{
+	tMacErr err;
+	char *s;
+	char *t = NULL;
+	char *t2 = NULL;
+	char *t3 = NULL;
+
+	if (mnvm_noErr == (err = FindUserHomeFolder(&s)))
+	if (mnvm_noErr == (err = ChildPath(s, ".gryphel", &t)))
+	if (mnvm_noErr == (err = ChildPath(t, "mnvm_rom", &t2)))
+	if (mnvm_noErr == (err = ChildPath(t2, RomFileName, &t3)))
+	{
+		err = LoadMacRomFrom(t3);
+	}
+
+	MyMayFree(t3);
+	MyMayFree(t2);
+	MyMayFree(t);
+
+	return err;
+}
+
+#if CanGetAppPath
+LOCALFUNC tMacErr LoadMacRomFromAppPar(void)
+{
+	tMacErr err;
+	char *d =
+#if CanGetAppPath
+		(NULL == d_arg) ? app_parent :
+#endif
+		d_arg;
+	char *t = NULL;
+
+	if (NULL == d) {
+		err = mnvm_fnfErr;
+	} else {
+		if (mnvm_noErr == (err = ChildPath(d, RomFileName,
+			&t)))
+		{
+			err = LoadMacRomFrom(t);
+		}
+	}
+
+	MyMayFree(t);
+
+	return err;
+}
+#endif
+
+LOCALFUNC blnr LoadMacRom(void)
+{
+	tMacErr err;
+
+	if ((NULL == rom_path)
+		|| (mnvm_fnfErr == (err = LoadMacRomFrom(rom_path))))
+	if (mnvm_fnfErr == (err = LoadMacRomFromHome()))
+#if CanGetAppPath
+	if (mnvm_fnfErr == (err = LoadMacRomFromAppPar()))
+#endif
+	if (mnvm_fnfErr == (err = LoadMacRomFrom(RomFileName)))
+	{
+	}
+
+	if (mnvm_noErr != err) {
+		if (mnvm_fnfErr == err) {
+			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
+		} else if (mnvm_eofErr == err) {
+			MacMsg(kStrShortROMTitle, kStrShortROMMessage,
+				trueblnr);
+		} else {
+			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage,
+				trueblnr);
+		}
+
+		SpeedStopped = trueblnr;
+	}
+
+	return trueblnr; /* keep launching Mini vMac, regardless */
+}
+
+#if UseActvFile
+
+#define ActvCodeFileName "act_1"
+
+LOCALFUNC tMacErr ActvCodeFileLoad(ui3p p)
+{
+	tMacErr err;
+	char *s;
+	char *t = NULL;
+	char *t2 = NULL;
+	char *t3 = NULL;
+
+	if (mnvm_noErr == (err = FindUserHomeFolder(&s)))
+	if (mnvm_noErr == (err = ChildPath(s, ".gryphel", &t)))
+	if (mnvm_noErr == (err = ChildPath(t, "mnvm_act", &t2)))
+	if (mnvm_noErr == (err = ChildPath(t2, ActvCodeFileName, &t3)))
+	{
+		FILE *Actv_File;
+		int File_Size;
+
+		Actv_File = fopen(t3, "rb");
+		if (NULL == Actv_File) {
+			err = mnvm_fnfErr;
+		} else {
+			File_Size = fread(p, 1, ActvCodeFileLen, Actv_File);
+			if (File_Size != ActvCodeFileLen) {
+				if (feof(Actv_File)) {
+					err = mnvm_eofErr;
+				} else {
+					err = mnvm_miscErr;
+				}
+			} else {
+				err = mnvm_noErr;
+			}
+			fclose(Actv_File);
+		}
+	}
+
+	MyMayFree(t3);
+	MyMayFree(t2);
+	MyMayFree(t);
+
+	return err;
+}
+
+LOCALFUNC tMacErr ActvCodeFileSave(ui3p p)
+{
+	tMacErr err;
+	char *s;
+	char *t = NULL;
+	char *t2 = NULL;
+	char *t3 = NULL;
+
+	if (mnvm_noErr == (err = FindUserHomeFolder(&s)))
+	if (mnvm_noErr == (err = FindOrMakeChild(s, ".gryphel", &t)))
+	if (mnvm_noErr == (err = FindOrMakeChild(t, "mnvm_act", &t2)))
+	if (mnvm_noErr == (err = ChildPath(t2, ActvCodeFileName, &t3)))
+	{
+		FILE *Actv_File;
+		int File_Size;
+
+		Actv_File = fopen(t3, "wb+");
+		if (NULL == Actv_File) {
+			err = mnvm_fnfErr;
+		} else {
+			File_Size = fwrite(p, 1, ActvCodeFileLen, Actv_File);
+			if (File_Size != ActvCodeFileLen) {
+				err = mnvm_miscErr;
+			} else {
+				err = mnvm_noErr;
+			}
+			fclose(Actv_File);
+		}
+	}
+
+	MyMayFree(t3);
+	MyMayFree(t2);
+	MyMayFree(t);
+
+	return err;
+}
+
+#endif /* UseActvFile */
 
 /* --- video out --- */
 
@@ -746,29 +1167,234 @@ LOCALVAR blnr UseFullScreen = (WantInitFullScreen != 0);
 LOCALVAR blnr UseMagnify = (WantInitMagnify != 0);
 #endif
 
-#ifndef MyWindowScale
-#define MyWindowScale 2
-#endif
-
 LOCALVAR blnr gBackgroundFlag = falseblnr;
 LOCALVAR blnr gTrueBackgroundFlag = falseblnr;
 LOCALVAR blnr CurSpeedStopped = trueblnr;
 
 LOCALVAR XImage *my_image = NULL;
-#if UseControlKeys
-LOCALVAR XImage *my_cntrl_image = NULL;
+
+#if EnableMagnify
+LOCALVAR XImage *my_Scaled_image = NULL;
 #endif
 
-#define EnableScalingBuff (1 && EnableMagnify && (MyWindowScale == 2))
+#if 0 != vMacScreenDepth
+LOCALVAR XImage *my_Color_image = NULL;
+#endif
 
-#if EnableScalingBuff
+#if EnableMagnify && (0 != vMacScreenDepth)
+LOCALVAR XImage *my_ScaledColor_image = NULL;
+#endif
+
+
+#if EnableMagnify
+#define MaxScale MyWindowScale
+#else
+#define MaxScale 1
+#endif
+
+
+#define WantScalingTabl (EnableMagnify \
+	|| ((0 != vMacScreenDepth) && (vMacScreenDepth < 4)))
+
+#if WantScalingTabl
+
+LOCALVAR ui3p ScalingTabl = nullpr;
+
+#if EnableMagnify
+
+#define ScalingTablsz1 (256 * MyWindowScale)
+
+#else
+#define ScalingTablsz1 0
+#endif
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+
+#define CLUT_finalClrSz ((256 * MaxScale) << (5 - vMacScreenDepth))
+
+#define ScalingTablsz ((CLUT_finalClrSz > ScalingTablsz1) \
+	? CLUT_finalClrSz : ScalingTablsz1)
+
+#else
+#define ScalingTablsz ScalingTablsz1
+#endif
+
+#endif /* WantScalingTabl */
+
+
+#define WantScalingBuff (EnableMagnify \
+	|| ((0 != vMacScreenDepth) && (vMacScreenDepth < 5)))
+
+#if WantScalingBuff
+
 LOCALVAR ui3p ScalingBuff = nullpr;
-LOCALVAR XImage *my_scaled_image = NULL;
+
+#if EnableMagnify
+
+#define ScalingBuffsz1 ((long)vMacScreenNumBytes \
+	* MyWindowScale * MyWindowScale)
+
+#else
+#define ScalingBuffsz1 0
+#endif
+
+#if (0 != vMacScreenDepth)
+
+#define ScalingBuffColorsz \
+	(vMacScreenNumPixels * 4 * MaxScale * MaxScale)
+
+#define ScalingBuffsz ((ScalingBuffColorsz > ScalingBuffsz1) \
+	? ScalingBuffColorsz : ScalingBuffsz1)
+
+#else
+#define ScalingBuffsz ScalingBuffsz1
+#endif
+
+#endif /* WantScalingBuff */
+
+
+#if EnableMagnify
+LOCALPROC SetUpScalingTabl(void)
+{
+	ui3b *p4;
+	int i;
+	int j;
+	int k;
+	ui3r bitsRemaining;
+	ui3b t1;
+	ui3b t2;
+
+	p4 = ScalingTabl;
+	for (i = 0; i < 256; ++i) {
+		bitsRemaining = 8;
+		t2 = 0;
+		for (j = 8; --j >= 0; ) {
+			t1 = (i >> j) & 1;
+			for (k = MyWindowScale; --k >= 0; ) {
+				t2 = (t2 << 1) | t1;
+				if (--bitsRemaining == 0) {
+					*p4++ = t2;
+					bitsRemaining = 8;
+					t2 = 0;
+				}
+			}
+		}
+	}
+}
+#endif
+
+#if EnableMagnify && (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+LOCALPROC SetUpColorScalingTabl(void)
+{
+	int i;
+	int j;
+	int k;
+	int a;
+	ui5r v;
+	ui5p p4;
+
+	p4 = (ui5p)ScalingTabl;
+	for (i = 0; i < 256; ++i) {
+		for (k = 1 << (3 - vMacScreenDepth); --k >= 0; ) {
+			j = (i >> (k << vMacScreenDepth)) & (CLUT_size - 1);
+			v = (((long)CLUT_reds[j] & 0xFF00) << 8)
+				| ((long)CLUT_greens[j] & 0xFF00)
+				| (((long)CLUT_blues[j] & 0xFF00) >> 8);
+			for (a = MyWindowScale; --a >= 0; ) {
+				*p4++ = v;
+			}
+		}
+	}
+}
+#endif
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+LOCALPROC SetUpColorTabl(void)
+{
+	int i;
+	int j;
+	int k;
+	ui5p p4;
+
+	p4 = (ui5p)ScalingTabl;
+	for (i = 0; i < 256; ++i) {
+		for (k = 1 << (3 - vMacScreenDepth); --k >= 0; ) {
+			j = (i >> (k << vMacScreenDepth)) & (CLUT_size - 1);
+			*p4++ = (((long)CLUT_reds[j] & 0xFF00) << 8)
+				| ((long)CLUT_greens[j] & 0xFF00)
+				| (((long)CLUT_blues[j] & 0xFF00) >> 8);
+		}
+	}
+}
 #endif
 
 #if EnableMagnify
-#define MyScaledHeight (MyWindowScale * vMacScreenHeight)
-#define MyScaledWidth (MyWindowScale * vMacScreenWidth)
+
+#define ScrnMapr_DoMap UpdateScaledBWCopy
+#define ScrnMapr_Src GetCurDrawBuff()
+#define ScrnMapr_Dst ScalingBuff
+#define ScrnMapr_SrcDepth 0
+#define ScrnMapr_DstDepth 0
+#define ScrnMapr_Map ScalingTabl
+#define ScrnMapr_Scale MyWindowScale
+
+#include "SCRNMAPR.h"
+
+#endif
+
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+
+#define ScrnMapr_DoMap UpdateMappedColorCopy
+#define ScrnMapr_Src GetCurDrawBuff()
+#define ScrnMapr_Dst ScalingBuff
+#define ScrnMapr_SrcDepth vMacScreenDepth
+#define ScrnMapr_DstDepth 5
+#define ScrnMapr_Map ScalingTabl
+
+#include "SCRNMAPR.h"
+
+#endif
+
+
+#if EnableMagnify && (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+
+#define ScrnMapr_DoMap UpdateMappedScaledColorCopy
+#define ScrnMapr_Src GetCurDrawBuff()
+#define ScrnMapr_Dst ScalingBuff
+#define ScrnMapr_SrcDepth vMacScreenDepth
+#define ScrnMapr_DstDepth 5
+#define ScrnMapr_Map ScalingTabl
+#define ScrnMapr_Scale MyWindowScale
+
+#include "SCRNMAPR.h"
+
+#endif
+
+
+#if vMacScreenDepth == 4
+
+#define ScrnTrns_DoTrans UpdateTransColorCopy
+#define ScrnTrns_Src GetCurDrawBuff()
+#define ScrnTrns_Dst ScalingBuff
+#define ScrnTrns_SrcDepth vMacScreenDepth
+#define ScrnTrns_DstDepth 5
+
+#include "SCRNTRNS.h"
+
+#endif
+
+#if EnableMagnify && (vMacScreenDepth >= 4)
+
+#define ScrnTrns_DoTrans UpdateTransScaledColorCopy
+#define ScrnTrns_Src GetCurDrawBuff()
+#define ScrnTrns_Dst ScalingBuff
+#define ScrnTrns_SrcDepth vMacScreenDepth
+#define ScrnTrns_DstDepth 5
+#define ScrnTrns_Scale MyWindowScale
+
+#include "SCRNTRNS.h"
+
 #endif
 
 LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
@@ -776,6 +1402,8 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 {
 	int XDest;
 	int YDest;
+	XImage *the_image;
+	char *the_data;
 
 #if VarFullScreen
 	if (UseFullScreen)
@@ -793,6 +1421,10 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 		}
 		if (right > ViewHStart + ViewHSize) {
 			right = ViewHStart + ViewHSize;
+		}
+
+		if ((top >= bottom) || (left >= right)) {
+			goto label_exit;
 		}
 	}
 #endif
@@ -827,74 +1459,97 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 	}
 #endif
 
-#if EnableScalingBuff
-	if (UseMagnify) {
-#if 1
-		int i;
-		int j;
-		int k;
-		ui4r left1 = left & (~ 7);
-		ui4r right1 = (right + 7) & (~ 7);
-		ui4r jn = (right1 - left1) / 8;
-		ui3b *p1 = GetCurDrawBuff()
-			+ ((left1 + vMacScreenWidth * (ui5r)top) / 8);
-		ui3b *p2 = ScalingBuff
-			+ ((left1 + vMacScreenWidth * MyWindowScale * (ui5r)top)
-				* MyWindowScale / 8);
-		ui3b *p3;
-		ui3b t0;
-		ui3b t1;
-		ui3b t2;
-		ui3b m;
+#if 0 != vMacScreenDepth
+	if (UseColorMode) {
 
-		for (i = bottom - top; --i >= 0; ) {
-			p3 = p2;
-			for (j = jn; --j >= 0; ) {
-				t0 = *p1++;
-				t1 = t0;
-				m = 0x80;
-				t2 = 0;
-				for (k = 4; --k >= 0; ) {
-					t2 |= t1 & m;
-					t1 >>= 1;
-					m >>= 2;
-				}
-				*p2++ = t2 | (t2 >> 1);
+#if EnableMagnify
+		if (UseMagnify) {
+			the_image = my_ScaledColor_image;
 
-				t1 = t0 << 4;
-				m = 0x80;
-				t2 = 0;
-				for (k = 4; --k >= 0; ) {
-					t2 |= t1 & m;
-					t1 >>= 1;
-					m >>= 2;
-				}
-				*p2++ = t2 | (t2 >> 1);
+#if vMacScreenDepth < 4
+			if (! ColorTransValid) {
+				SetUpColorScalingTabl();
+				ColorTransValid = trueblnr;
 			}
-			p1 += vMacScreenWidth / 8 - jn;
-			p2 += MyScaledWidth / 8 - (MyWindowScale * jn);
-			for (j = MyWindowScale * jn; --j >= 0; ) {
-				*p2++ = *p3++;
-			}
-			p2 += MyScaledWidth / 8 - (MyWindowScale * jn);
-		}
+
+			UpdateMappedScaledColorCopy(top, left, bottom, right);
+#else
+			UpdateTransScaledColorCopy(top, left, bottom, right);
 #endif
 
-		XPutImage(x_display, my_main_wind, my_gc, my_scaled_image,
-			left * MyWindowScale, top * MyWindowScale,
-			XDest, YDest,
-			(right - left) * MyWindowScale,
-			(bottom - top) * MyWindowScale);
+			the_data = (char *)ScalingBuff;
+		} else
+#endif
+		{
+			the_image = my_Color_image;
+
+#if vMacScreenDepth < 4
+
+			if (! ColorTransValid) {
+				SetUpColorTabl();
+				ColorTransValid = trueblnr;
+			}
+
+			UpdateMappedColorCopy(top, left, bottom, right);
+
+			the_data = (char *)ScalingBuff;
+#elif vMacScreenDepth == 4
+			UpdateTransColorCopy(top, left, bottom, right);
+
+			the_data = (char *)ScalingBuff;
+#else
+			the_data = (char *)GetCurDrawBuff();
+#endif
+		}
 	} else
 #endif
 	{
-		(void) GetCurDrawBuff();
-		XPutImage(x_display, my_main_wind, my_gc,
-			(0 != SpecialModes) ? my_cntrl_image :
-				my_image,
-			left, top, XDest, YDest,
-			right - left, bottom - top);
+#if EnableMagnify
+		if (UseMagnify) {
+			the_image = my_Scaled_image;
+
+			if (! ColorTransValid) {
+				SetUpScalingTabl();
+				ColorTransValid = trueblnr;
+			}
+
+			UpdateScaledBWCopy(top, left, bottom, right);
+
+			the_data = (char *)ScalingBuff;
+		} else
+#endif
+		{
+			the_image = my_image;
+			the_data = (char *)GetCurDrawBuff();
+		}
 	}
+
+	{
+		char *saveData = the_image->data;
+		the_image->data = the_data;
+
+#if EnableMagnify
+		if (UseMagnify) {
+			XPutImage(x_display, my_main_wind, my_gc, the_image,
+				left * MyWindowScale, top * MyWindowScale,
+				XDest, YDest,
+				(right - left) * MyWindowScale,
+				(bottom - top) * MyWindowScale);
+		} else
+#endif
+		{
+			XPutImage(x_display, my_main_wind, my_gc, the_image,
+				left, top, XDest, YDest,
+				right - left, bottom - top);
+		}
+
+		the_image->data = saveData;
+	}
+
+#if MayFullScreen
+label_exit:
+	;
+#endif
 }
 
 LOCALPROC MyDrawChangesAndClear(void)
@@ -1737,16 +2392,23 @@ LOCALFUNC blnr CheckDateTime(void)
 	}
 }
 
+LOCALFUNC blnr InitLocationDat(void)
+{
+	GetCurrentTicks();
+	CurMacDateInSeconds = NewMacDateInSeconds;
+
+	return trueblnr;
+}
+
 /* --- sound --- */
 
 #if MySoundEnabled
-
 
 #define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
 #define kSoundBuffers (1 << kLn2SoundBuffers)
 #define kSoundBuffMask (kSoundBuffers - 1)
 
-#define DesiredMinFilledSoundBuffs 4
+#define DesiredMinFilledSoundBuffs 3
 	/*
 		if too big then sound lags behind emulation.
 		if too small then sound will have pauses.
@@ -1767,397 +2429,16 @@ LOCALFUNC blnr CheckDateTime(void)
 LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
 LOCALVAR ui4b ThePlayOffset;
 LOCALVAR ui4b TheFillOffset;
-LOCALVAR blnr wantplaying;
-LOCALVAR ui4b MinFilledSoundBuffs;
 LOCALVAR ui4b TheWriteOffset;
+LOCALVAR ui4b MinFilledSoundBuffs;
 
-#define SOUND_SAMPLERATE 22255 /* = round(7833600 * 2 / 704) */
-
-#define desired_alsa_buffer_size kAllBuffLen
-#define desired_alsa_period_size kOneBuffLen
-
-LOCALVAR char *alsadev_name = NULL;
-
-LOCALVAR snd_pcm_t *pcm_handle = NULL;
-LOCALVAR snd_pcm_uframes_t buffer_size;
-LOCALVAR snd_pcm_uframes_t period_size;
-
-
-/*
-	The elaborate private buffer is mostly
-	redundant since alsa has its own ring
-	buffer. But using it keeps the code
-	closer to the other ports. And anyway
-	there is no guarantee just what size
-	buffer you'll get from alsa.
-*/
-
-LOCALPROC FillWithSilence(ui3p p, int n, ui3b v)
+LOCALPROC MySound_Start0(void)
 {
-	int i;
-
-	for (i = n; --i >= 0; ) {
-		*p++ = v;
-	}
-}
-
-LOCALPROC MySound_WriteOut(void)
-{
-	int retry_count = 32;
-
-label_retry:
-	if (--retry_count > 0) {
-		snd_pcm_sframes_t avail;
-		snd_pcm_sframes_t delayp;
-		int err;
-		snd_pcm_state_t cur_state = snd_pcm_state(pcm_handle);
-
-		if (SND_PCM_STATE_RUNNING != cur_state) {
-			switch (cur_state) {
-				case SND_PCM_STATE_SETUP:
-				case SND_PCM_STATE_XRUN:
-					err = snd_pcm_prepare(pcm_handle);
-					if (err < 0) {
-						fprintf(stderr, "pcm prepare error: %s\n",
-							snd_strerror(err));
-					} else {
-						/* fprintf(stderr, "prepare succeeded\n"); */
-						goto label_retry;
-					}
-					break;
-				case SND_PCM_STATE_PREPARED:
-					if ((err = snd_pcm_start(pcm_handle)) < 0) {
-						fprintf(stderr, "pcm start error: %s\n",
-							snd_strerror(err));
-					} else {
-						/* fprintf(stderr, "start succeeded\n"); */
-						goto label_retry;
-					}
-					break;
-				case SND_PCM_STATE_SUSPENDED:
-					err = snd_pcm_resume(pcm_handle);
-					if (err < 0) {
-						fprintf(stderr, "pcm resume error: %s\n",
-							snd_strerror(err));
-					} else {
-						/* fprintf(stderr, "resume succeeded\n"); */
-						goto label_retry;
-					}
-					break;
-				case SND_PCM_STATE_DISCONNECTED:
-					/* just abort ? */
-					break;
-				default:
-					fprintf(stderr, "unknown alsa pcm state\n");
-					break;
-			}
-		} else if ((err = snd_pcm_delay(pcm_handle, &delayp)) < 0) {
-			fprintf(stderr, "snd_pcm_delay error: %s\n",
-				snd_strerror(err));
-		} else if ((avail = snd_pcm_avail_update(pcm_handle)) < 0) {
-			fprintf(stderr, "pcm update error: %s\n",
-				snd_strerror(avail));
-		} else {
-			ui3p NextPlayPtr;
-			ui4b PlayNowSize = 0;
-			ui4b MaskedFillOffset = ThePlayOffset & kOneBuffMask;
-			ui4b TotPendBuffs = delayp >> kLnOneBuffLen;
-
-			if (TotPendBuffs < MinFilledSoundBuffs) {
-				MinFilledSoundBuffs = TotPendBuffs;
-			}
-
-			if (MaskedFillOffset != 0) {
-				/* take care of left overs */
-				PlayNowSize = kOneBuffLen - MaskedFillOffset;
-				NextPlayPtr =
-					TheSoundBuffer + (ThePlayOffset & kAllBuffMask);
-			} else if (0 !=
-				((TheFillOffset - ThePlayOffset) >> kLnOneBuffLen))
-			{
-				PlayNowSize = kOneBuffLen;
-				NextPlayPtr =
-					TheSoundBuffer + (ThePlayOffset & kAllBuffMask);
-			} else {
-				if (delayp < 1024) {
-					/* low on sound to play. play a bit of silence */
-					ThePlayOffset -= kOneBuffLen;
-					NextPlayPtr =
-						TheSoundBuffer + (ThePlayOffset & kAllBuffMask);
-					PlayNowSize = kOneBuffLen;
-					FillWithSilence(NextPlayPtr, kOneBuffLen,
-						/* 0x80 */
-						*((ui3p)NextPlayPtr + kOneBuffLen - 1));
-					/* fprintf(stderr, "need silence\n"); */
-				}
-			}
-
-			if (PlayNowSize > avail) {
-				/*
-					This isn't supposed to be needed with nonblock
-					mode. But in Ubuntu 7.04 running in Parallels,
-					snd_pcm_writei seemed to block anyway.
-				*/
-				PlayNowSize = avail;
-			}
-
-			if (0 != PlayNowSize) {
-				err = snd_pcm_writei(
-					pcm_handle, NextPlayPtr, PlayNowSize);
-				if (err < 0) {
-					if ((- EAGAIN == err) || (- ESTRPIPE == err)) {
-						/* buffer full, try again later */
-						/* fprintf(stderr, "pcm write: EAGAIN\n"); */
-					} else if (- EPIPE == err) {
-						/* buffer seems to have emptied */
-						/* fprintf(stderr, "pcm write emptied\n"); */
-						goto label_retry;
-					} else {
-						fprintf(stderr, "pcm write error: %s\n",
-							snd_strerror(err));
-					}
-				} else {
-					ThePlayOffset += err;
-					goto label_retry;
-				}
-			}
-		}
-	}
-}
-
-LOCALPROC MySound_Start(void)
-{
-	if (pcm_handle != NULL) {
-		/* Reset variables */
-		ThePlayOffset = 0;
-		TheFillOffset = 0;
-		TheWriteOffset = 0;
-		MinFilledSoundBuffs = kSoundBuffers;
-		wantplaying = falseblnr;
-	}
-}
-
-LOCALPROC MySound_Stop(void)
-{
-	wantplaying = falseblnr;
-	if (pcm_handle != NULL) {
-		snd_pcm_drop(pcm_handle);
-	}
-}
-
-LOCALPROC MySound_Init0(void)
-{
-	snd_pcm_hw_params_t *hw_params = NULL;
-	snd_pcm_sw_params_t *sw_params = NULL;
-	unsigned int rrate = SOUND_SAMPLERATE;
-	int err;
-
-	buffer_size = desired_alsa_buffer_size;
-	period_size = desired_alsa_period_size;
-
-	/* Open the sound device */
-	if (NULL == alsadev_name) {
-		alsadev_name = getenv("AUDIODEV");
-		if (NULL == alsadev_name) {
-			alsadev_name = strdup("default");
-		}
-	}
-
-	if ((err = snd_pcm_open(&pcm_handle, alsadev_name,
-		SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0)
-	{
-		fprintf(stderr, "cannot open audio device %s (%s)\n",
-			alsadev_name, snd_strerror(err));
-		pcm_handle = NULL;
-	} else
-	/* Set some hardware parameters */
-	if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
-		fprintf(stderr,
-			"cannot allocate hardware parameter structure (%s)\n",
-			snd_strerror(err));
-		hw_params = NULL;
-	} else
-	if ((err = snd_pcm_hw_params_any(pcm_handle, hw_params)) < 0) {
-		fprintf(stderr,
-			"cannot initialize hardware parameter structure (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params_set_access(pcm_handle,
-		hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0)
-	{
-		fprintf(stderr, "cannot set access type (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params_set_format(pcm_handle,
-		hw_params, SND_PCM_FORMAT_U8)) < 0)
-	{
-		fprintf(stderr, "cannot set sample format (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params_set_rate_near(pcm_handle,
-		hw_params, &rrate, NULL)) < 0)
-	{
-		fprintf(stderr, "cannot set sample rate (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params_set_channels(pcm_handle,
-		hw_params, 1)) < 0)
-	{
-		fprintf(stderr, "cannot set channel count (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params_set_buffer_size_near(pcm_handle,
-		hw_params, &buffer_size)) < 0)
-	{
-		fprintf(stderr, "cannot set buffer size count (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params_set_period_size_near(pcm_handle,
-		hw_params, &period_size, NULL)) < 0)
-	{
-		fprintf(stderr, "cannot set period size count (%s)\n",
-			snd_strerror(err));
-	} else
-	if ((err = snd_pcm_hw_params(pcm_handle, hw_params)) < 0) {
-		fprintf(stderr, "cannot set parameters (%s)\n",
-			snd_strerror(err));
-	} else
-	{
-		if (rrate != SOUND_SAMPLERATE) {
-			fprintf(stderr, "Warning: sample rate is off by %i Hz\n",
-				SOUND_SAMPLERATE - rrate);
-		}
-
-#if 0
-		if (buffer_size != desired_alsa_buffer_size) {
-			fprintf(stderr,
-				"Warning: buffer size is off,"
-				" desired %li, actual %li\n",
-				desired_alsa_buffer_size, buffer_size);
-		}
-
-		if (period_size != desired_alsa_period_size) {
-			fprintf(stderr,
-				"Warning: period size is off,"
-				" desired %li, actual %li\n",
-				desired_alsa_period_size, period_size);
-		}
-#endif
-
-		snd_pcm_hw_params_free(hw_params);
-		hw_params = NULL;
-
-		/* Set some software parameters */
-		if ((err = snd_pcm_sw_params_malloc(&sw_params)) < 0) {
-			fprintf(stderr,
-				"cannot allocate software parameter structure (%s)\n",
-				snd_strerror(err));
-			sw_params = NULL;
-		} else
-		if ((err = snd_pcm_sw_params_current(pcm_handle,
-			sw_params)) < 0)
-		{
-			fprintf(stderr,
-				"Unable to determine current"
-				" sw_params for playback: %s\n",
-				snd_strerror(err));
-		} else
-		if ((snd_pcm_sw_params_set_start_threshold(pcm_handle,
-			sw_params, buffer_size - period_size)) < 0)
-		{
-			fprintf(stderr,
-				"Unable to set start threshold mode for playback: %s\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_sw_params_set_avail_min(pcm_handle,
-			sw_params, period_size)) < 0)
-		{
-			fprintf(stderr,
-				"Unable to set avail min for playback: %s\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_sw_params_set_xfer_align(pcm_handle,
-			sw_params, 1)) < 0)
-		{
-			fprintf(stderr,
-				"Unable to set transfer align for playback: %s\n",
-				snd_strerror(err));
-		} else
-		if ((err = snd_pcm_sw_params(pcm_handle, sw_params)) < 0) {
-			fprintf(stderr,
-				"Unable to set sw params for playback: %s\n",
-				snd_strerror(err));
-		} else
-		{
-			snd_pcm_sw_params_free(sw_params);
-			sw_params = NULL;
-
-			snd_pcm_nonblock(pcm_handle, 0);
-
-			return; /* success */
-		}
-	}
-
-	/* clean up after failure */
-
-	if (sw_params != NULL) {
-		snd_pcm_sw_params_free(sw_params);
-	}
-	if (hw_params != NULL) {
-		snd_pcm_hw_params_free(hw_params);
-	}
-	if (pcm_handle != NULL) {
-		snd_pcm_close(pcm_handle);
-		pcm_handle = NULL;
-	}
-}
-
-LOCALFUNC blnr MySound_Init(void)
-{
-	MySound_Init0();
-	return trueblnr;
-}
-
-LOCALPROC MySound_UnInit(void)
-{
-	if (pcm_handle != NULL) {
-		snd_pcm_close(pcm_handle);
-		pcm_handle = NULL;
-	}
-}
-
-LOCALPROC MySound_FilledBlocks(void)
-{
-	TheFillOffset = TheWriteOffset;
-
-	if (NULL != pcm_handle) {
-		MySound_WriteOut();
-	}
-}
-
-LOCALPROC MySound_WroteABlock(void)
-{
-	if (wantplaying) {
-		MySound_FilledBlocks();
-	} else if (((TheWriteOffset - ThePlayOffset) >> kLnOneBuffLen) < 12)
-	{
-		/* just wait */
-	} else {
-		MySound_FilledBlocks();
-		wantplaying = trueblnr;
-		/* MySound_BeginPlaying(); */
-	}
-}
-
-GLOBALPROC MySound_EndWrite(ui4r actL)
-{
-	TheWriteOffset += actL;
-
-	if (0 == (TheWriteOffset & kOneBuffMask)) {
-		/* just finished a block */
-
-		MySound_WroteABlock();
-	}
+	/* Reset variables */
+	ThePlayOffset = 0;
+	TheFillOffset = 0;
+	TheWriteOffset = 0;
+	MinFilledSoundBuffs = kSoundBuffers;
 }
 
 GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
@@ -2178,17 +2459,38 @@ GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
 	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
 }
 
-LOCALPROC MySound_SecondNotify(void)
+LOCALFUNC blnr MySound_EndWrite0(ui4r actL)
 {
-	if (pcm_handle != NULL) {
-		if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
-			++CurEmulatedTime;
-		} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
-			--CurEmulatedTime;
-		}
-		MinFilledSoundBuffs = kSoundBuffers;
+	blnr v;
+
+	TheWriteOffset += actL;
+
+	if (0 != (TheWriteOffset & kOneBuffMask)) {
+		v = falseblnr;
+	} else {
+		/* just finished a block */
+
+		TheFillOffset = TheWriteOffset;
+
+		v = trueblnr;
 	}
+
+	return v;
 }
+
+LOCALPROC MySound_SecondNotify0(void)
+{
+	if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
+		++CurEmulatedTime;
+	} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
+		--CurEmulatedTime;
+	}
+	MinFilledSoundBuffs = kSoundBuffers;
+}
+
+#define SOUND_SAMPLERATE 22255 /* = round(7833600 * 2 / 704) */
+
+#include "SOUNDGLU.h"
 
 #endif
 
@@ -3002,7 +3304,6 @@ LOCALFUNC blnr Screen_Init(void)
 	int screen;
 	Colormap Xcmap;
 	Visual *Xvisual;
-	char *image_Mem1;
 
 	x_display = XOpenDisplay(display_name);
 	if (NULL == x_display) {
@@ -3033,67 +3334,97 @@ LOCALFUNC blnr Screen_Init(void)
 		return falseblnr;
 	}
 
-	image_Mem1 = (char *)calloc(1, vMacScreenNumBytes);
-	if (NULL == image_Mem1) {
-		fprintf(stderr, "calloc failed.\n");
-		return falseblnr;
-	}
-	SetLongs((ui5b *)image_Mem1, vMacScreenNumBytes / 4);
-
 	my_image = XCreateImage(x_display, Xvisual, 1, XYBitmap, 0,
-		(char *)image_Mem1,
-		vMacScreenWidth, vMacScreenHeight, 32, vMacScreenByteWidth);
+		NULL /* (char *)image_Mem1 */,
+		vMacScreenWidth, vMacScreenHeight, 32,
+		vMacScreenMonoByteWidth);
 	if (NULL == my_image) {
 		fprintf(stderr, "XCreateImage failed.\n");
 		return falseblnr;
 	}
 
+#if 0
+	fprintf(stderr, "bitmap_bit_order = %d\n",
+		(int)my_image->bitmap_bit_order);
+	fprintf(stderr, "byte_order = %d\n", (int)my_image->byte_order);
+#endif
+
 	my_image->bitmap_bit_order = MSBFirst;
 	my_image->byte_order = MSBFirst;
-	screencomparebuff = (ui3p)my_image->data;
 
-#if EnableScalingBuff
-	image_Mem1 = (char *)malloc((long)vMacScreenNumBytes
-		* MyWindowScale * MyWindowScale);
-	if (NULL == image_Mem1) {
-		fprintf(stderr, "malloc failed.\n");
-		return falseblnr;
-	}
-
-	my_scaled_image = XCreateImage(x_display, Xvisual, 1, XYBitmap, 0,
-		(char *)image_Mem1,
+#if EnableMagnify
+	my_Scaled_image = XCreateImage(x_display, Xvisual, 1, XYBitmap, 0,
+		NULL /* (char *)image_Mem1 */,
 		vMacScreenWidth * MyWindowScale,
 		vMacScreenHeight * MyWindowScale,
-		32, vMacScreenByteWidth * MyWindowScale);
-	if (NULL == my_scaled_image) {
+		32, vMacScreenMonoByteWidth * MyWindowScale);
+	if (NULL == my_Scaled_image) {
 		fprintf(stderr, "XCreateImage failed.\n");
 		return falseblnr;
 	}
 
-	my_scaled_image->bitmap_bit_order = MSBFirst;
-	my_scaled_image->byte_order = MSBFirst;
-	ScalingBuff = (ui3p)my_scaled_image->data;
+	my_Scaled_image->bitmap_bit_order = MSBFirst;
+	my_Scaled_image->byte_order = MSBFirst;
 #endif
 
-#if UseControlKeys
-	image_Mem1 = (char *)malloc(vMacScreenNumBytes);
-	if (NULL == image_Mem1) {
-		fprintf(stderr, "malloc failed.\n");
-		return falseblnr;
-	}
+#if 0 != vMacScreenDepth
+	my_Color_image = XCreateImage(x_display, Xvisual, 24, ZPixmap, 0,
+		NULL /* (char *)image_Mem1 */,
+		vMacScreenWidth, vMacScreenHeight, 32,
+			4 * (ui5r)vMacScreenWidth);
+	if (NULL == my_Color_image) {
+		fprintf(stderr, "XCreateImage Color failed.\n");
+	} else {
 
-	my_cntrl_image = XCreateImage(x_display, Xvisual, 1, XYBitmap, 0,
-		(char *)image_Mem1,
-		vMacScreenWidth, vMacScreenHeight, 32, vMacScreenByteWidth);
-	if (NULL == my_cntrl_image) {
-		fprintf(stderr, "XCreateImage failed.\n");
-		return falseblnr;
-	}
+#if 0
+		fprintf(stderr, "DefaultDepth = %d\n",
+			(int)DefaultDepth(x_display, screen));
 
-	my_cntrl_image->bitmap_bit_order = MSBFirst;
-	my_cntrl_image->byte_order = MSBFirst;
-	CntrlDisplayBuff = (ui3p)my_cntrl_image->data;
+		fprintf(stderr, "MSBFirst = %d\n", (int)MSBFirst);
+		fprintf(stderr, "LSBFirst = %d\n", (int)LSBFirst);
+
+		fprintf(stderr, "bitmap_bit_order = %d\n",
+			(int)my_Color_image->bitmap_bit_order);
+		fprintf(stderr, "byte_order = %d\n",
+			(int)my_Color_image->byte_order);
+		fprintf(stderr, "bitmap_unit = %d\n",
+			(int)my_Color_image->bitmap_unit);
+		fprintf(stderr, "bits_per_pixel = %d\n",
+			(int)my_Color_image->bits_per_pixel);
+		fprintf(stderr, "red_mask = %d\n",
+			(int)my_Color_image->red_mask);
+		fprintf(stderr, "green_mask = %d\n",
+			(int)my_Color_image->green_mask);
+		fprintf(stderr, "blue_mask = %d\n",
+			(int)my_Color_image->blue_mask);
 #endif
+
+#if 5 == vMacScreenDepth
+		/*
+			In this specific case, can pass mac screen
+			buffer directly to X, once set byte order.
+		*/
+		my_Color_image->bitmap_bit_order = MSBFirst;
+		my_Color_image->byte_order = MSBFirst;
+#endif
+
+#if EnableMagnify
+		my_ScaledColor_image = XCreateImage(x_display, Xvisual,
+			24, ZPixmap, 0,
+			NULL /* (char *)image_Mem1 */,
+			vMacScreenWidth * MyWindowScale,
+			vMacScreenHeight * MyWindowScale,
+			32, 4 * (ui5r)vMacScreenWidth * MyWindowScale);
+		if (NULL == my_ScaledColor_image) {
+			fprintf(stderr, "XCreateImage Scaled Color failed.\n");
+		} else
+#endif
+		{
+			ColorModeWorks = trueblnr;
+		}
+
+	} /* XCreateImage my_Scaled_image */
+#endif /* 0 != vMacScreenDepth */
 
 	DisableKeyRepeat();
 
@@ -3199,10 +3530,14 @@ LOCALFUNC blnr CreateMainWindow(void)
 		if (ViewHSize >= vMacScreenWidth) {
 			ViewHStart = 0;
 			ViewHSize = vMacScreenWidth;
+		} else {
+			ViewHSize &= ~ 1;
 		}
 		if (ViewVSize >= vMacScreenHeight) {
 			ViewVStart = 0;
 			ViewVSize = vMacScreenHeight;
+		} else {
+			ViewVSize &= ~ 1;
 		}
 	}
 #endif
@@ -3270,6 +3605,12 @@ LOCALFUNC blnr CreateMainWindow(void)
 		WriteExtraErr("XCreateSimpleWindow failed.");
 		return falseblnr;
 	} else {
+		char *win_name =
+			(NULL != n_arg) ? n_arg : (
+#if CanGetAppPath
+			(NULL != app_name) ? app_name :
+#endif
+			kStrAppName);
 		XSelectInput(x_display, my_main_wind,
 			ExposureMask | KeyPressMask | KeyReleaseMask
 			| ButtonPressMask | ButtonReleaseMask
@@ -3278,8 +3619,8 @@ LOCALFUNC blnr CreateMainWindow(void)
 #endif
 			| FocusChangeMask);
 
-		XStoreName(x_display, my_main_wind, kStrAppName);
-		XSetIconName(x_display, my_main_wind, kStrAppName);
+		XStoreName(x_display, my_main_wind, win_name);
+		XSetIconName(x_display, my_main_wind, win_name);
 
 		{
 			XClassHint *hints = XAllocClassHint();
@@ -3442,7 +3783,9 @@ struct MyWState {
 #if VarFullScreen
 	blnr f_UseFullScreen;
 #endif
+#if EnableMagnify
 	blnr f_UseMagnify;
+#endif
 };
 typedef struct MyWState MyWState;
 
@@ -3461,7 +3804,9 @@ LOCALPROC GetMyWState(MyWState *r)
 #if VarFullScreen
 	r->f_UseFullScreen = UseFullScreen;
 #endif
+#if EnableMagnify
 	r->f_UseMagnify = UseMagnify;
+#endif
 }
 
 LOCALPROC SetMyWState(MyWState *r)
@@ -3479,13 +3824,16 @@ LOCALPROC SetMyWState(MyWState *r)
 #if VarFullScreen
 	UseFullScreen = r->f_UseFullScreen;
 #endif
+#if EnableMagnify
 	UseMagnify = r->f_UseMagnify;
+#endif
 }
 
 LOCALVAR blnr WantRestoreCursPos = falseblnr;
 LOCALVAR ui4b RestoreMouseH;
 LOCALVAR ui4b RestoreMouseV;
 
+#if EnableMagnify || VarFullScreen
 LOCALFUNC blnr ReCreateMainWindow(void)
 {
 	MyWState old_state;
@@ -3568,6 +3916,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	UseFullScreen = WantFullScreen;
 #endif
 
+	ColorTransValid = falseblnr;
+
 	if (! CreateMainWindow()) {
 		CloseMainWindow();
 		SetMyWState(&old_state);
@@ -3609,6 +3959,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 
 	return trueblnr;
 }
+#endif
 
 #if VarFullScreen && EnableMagnify
 enum {
@@ -3938,44 +4289,72 @@ LOCALPROC CheckForSavedTasks(void)
 
 LOCALFUNC blnr ScanCommandLine(void)
 {
-	int i;
+	char *pa;
+	int i = 1;
 
-	for (i = 1; i < my_argc; ++i) {
-		if ('-' == my_argv[i][0]) {
-			if ((0 == strcmp(my_argv[i], "--display")) ||
-				(0 == strcmp(my_argv[i], "-display")))
+label_retry:
+	if (i < my_argc) {
+		pa = my_argv[i++];
+		if ('-' == pa[0]) {
+			if ((0 == strcmp(pa, "--display"))
+				|| (0 == strcmp(pa, "-display")))
 			{
-				++i;
 				if (i < my_argc) {
-					display_name = my_argv[i];
-				}
-			} else if ((0 == strcmp(my_argv[i], "--rom")) ||
-				(0 == strcmp(my_argv[i], "-r")))
-			{
-				++i;
-				if (i < my_argc) {
-					rom_path = my_argv[i];
+					display_name = my_argv[i++];
+					goto label_retry;
 				}
 			} else
-#if MySoundEnabled
-			if ((0 == strcmp(my_argv[i], "--alsadev")) ||
-				(0 == strcmp(my_argv[i], "-alsadev")))
+			if ((0 == strcmp(pa, "--rom"))
+				|| (0 == strcmp(pa, "-r")))
 			{
-				++i;
 				if (i < my_argc) {
-					alsadev_name = my_argv[i];
+					rom_path = my_argv[i++];
+					goto label_retry;
+				}
+			} else
+			if (0 == strcmp(pa, "-n"))
+			{
+				if (i < my_argc) {
+					n_arg = my_argv[i++];
+					goto label_retry;
+				}
+			} else
+			if (0 == strcmp(pa, "-d"))
+			{
+				if (i < my_argc) {
+					d_arg = my_argv[i++];
+					goto label_retry;
+				}
+			} else
+#ifndef UsingAlsa
+#define UsingAlsa 0
+#endif
+
+#if UsingAlsa
+			if ((0 == strcmp(pa, "--alsadev"))
+				|| (0 == strcmp(pa, "-alsadev")))
+			{
+				if (i < my_argc) {
+					alsadev_name = my_argv[i++];
+					goto label_retry;
 				}
 			} else
 #endif
-			if (0 == strcmp(my_argv[i], "-l")) {
+#if 0
+			if (0 == strcmp(pa, "-l")) {
 				SpeedValue = 0;
-			} else {
+				goto label_retry;
+			} else
+#endif
+			{
 				MacMsg(kStrBadArgTitle, kStrBadArgMessage, falseblnr);
 			}
 		} else {
-			(void) Sony_Insert1(my_argv[i], falseblnr);
+			(void) Sony_Insert1(pa, falseblnr);
+			goto label_retry;
 		}
 	}
+
 	return trueblnr;
 }
 
@@ -4023,14 +4402,14 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 #endif
 		MyDrawChangesAndClear();
 
+		if (n > 8) {
+			/* emulation not fast enough */
+			n = 8;
+			CurEmulatedTime = OnTrueTime - n;
+		}
+
 		if (ExtraTimeNotOver() && (--n > 0)) {
 			/* lagging, catch up */
-
-			if (n > 8) {
-				/* emulation not fast enough */
-				n = 8;
-				CurEmulatedTime = OnTrueTime - n;
-			}
 
 			EmVideoDisable = trueblnr;
 
@@ -4115,6 +4494,22 @@ LOCALPROC ReserveAllocAll(void)
 	dbglog_ReserveAlloc();
 #endif
 	ReserveAllocOneBlock(&ROM, kROM_Size, 5, falseblnr);
+
+	ReserveAllocOneBlock(&screencomparebuff,
+		vMacScreenNumBytes, 5, trueblnr);
+#if UseControlKeys
+	ReserveAllocOneBlock(&CntrlDisplayBuff,
+		vMacScreenNumBytes, 5, falseblnr);
+#endif
+#if WantScalingBuff
+	ReserveAllocOneBlock(&ScalingBuff,
+		ScalingBuffsz, 5, falseblnr);
+#endif
+#if WantScalingTabl
+	ReserveAllocOneBlock(&ScalingTabl,
+		ScalingTablsz, 5, falseblnr);
+#endif
+
 #if MySoundEnabled
 	ReserveAllocOneBlock((ui3p *)&TheSoundBuffer,
 		dbhBufferSize, 5, falseblnr);
@@ -4155,15 +4550,202 @@ LOCALPROC UnallocMyMemory(void)
 	}
 }
 
+#if HaveAppPathLink
+LOCALFUNC blnr ReadLink_Alloc(char *path, char **r)
+{
+	/*
+		This should work to find size:
+
+		struct stat r;
+
+		if (lstat(path, &r) != -1) {
+			r = r.st_size;
+			IsOk = trueblnr;
+		}
+
+		But observed to return 0 in Ubuntu 10.04 x86-64
+	*/
+
+	char *s;
+	int sz;
+	char *p;
+	blnr IsOk = falseblnr;
+	size_t s_alloc = 256;
+
+label_retry:
+	s = (char *)malloc(s_alloc);
+	if (NULL == s) {
+		fprintf(stderr, "malloc failed.\n");
+	} else {
+		sz = readlink(path, s, s_alloc);
+		if ((sz < 0) || (sz >= s_alloc)) {
+			free(s);
+			if (sz == s_alloc) {
+				s_alloc <<= 1;
+				goto label_retry;
+			} else {
+				fprintf(stderr, "readlink failed.\n");
+			}
+		} else {
+			/* ok */
+			p = (char *)malloc(sz + 1);
+			if (NULL == p) {
+				fprintf(stderr, "malloc failed.\n");
+			} else {
+				(void) memcpy(p, s, sz);
+				p[sz] = 0;
+				*r = p;
+				IsOk = trueblnr;
+			}
+			free(s);
+		}
+	}
+
+	return IsOk;
+}
+#endif
+
+#if HaveSysctlPath
+LOCALFUNC blnr ReadKernProcPathname(char **r)
+{
+	size_t s_alloc;
+	char *s;
+	int mib[] = {
+		CTL_KERN,
+		KERN_PROC,
+		KERN_PROC_PATHNAME,
+		-1
+	};
+	blnr IsOk = falseblnr;
+
+	if (0 != sysctl(mib, sizeof(mib) / sizeof(int),
+		NULL, &s_alloc, NULL, 0))
+	{
+		fprintf(stderr, "sysctl failed.\n");
+	} else {
+		s = (char *)malloc(s_alloc);
+		if (NULL == s) {
+			fprintf(stderr, "malloc failed.\n");
+		} else {
+			if (0 != sysctl(mib, sizeof(mib) / sizeof(int),
+				s, &s_alloc, NULL, 0))
+			{
+				fprintf(stderr, "sysctl 2 failed.\n");
+			} else {
+				*r = s;
+				IsOk = trueblnr;
+			}
+			if (! IsOk) {
+				free(s);
+			}
+		}
+	}
+
+	return IsOk;
+}
+#endif
+
+#if CanGetAppPath
+LOCALFUNC blnr Path2ParentAndName(char *path,
+	char **parent, char **name)
+{
+	blnr IsOk = falseblnr;
+
+	char *t = strrchr(path, '/');
+	if (NULL == t) {
+		fprintf(stderr, "no directory.\n");
+	} else {
+		int par_sz = t - path;
+		char *par = (char *)malloc(par_sz + 1);
+		if (NULL == par) {
+			fprintf(stderr, "malloc failed.\n");
+		} else {
+			(void) memcpy(par, path, par_sz);
+			par[par_sz] = 0;
+			{
+				int s_sz = strlen(path);
+				int child_sz = s_sz - par_sz - 1;
+				char *child = (char *)malloc(child_sz + 1);
+				if (NULL == child) {
+					fprintf(stderr, "malloc failed.\n");
+				} else {
+					(void) memcpy(child, t + 1, child_sz);
+					child[child_sz] = 0;
+
+					*name = child;
+					IsOk = trueblnr;
+					/* free(child); */
+				}
+			}
+			if (! IsOk) {
+				free(par);
+			} else {
+				*parent = par;
+			}
+		}
+	}
+
+	return IsOk;
+}
+#endif
+
+#if CanGetAppPath
+LOCALFUNC blnr InitWhereAmI(void)
+{
+	char *s;
+
+	if (!
+#if HaveAppPathLink
+		ReadLink_Alloc(TheAppPathLink, &s)
+#endif
+#if HaveSysctlPath
+		ReadKernProcPathname(&s)
+#endif
+		)
+	{
+		fprintf(stderr, "InitWhereAmI fails.\n");
+	} else {
+		if (! Path2ParentAndName(s, &app_parent, &app_name)) {
+			fprintf(stderr, "Path2ParentAndName fails.\n");
+		} else {
+			/* ok */
+			/*
+				fprintf(stderr, "parent = %s.\n", app_parent);
+				fprintf(stderr, "name = %s.\n", app_name);
+			*/
+		}
+
+		free(s);
+	}
+
+	return trueblnr; /* keep going regardless */
+}
+#endif
+
+#if CanGetAppPath
+LOCALPROC UninitWhereAmI(void)
+{
+	MyMayFree(app_parent);
+	MyMayFree(app_name);
+}
+#endif
+
 LOCALFUNC blnr InitOSGLU(void)
 {
 	if (AllocMyMemory())
+#if CanGetAppPath
+	if (InitWhereAmI())
+#endif
 #if dbglog_HAVE
 	if (dbglog_open())
 #endif
-	if (LoadInitialImages())
 	if (ScanCommandLine())
+	if (LoadInitialImages())
 	if (LoadMacRom())
+#if UseActvCode
+	if (ActvCodeInit())
+#endif
+	if (InitLocationDat())
 #if MySoundEnabled
 	if (MySound_Init())
 #endif
@@ -4205,19 +4787,26 @@ LOCALPROC UnInitOSGLU(void)
 	if (blankCursor != None) {
 		XFreeCursor(x_display, blankCursor);
 	}
+
 	if (my_image != NULL) {
 		XDestroyImage(my_image);
 	}
-#if UseControlKeys
-	if (my_cntrl_image != NULL) {
-		XDestroyImage(my_cntrl_image);
+#if EnableMagnify
+	if (my_Scaled_image != NULL) {
+		XDestroyImage(my_Scaled_image);
 	}
 #endif
-#if EnableScalingBuff
-	if (my_scaled_image != NULL) {
-		XDestroyImage(my_scaled_image);
+#if 0 != vMacScreenDepth
+	if (my_Color_image != NULL) {
+		XDestroyImage(my_Color_image);
 	}
 #endif
+#if EnableMagnify && (0 != vMacScreenDepth)
+	if (my_ScaledColor_image != NULL) {
+		XDestroyImage(my_ScaledColor_image);
+	}
+#endif
+
 	CloseMainWindow();
 	if (x_display != NULL) {
 		XCloseDisplay(x_display);
@@ -4227,6 +4816,9 @@ LOCALPROC UnInitOSGLU(void)
 	dbglog_close();
 #endif
 
+#if CanGetAppPath
+	UninitWhereAmI();
+#endif
 	UnallocMyMemory();
 
 	CheckSavedMacMsg();

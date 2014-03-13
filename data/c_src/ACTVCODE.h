@@ -153,8 +153,10 @@ LOCALVAR ui3b ActvCodeDigits[ActvCodeMaxLen];
 
 #define ActvCodeFileLen 8
 
+#if UseActvFile
 FORWARDFUNC tMacErr ActvCodeFileSave(ui3p p);
 FORWARDFUNC tMacErr ActvCodeFileLoad(ui3p p);
+#endif
 
 LOCALVAR ui3b CurActvCode[ActvCodeFileLen];
 
@@ -193,6 +195,7 @@ LOCALPROC DoActvCodeModeKey(int key)
 				if (CheckActvCode(CurActvCode, &Trial)) {
 					SpecialModeClr(SpclModeActvCode);
 					NeedWholeScreenDraw = trueblnr;
+#if UseActvFile
 					if (Trial) {
 						MacMsg(
 							"Using temporary code.",
@@ -210,6 +213,12 @@ LOCALPROC DoActvCodeModeKey(int key)
 								"Thank you!", falseblnr);
 						}
 					}
+#else
+					MacMsg(
+						"Thank you for trying Mini vMac!",
+						"sample variation : ^v",
+						falseblnr);
+#endif
 				}
 			} else if (ActvCodeLen > L) {
 				--ActvCodeLen;
@@ -220,8 +229,16 @@ LOCALPROC DoActvCodeModeKey(int key)
 
 LOCALPROC DrawCellsActvCodeModeBody(void)
 {
+#if UseActvFile
 	DrawCellsOneLineStr("Please enter your activation code:");
 	DrawCellsBlankLine();
+#else
+	DrawCellsOneLineStr(
+		"To try this variation of ^p, please type these numbers:");
+	DrawCellsBlankLine();
+	DrawCellsOneLineStr("281 953 822 340");
+	DrawCellsBlankLine();
+#endif
 
 	if (0 == ActvCodeLen) {
 		DrawCellsOneLineStr("?");
@@ -251,19 +268,33 @@ LOCALPROC DrawCellsActvCodeModeBody(void)
 				"Sorry, this is not a valid activation code.");
 		}
 	}
+
+#if UseActvFile
 	DrawCellsBlankLine();
 	DrawCellsOneLineStr(
 		"If you haven;}t obtained an activation code yet,"
 		" here is a temporary one:");
 	DrawCellsBlankLine();
 	DrawCellsOneLineStr("281 953 822 340");
+#else
+	DrawCellsBlankLine();
+	DrawCellsOneLineStr(kStrForMoreInfo);
+	DrawCellsOneLineStr("http://www.gryphel.com/c/var/");
+#endif
 }
 
 LOCALPROC DrawActvCodeMode(void)
 {
-	DrawSpclMode0("Activation Code", DrawCellsActvCodeModeBody);
+	DrawSpclMode0(
+#if UseActvFile
+		"Activation Code",
+#else
+		"sample variation : ^v",
+#endif
+		DrawCellsActvCodeModeBody);
 }
 
+#if UseActvFile
 LOCALPROC ClStrAppendHexNib(int *L0, ui3b *r, ui3r v)
 {
 	if (v < 10) {
@@ -290,14 +321,16 @@ LOCALPROC ClStrAppendHexLong(int *L0, ui3b *r, ui5r v)
 	ClStrAppendHexWord(L0, r, (v >> 16) & 0xFFFF);
 	ClStrAppendHexWord(L0, r, v & 0xFFFF);
 }
+#endif
 
 LOCALPROC CopyRegistrationStr(void)
 {
-	int i;
-	int L0;
-	int L;
 	ui3b ps[ClStrMaxLength];
+	int i;
+	int L;
 	tPbuf j;
+#if UseActvFile
+	int L0;
 	ui5r sum;
 
 	ClStrFromSubstCStr(&L0, ps, "^v ");
@@ -328,6 +361,13 @@ LOCALPROC CopyRegistrationStr(void)
 	for (i = L0; i < L; ++i) {
 		ps[i] = Cell2MacAsciiMap[ps[i]];
 	}
+#else
+	ClStrFromSubstCStr(&L, ps, "^v");
+
+	for (i = 0; i < L; ++i) {
+		ps[i] = Cell2MacAsciiMap[ps[i]];
+	}
+#endif
 
 	if (mnvm_noErr == PbufNew(L, &j)) {
 		PbufTransfer(ps, j, 0, L, trueblnr);
@@ -337,12 +377,14 @@ LOCALPROC CopyRegistrationStr(void)
 
 LOCALFUNC blnr ActvCodeInit(void)
 {
+#if UseActvFile
 	blnr Trial;
 
 	if ((mnvm_noErr != ActvCodeFileLoad(CurActvCode))
 		|| (! CheckActvCode(CurActvCode, &Trial))
 		|| Trial
 		)
+#endif
 	{
 		SpecialModeSet(SpclModeActvCode);
 		NeedWholeScreenDraw = trueblnr;

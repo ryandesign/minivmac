@@ -22,7 +22,12 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBlankLineToDestFile();
 
 	WriteCompCondBool("MySoundRecenterSilence", falseblnr);
-	WriteDestFileLn("#define kLn2SoundSampSz 3");
+
+	if (gbk_sndapi_ddsp == gbo_sndapi) {
+		WriteDestFileLn("#define kLn2SoundSampSz 4");
+	} else {
+		WriteDestFileLn("#define kLn2SoundSampSz 3");
+	}
 
 	WriteBlankLineToDestFile();
 
@@ -39,13 +44,20 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteUnsignedToOutput(cur_numdrives);
 	WriteEndDestFileLn();
 
-	WriteCompCondBool("IncludeSonyRawMode", (! WantMinExtn));
+	WriteCompCondBool("IncludeSonyRawMode", (! WantMinExtn)
+		&& (gbk_apifam_nds != gbo_apifam));
 	WriteCompCondBool("IncludeSonyGetName",
-		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
+		&& (gbk_apifam_nds != gbo_apifam)
+		&& (gbk_apifam_sdl != gbo_apifam));
 	WriteCompCondBool("IncludeSonyNew",
-		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
+		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_nds != gbo_apifam));
 	WriteCompCondBool("IncludeSonyNameNew",
-		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam));
+		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
+		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteBlankLineToDestFile();
 
@@ -78,7 +90,8 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteCompCondBool("IncludePbufs",
 		((! WantMinExtn) || WantActvCode)
-			&& (gbk_apifam_gtk != gbo_apifam));
+			&& (gbk_apifam_gtk != gbo_apifam)
+			&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define NumPbufs ");
@@ -94,16 +107,10 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteCompCondBool("IncludeHostTextClipExchange",
 		((! WantMinExtn) || WantActvCode)
-			&& (gbk_apifam_gtk != gbo_apifam));
-
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define WantInitSpeedValue ");
-	if (gbk_speed_AllOut == CurInitSpeed) {
-		WriteCStrToDestFile("-1");
-	} else {
-		WriteUnsignedToOutput(CurInitSpeed - 1);
-	}
-	WriteEndDestFileLn();
+			&& (gbk_apifam_gtk != gbo_apifam)
+			&& (gbk_apifam_sdl != gbo_apifam)
+			&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteDestFileLn("#define EnableAutoSlow 1");
+	WriteCompCondBool("EmLocalTalk", WantLocalTalk);
 }

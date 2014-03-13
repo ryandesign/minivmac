@@ -17,6 +17,21 @@
 	WRite "CNFGrAPi.h"
 */
 
+LOCALPROC WriteOSXLocalTalkCNFGRAPI(void)
+{
+	WriteDestFileLn("#include <unistd.h>");
+	WriteDestFileLn("#include <netinet/in.h>");
+	WriteDestFileLn("#include <sys/socket.h>");
+	WriteDestFileLn("#include <net/if.h>");
+	WriteDestFileLn("#include <net/route.h>");
+	WriteDestFileLn("#include <net/if_dl.h>");
+	WriteDestFileLn("#include <arpa/inet.h>");
+	WriteDestFileLn("#include <sys/select.h>");
+	WriteDestFileLn("#include <sys/ioctl.h>");
+	WriteDestFileLn("#include <sys/sysctl.h>");
+	WriteDestFileLn("#include <net/bpf.h>");
+}
+
 LOCALPROC WriteCommonCNFGRAPIContents(void)
 {
 	WriteDestFileLn("/*");
@@ -44,20 +59,76 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 
 	WriteBlankLineToDestFile();
 
-	if ((cur_targ == gbk_targ_mach) || (cur_targ == gbk_targ_imch)) {
-		/* kIdeMW8 or kIdeBashGcc or kIdeAPB */
-		if (cur_ide == gbk_ide_mw8) {
-			WriteDestFileLn("#include <MSL MacHeadersMach-O.h>");
-		}
-		WriteDestFileLn("#include <Carbon/Carbon.h>");
+	if (gbk_apifam_osx == gbo_apifam) {
+		if (gbk_targfam_carb == gbo_targfam) {
+			/* kIdeMW8 or kIdeMPW3_6_a1 */
+			if (cur_ide == gbk_ide_mw8) {
+				WriteDestFileLn("#include <MacHeadersCarbon.h>");
+			} else
+			{
+				WriteDestFileLn("#include <Carbon.h>");
+				WriteDestFileLn("#include <stdlib.h>");
+				WriteDestFileLn("#include <string.h>");
 #if UseOpenGLinOSX
-		WriteDestFileLn("#include <AGL/agl.h>");
+				WriteDestFileLn("#include <agl.h>");
+#endif
+			}
+			WriteDestFileLn("#define UsingCarbonLib 1");
+		} else {
+			/* kIdeMW8 or kIdeBashGcc or kIdeAPB */
+			if (cur_ide == gbk_ide_mw8) {
+				WriteDestFileLn("#include <MSL MacHeadersMach-O.h>");
+			}
+			WriteDestFileLn("#include <Carbon/Carbon.h>");
+#if UseOpenGLinOSX
+			WriteDestFileLn("#include <AGL/agl.h>");
 #endif
 #if UseMachinOSX
-		WriteDestFileLn("#include <mach/mach_interface.h>");
-		WriteDestFileLn("#include <mach/mach_port.h>");
+			WriteDestFileLn("#include <mach/mach_interface.h>");
+			WriteDestFileLn("#include <mach/mach_port.h>");
 #endif
-	} else if (gbo_apifam == gbk_apifam_xwn) {
+
+			if (WantLocalTalk) {
+				WriteOSXLocalTalkCNFGRAPI();
+			}
+		}
+	} else if (gbk_apifam_cco == gbo_apifam) {
+		WriteDestFileLn("#import <Cocoa/Cocoa.h>");
+		WriteDestFileLn("#include <CoreAudio/CoreAudio.h>");
+		WriteDestFileLn("#include <AudioUnit/AudioUnit.h>");
+#if UseOpenGLinOSX
+		WriteDestFileLn("#include <OpenGL/gl.h>");
+#endif
+		WriteDestFileLn("#include <stdio.h>");
+		WriteDestFileLn("#include <stdlib.h>");
+		WriteDestFileLn("#include <string.h>");
+		WriteDestFileLn("#include <sys/param.h>");
+		WriteDestFileLn("#include <sys/time.h>");
+
+		if (WantLocalTalk) {
+			WriteOSXLocalTalkCNFGRAPI();
+		}
+	} else if (gbk_apifam_xwn == gbo_apifam) {
+		blnr HaveAppPathLink = falseblnr;
+		blnr HaveSysctlPath = (gbk_targfam_fbsd == gbo_targfam);
+
+		switch (gbo_targfam) {
+			case gbk_targfam_linx:
+			case gbk_targfam_nbsd:
+			case gbk_targfam_dbsd:
+			case gbk_targfam_oind:
+				HaveAppPathLink = trueblnr;
+				break;
+			default:
+				break;
+		}
+
+		if (gbk_targfam_minx == gbo_targfam) {
+			WriteDestFileLn(
+				"/* get nanosleep and gettimeofday. ugh */");
+			WriteDestFileLn("#define _POSIX_SOURCE 1");
+			WriteDestFileLn("#define _POSIX_C_SOURCE 200112L");
+		}
 		WriteDestFileLn("#include <stdio.h>");
 		WriteDestFileLn("#include <stdlib.h>");
 		WriteDestFileLn("#include <string.h>");
@@ -69,10 +140,110 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		WriteDestFileLn("#include <X11/keysym.h>");
 		WriteDestFileLn("#include <X11/keysymdef.h>");
 		WriteDestFileLn("#include <X11/Xatom.h>");
-		if (MySoundEnabled) {
-			WriteDestFileLn("#include <alsa/asoundlib.h>");
+#if 1
+		WriteDestFileLn("#include <fcntl.h>");
+#endif
+		/* if (WantActvCode) */ {
+			/* also now used for export file */
+			WriteDestFileLn("#include <sys/stat.h>");
 		}
-	} else if (gbo_apifam == gbk_apifam_gtk) {
+		if ((gbk_sndapi_alsa == gbo_sndapi)
+			|| (gbk_sndapi_ddsp == gbo_sndapi))
+		{
+			WriteDestFileLn("#include <errno.h>");
+		}
+		if (HaveAppPathLink /* for readlink */
+			|| (gbk_sndapi_ddsp == gbo_sndapi)) /* for write */
+		{
+			WriteDestFileLn("#include <unistd.h>");
+		}
+		if (HaveSysctlPath) {
+			WriteDestFileLn("#include <sys/sysctl.h>");
+		}
+		if (MySoundEnabled) {
+			switch (gbo_sndapi) {
+				case gbk_sndapi_alsa:
+					WriteDestFileLn("#include <dlfcn.h>");
+#if 0
+					WriteDestFileLn("#include <alsa/asoundlib.h>");
+#endif
+					break;
+				case gbk_sndapi_ddsp:
+					WriteDestFileLn("#include <sys/ioctl.h>");
+					if (gbk_targfam_obsd == gbo_targfam) {
+						WriteDestFileLn("#include <soundcard.h>");
+					} else {
+						WriteDestFileLn("#include <sys/soundcard.h>");
+					}
+					break;
+				default:
+					break;
+			}
+		}
+
+		WriteBlankLineToDestFile();
+		WriteCompCondBool("CanGetAppPath",
+			HaveAppPathLink || HaveSysctlPath);
+		WriteCompCondBool("HaveAppPathLink", HaveAppPathLink);
+		if (HaveAppPathLink) {
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("#define TheAppPathLink \"");
+			switch (gbo_targfam) {
+				case gbk_targfam_nbsd:
+					WriteCStrToDestFile("/proc/curproc/exe");
+					break;
+				case gbk_targfam_dbsd:
+					WriteCStrToDestFile("/proc/curproc/file");
+					break;
+				case gbk_targfam_oind:
+					WriteCStrToDestFile("/proc/self/path/a.out");
+					break;
+				case gbk_targfam_linx:
+				default:
+					WriteCStrToDestFile("/proc/self/exe");
+					break;
+			}
+			WriteCStrToDestFile("\"");
+			WriteEndDestFileLn();
+		}
+		WriteCompCondBool("HaveSysctlPath", HaveSysctlPath);
+
+		if (MySoundEnabled) {
+			if (gbk_sndapi_ddsp == gbo_sndapi) {
+				WriteBgnDestFileLn();
+				WriteCStrToDestFile("#define AudioDevPath \"");
+				switch (gbo_targfam) {
+					case gbk_targfam_nbsd:
+					case gbk_targfam_obsd:
+						WriteCStrToDestFile("/dev/audio");
+						break;
+					case gbk_targfam_fbsd:
+					case gbk_targfam_dbsd:
+					default:
+						WriteCStrToDestFile("/dev/dsp");
+						break;
+				}
+				WriteCStrToDestFile("\"");
+				WriteEndDestFileLn();
+			}
+		}
+
+	} else if (gbk_apifam_nds == gbo_apifam) {
+		WriteDestFileLn("#define ARM9 1");
+
+		WriteDestFileLn("#include <nds.h>");
+		WriteDestFileLn("#include <filesystem.h>");
+		WriteDestFileLn("#include <fat.h>");
+
+		WriteDestFileLn("#include <stdio.h>");
+		WriteDestFileLn("#include <stdlib.h>");
+		WriteDestFileLn("#include <string.h>");
+		WriteDestFileLn("#include <time.h>");
+		WriteDestFileLn("#include <sys/time.h>");
+		WriteDestFileLn("#include <sys/times.h>");
+		WriteDestFileLn("#include <fcntl.h>");
+		WriteDestFileLn("#include <unistd.h>");
+	} else if (gbk_apifam_gtk == gbo_apifam) {
 		WriteDestFileLn("#include <gtk/gtk.h>");
 		WriteDestFileLn("#include <gdk/gdkkeysyms.h>");
 		WriteDestFileLn("#include <stdio.h>");
@@ -81,21 +252,12 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		WriteDestFileLn("#include <time.h>");
 		WriteDestFileLn("#include <sys/time.h>");
 		WriteDestFileLn("#include <sys/times.h>");
-	} else if (cur_targ == gbk_targ_carb) {
-		/* kIdeMW8 or kIdeMPW3_6_a1 */
-		if (cur_ide == gbk_ide_mw8) {
-			WriteDestFileLn("#include <MacHeadersCarbon.h>");
-		} else
-		{
-			WriteDestFileLn("#include <Carbon.h>");
-			WriteDestFileLn("#include <stdlib.h>");
-			WriteDestFileLn("#include <string.h>");
-#if UseOpenGLinOSX
-			WriteDestFileLn("#include <agl.h>");
-#endif
-		}
-		WriteDestFileLn("#define UsingCarbonLib 1");
-	} else if (gbo_apifam == gbk_apifam_win) {
+	} else if (gbk_apifam_sdl == gbo_apifam) {
+		WriteDestFileLn("#include <SDL/SDL.h>");
+		WriteDestFileLn("#include <stdio.h>");
+		WriteDestFileLn("#include <stdlib.h>");
+		WriteDestFileLn("#include <string.h>");
+	} else if (gbk_apifam_win == gbo_apifam) {
 		if (cur_ide == gbk_ide_mw8) {
 			WriteDestFileLn("#include <Win32Headers.h>");
 		} else
@@ -109,8 +271,7 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		}
 		WriteDestFileLn("#include <shlobj.h>");
 		WriteDestFileLn("#include <tchar.h>");
-		if ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ))
-		{
+		if (gbk_targfam_wnce == gbo_targfam) {
 			WriteDestFileLn("#include <aygshell.h>");
 			WriteDestFileLn("#include <commdlg.h>");
 		}
@@ -184,6 +345,15 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		if (cur_ide == gbk_ide_mpw) {
 			WriteDestFileLn("#define ShouldUnloadDataInit 1");
 			WriteDestFileLn("#define Windows85APIAvail 0");
+			WriteDestFileLn("#define NeedLongGlue 1");
+		}
+	}
+
+	if (MySoundEnabled) {
+		if (gbo_sndapi == gbk_sndapi_alsa)
+		if (gbo_cpufam == gbk_cpufam_arm)
+		{
+			WriteDestFileLn("#define RaspbianWorkAround 1");
 		}
 	}
 

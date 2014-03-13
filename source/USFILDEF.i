@@ -68,22 +68,74 @@ LOCALFUNC tMyErr DoAllSrcFilesWithSetup(MyProc p)
 	return r.err;
 }
 
-LOCALPROC WriteSrcFileFileName(void)
+LOCALPROC DoAllSrcFilesSortWithSetup1(
+	char *s, long Flgm, tDoDependsForC depends)
 {
+	if (0 != (Flgm & kCSrcFlgmSortFirst)) {
+		DoAllSrcFilesWithSetupProc(s, Flgm, depends);
+	} else {
+		++FileCounter;
+	}
+}
+
+LOCALPROC DoAllSrcFilesSortWithSetup2(
+	char *s, long Flgm, tDoDependsForC depends)
+{
+	if (0 == (Flgm & kCSrcFlgmSortFirst)) {
+		DoAllSrcFilesWithSetupProc(s, Flgm, depends);
+	} else {
+		++FileCounter;
+	}
+}
+
+LOCALFUNC tMyErr DoAllSrcFilesSortWithSetup(MyProc p)
+{
+	DoSrcFile_r r;
+
+	r.SavepDt = pDt;
+	r.p = p;
+	r.err = noErr;
+	pDt = (MyPtr)&r;
+
+	FileCounter = 0;
+	DoAllSrcFiles(DoAllSrcFilesSortWithSetup1);
+	FileCounter = 0;
+	DoAllSrcFiles(DoAllSrcFilesSortWithSetup2);
+
+	pDt = r.SavepDt;
+
+	return r.err;
+}
+
+LOCALFUNC char * GetSrcFileFileXtns(void)
+{
+	char *s;
 #if AsmSupported
 	blnr IsAsmFile = HaveAsm
 		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
 #endif
+	blnr UseAPI = ((DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
 
-	WriteCStrToDestFile(DoSrcFile_gd()->s);
 #if AsmSupported
 	if (IsAsmFile) {
-		WriteCStrToDestFile(".S");
+		s = ".S";
 	} else
 #endif
 	{
-		WriteCStrToDestFile(".c");
+		if (UseAPI && (gbk_apifam_cco == gbo_apifam)) {
+			s = ".m";
+		} else {
+			s = ".c";
+		}
 	}
+
+	return s;
+}
+
+LOCALPROC WriteSrcFileFileName(void)
+{
+	WriteCStrToDestFile(DoSrcFile_gd()->s);
+	WriteCStrToDestFile(GetSrcFileFileXtns());
 }
 
 LOCALPROC WriteSrcFileFilePath(void)
@@ -247,11 +299,13 @@ LOCALPROC WriteDocTypeIconFileName(void)
 {
 	WriteDocTypeIconShortName();
 	WriteCStrToDestFile("Icon.");
-	switch (gbo_apifam) {
-		case gbk_apifam_osx:
+	switch (gbo_targfam) {
+		case gbk_targfam_mach:
+		case gbk_targfam_carb:
 			WriteCStrToDestFile("icns");
 			break;
-		case gbk_apifam_win:
+		case gbk_targfam_mswn:
+		case gbk_targfam_wnce:
 			WriteCStrToDestFile("ico");
 			break;
 	}
@@ -278,11 +332,19 @@ typedef void (*tWriteOneFrameWorkType)(char *s);
 
 static void DoAllFrameWorks(tWriteOneFrameWorkType p)
 {
-	p("Carbon");
+	if (gbk_apifam_cco == gbo_apifam) {
+		p("AppKit");
+		p("AudioUnit");
 #if UseOpenGLinOSX
-	p("OpenGL");
-	p("AGL");
+		p("OpenGL");
 #endif
+	} else {
+		p("Carbon");
+#if UseOpenGLinOSX
+		p("OpenGL");
+		p("AGL");
+#endif
+	}
 }
 
 struct DoFrameWork_r
@@ -445,7 +507,7 @@ LOCALPROC DoSrcFileStandardMakeObjects(void)
 LOCALPROC DoAllSrcFilesStandardMakeObjects(void)
 {
 	vCheckWriteDestErr(
-		DoAllSrcFilesWithSetup(DoSrcFileStandardMakeObjects));
+		DoAllSrcFilesSortWithSetup(DoSrcFileStandardMakeObjects));
 }
 
 LOCALPROC DoSrcFileStandardEraseFile(void)

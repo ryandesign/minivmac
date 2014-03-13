@@ -76,6 +76,8 @@ LOCALFUNC tMyErr GetPokeAddr(void)
 	SonyVars = (MyDriverDat_R *)get_long(SonyVarsPtr);
 
 	if ((SonyVars == NULL)
+		|| ((1 & (ui5r)SonyVars) != 0)
+			/* for emulators like sheepshaver */
 		|| (SonyVars->zeroes[0] != 0)
 		|| (SonyVars->zeroes[1] != 0)
 		|| (SonyVars->zeroes[2] != 0)
@@ -118,7 +120,7 @@ LOCALFUNC tMyErr InvokeExtension2(ui3b *datp)
 
 	if (HavePokeAddr || (noErr == (err = GetPokeAddr()))) {
 		put_word(datp + DSKDat_checkval, kcom_callcheck);
-		InvokeExtension(pokeaddr, (ui5b)datp);
+		InvokeExtension(pokeaddr, (ui5r)datp);
 		if (0 != get_word(datp + DSKDat_checkval)) {
 			err = kMyErrNoExtn;
 		} else {

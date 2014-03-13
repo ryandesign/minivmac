@@ -77,7 +77,7 @@
 
 /* About Screen */
 #define kStrProgramInfo "^v"
-#define kStrSponsorIs "^v. This variation is sponsored by:"
+#define kStrSponsorIs "^v. This variation is made for:"
 #define kStrWorkOfMany "copyright ^y. ^p est le fruit du travail de nombreuses personnes. La maintenance de cette version est assur;eee par :"
 #define kStrForMoreInfo "Pour de plus amples informations, voir :"
 #define kStrLicense "^p est distribu;ee au titre des clauses de la Licence publique g;een;eerale GNU, version 2."
@@ -158,3 +158,8 @@
 #define kStrMenuItemOpen "Ouvrir une image disque"
 #define kStrMenuItemQuit "Quitter"
 #define kStrMenuItemMore "Autres commandes"
+
+#define kStrAppMenuItemHide "Masquer ^p"
+#define kStrAppMenuItemHideOthers "Masquer les autres"
+#define kStrAppMenuItemShowAll "Tout afficher"
+#define kStrAppMenuItemQuit "Quitter ^p"

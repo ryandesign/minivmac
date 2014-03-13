@@ -168,6 +168,9 @@ LOCALFUNC tMyErr WriteIdeSpecificFiles(void)
 #endif
 #if ide_bgc_Supported
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
+		case gbk_ide_mgw:
+		case gbk_ide_dkp:
 			err = WriteBashGccSpecificFiles();
 			break;
 #endif
@@ -198,7 +201,7 @@ LOCALFUNC tMyErr WriteIdeSpecificFiles(void)
 #if ide_dvc_Supported
 		case gbk_ide_dvc:
 			if (UseCmndLine) {
-				err = WriteDevCclSpecificFiles();
+				err = WriteBashGccSpecificFiles();
 			} else {
 				err = WriteDevCSpecificFiles();
 			}
@@ -308,22 +311,22 @@ LOCALFUNC tMyErr ArchiveAndExport(void)
 			/* don't bother */
 			err = noErr;
 		} else if (noErr != (err = DiskVersion_v2(&version))) {
-			DisplayRunErr("DiskVersion fails");
+			MyAlertFromCStr("DiskVersion fails");
 			err = kMyErrReported;
 		} else if (version < 2) {
-			DisplayRunErr("Disk Extension Version version too old");
+			MyAlertFromCStr("Disk Extension Version version too old");
 			err = kMyErrReported;
 		} else if (noErr != (err = DiskFeatures_v2(&features))) {
-			DisplayRunErr("DiskFeatures fails");
+			MyAlertFromCStr("DiskFeatures fails");
 			err = kMyErrReported;
 		} else if (0 == (features & ((ui5r)1 << kFeatureCmndDisk_New)))
 		{
-			DisplayRunErr("New disk creation not enabled");
+			MyAlertFromCStr("New disk creation not enabled");
 			err = kMyErrReported;
 		} else if (0 == (
 			features & ((ui5r)1 << kFeatureCmndDisk_RawMode)))
 		{
-			DisplayRunErr("Raw mode access not enabled");
+			MyAlertFromCStr("Raw mode access not enabled");
 			err = kMyErrReported;
 		} else {
 			if (noErr == (err = ExportFromFile2HostFile2_v2(
@@ -415,8 +418,8 @@ LOCALFUNC tMyErr WriteConfigFiles(void)
 LOCALVAR MyDir_R SourceDirR;
 LOCALVAR MyDir_R C_srcDirR;
 LOCALVAR MyDir_R AltSrcDirR;
-LOCALVAR MyDir_R LangDirR;
 LOCALVAR MyDir_R PlatDirR;
+LOCALVAR MyDir_R ApiDirR;
 #if ! OSXplatsep
 LOCALVAR MyDir_R IconDirR;
 #endif
@@ -745,8 +748,8 @@ LOCALPROC DoSrcFileAddToSrcDir(void)
 		} else
 #endif
 		if (UseAPI) {
-			if (noErr == (err = rConverTextInThingXtn(&PlatDirR,
-				&SrcDirR, DoSrcFile_gd()->s, ".c")))
+			if (noErr == (err = rConverTextInThingXtn(&ApiDirR,
+				&SrcDirR, DoSrcFile_gd()->s, GetSrcFileFileXtns())))
 			{
 			}
 		} else
@@ -781,8 +784,34 @@ LOCALPROC DoExtraHeaderFileAddToSrcDir(void)
 				&SrcDirR, DoXtraHdr_gd()->s, "");
 			break;
 		case kDepDirLang:
-			err = rConverTextInThingXtn(&LangDirR,
-				&SrcDirR, DoXtraHdr_gd()->s, "");
+			{
+				MyDir_R LanguageDirR;
+				MyDir_R LangDirR;
+
+				if (noErr == (err = FindSubDirectory_v2(&LanguageDirR,
+					&SourceDirR, "language", "")))
+				if (noErr == (err = FindSubDirectory_v2(&LangDirR,
+					&LanguageDirR, GetLangName(gbo_lang), "")))
+				{
+					err = rConverTextInThingXtn(&LangDirR,
+						&SrcDirR, DoXtraHdr_gd()->s, "");
+				}
+			}
+			break;
+		case kDepDirSndA:
+			{
+				MyDir_R SoundDirR;
+				MyDir_R SndDirR;
+
+				if (noErr == (err = FindSubDirectory_v2(&SoundDirR,
+					&SourceDirR, "sound", "")))
+				if (noErr == (err = FindSubDirectory_v2(&SndDirR,
+					&SoundDirR, GetSndApiName(gbo_sndapi), "")))
+				{
+					err = rConverTextInThingXtn(&SndDirR,
+						&SrcDirR, DoXtraHdr_gd()->s, "");
+				}
+			}
 			break;
 		case kDepDirCnfg:
 			break;
@@ -798,12 +827,13 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 
 	PStrFromCStr(s, DoDocType_gd()->ShortName);
 
-	switch (gbo_apifam) {
-		case gbk_apifam_mac:
+	switch (gbo_targfam) {
+		case gbk_targfam_cmac:
 			PStrApndCStr(s, "Icon.r");
 			err = duplib_WriteFile_v2(&PlatDirR, s, &SrcDirR, s);
 			break;
-		case gbk_apifam_osx:
+		case gbk_targfam_mach:
+		case gbk_targfam_carb:
 			PStrApndCStr(s, "Icon.icns");
 #if OSXplatsep
 			err = duplib_WriteFile_v2(&PlatDirR, s, &SrcDirR, s);
@@ -811,7 +841,8 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 			err = duplib_WriteFile_v2(&IconDirR, s, &SrcDirR, s);
 #endif
 			break;
-		case gbk_apifam_win:
+		case gbk_targfam_mswn:
+		case gbk_targfam_wnce:
 			PStrApndCStr(s, "Icon.ico");
 			err = duplib_WriteFile_v2(&PlatDirR, s, &SrcDirR, s);
 			break;
@@ -822,51 +853,38 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 	DoDocType_gd()->err = err;
 }
 
-LOCALFUNC tMyErr MayFindLanguageDirectory(void)
+LOCALFUNC tMyErr MayFindPlatformDirectory(void)
 {
 	tMyErr err;
+	MyDir_R PlatformDirR;
 
-	if (! HaveLanguage) {
-		err = noErr;
-	} else {
-		MyDir_R LanguageDirR;
-
-		if (noErr == (err = FindSubDirectory_v2(&LanguageDirR,
-			&SourceDirR, "language", "")))
-		if (noErr == (err = FindSubDirectory_v2(&LangDirR,
-			&LanguageDirR, GetLangName(gbo_lang), "")))
-		{
-			/* ok */
-		}
+	if (noErr == (err = FindSubDirectory_v2(&PlatformDirR,
+		&SourceDirR, "platform", "")))
+	if (noErr == (err = FindSubDirectory_v2(&PlatDirR,
+		&PlatformDirR, GetPlatformDirName(), "")))
+#if ! OSXplatsep
+	if ((gbk_apifam_osx != gbo_apifam)
+		|| (noErr == (err = FindSubDirectory_v2(
+			&IconDirR, &PlatDirR, "osx", ""))))
+#endif
+	{
+		/* ok */
 	}
 
 	return err;
 }
 
-LOCALFUNC tMyErr MayFindPlatformDirectory(void)
+LOCALFUNC tMyErr MayFindApiDirectory(void)
 {
 	tMyErr err;
+	MyDir_R ApiDir0R;
 
-#if 0 /* still need icons */
-	if (! HavePlatform) {
-		err = noErr;
-	} else
-#endif
+	if (noErr == (err = FindSubDirectory_v2(&ApiDir0R,
+		&SourceDirR, "api", "")))
+	if (noErr == (err = FindSubDirectory_v2(&ApiDirR,
+		&ApiDir0R, GetAPIFamName(gbo_apifam), "")))
 	{
-		MyDir_R PlatformDirR;
-
-		if (noErr == (err = FindSubDirectory_v2(&PlatformDirR,
-			&SourceDirR, "platform", "")))
-		if (noErr == (err = FindSubDirectory_v2(&PlatDirR,
-			&PlatformDirR, GetPlatformDirName(), "")))
-#if ! OSXplatsep
-		if ((gbk_apifam_osx != gbo_apifam)
-			|| (noErr == (err = FindSubDirectory_v2(
-				&IconDirR, &PlatDirR, "osx", ""))))
-#endif
-		{
-			/* ok */
-		}
+		/* ok */
 	}
 
 	return err;
@@ -902,6 +920,9 @@ LOCALFUNC char * GetAsmDirName(void)
 			break;
 		case gbk_cpufam_68k:
 			s = "68k";
+			break;
+		case gbk_cpufam_arm:
+			s = "arm";
 			break;
 		default:
 			s = "???";
@@ -942,8 +963,8 @@ LOCALFUNC tMyErr MakeSrcFolder(void)
 		&BaseDirR, "data", "")))
 	if (noErr == (err = FindSubDirectory_v2(&C_srcDirR,
 		&SourceDirR, "c_src", "")))
-	if (noErr == (err = MayFindLanguageDirectory()))
 	if (noErr == (err = MayFindPlatformDirectory()))
+	if (noErr == (err = MayFindApiDirectory()))
 	if (noErr == (err = MayFindAltSrcDirectory()))
 #if AsmSupported
 	if (noErr == (err = MayFindASrcDirectory()))
@@ -1010,11 +1031,8 @@ LOCALPROC DoExtraHeaderFileScanSettings(void)
 			break;
 #endif
 		case kDepDirPlat:
-			HavePlatform = trueblnr;
-			break;
 		case kDepDirLang:
-			HaveLanguage = trueblnr;
-			break;
+		case kDepDirSndA:
 		case kDepDirCnfg:
 			break;
 	}
@@ -1028,8 +1046,6 @@ LOCALFUNC tMyErr ScanSourceSettings(void)
 	HaveAsm = falseblnr;
 #endif
 	HaveAltSrc = falseblnr;
-	HaveLanguage = falseblnr;
-	HavePlatform = falseblnr;
 
 	if (noErr == (err = DoAllSrcFilesWithSetup(DoSrcFileScanSettings)))
 	if (noErr == (err = DoAllExtraHeaders2WithSetup(

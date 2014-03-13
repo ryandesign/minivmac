@@ -57,23 +57,25 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 	WriteCStrToDestFile("\"");
 	WriteEndDestFileLn();
 
-	if ((gbk_targ_wcar == cur_targ) || (gbk_targ_wc86 == cur_targ)) {
+	if (DbgLogHAVE) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define dbglog_buflnsz ");
+		WriteUnsignedToOutput(dbglog_buflnsz);
+		WriteEndDestFileLn();
+	}
+
+	if (gbk_targfam_wnce == gbo_targfam) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("#define EnableShellLinks 0");
 		WriteDestFileLn("#define EnableDragDrop 0");
 		WriteDestFileLn("#define UseTimerThread 0");
+	} else if (gbk_targfam_lnds == gbo_targfam) {
+		WriteDestFileLn("#define EnableDragDrop 0");
 	} else {
 		WriteDestFileLn("#define EnableDragDrop 1");
 	}
 	WriteCompCondBool("EnableAltKeysMode", WantAltKeysMode);
 	WriteCompCondBool("SwapCommandControl", WantCmndOptSwap);
-
-	if (gbk_apifam_gtk == gbo_apifam) {
-		/* temporary, until implemented */
-		WriteDestFileLn("#define EnableMagnify 0");
-	} else {
-		WriteDestFileLn("#define EnableMagnify 1");
-	}
 
 	WriteCompCondBool("VarFullScreen", WantVarFullScreen);
 	if (WantVarFullScreen) {
@@ -85,8 +87,26 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WantVarFullScreen || ! WantInitFullScreen);
 
 	WriteCompCondBool("WantInitMagnify", WantInitMagnify);
+
+	WriteCompCondBool("EnableMagnify", 1 != cur_MagFctr);
+	if (1 != cur_MagFctr) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define MyWindowScale ");
+		WriteUnsignedToOutput(cur_MagFctr);
+		WriteEndDestFileLn();
+	}
+
 	WriteCompCondBool("WantInitRunInBackground", WantInitBackground);
 	WriteCompCondBool("WantInitNotAutoSlow", ! WantInitAutoSlow);
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define WantInitSpeedValue ");
+	if (gbk_speed_AllOut == CurInitSpeed) {
+		WriteCStrToDestFile("-1");
+	} else {
+		WriteUnsignedToOutput(CurInitSpeed - 1);
+	}
+	WriteEndDestFileLn();
 
 	if (WantScreenVSync) {
 		WriteDestFileLn("#define UseAGLdoublebuff 1");
@@ -97,18 +117,21 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		|| (gbk_apifam_mac == gbo_apifam)
 		|| (gbk_apifam_win == gbo_apifam)
 		|| (gbk_apifam_osx == gbo_apifam)
+		|| (gbk_apifam_cco == gbo_apifam)
 		);
 	WriteCompCondBool("NeedDoMoreCommandsMsg",
 		(gbk_apifam_gtk == gbo_apifam)
 		|| (gbk_apifam_mac == gbo_apifam)
 		|| (gbk_apifam_win == gbo_apifam)
 		|| (gbk_apifam_osx == gbo_apifam)
+		|| (gbk_apifam_cco == gbo_apifam)
 		);
 	WriteCompCondBool("NeedDoAboutMsg",
 		(gbk_apifam_gtk == gbo_apifam)
 		|| (gbk_apifam_mac == gbo_apifam)
 		|| (gbk_apifam_win == gbo_apifam)
 		|| (gbk_apifam_osx == gbo_apifam)
+		|| (gbk_apifam_cco == gbo_apifam)
 		);
 	WriteCompCondBool("UseControlKeys", trueblnr);
 	WriteCompCondBool("UseActvCode", WantActvCode);

@@ -249,21 +249,39 @@ enum {
 	gbk_targ_m68k, /* MacOS 68K */
 	gbk_targ_mfpu, /* MacOS 68K with FPU */
 	gbk_targ_mppc, /* MacOS OS 9 for PowerPC */
-	gbk_targ_carb, /* MacOS Carbon lib for OS 9 and OS X */
 	gbk_targ_mach, /* MacOS X Macho */
 	gbk_targ_imch, /* MacOS X Intel */
+	gbk_targ_mc64, /* MacOS X for x64 */
 	gbk_targ_wx86, /* Windows */
-	gbk_targ_mx11, /* X11 for MacOS X PowerPC */
-	gbk_targ_mi11, /* X11 for MacOS X Intel */
+	gbk_targ_wx64, /* Windows on x64 */
 	gbk_targ_lx86, /* X11 for linux on x86 */
-	gbk_targ_slrs, /* Solaris SPARC */
-	gbk_targ_sl86, /* Solaris Intel */
-	gbk_targ_wcar, /* Windows CE on ARM */
-	gbk_targ_wc86, /* Windows CE (emulator) on x86 */
 	gbk_targ_lppc, /* X11 for linux on PowerPC */
 	gbk_targ_lx64, /* X11 for linux on x64 */
-	gbk_targ_wx64, /* Windows on x64 */
+	gbk_targ_larm, /* X11 for linux on arm (debian armel) */
+	gbk_targ_lspr, /* X11 for linux on SPARC */
+	gbk_targ_fbsd, /* FreeBSD for x86 */
+	gbk_targ_fb64, /* FreeBSD for x64 */
+	gbk_targ_obsd, /* OpenBSD for x86 */
+	gbk_targ_ob64, /* OpenBSD for x64 */
+	gbk_targ_nbsd, /* NetBSD for x86 */
+	gbk_targ_nb64, /* NetBSD for x64 */
+	gbk_targ_dbsd, /* Dragonfly BSD for x86 */
+	gbk_targ_db64, /* Dragonfly BSD for x64 */
+	gbk_targ_slrs, /* Solaris SPARC */
+	gbk_targ_sl86, /* Solaris Intel */
+	gbk_targ_oind, /* OpenIndiana for x86 */
+	gbk_targ_oi64, /* OpenIndiana for x64 */
+	gbk_targ_minx, /* Minix on x86 */
+	gbk_targ_wcar, /* Windows CE on ARM */
+	gbk_targ_wc86, /* Windows CE (emulator) on x86 */
+	gbk_targ_carb, /* MacOS Carbon lib for OS 9 and OS X */
+	gbk_targ_mx11, /* X11 for MacOS X PowerPC */
+	gbk_targ_mi11, /* X11 for MacOS X Intel */
+	gbk_targ_mx64, /* X11 for MacOS X x64 */
+	gbk_targ_cygw, /* Cygwin/X */
 	gbk_targ_xgen, /* Generic X11 */
+	gbk_targ_ndsa, /* Nintendo DS on ARM  */
+	gbk_targ_irix, /* Silicon Graphics's IRIX on MIPS */
 	kNumTargets
 };
 
@@ -297,6 +315,9 @@ LOCALFUNC char * GetTargetName(int i)
 		case gbk_targ_imch:
 			s = "imch";
 			break;
+		case gbk_targ_mc64:
+			s = "mc64";
+			break;
 		case gbk_targ_wx86:
 			s = "wx86";
 			break;
@@ -306,6 +327,9 @@ LOCALFUNC char * GetTargetName(int i)
 		case gbk_targ_mi11:
 			s = "mi11";
 			break;
+		case gbk_targ_mx64:
+			s = "mx64";
+			break;
 		case gbk_targ_lx86:
 			s = "lx86";
 			break;
@@ -314,6 +338,39 @@ LOCALFUNC char * GetTargetName(int i)
 			break;
 		case gbk_targ_sl86:
 			s = "sl86";
+			break;
+		case gbk_targ_fbsd:
+			s = "fbsd";
+			break;
+		case gbk_targ_fb64:
+			s = "fb64";
+			break;
+		case gbk_targ_obsd:
+			s = "obsd";
+			break;
+		case gbk_targ_ob64:
+			s = "ob64";
+			break;
+		case gbk_targ_nbsd:
+			s = "nbsd";
+			break;
+		case gbk_targ_nb64:
+			s = "nb64";
+			break;
+		case gbk_targ_dbsd:
+			s = "dbsd";
+			break;
+		case gbk_targ_db64:
+			s = "db64";
+			break;
+		case gbk_targ_oind:
+			s = "oind";
+			break;
+		case gbk_targ_oi64:
+			s = "oi64";
+			break;
+		case gbk_targ_minx:
+			s = "minx";
 			break;
 		case gbk_targ_wcar:
 			s = "wcar";
@@ -330,8 +387,23 @@ LOCALFUNC char * GetTargetName(int i)
 		case gbk_targ_wx64:
 			s = "wx64";
 			break;
+		case gbk_targ_larm:
+			s = "larm";
+			break;
+		case gbk_targ_lspr:
+			s = "lspr";
+			break;
+		case gbk_targ_cygw:
+			s = "cygw";
+			break;
 		case gbk_targ_xgen:
 			s = "xgen";
+			break;
+		case gbk_targ_ndsa:
+			s = "ndsa";
+			break;
+		case gbk_targ_irix:
+			s = "irix";
 			break;
 		default:
 			s = "(unknown Target)";
@@ -359,6 +431,185 @@ LOCALFUNC tMyErr ChooseTarg(void)
 	return err;
 }
 
+/* derived option: target cpu family */
+
+enum {
+	gbk_cpufam_68k, /* Motorola 680x0 */
+	gbk_cpufam_ppc, /* PowerPC */
+	gbk_cpufam_x86, /* Intel 80x86 */
+	gbk_cpufam_spr, /* SPARC */
+	gbk_cpufam_arm, /* ARM */
+	gbk_cpufam_x64, /* x86-64 (aka AMD64, Intel 64) */
+	gbk_cpufam_mip, /* MIPS */
+	gbk_cpufam_gen, /* Generic (don't know) */
+	kNumCPUFamilies
+};
+
+LOCALVAR int gbo_cpufam;
+
+LOCALPROC ChooseCPUFam(void)
+{
+	switch (cur_targ) {
+		case gbk_targ_m68k:
+		case gbk_targ_mfpu:
+			gbo_cpufam = gbk_cpufam_68k;
+			break;
+		case gbk_targ_mppc:
+		case gbk_targ_carb:
+		case gbk_targ_mach:
+		case gbk_targ_mx11:
+		case gbk_targ_lppc:
+			gbo_cpufam = gbk_cpufam_ppc;
+			break;
+		case gbk_targ_wx86:
+		case gbk_targ_wc86:
+		case gbk_targ_lx86:
+		case gbk_targ_sl86:
+		case gbk_targ_fbsd:
+		case gbk_targ_obsd:
+		case gbk_targ_nbsd:
+		case gbk_targ_dbsd:
+		case gbk_targ_oind:
+		case gbk_targ_minx:
+		case gbk_targ_imch:
+		case gbk_targ_mi11:
+		case gbk_targ_cygw:
+			gbo_cpufam = gbk_cpufam_x86;
+			break;
+		case gbk_targ_lspr:
+		case gbk_targ_slrs:
+			gbo_cpufam = gbk_cpufam_spr;
+			break;
+		case gbk_targ_wcar:
+		case gbk_targ_ndsa:
+		case gbk_targ_larm:
+			gbo_cpufam = gbk_cpufam_arm;
+			break;
+		case gbk_targ_mc64:
+		case gbk_targ_lx64:
+		case gbk_targ_wx64:
+		case gbk_targ_fb64:
+		case gbk_targ_ob64:
+		case gbk_targ_nb64:
+		case gbk_targ_db64:
+		case gbk_targ_oi64:
+		case gbk_targ_mx64:
+			gbo_cpufam = gbk_cpufam_x64;
+			break;
+		case gbk_targ_irix:
+			gbo_cpufam = gbk_cpufam_mip;
+			break;
+		case gbk_targ_xgen:
+			gbo_cpufam = gbk_cpufam_gen;
+			break;
+	}
+}
+
+/* derived option: target family */
+
+enum {
+	gbk_targfam_cmac, /* Classic Mac */
+	gbk_targfam_mach, /* OS X Macho */
+	gbk_targfam_mswn, /* Microsoft Windows */
+	gbk_targfam_linx, /* Linux */
+	gbk_targfam_fbsd, /* FreeBSD */
+	gbk_targfam_obsd, /* OpenBSD */
+	gbk_targfam_nbsd, /* NetBSD */
+	gbk_targfam_dbsd, /* Dragonfly BSD */
+	gbk_targfam_slrs, /* Solaris */
+	gbk_targfam_oind, /* OpenIndiana */
+	gbk_targfam_irix, /* Silicon Graphics's IRIX */
+	gbk_targfam_minx, /* Minix */
+	gbk_targfam_wnce, /* Windows CE */
+	gbk_targfam_carb, /* MacOS Carbon lib for OS 9 and OS X */
+	gbk_targfam_mx11, /* X11 for MacOS X */
+	gbk_targfam_cygw, /* Cygwin/X */
+	gbk_targfam_xgen, /* Generic X11 */
+	gbk_targfam_lnds, /* libnds for Nintendo DS */
+	kNumTargFamilies
+};
+
+LOCALVAR int gbo_targfam;
+
+LOCALPROC ChooseTargFam(void)
+{
+	switch (cur_targ) {
+		case gbk_targ_m68k:
+		case gbk_targ_mfpu:
+		case gbk_targ_mppc:
+			gbo_targfam = gbk_targfam_cmac;
+			break;
+		case gbk_targ_mach:
+		case gbk_targ_imch:
+		case gbk_targ_mc64:
+			gbo_targfam = gbk_targfam_mach;
+			break;
+		case gbk_targ_wx86:
+		case gbk_targ_wx64:
+			gbo_targfam = gbk_targfam_mswn;
+			break;
+		case gbk_targ_lx86:
+		case gbk_targ_lppc:
+		case gbk_targ_lx64:
+		case gbk_targ_larm:
+		case gbk_targ_lspr:
+			gbo_targfam = gbk_targfam_linx;
+			break;
+		case gbk_targ_slrs:
+		case gbk_targ_sl86:
+			gbo_targfam = gbk_targfam_slrs;
+			break;
+		case gbk_targ_fbsd:
+		case gbk_targ_fb64:
+			gbo_targfam = gbk_targfam_fbsd;
+			break;
+		case gbk_targ_obsd:
+		case gbk_targ_ob64:
+			gbo_targfam = gbk_targfam_obsd;
+			break;
+		case gbk_targ_nbsd:
+		case gbk_targ_nb64:
+			gbo_targfam = gbk_targfam_nbsd;
+			break;
+		case gbk_targ_dbsd:
+		case gbk_targ_db64:
+			gbo_targfam = gbk_targfam_dbsd;
+			break;
+		case gbk_targ_oind:
+		case gbk_targ_oi64:
+			gbo_targfam = gbk_targfam_oind;
+			break;
+		case gbk_targ_minx:
+			gbo_targfam = gbk_targfam_minx;
+			break;
+		case gbk_targ_irix:
+			gbo_targfam = gbk_targfam_irix;
+			break;
+		case gbk_targ_wcar:
+		case gbk_targ_wc86:
+			gbo_targfam = gbk_targfam_wnce;
+			break;
+		case gbk_targ_carb:
+			gbo_targfam = gbk_targfam_carb;
+			break;
+		case gbk_targ_mx11:
+		case gbk_targ_mi11:
+		case gbk_targ_mx64:
+			gbo_targfam = gbk_targfam_mx11;
+			break;
+		case gbk_targ_cygw:
+			gbo_targfam = gbk_targfam_cygw;
+			break;
+		case gbk_targ_ndsa:
+			gbo_targfam = gbk_targfam_lnds;
+			break;
+		case gbk_targ_xgen:
+		default:
+			gbo_targfam = gbk_targfam_xgen;
+			break;
+	}
+}
+
 /* option: ide */
 
 enum {
@@ -373,6 +624,9 @@ enum {
 		/* previously Apple Project Builder */
 	gbk_ide_dmc, /* Digital Mars Compiler */
 	gbk_ide_plc, /* Pelles C Compiler */
+	gbk_ide_mgw, /* MinGW */
+	gbk_ide_cyg, /* Cygwin */
+	gbk_ide_dkp, /* devkitpro */
 	gbk_ide_ccc, /* Generic command line c compiler */
 	kNumIdes
 };
@@ -410,6 +664,9 @@ LOCALFUNC char * GetIdeName(int i)
 		case gbk_ide_dvc:
 			s = "dvc";
 			break;
+		case gbk_ide_mgw:
+			s = "mgw";
+			break;
 		case gbk_ide_xcd:
 			s = "xcd";
 			break;
@@ -418,6 +675,12 @@ LOCALFUNC char * GetIdeName(int i)
 			break;
 		case gbk_ide_plc:
 			s = "plc";
+			break;
+		case gbk_ide_cyg:
+			s = "cyg";
+			break;
+		case gbk_ide_dkp:
+			s = "dkp";
 			break;
 		case gbk_ide_ccc:
 			s = "ccc";
@@ -437,33 +700,37 @@ LOCALFUNC tMyErr TryAsIdeOptionNot(void)
 LOCALPROC ChooseIde(void)
 {
 	if (kListOptionAuto == cur_ide) {
-		switch (cur_targ) {
-			case gbk_targ_mach:
-			case gbk_targ_imch:
-			case gbk_targ_mx11:
-			case gbk_targ_mi11:
-				cur_ide = gbk_ide_xcd;
-				break;
-			case gbk_targ_m68k:
-			case gbk_targ_mfpu:
-			case gbk_targ_mppc:
-			case gbk_targ_carb:
+		switch (gbo_targfam) {
+			case gbk_targfam_cmac:
+			case gbk_targfam_carb:
 				cur_ide = gbk_ide_mpw;
 				break;
-			case gbk_targ_wx86:
-			case gbk_targ_wcar:
-			case gbk_targ_wc86:
-			case gbk_targ_wx64:
+			case gbk_targfam_mach:
+			case gbk_targfam_mx11:
+				cur_ide = gbk_ide_xcd;
+				break;
+			case gbk_targfam_mswn:
+			case gbk_targfam_wnce:
 				cur_ide = gbk_ide_msv;
 				break;
-			case gbk_targ_lx86:
-			case gbk_targ_lppc:
-			case gbk_targ_lx64:
-			case gbk_targ_slrs:
-			case gbk_targ_sl86:
+			case gbk_targfam_linx:
+			case gbk_targfam_slrs:
+			case gbk_targfam_fbsd:
+			case gbk_targfam_obsd:
+			case gbk_targfam_nbsd:
+			case gbk_targfam_dbsd:
+			case gbk_targfam_oind:
+			case gbk_targfam_minx:
+			case gbk_targfam_irix:
 				cur_ide = gbk_ide_bgc;
 				break;
-			case gbk_targ_xgen:
+			case gbk_targfam_cygw:
+				cur_ide = gbk_ide_cyg;
+				break;
+			case gbk_targfam_lnds:
+				cur_ide = gbk_ide_dkp;
+				break;
+			case gbk_targfam_xgen:
 			default:
 				cur_ide = gbk_ide_ccc;
 				break;
@@ -519,59 +786,6 @@ LOCALFUNC tMyErr TryAsCmndLineOptionNot(void)
 	return FlagTryAsOptionNot("-cl", &UseCmndLine);
 }
 
-/* derived option: target cpu family */
-
-enum {
-	gbk_cpufam_68k, /* Motorola 680x0 */
-	gbk_cpufam_ppc, /* PowerPC */
-	gbk_cpufam_x86, /* Intel 80x86 */
-	gbk_cpufam_spr, /* SPARC */
-	gbk_cpufam_arm, /* ARM */
-	gbk_cpufam_x64, /* x86-64 (aka AMD64, Intel 64) */
-	gbk_cpufam_gen, /* Generic (don't know) */
-	kNumCPUFamilies
-};
-
-LOCALVAR int gbo_cpufam;
-
-LOCALPROC ChooseCPUFam(void)
-{
-	switch (cur_targ) {
-		case gbk_targ_m68k:
-		case gbk_targ_mfpu:
-			gbo_cpufam = gbk_cpufam_68k;
-			break;
-		case gbk_targ_mppc:
-		case gbk_targ_carb:
-		case gbk_targ_mach:
-		case gbk_targ_mx11:
-		case gbk_targ_lppc:
-			gbo_cpufam = gbk_cpufam_ppc;
-			break;
-		case gbk_targ_wx86:
-		case gbk_targ_wc86:
-		case gbk_targ_lx86:
-		case gbk_targ_sl86:
-		case gbk_targ_imch:
-		case gbk_targ_mi11:
-			gbo_cpufam = gbk_cpufam_x86;
-			break;
-		case gbk_targ_slrs:
-			gbo_cpufam = gbk_cpufam_spr;
-			break;
-		case gbk_targ_wcar:
-			gbo_cpufam = gbk_cpufam_arm;
-			break;
-		case gbk_targ_lx64:
-		case gbk_targ_wx64:
-			gbo_cpufam = gbk_cpufam_x64;
-			break;
-		case gbk_targ_xgen:
-			gbo_cpufam = gbk_cpufam_gen;
-			break;
-	}
-}
-
 /* option: api family */
 
 enum {
@@ -579,7 +793,10 @@ enum {
 	gbk_apifam_osx,
 	gbk_apifam_win,
 	gbk_apifam_xwn,
+	gbk_apifam_nds,
 	gbk_apifam_gtk,
+	gbk_apifam_sdl,
+	gbk_apifam_cco,
 	kNumAPIFamilies
 };
 
@@ -607,8 +824,17 @@ LOCALFUNC char * GetAPIFamName(int i)
 		case gbk_apifam_xwn:
 			s = "xwn";
 			break;
+		case gbk_apifam_nds:
+			s = "nds";
+			break;
 		case gbk_apifam_gtk:
 			s = "gtk";
+			break;
+		case gbk_apifam_sdl:
+			s = "sdl";
+			break;
+		case gbk_apifam_cco:
+			s = "cco";
 			break;
 		default:
 			s = "(unknown API)";
@@ -626,32 +852,34 @@ LOCALFUNC tMyErr TryAsAPIFamOptionNot(void)
 LOCALPROC ChooseAPIFam(void)
 {
 	if (kListOptionAuto == gbo_apifam) {
-		switch (cur_targ) {
-			case gbk_targ_m68k:
-			case gbk_targ_mfpu:
-			case gbk_targ_mppc:
+		switch (gbo_targfam) {
+			case gbk_targfam_cmac:
 				gbo_apifam = gbk_apifam_mac;
 				break;
-			case gbk_targ_carb:
-			case gbk_targ_mach:
-			case gbk_targ_imch:
+			case gbk_targfam_mach:
+			case gbk_targfam_carb:
 				gbo_apifam = gbk_apifam_osx;
 				break;
-			case gbk_targ_wx86:
-			case gbk_targ_wcar:
-			case gbk_targ_wc86:
-			case gbk_targ_wx64:
+			case gbk_targfam_mswn:
+			case gbk_targfam_wnce:
 				gbo_apifam = gbk_apifam_win;
 				break;
-			case gbk_targ_lx86:
-			case gbk_targ_lppc:
-			case gbk_targ_lx64:
-			case gbk_targ_slrs:
-			case gbk_targ_sl86:
-			case gbk_targ_mx11:
-			case gbk_targ_mi11:
-			case gbk_targ_xgen:
+			case gbk_targfam_linx:
+			case gbk_targfam_slrs:
+			case gbk_targfam_fbsd:
+			case gbk_targfam_obsd:
+			case gbk_targfam_nbsd:
+			case gbk_targfam_dbsd:
+			case gbk_targfam_oind:
+			case gbk_targfam_minx:
+			case gbk_targfam_irix:
+			case gbk_targfam_mx11:
+			case gbk_targfam_cygw:
+			case gbk_targfam_xgen:
 				gbo_apifam = gbk_apifam_xwn;
+				break;
+			case gbk_targfam_lnds:
+				gbo_apifam = gbk_apifam_nds;
 				break;
 		}
 	}
@@ -716,6 +944,7 @@ enum {
 	gbk_lang_ger,
 	gbk_lang_dut,
 	gbk_lang_spa,
+	gbk_lang_pol,
 	kNumLangLevels
 };
 
@@ -748,6 +977,9 @@ LOCALFUNC char * GetLangName(int i)
 			break;
 		case gbk_lang_spa:
 			s = "spa";
+			break;
+		case gbk_lang_pol:
+			s = "pol";
 			break;
 		default:
 			s = "(unknown Language Level)";
@@ -784,6 +1016,9 @@ LOCALFUNC char * GetLProjName(int i)
 			break;
 		case gbk_lang_spa:
 			s = "Spanish";
+			break;
+		case gbk_lang_pol:
+			s = "pl";
 			break;
 		default:
 			s = "(unknown Language Level)";
@@ -870,8 +1105,11 @@ LOCALPROC ChooseEOL(void)
 				case gbk_ide_msv:
 				case gbk_ide_lcc:
 				case gbk_ide_dvc:
+				case gbk_ide_mgw:
+				case gbk_ide_cyg:
 				case gbk_ide_dmc:
 				case gbk_ide_plc:
+				case gbk_ide_dkp:
 					cur_eol = gbk_eol_win;
 					break;
 			}
@@ -938,8 +1176,11 @@ LOCALPROC ChooseArc(void)
 			case gbk_ide_msv:
 			case gbk_ide_lcc:
 			case gbk_ide_dvc:
+			case gbk_ide_mgw:
+			case gbk_ide_cyg:
 			case gbk_ide_dmc:
 			case gbk_ide_plc:
+			case gbk_ide_dkp:
 				cur_arc = gbk_arc_zip;
 				break;
 		}
@@ -1039,9 +1280,9 @@ LOCALVAR blnr HaveMacBundleApp;
 
 LOCALPROC ChooseHaveMacBundleApp(void)
 {
-	HaveMacBundleApp = ((cur_targ == gbk_targ_mach)
-		|| (cur_targ == gbk_targ_imch))
-		|| ((cur_targ == gbk_targ_carb) && (cur_ide == gbk_ide_mpw));
+	HaveMacBundleApp = (gbk_targfam_mach == gbo_targfam)
+		|| ((gbk_targfam_carb == gbo_targfam)
+			&& (gbk_ide_mpw == cur_ide));
 }
 
 /* derived option: have macintosh resources */
@@ -1050,8 +1291,9 @@ LOCALVAR blnr HaveMacRrscs;
 
 LOCALPROC ChooseHaveMacRrscs(void)
 {
-	HaveMacRrscs = (gbo_apifam == gbk_apifam_mac)
-		|| ((cur_targ == gbk_targ_carb) && ! (cur_ide == gbk_ide_mpw))
+	HaveMacRrscs = (gbk_apifam_mac == gbo_apifam)
+		|| ((gbk_targfam_carb == gbo_targfam)
+			&& ! (gbk_ide_mpw == cur_ide))
 		|| HaveExtraRrscs;
 }
 
@@ -1191,6 +1433,7 @@ enum {
 	gbk_asm_bgcx86,
 	gbk_asm_dvcx86,
 	gbk_asm_mpw68k,
+	gbk_asm_bgcarm,
 	kNumAsms
 };
 
@@ -1230,6 +1473,9 @@ LOCALFUNC char * GetAssemblerName(int i)
 		case gbk_asm_dvcx86:
 			s = "dvcx86";
 			break;
+		case gbk_asm_bgcarm:
+			s = "bgcarm";
+			break;
 		default:
 			s = "(unknown Assembler)";
 			break;
@@ -1247,11 +1493,11 @@ LOCALPROC ChooseAssembler(void)
 	if (kListOptionAuto == cur_asm) {
 		cur_asm = gbk_asm_none;
 		if (! WantNoAsm) {
-			if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (gbk_cpufam_ppc == gbo_cpufam) {
 				if (cur_ide == gbk_ide_mpw) {
 					cur_asm = gbk_asm_mpwppc;
 				} else if (cur_ide == gbk_ide_mw8) {
-					if (cur_targ != gbk_targ_mach) {
+					if (gbk_targfam_mach != gbo_targfam) {
 						cur_asm = gbk_asm_mw8ppc;
 					}
 				} else if (cur_ide == gbk_ide_xcd) {
@@ -1261,17 +1507,25 @@ LOCALPROC ChooseAssembler(void)
 				} else if (cur_ide == gbk_ide_bgc) {
 					cur_asm = gbk_asm_bgcppc;
 				}
-			} else if (gbo_cpufam == gbk_cpufam_x86) {
+			} else if (gbk_cpufam_x86 == gbo_cpufam) {
 				if (cur_ide == gbk_ide_xcd) {
 					cur_asm = gbk_asm_xcdx86;
 				} else if (cur_ide == gbk_ide_bgc) {
 					cur_asm = gbk_asm_bgcx86;
+				} else if (cur_ide == gbk_ide_cyg) {
+					cur_asm = gbk_asm_bgcx86;
+				} else if (cur_ide == gbk_ide_mgw) {
+					cur_asm = gbk_asm_dvcx86;
 				} else if (cur_ide == gbk_ide_dvc) {
 					if (UseCmndLine) {
 						cur_asm = gbk_asm_dvcx86;
 					}
 				}
-			} else if (gbo_cpufam == gbk_cpufam_68k) {
+			} else if (gbk_cpufam_arm == gbo_cpufam) {
+				if (cur_ide == gbk_ide_dkp) {
+					cur_asm = gbk_asm_bgcarm;
+				}
+			} else if (gbk_cpufam_68k == gbo_cpufam) {
 				if (cur_ide == gbk_ide_mpw) {
 					cur_asm = gbk_asm_mpw68k;
 				}
@@ -1347,9 +1601,10 @@ LOCALFUNC tMyErr AutoChooseGNSettings(void)
 
 	if (noErr == (err = ChooseTarg()))
 	{
+		ChooseCPUFam();
+		ChooseTargFam();
 		ChooseIde();
 		ChooseIdeVers();
-		ChooseCPUFam();
 		ChooseAPIFam();
 		ChooseDbgOption();
 		ChooseLangOption();

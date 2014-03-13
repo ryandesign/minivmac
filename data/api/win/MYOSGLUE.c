@@ -290,51 +290,9 @@ LOCALVAR blnr UseFullScreen = (WantInitFullScreen != 0);
 LOCALVAR blnr UseMagnify = (WantInitMagnify != 0);
 #endif
 
-#ifndef MyWindowScale
-#define MyWindowScale 2
-#endif
-
-#if UseWinCE
-/*
-	This cheesy workaround is needed because XDest - hOffset
-	is always >= 3 (why?)
-*/
-#define hOffsetFudge 3
-#endif
-
-#if MayFullScreen || UseWinCE
+#if MayFullScreen
 LOCALVAR short hOffset;
 LOCALVAR short vOffset;
-#endif
-
-#if UseWinCE
-/* Number of pre-calculated screen offsets for this device */
-LOCALVAR unsigned char numHOffsets;
-LOCALVAR unsigned char numVOffsets;
-/* Pre-calculated screen offsets */
-LOCALVAR short *hOffsetsList;
-LOCALVAR short *vOffsetsList;
-/* Indices of current offsets */
-LOCALVAR unsigned char curHOffset;
-LOCALVAR unsigned char curVOffset;
-/*
-	Screen resolution, in pixels;
-	values will be changed upon initialization
-	(see Init_ChangeOrientation)
-*/
-LOCALVAR short hRes = vMacScreenWidth;
-LOCALVAR short vRes = vMacScreenHeight;
-#endif
-
-#if UseWinCE
-/* Sip Status ON/OFF */
-LOCALVAR blnr SipOn = falseblnr;
-#endif
-
-#if UseWinCE
-/* Are we in control mode? */
-/* Needed because you can't hold down a key with the virtual keyboard */
-LOCALVAR blnr CtrlMode = falseblnr;
 #endif
 
 /* cursor hiding */
@@ -726,11 +684,15 @@ LOCALPROC DoVKcode0(int i, blnr down)
 	DoKeyCode(i, down);
 }
 
-LOCALPROC DoVKcode(int i, blnr down)
+LOCALPROC DoVKcode(int i, ui3r flags, blnr down)
 {
-	if (i == VK_CAPITAL) {
+	if (VK_RETURN == i) {
+		Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+			? MKC_Enter : MKC_Return,
+			down);
+	} else if (VK_CAPITAL == i) {
 		CheckTheCapsLock();
-	} else if (i >= 0 && i < 256) {
+	} else if ((i >= 0) && (i < 256)) {
 		DoVKcode0(i, down);
 	}
 }
@@ -748,7 +710,9 @@ LOCALPROC ReconnectKeyCodes3(void)
 
 		for (i = 0; i < 256; ++i) {
 			if ((GetKeyState(i) & 0x8000) != 0) {
-				if (i != VK_CAPITAL) {
+				if ((VK_CAPITAL != i)
+					&& (VK_RETURN != i))
+				{
 					DoVKcode0(i, trueblnr);
 				}
 			}
@@ -797,14 +761,12 @@ LRESULT CALLBACK LowLevelKeyboardProc(
 			switch (wParam) {
 				case WM_KEYDOWN:
 				case WM_SYSKEYDOWN:
-					if (! TestBit(lParam, 30)) { /* ignore repeats */
-						DoVKcode(p->vkCode, trueblnr);
-					}
+					DoVKcode(p->vkCode, p->flags, trueblnr);
 					return 1;
 					break;
 				case WM_KEYUP:
 				case WM_SYSKEYUP:
-					DoVKcode(p->vkCode, falseblnr);
+					DoVKcode(p->vkCode, p->flags, falseblnr);
 					return 1;
 					break;
 			}
@@ -1028,6 +990,9 @@ LOCALFUNC blnr Init60thCheck(void)
 			| (((v != TIME_ZONE_ID_DAYLIGHT) ? 0 : 0x80)
 				<< 24);
 	}
+
+	LastTime = timeGetTime();
+	(void) CheckDateTime();
 
 	return trueblnr;
 }
@@ -1653,7 +1618,7 @@ LOCALVAR blnr HavePositionWins[kNumMagStates];
 LOCALVAR POINT WinPositionWins[kNumMagStates];
 #endif
 
-#if MayNotFullScreen && ! UseWinCE
+#if MayNotFullScreen
 LOCALPROC MyAppendConvertMenuItem(HMENU hMenu,
 	UINT uIDNewItem, char *s, blnr AddEllipsis)
 {
@@ -1666,7 +1631,7 @@ LOCALPROC MyAppendConvertMenuItem(HMENU hMenu,
 }
 #endif
 
-#if MayNotFullScreen && ! UseWinCE
+#if MayNotFullScreen
 LOCALPROC MyAppendSubmenuConvertName(HMENU hMenu,
 	HMENU hSubMenu, char *s)
 {
@@ -1699,12 +1664,10 @@ LOCALPROC MyAppendSubmenuConvertName(HMENU hMenu,
 
 LOCALFUNC blnr ReCreateMainWindow(void)
 {
-#if ! UseWinCE
 #if MayNotFullScreen
 	HMENU m;
 #endif
 	HMENU mb;
-#endif
 	int DfltWndX;
 	int DfltWndY;
 	int NewWndX;
@@ -1752,10 +1715,6 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 #if MayFullScreen
 	{
-#if UseWinCE
-		XSize = hRes; /* 320 */ /* ScreenX; */
-		YSize = vRes; /* 214 */ /* ScreenY; */
-#else
 		XSize = ScreenX;
 		YSize = ScreenY;
 
@@ -1767,7 +1726,6 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		if (vOffset < 0) {
 			vOffset = 0;
 		}
-#endif
 
 		DfltWndX = 0;
 		DfltWndY = 0;
@@ -1791,11 +1749,6 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 			DfltWndY = 0;
 		}
 	}
-#endif
-
-#if UseWinCE
-	hOffset = 0 - hOffsetFudge;
-	vOffset = 0;
 #endif
 
 #if EnableMagnify
@@ -1854,7 +1807,6 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 		)
 	{
-#if ! UseWinCE
 
 #if VarFullScreen
 		if (WantFullScreen)
@@ -1896,12 +1848,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		}
 #endif
 
-#endif
-
 		NewMainWindow = CreateWindowEx(
-#if UseWinCE
-			WS_EX_TOPMOST,
-#else
 
 #if VarFullScreen
 			WantFullScreen ?
@@ -1917,12 +1864,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 			,
 
-#endif
 			WndClassName,
 			WndTitle,
-#if UseWinCE
-			WS_VISIBLE | WS_POPUP,
-#else
 
 #if VarFullScreen
 			WantFullScreen ?
@@ -1938,13 +1881,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 				,
 
-#endif
 			NewWndX, NewWndY, XSize, YSize, NULL,
-#if UseWinCE
-			NULL,
-#else
 			mb,
-#endif
 			AppInstance, NULL);
 		if (NewMainWindow == NULL) {
 			MacMsg("CreateWindow failed",
@@ -1967,6 +1905,10 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		(void) MoveWindow(NewMainWindow, NewWndX, NewWndY,
 			XSize, YSize, TRUE);
 	}
+
+#if 0 != vMacScreenDepth
+	ColorModeWorks = trueblnr;
+#endif
 
 	{
 		RECT r;
@@ -2031,10 +1973,14 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		if (ViewHSize >= vMacScreenWidth) {
 			ViewHStart = 0;
 			ViewHSize = vMacScreenWidth;
+		} else {
+			ViewHSize &= ~ 1;
 		}
 		if (ViewVSize >= vMacScreenHeight) {
 			ViewVStart = 0;
 			ViewVSize = vMacScreenHeight;
+		} else {
+			ViewVSize &= ~ 1;
 		}
 	}
 #endif
@@ -2114,6 +2060,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #if UseWinCE
 	/* Hide the taskbar */
 	SHFullScreen(MainWnd, SHFS_HIDETASKBAR);
+	(void) MoveWindow(MainWnd, 0, 0,
+			ScreenX, ScreenY, TRUE);
 #endif
 
 	if (HaveCursorHidden) {
@@ -2186,6 +2134,10 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 		if (right > ViewHStart + ViewHSize) {
 			right = ViewHStart + ViewHSize;
 		}
+
+		if ((top >= bottom) || (left >= right)) {
+			goto label_exit;
+		}
 	}
 #endif
 
@@ -2208,7 +2160,6 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 		YDest *= MyWindowScale;
 	}
 #endif
-#if ! UseWinCE
 #if VarFullScreen
 	if (UseFullScreen)
 #endif
@@ -2217,7 +2168,6 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 		XDest += hOffset;
 		YDest += vOffset;
 	}
-#endif
 #endif
 
 #if 0
@@ -2493,7 +2443,7 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 					/* dest. rectangle width */
 				(bottom - top) * MyWindowScale,
 					/* dest. rectangle height */
-				0,
+				left,
 					/*
 						x-coordinate of lower-left corner
 						of source rect.
@@ -2503,7 +2453,7 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 						y-coordinate of lower-left corner
 						of source rect.
 					*/
-				vMacScreenWidth, /* source rectangle width */
+				(right - left), /* source rectangle width */
 				(bottom - top), /* source rectangle height */
 				(CONST VOID *)p, /* address of array with DIB bits */
 				(const struct tagBITMAPINFO *)&bmh,
@@ -2521,66 +2471,9 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 		} else
 #endif
 
-#if UseWinCE && VarFullScreen
-		if (UseFullScreen)
-#endif
-#if UseWinCE && MayFullScreen
-		{
-			if (StretchDIBits(
-				MainWndDC, /* handle of device context */
-				XDest,
-					/*
-						x-coordinate of upper-left corner of dest. rect.
-					*/
-				YDest,
-					/*
-						y-coordinate of upper-left corner of dest. rect.
-					*/
-				hRes, /* dest. rectangle width */
-				vRes, /* dest. rectangle height */
-				0,
-					/*
-						x-coordinate of lower-left corner
-						of source rect.
-					*/
-				0,
-					/*
-						y-coordinate of lower-left corner
-						of source rect.
-					*/
-				vMacScreenWidth, /* source rectangle width */
-				bottom, /* source rectangle height */
-				(CONST VOID *)p, /* address of array with DIB bits */
-				(const struct tagBITMAPINFO *)&bmh,
-					/* address of structure with bitmap info. */
-#if ! UseWinCE
-				DIB_RGB_COLORS, /* RGB or palette indices */
-#else
-				DIB_PAL_COLORS, /* palette indices */
-#endif
-				SRCCOPY
-			) == 0) {
-				/* ReportWinLastError(); */
-			}
-		}
-#endif
-#if UseWinCE && VarFullScreen
-		else
-#endif
-#if (! UseWinCE) || MayNotFullScreen
 		{
 			if (SetDIBitsToDevice(
 				MainWndDC, /* handle of device context */
-#if UseWinCE
-				XDest - hOffset,
-					/*
-						x-coordinate of upper-left corner of dest. rect.
-					*/
-				YDest - vOffset,
-					/*
-						y-coordinate of upper-left corner of dest. rect.
-					*/
-#else
 				XDest,
 					/*
 						x-coordinate of upper-left corner of dest. rect.
@@ -2589,7 +2482,6 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 					/*
 						y-coordinate of upper-left corner of dest. rect.
 					*/
-#endif
 				(right - left), /* source rectangle width */
 				(bottom - top), /* source rectangle height */
 				left,
@@ -2616,21 +2508,17 @@ LOCALPROC HaveChangedScreenBuff(si4b top, si4b left,
 				/* ReportWinLastError(); */
 			}
 		}
-#endif
 	}
+
+#if MayFullScreen
+label_exit:
+	;
+#endif
 }
 
 LOCALPROC Screen_DrawAll(void)
 {
-#if UseWinCE
-	/*
-	HaveChangedScreenBuff should figure out for itself
-	what part it really needs to draw.
-	*/
-	HaveChangedScreenBuff(vOffset, 0, vRes + vOffset, hRes + hOffset);
-#else
 	HaveChangedScreenBuff(0, 0, vMacScreenHeight, vMacScreenWidth);
-#endif
 }
 
 LOCALPROC MyDrawChangesAndClear(void)
@@ -2684,29 +2572,6 @@ LOCALPROC MousePositionNotify(LONG NewMousePosx, LONG NewMousePosy)
 {
 	blnr ShouldHaveCursorHidden = trueblnr;
 
-#if UseWinCE
-
-#if VarFullScreen
-	if (UseFullScreen)
-#endif
-#if MayFullScreen
-	{
-		NewMousePosx /= 1.6;
-		NewMousePosy /= 1.6;
-	}
-#endif
-#if VarFullScreen
-	else
-#endif
-#if MayNotFullScreen
-	{
-		NewMousePosx += hOffset;
-		NewMousePosy += vOffset;
-	}
-#endif
-
-#else
-
 #if VarFullScreen
 	if (UseFullScreen)
 #endif
@@ -2732,8 +2597,6 @@ LOCALPROC MousePositionNotify(LONG NewMousePosx, LONG NewMousePosy)
 		NewMousePosx += ViewHStart;
 		NewMousePosy += ViewVStart;
 	}
-#endif
-
 #endif
 
 #if EnableMouseMotion && MayFullScreen
@@ -2775,13 +2638,14 @@ LOCALPROC MousePositionNotify(LONG NewMousePosx, LONG NewMousePosy)
 			for a game like arkanoid, would like mouse to still
 			move even when outside window in one direction
 		*/
-		MyMousePositionSet(NewMousePosx, NewMousePosy);
 #endif
+		MyMousePositionSet(NewMousePosx, NewMousePosy);
 	}
 
 	WantCursorHidden = ShouldHaveCursorHidden;
 }
 
+#if ! UseWinCE
 LOCALPROC CheckMouseState(void)
 {
 	POINT NewMousePos;
@@ -2791,6 +2655,7 @@ LOCALPROC CheckMouseState(void)
 	NewMousePos.y -= WndY;
 	MousePositionNotify(NewMousePos.x, NewMousePos.y);
 }
+#endif
 
 #if IncludePbufs
 LOCALVAR HGLOBAL PbufDat[NumPbufs];
@@ -3655,6 +3520,12 @@ LOCALFUNC blnr MyGetAppDataPath(LPTSTR lpszPath,
 	return IsOk;
 }
 
+#if UseWinCE
+/* Are we in control mode? */
+/* Needed because you can't hold down a key with the virtual keyboard */
+LOCALVAR blnr CtrlMode = falseblnr;
+#endif
+
 LOCALPROC InsertADisk0(void)
 {
 	OPENFILENAME ofn;
@@ -3672,8 +3543,8 @@ LOCALPROC InsertADisk0(void)
 	szDirName[0] = (TCHAR)('\0');
 	szFile[0] = (TCHAR)('\0');
 	_tcscpy(szFilter,
-		TEXT("Disk images|*.dsk;*.HF?;*.IMG;*.IMA;*.IMAGE"
-		"|All files (*.*)|*.*|\0"));
+		TEXT("Disk images|*.dsk;*.HF?;*.IMG;*.IMA;*.IMAGE")
+		TEXT("|All files (*.*)|*.*|\0"));
 
 	cbString = _tcslen(szFilter);
 
@@ -3721,7 +3592,6 @@ LOCALPROC InsertADisk0(void)
 
 #if UseWinCE
 	CtrlMode = falseblnr;
-	SipOn = falseblnr;
 #endif
 }
 
@@ -3740,22 +3610,24 @@ LOCALFUNC blnr LoadInitialImageFromName(char *ImageName)
 
 LOCALFUNC blnr LoadInitialImages(void)
 {
-	int i;
-	int n = NumDrives > 9 ? 9 : NumDrives;
-	char s[] = "disk?.dsk";
+	if (! AnyDiskInserted()) {
+		int i;
+		int n = NumDrives > 9 ? 9 : NumDrives;
+		char s[] = "disk?.dsk";
 
-	for (i = 1; i <= n; ++i) {
-		s[4] = '0' + i;
-		if (! LoadInitialImageFromName(s)) {
-			/* stop on first error (including file not found) */
-			return trueblnr;
+		for (i = 1; i <= n; ++i) {
+			s[4] = '0' + i;
+			if (! LoadInitialImageFromName(s)) {
+				/* stop on first error (including file not found) */
+				return trueblnr;
+			}
 		}
 	}
 
 	return trueblnr;
 }
 
-#if UseActvCode
+#if UseActvFile
 
 #define ActvCodeFileName "act_1"
 
@@ -3896,7 +3768,7 @@ LOCALFUNC tMacErr ActvCodeFileSave(ui3p p)
 	return IsOk ? mnvm_noErr : mnvm_miscErr;
 }
 
-#endif /* UseActvCode */
+#endif /* UseActvFile */
 
 #if IncludeSonyNew
 LOCALFUNC blnr WriteZero(HANDLE refnum, ui5b L)
@@ -4115,16 +3987,18 @@ LOCALPROC RegisterShellFileType(LPTSTR AppPath, LPTSTR strFilterExt,
 
 	_tcscpy(strRegKey, strFileTypeId);
 	_tcscat(strRegKey, TEXT("\\DefaultIcon"));
-	_tcscpy(strRegValue, AppPath);
-	_tcscat(strRegValue, TEXT(","));
+	_tcscpy(strRegValue, TEXT("\""));
+	_tcscat(strRegValue, AppPath);
+	_tcscat(strRegValue, TEXT("\","));
 	_tcscat(strRegValue, strIconId);
 	MySetRegKey(HKEY_CLASSES_ROOT, strRegKey, strRegValue);
 
 	if (CanOpen) {
 		_tcscpy(strRegKey, strFileTypeId);
 		_tcscat(strRegKey, TEXT("\\shell\\open\\command"));
-		_tcscpy(strRegValue, AppPath);
-		_tcscat(strRegValue, TEXT(" \"%1\""));
+		_tcscpy(strRegValue, TEXT("\""));
+		_tcscat(strRegValue, AppPath);
+		_tcscat(strRegValue, TEXT("\" \"%1\""));
 		MySetRegKey(HKEY_CLASSES_ROOT, strRegKey, strRegValue);
 	}
 }
@@ -4134,7 +4008,9 @@ LOCALFUNC blnr RegisterInRegistry(void)
 	TCHAR AppPath[_MAX_PATH];
 
 	GetModuleFileName(NULL, AppPath, _MAX_PATH);
+#if 0
 	GetShortPathName(AppPath, AppPath, _MAX_PATH);
+#endif
 
 	RegisterShellFileType(AppPath, TEXT(".rom"), TEXT("minivmac.rom"),
 		TEXT("Mini vMac ROM Image"), TEXT("1"), falseblnr);
@@ -4149,38 +4025,63 @@ LOCALVAR LPTSTR CommandLine;
 
 LOCALFUNC blnr ScanCommandLine(void)
 {
-	TCHAR fileName[_MAX_PATH];
-	TCHAR *filePtr;
 	TCHAR *p = CommandLine;
+	TCHAR *p1;
+	TCHAR *p2;
+	TCHAR v;
+	size_t L;
 
-	while (*p != 0) {
-		if (*p == ' ') {
-			++p;
-		} else if (*p == '/') {
-			++p;
-			if (*p == 'l') {
-				++p;
-				SpeedValue = 0;
-			} else {
-				MacMsg(kStrBadArgTitle, kStrBadArgMessage, falseblnr);
-			}
+	v = *p;
+	while (0 != v) {
+		if (' ' == v) {
+			v = *++p;
 		} else {
-			filePtr = fileName;
-			if (*p == '\"') {
-				++p;
-				while (*p != '\"' && *p != 0) {
-					*filePtr++ = *p++;
+			if ('\"' == v) {
+				v = *++p;
+				p1 = p;
+				while (('\"' != v) && (0 != v)) {
+					v = *++p;
 				}
-				if (*p == '\"') {
-					++p;
+				p2 = p;
+				if ('\"' == v) {
+					v = *++p;
 				}
 			} else {
-				while (*p != ' ' && *p != 0) {
-					*filePtr++ = *p++;
+				p1 = p;
+				while ((' ' != v) && (0 != v)) {
+					v = *++p;
+				}
+				p2 = p;
+			}
+			L = p2 - p1;
+			if (L + 1 <= _MAX_PATH) {
+				TCHAR fileName[_MAX_PATH];
+				TCHAR *filePtr = fileName;
+				size_t i = L;
+
+				while (i > 0) {
+					*filePtr++ = *p1++;
+					--i;
+				}
+				*filePtr = (char)0;
+
+				if ((L > 0)
+					&& (('/' == fileName[0]) || ('-' == fileName[0])))
+				{
+#if 0
+					TCHAR *p3 = &fileName[1];
+					if (0 == _tcscmp(p3, TEXT("l"))) {
+						SpeedValue = 0;
+					} else
+#endif
+					{
+						MacMsg(kStrBadArgTitle, kStrBadArgMessage,
+							falseblnr);
+					}
+				} else {
+					(void) InsertDiskOrAlias(fileName);
 				}
 			}
-			*filePtr = (char)0;
-			(void) InsertDiskOrAlias(fileName);
 		}
 	}
 
@@ -4339,7 +4240,9 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 		}
 
 		if (! (gBackgroundFlag || ADialogIsUp)) {
+#if ! UseWinCE
 			CheckMouseState();
+#endif
 
 #if EnableGrabSpecialKeys
 			CheckForLostKeyUps();
@@ -4356,14 +4259,14 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 #endif
 		MyDrawChangesAndClear();
 
+		if (n > 8) {
+			/* emulation not fast enough */
+			n = 8;
+			CurEmulatedTime = OnTrueTime - n;
+		}
+
 		if (ExtraTimeNotOver() && (--n > 0)) {
 			/* lagging, catch up */
-
-			if (n > 8) {
-				/* emulation not fast enough */
-				n = 8;
-				CurEmulatedTime = OnTrueTime - n;
-			}
 
 			EmVideoDisable = trueblnr;
 
@@ -4556,6 +4459,11 @@ LOCALPROC CheckForSavedTasks(void)
 LOCALVAR blnr GotTheTick = falseblnr;
 #endif
 
+#if UseWinCE
+/* Sip Status ON/OFF */
+LOCALVAR blnr SipOn = falseblnr;
+#endif
+
 LRESULT CALLBACK Win32WMProc(HWND hwnd,
 	UINT uMessage, WPARAM wparam, LPARAM lparam);
 
@@ -4599,6 +4507,18 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
 #if UseWinCE
+			SipOn = falseblnr;
+
+			{
+				SIPINFO r;
+
+				memset(&r, 0 , sizeof(SIPINFO));
+				r.cbSize = sizeof(SIPINFO);
+				if (SipGetInfo(&r)) {
+					SipOn = 0 != (r.fdwFlags & SIPF_ON);
+				}
+			}
+
 			if (wparam == 0xAE) {
 				break;
 			} else if ((! SipOn) && (wparam == VK_RETURN)) {
@@ -4608,17 +4528,17 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 			{
 				break;
 			} else if (wparam == VK_CONTROL && CtrlMode) {
-				DoVKcode(wparam, falseblnr);
+				DoVKcode0(wparam, falseblnr);
 				CtrlMode = falseblnr;
 				break;
 			} else if (wparam == VK_CONTROL) {
-				DoVKcode(wparam, trueblnr);
+				DoVKcode0(wparam, trueblnr);
 				CtrlMode = trueblnr;
 				break;
 			}
 #endif
 			if (! TestBit(lparam, 30)) { /* ignore repeats */
-				DoVKcode(wparam, trueblnr);
+				DoVKcode(wparam, lparam >> 24, trueblnr);
 			}
 
 #if UseWinCE
@@ -4633,65 +4553,67 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
 #if UseWinCE
-#if 0 /* ** DEBUG ** */
-			if (wparam != VK_CONTROL) {
-				char Msg[256];
-				sprintf(Msg, "Key released: %x", wparam);
-				MacMsg("debug", Msg, falseblnr);
+			SipOn = falseblnr;
+
+			{
+				SIPINFO r;
+
+				memset(&r, 0 , sizeof(SIPINFO));
+				r.cbSize = sizeof(SIPINFO);
+				if (SipGetInfo(&r)) {
+					SipOn = 0 != (r.fdwFlags & SIPF_ON);
+				}
 			}
-#endif
+
 			if (wparam == 0xAE) { /* to hide SoftInput panel */
 				SipShowIM(SIPF_OFF);
-				SipOn = falseblnr;
 				break;
 			} else if ((! SipOn) && (wparam == VK_RETURN)) {
 				/* DPad Action to show SIP */
 				/* Show SoftInput Panel */
 				SipShowIM(SIPF_ON);
-				SipOn = trueblnr;
 				break;
-			} else
-#if MayNotFullScreen
-			if (
-#if VarFullScreen
-			(! WantFullScreen) &&
-#endif
-			(! SipOn) && (wparam >= VK_LEFT) && (wparam <= VK_DOWN))
+			} else if ((! SipOn)
+				&& (wparam >= VK_LEFT) && (wparam <= VK_DOWN))
 			{
 				switch (wparam) {
 					case VK_LEFT:
-						if (curHOffset > 0) {
-							--curHOffset;
-							hOffset = hOffsetsList[curHOffset];
+						if (ViewHStart < (ViewHSize / 2)) {
+							ViewHStart = 0;
+						} else {
+							ViewHStart -= (ViewHSize / 2);
 						}
 						break;
 					case VK_UP:
-						if (curVOffset > 0) {
-							--curVOffset;
-							vOffset = vOffsetsList[curVOffset];
+						if (ViewVStart < (ViewVSize / 2)) {
+							ViewVStart = 0;
+						} else {
+							ViewVStart -= (ViewVSize / 2);
 						}
 						break;
 					case VK_RIGHT:
-						if (curHOffset < numHOffsets - 1) {
-							++curHOffset;
-							hOffset = hOffsetsList[curHOffset];
+						ViewHStart += (ViewHSize / 2);
+						if (ViewHStart >= (vMacScreenWidth - ViewHSize))
+						{
+							ViewHStart = vMacScreenWidth - ViewHSize;
 						}
 						break;
 					case VK_DOWN:
-						if (curVOffset < numVOffsets - 1) {
-							++curVOffset;
-							vOffset = vOffsetsList[curVOffset];
+						ViewVStart += (ViewVSize / 2);
+						if (ViewVStart
+							>= (vMacScreenHeight - ViewVSize))
+						{
+							ViewVStart = vMacScreenHeight - ViewVSize;
 						}
 						break;
 				}
 				Screen_DrawAll();
 			} else
-#endif
 			if (wparam == VK_CONTROL && CtrlMode) {
 				break;
 			}
 #endif
-			DoVKcode(wparam, falseblnr);
+			DoVKcode(wparam, lparam >> 24, falseblnr);
 
 #if UseWinCE
 			return TRUE;
@@ -4706,6 +4628,16 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 		case WM_CLOSE:
 			RequestMacOff = trueblnr;
 			break;
+#if ! UseWinCE
+		case WM_QUERYENDSESSION:
+			if (AnyDiskInserted()) {
+				RequestMacOff = trueblnr;
+				return FALSE;
+			} else {
+				return TRUE;
+			}
+			break;
+#endif
 		case WM_ACTIVATE:
 			if (MainWnd == hwnd) {
 				gTrueBackgroundFlag = (LOWORD(wparam) == WA_INACTIVE);
@@ -4885,7 +4817,6 @@ LOCALFUNC blnr Init_ChangeOrientation(void)
 
 	/* Hide SIP (you can never tell...) */
 	SipShowIM(SIPF_OFF);
-	SipOn = falseblnr;
 
 	/* Switch to Landscape mode if possible */
 	dm.dmOrientation = DMORIENT_LANDSCAPE;
@@ -4900,82 +4831,6 @@ LOCALFUNC blnr Init_ChangeOrientation(void)
 				"Couldn't switch to Landscape mode.", falseblnr);
 		}
 	*/
-
-	/* Save screen caps */
-	hRes = GetDeviceCaps(GetDC(NULL), HORZRES);
-	vRes = GetDeviceCaps(GetDC(NULL), VERTRES);
-
-	/* Pre-calculate screen offsets for this device */
-	hOffsetsList = NULL;
-	vOffsetsList = NULL;
-
-	curHOffset = 0;
-	curVOffset = 0;
-
-	switch (hRes)
-	{
-	case 320: /* 320x240 */
-		numHOffsets = 2;
-		hOffsetsList = (short*)malloc(numHOffsets * sizeof(short));
-		hOffsetsList[0] = -3;
-		hOffsetsList[1] = 189;
-		break;
-
-	case 240: /* 240x320 and 240x240 */
-		numHOffsets = 3;
-		hOffsetsList = (short*)malloc(numHOffsets * sizeof(short));
-		hOffsetsList[0] = -3;
-		hOffsetsList[1] = 135;
-		hOffsetsList[2] = 269;
-		break;
-
-	default: /* VGA devices */
-		numHOffsets = 1;
-		hOffsetsList = (short*)malloc(numHOffsets * sizeof(short));
-		hOffsetsList[0] = 0;
-		break;
-	}
-
-	switch (vRes)
-	{
-	case 320: /* 240x320 */
-		numVOffsets = 2;
-		vOffsetsList = (short*)malloc(numVOffsets * sizeof(short));
-		vOffsetsList[0] = 0;
-		vOffsetsList[1] = 22;
-		break;
-
-	case 240: /* 320x240 and 240x240 */
-		numVOffsets = 2;
-		vOffsetsList = (short*)malloc(numVOffsets * sizeof(short));
-		vOffsetsList[0] = 0;
-		vOffsetsList[1] = 102;
-		break;
-
-	default: /* VGA devices */
-		numVOffsets = 1;
-		vOffsetsList = (short*)malloc(numVOffsets * sizeof(short));
-		vOffsetsList[0] = 0;
-		break;
-	}
-
-	hOffset = hOffsetsList[0];
-	vOffset = vOffsetsList[0];
-
-#ifdef DEBUG
-	/* DEBUG: print out device screen info */
-	{
-		TCHAR szDbg[256];
-		wsprintf(szDbg,
-			_T("Caps: %dx%d.\nNumber of horizontal offsets:"
-				" %d.\nOffsets: %d, %d, %d."),
-			hRes, vRes, numHOffsets, hOffsetsList[0],
-			(numHOffsets > 1)? hOffsetsList[1] : -1,
-			(numHOffsets > 2)? hOffsetsList[2] : -1);
-		MessageBox(GetActiveWindow(), szDbg, _T("DEBUG"),
-			MB_ICONINFORMATION);
-	}
-#endif
 
 	return trueblnr;
 }
@@ -4997,14 +4852,6 @@ LOCALPROC Uninit_ChangeOrientation(void)
 	dm.dmFields = DM_ORIENTATION | DM_DISPLAYORIENTATION;
 
 	ChangeDisplaySettingsEx(NULL, &dm, 0, 0, 0);
-
-	/* Deallocate pre-calculated offsets */
-	if (hOffsetsList) {
-		free(hOffsetsList);
-	}
-	if (vOffsetsList) {
-		free(vOffsetsList);
-	}
 }
 #endif
 
@@ -5074,7 +4921,11 @@ LOCALPROC ReserveAllocAll(void)
 #endif
 #if EnableScalingBuff
 	{
-		ui5r n = vMacScreenMonoNumBytes * MyWindowScale * MyWindowScale;
+		ui5r n = vMacScreenMonoNumBytes
+#if EnableMagnify
+			* MyWindowScale * MyWindowScale
+#endif
+			;
 #if 1 == vMacScreenDepth
 		if (vMacScreenNumBytes * 2 > n) {
 			n = vMacScreenNumBytes * 2;
@@ -5137,8 +4988,8 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (dbglog_open())
 #endif
 	if (RegisterOurClass())
-	if (LoadInitialImages())
 	if (ScanCommandLine())
+	if (LoadInitialImages())
 #if InstallFileIcons
 	if (RegisterInRegistry())
 #endif
@@ -5146,11 +4997,13 @@ LOCALFUNC blnr InitOSGLU(void)
 #if UseActvCode
 	if (ActvCodeInit())
 #endif
+#if UseWinCE
+	if (Init_ChangeOrientation())
+#endif
 	if (ReCreateMainWindow())
 	if (InitWinKey2Mac())
 	if (InitTheCursor())
 #if UseWinCE
-	if (Init_ChangeOrientation())
 	if (InitHotKeys())
 #endif
 	if (Init60thCheck())

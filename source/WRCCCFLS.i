@@ -57,10 +57,16 @@ LOCALPROC WriteCccMakeFile(void)
 			WriteQuoteToDestFile();
 			Write_machobinpath_ToDestFile();
 			WriteQuoteToDestFile();
-			WriteCStrToDestFile(" -L/usr/X11R6/lib -lXext -lX11");
 			WriteCStrToDestFile(" \\");
 			WriteEndDestFileLn();
-			WriteDestFileLn("$(ObjFiles)");
+
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("$(ObjFiles)");
+#if 0
+			WriteCStrToDestFile(" -lXext");
+#endif
+			WriteCStrToDestFile(" -L/usr/X11R6/lib -lX11");
+			WriteEndDestFileLn();
 		--DestFileIndent;
 	--DestFileIndent;
 

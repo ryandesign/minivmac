@@ -33,8 +33,6 @@ LOCALVAR MyDir_R SrcDirR;
 #if AsmSupported
 LOCALVAR blnr HaveAsm;
 #endif
-LOCALVAR blnr HaveLanguage;
-LOCALVAR blnr HavePlatform;
 LOCALVAR blnr HaveAltSrc;
 
 LOCALPROC WritepDtString(void)
@@ -97,28 +95,24 @@ LOCALFUNC char * GetPlatformDirName(void)
 {
 	char *s;
 
-	switch (gbo_apifam) {
-		case gbk_apifam_mac:
+	switch (gbo_targfam) {
+		case gbk_targfam_cmac:
 			s = "mac";
 			break;
-		case gbk_apifam_osx:
+		case gbk_targfam_mach:
+		case gbk_targfam_carb:
 #if OSXplatsep
 			s = "osx";
 #else
 			s = "mac";
 #endif
 			break;
-		case gbk_apifam_win:
+		case gbk_targfam_mswn:
+		case gbk_targfam_wnce:
 			s = "win";
 			break;
-		case gbk_apifam_xwn:
-			s = "xwn";
-			break;
-		case gbk_apifam_gtk:
-			s = "gtk";
-			break;
 		default:
-			s = "mac";
+			s = "gen";
 			break;
 	}
 	return s;
@@ -304,8 +298,10 @@ LOCALPROC WritePathInDirToDestFile0(MyProc p, MyProc ps,
 			}
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_xcd:
 		case gbk_ide_snc:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			if (p != NULL) {
 				p();
@@ -333,6 +329,13 @@ LOCALPROC WritePathInDirToDestFile0(MyProc p, MyProc ps,
 				{
 					WriteCStrToDestFile(".\\");
 				}
+			}
+			ps();
+			break;
+		case gbk_ide_mgw:
+			if (p != NULL) {
+				p();
+				WriteCStrToDestFile("/");
 			}
 			ps();
 			break;
@@ -410,14 +413,20 @@ LOCALPROC WriteStrAppAbbrev(void)
 LOCALPROC WriteAppNameStr(void)
 {
 	WriteStrAppAbbrev();
-	switch (gbo_apifam) {
-		case gbk_apifam_osx:
+	switch (gbo_targfam) {
+		case gbk_targfam_mach:
+		case gbk_targfam_carb:
 			if (HaveMacBundleApp) {
 				WriteCStrToDestFile(".app");
 			}
 			break;
-		case gbk_apifam_win:
+		case gbk_targfam_mswn:
+		case gbk_targfam_wnce:
+		case gbk_targfam_cygw:
 			WriteCStrToDestFile(".exe");
+			break;
+		case gbk_targfam_lnds:
+			WriteCStrToDestFile(".nds");
 			break;
 		default:
 			break;
@@ -469,6 +478,30 @@ LOCALPROC Write_machores_d_ToDestFile(void)
 {
 	WriteSubDirToDestFile(Write_machocontents_d_ToDestFile,
 		Write_resources_d_Name);
+}
+
+LOCALPROC WriteBinElfObjName(void)
+{
+	WriteStrAppAbbrev();
+	WriteCStrToDestFile(".elf");
+}
+
+LOCALPROC WriteBinElfObjObjPath(void)
+{
+	WriteFileInDirToDestFile0(Write_obj_d_ToDestFile,
+		WriteBinElfObjName);
+}
+
+LOCALPROC WriteBinArmObjName(void)
+{
+	WriteStrAppAbbrev();
+	WriteCStrToDestFile(".arm9");
+}
+
+LOCALPROC WriteBinArmObjObjPath(void)
+{
+	WriteFileInDirToDestFile0(Write_obj_d_ToDestFile,
+		WriteBinArmObjName);
 }
 
 LOCALPROC Write_machobinpath_ToDestFile(void)
@@ -637,8 +670,11 @@ LOCALPROC WriteMainRsrcName(void)
 	switch (cur_ide) {
 		case gbk_ide_msv:
 		case gbk_ide_dvc:
+		case gbk_ide_cyg:
+		case gbk_ide_mgw:
 		case gbk_ide_lcc:
 		case gbk_ide_dmc:
+		case gbk_ide_dkp:
 		case gbk_ide_plc:
 			WriteCStrToDestFile("main.rc");
 			break;
@@ -660,7 +696,10 @@ LOCALPROC WriteMainRsrcObjName(void)
 		case gbk_ide_msv:
 		case gbk_ide_lcc:
 		case gbk_ide_dvc:
+		case gbk_ide_cyg:
+		case gbk_ide_mgw:
 		case gbk_ide_dmc:
+		case gbk_ide_dkp:
 		case gbk_ide_plc:
 			WriteCStrToDestFile("main.res");
 			break;
@@ -703,9 +742,11 @@ LOCALPROC WritePathArgInMakeCmnd(MyProc p)
 	switch (cur_ide) {
 		case gbk_ide_mpw:
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_msv:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile(" ");
 			WriteQuoteToDestFile();
@@ -717,6 +758,7 @@ LOCALPROC WritePathArgInMakeCmnd(MyProc p)
 		case gbk_ide_dmc:
 		case gbk_ide_plc:
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
 			WriteCStrToDestFile(" ");
 			p();
 			break;
@@ -734,13 +776,16 @@ LOCALPROC WriteMakeVar(char *s)
 			WriteCStrToDestFile("}");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_msv:
 		case gbk_ide_lcc:
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
 		case gbk_ide_dmc:
 		case gbk_ide_plc:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile("$(");
 			WriteCStrToDestFile(s);
@@ -762,12 +807,15 @@ LOCALPROC WriteMakeDependFile(MyProc p)
 			WriteQuoteToDestFile();
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_lcc:
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
 		case gbk_ide_dmc:
 		case gbk_ide_plc:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile(" ");
 			p();
@@ -790,6 +838,7 @@ LOCALPROC WriteMakeRule(MyProc ptarg,
 			pdeps();
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_ccc:
@@ -806,8 +855,10 @@ LOCALPROC WriteMakeRule(MyProc ptarg,
 			break;
 		case gbk_ide_lcc:
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
 		case gbk_ide_dmc:
 		case gbk_ide_plc:
+		case gbk_ide_dkp:
 			ptarg();
 			WriteCStrToDestFile(":");
 			pdeps();
@@ -829,9 +880,11 @@ LOCALPROC WriteMkDir(MyProc p)
 			WriteCStrToDestFile("NewFolder");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_ccc:
+		case gbk_ide_dkp:
 			WriteCStrToDestFile("mkdir");
 			break;
 		default:
@@ -849,9 +902,11 @@ LOCALPROC WriteRmDir(MyProc p)
 			WriteCStrToDestFile("Delete -i -y");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_ccc:
+		case gbk_ide_dkp:
 			WriteCStrToDestFile("rm -fr");
 			break;
 		default:
@@ -869,9 +924,12 @@ LOCALPROC WriteRmFile(MyProc p)
 			WriteCStrToDestFile("Delete -i");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile("rm -f");
 			break;
@@ -898,8 +956,10 @@ LOCALPROC WriteCopyFile(MyProc pfrom, MyProc pto)
 			WriteCStrToDestFile("Duplicate");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile("cp");
 			break;
@@ -919,8 +979,10 @@ LOCALPROC WriteMoveDir(MyProc pfrom, MyProc pto)
 			WriteCStrToDestFile("Move");
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_xcd:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile("mv");
 			break;
@@ -948,7 +1010,9 @@ LOCALPROC WriteEchoToNewFile(MyProc ptext, MyProc pto, blnr newline)
 			break;
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_snc:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCStrToDestFile("echo");
 			if (! newline) {
@@ -985,6 +1049,7 @@ LOCALPROC WriteCompileCExec(void)
 			}
 			break;
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("gcc");
 			break;
@@ -1003,7 +1068,11 @@ LOCALPROC WriteCompileCExec(void)
 			WriteCStrToDestFile("lcc.exe");
 			break;
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
 			WriteCStrToDestFile("gcc.exe");
+			break;
+		case gbk_ide_dkp:
+			WriteCStrToDestFile("$(DEVKITARM)/bin/arm-eabi-gcc.exe");
 			break;
 		case gbk_ide_dmc:
 			WriteCStrToDestFile("dmc.exe");
@@ -1022,9 +1091,12 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 	switch (cur_ide) {
 		case gbk_ide_mpw:
 		case gbk_ide_bgc:
+		case gbk_ide_cyg:
 		case gbk_ide_xcd:
 		case gbk_ide_snc:
 		case gbk_ide_dvc:
+		case gbk_ide_mgw:
+		case gbk_ide_dkp:
 		case gbk_ide_ccc:
 			WriteCompileCExec();
 			WritePathArgInMakeCmnd(psrc);
@@ -1033,7 +1105,43 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 			WriteCStrToDestFile(" ");
 			WriteMakeVar("mk_COptions");
 			if (UseAPI) {
-				if (gbk_apifam_gtk == gbo_apifam) {
+				if (gbo_apifam == gbk_apifam_xwn) {
+#if 0
+					if (gbk_targfam_fbsd == gbo_targfam) {
+						WriteCStrToDestFile(" -I/usr/local/include");
+						/*
+							this is location in latest PC-BSD,
+							but in old PC-BSD need
+								/usr/X11R6/include/
+							and in latest PC-BSD
+								/usr/X11R6/ links to /usr/local/
+							so just use old location.
+						*/
+					}
+#endif
+					if ((cur_ide == gbk_ide_xcd)
+						|| (gbk_targfam_fbsd == gbo_targfam)
+						|| (gbk_targfam_obsd == gbo_targfam)
+						|| (gbk_targfam_oind == gbo_targfam))
+					{
+						WriteCStrToDestFile(" -I/usr/X11R6/include/");
+					} else if (gbk_targfam_nbsd == gbo_targfam) {
+						WriteCStrToDestFile(" -I/usr/X11R7/include/");
+					} else if (gbk_targfam_dbsd == gbo_targfam) {
+						WriteCStrToDestFile(" -I/usr/pkg/include/");
+					} else if (gbk_targfam_minx == gbo_targfam) {
+						WriteCStrToDestFile(
+							" -I/usr/pkg/X11R6/include/");
+					}
+				} else if (gbk_apifam_sdl == gbo_apifam) {
+					if (gbk_targfam_mach == gbo_targfam) {
+						WriteCStrToDestFile(" -I/usr/local/include/"
+							" -D_GNU_SOURCE=1 -D_THREAD_SAFE");
+					}
+				} else if (gbk_apifam_nds == gbo_apifam) {
+					WriteCStrToDestFile(
+						" -I$(DEVKITPRO)/libnds/include");
+				} else if (gbk_apifam_gtk == gbo_apifam) {
 					WriteCStrToDestFile(
 						" `pkg-config --cflags gtk+-2.0`");
 				}
@@ -1097,6 +1205,9 @@ LOCALPROC WriteCompileAsm(MyProc psrc, MyProc obj)
 			break;
 		case gbk_asm_dvcx86:
 			WriteCStrToDestFile("gcc.exe");
+			break;
+		case gbk_asm_bgcarm:
+			WriteCStrToDestFile("$(DEVKITARM)/bin/arm-eabi-gcc.exe");
 			break;
 		default:
 			break;

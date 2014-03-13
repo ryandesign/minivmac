@@ -33,6 +33,10 @@
 #include "FILEUTIL.i"
 #include "MYMEMORY.i"
 #include "XBUFHAND.i"
+#include "MYFPMATH.i"
+#include "PROGRBAR.i"
+
+#define WantRealInputFile 1
 
 #if IsAnApp
 #include "CMDARGW1.i"
@@ -68,6 +72,7 @@
 #define ide_plc_Supported 1
 #define ide_ccc_Supported 1
 
+#include "EXTNUTIL.i"
 #include "BLDUTIL1.i"
 #include "SPBASDEF.i"
 #include "GNBLDOPT.i"

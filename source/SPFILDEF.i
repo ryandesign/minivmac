@@ -1,6 +1,6 @@
 /*
 	SPFILDEF.i
-	Copyright (C) 2006 Paul C. Pratt
+	Copyright (C) 2012 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -31,14 +31,15 @@ static void DoAllExtraHeaders(tDoOneExtraHeader p)
 	p(kDepDirCSrc, "ENDIANAC.h");
 	p(kDepDirCSrc, "COMOSGLU.h");
 	p(kDepDirLang, "STRCONST.h");
+	if (gbk_sndapi_none != gbo_sndapi) {
+		p(kDepDirSndA, "SOUNDGLU.h");
+	}
 	if (WantAltKeysMode) {
 		p(kDepDirCSrc, "ALTKEYSM.h");
 	}
 	p(kDepDirCSrc, "CONTROLM.h");
 	p(kDepDirCnfg, "EMCONFIG.h");
-	if ((gbk_asm_none != cur_asm) && (em_cpu_vers == 0)
-		&& (timingacc < 2))
-	{
+	if (UseAsm68k) {
 		p(kDepDirCnfg, "CNFGRASM.i");
 	}
 	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
@@ -54,6 +55,20 @@ static void DoAllExtraHeaders(tDoOneExtraHeader p)
 	if (WantActvCode) {
 		p(kDepDirCSrc, "ACTVCODE.h");
 	}
+	if (WantLocalTalk) {
+		p(kDepDirCSrc, "BPFILTER.h");
+	}
+	if ((gbk_apifam_osx == gbo_apifam)
+		|| (gbk_apifam_mac == gbo_apifam)
+		|| (gbk_apifam_cco == gbo_apifam)
+		|| (gbk_apifam_xwn == gbo_apifam)
+		|| (gbk_apifam_sdl == gbo_apifam))
+	{
+		p(kDepDirCSrc, "SCRNMAPR.h");
+		if (cur_ScrnDpth != 0) {
+			p(kDepDirCSrc, "SCRNTRNS.h");
+		}
+	}
 }
 
 static void DoMYOSGLUEdepends(tDoOneDepends p)
@@ -61,17 +76,17 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 	p(kDepDirCSrc, "COMOSGLU.h");
 	p(kDepDirLang, "STRCONST.h");
 	p(kDepDirCSrc, "CONTROLM.h");
+	if (gbk_sndapi_none != gbo_sndapi) {
+		p(kDepDirSndA, "SOUNDGLU.h");
+	}
 }
 
 static void DoAllSrcFiles(tDoOneCFile p)
 {
-	blnr UseAsm68k = (gbk_asm_none != cur_asm)
-		&& (em_cpu_vers == 0) && (timingacc < 2)
-		&& ((gbo_cpufam == gbk_cpufam_x86)
-			|| (gbo_cpufam == gbk_cpufam_ppc));
-
-	if (UseAsm68k) {
-		p("MINEM68K", kCSrcFlgmAsmAvail, nullpr);
+	if ((gbk_asm_none != cur_asm)
+		&& (gbk_targ_ndsa == cur_targ))
+	{
+		p("FB1BPP2I", kCSrcFlgmAsmAvail, nullpr);
 	}
 	p("MYOSGLUE", kCSrcFlgmUseAPI,
 		DoMYOSGLUEdepends);
@@ -80,9 +95,19 @@ static void DoAllSrcFiles(tDoOneCFile p)
 	if (WantDisasm) {
 		p("DISAM68K", kCSrcFlgmNone, nullpr);
 	}
-	if (! UseAsm68k) {
-		p("MINEM68K", kCSrcFlgmNone, nullpr);
-	}
+
+	p("MINEM68K", kCSrcFlgmSortFirst
+		| (UseAsm68k ? kCSrcFlgmAsmAvail : 0),
+		nullpr);
+		/*
+			Put the most speed critical part of the
+			program first, to help ensure consistent
+			alignment for it, regardless of changes
+			to rest of program.
+			Speed can depend subtly, basically
+			randomly, on how code is aligned.
+		*/
+
 	p("VIAEMDEV", kCSrcFlgmNone, nullpr);
 	if (EmVIA2) {
 		p("VIA2EMDV", kCSrcFlgmNone, nullpr);

@@ -39,13 +39,21 @@ LOCALPROC ProgramUnInit(void)
 
 LOCALPROC ProgramMain(void)
 {
+	(void) ProgressBar_SetStage_v2(
+		"Type build options, then click here", 0);
 	do {
 		WaitForInput();
 		if (GoRequested) {
-			BeginParseFromTE();
-			(void) CheckSysErr(DoTheCommand());
-			EndParseFromTE();
+			if (noErr == ProgressBar_SetStage_v2(
+				"Running, type command-period to abort\311", 0))
+			{
+				BeginParseFromTE();
+				(void) CheckSysErr(DoTheCommand());
+				EndParseFromTE();
+			}
 			GoRequested = falseblnr;
+			(void) ProgressBar_SetStage_v2(
+				"Done, ready for more options\311", 0);
 		}
 	} while ((! ProgramDone) && (! GoRequested));
 }

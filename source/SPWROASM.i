@@ -313,7 +313,12 @@ LOCALPROC CallImportedProcMacro(void)
 
 	switch (cur_asm) {
 		case gbk_asm_bgcppc:
+			WriteMacroParam(0);
+			break;
 		case gbk_asm_bgcx86:
+			if (gbk_ide_cyg == cur_ide) {
+				WriteCStrToDestFile("_");
+			}
 			WriteMacroParam(0);
 			break;
 		case gbk_asm_dvcx86:
@@ -400,6 +405,9 @@ LOCALPROC WriteExportAProcMacro(void)
 			WriteBlankLineToDestFile();
 			WriteBgnDestFileLn();
 			WriteCStrToDestFile("\t.globl ");
+			if (gbk_ide_cyg == cur_ide) {
+				WriteCStrToDestFile("_");
+			}
 			WriteMacroParam(0);
 			WriteEndDestFileLn();
 			break;
@@ -490,14 +498,18 @@ LOCALPROC WriteAGlobalLabelMacro(void)
 		}
 
 		WriteBgnDestFileLn();
-		switch (cur_asm) {
-			case gbk_asm_xcdppc:
-			case gbk_asm_xcdx86:
-			case gbk_asm_dvcx86:
-				WriteCStrToDestFile("_");
-				break;
-			default:
-				break;
+		if (gbk_ide_cyg == cur_ide) {
+			WriteCStrToDestFile("_");
+		} else {
+			switch (cur_asm) {
+				case gbk_asm_xcdppc:
+				case gbk_asm_xcdx86:
+				case gbk_asm_dvcx86:
+					WriteCStrToDestFile("_");
+					break;
+				default:
+					break;
+			}
 		}
 		WriteMacroParam(0);
 		WriteCStrToDestFile(":");

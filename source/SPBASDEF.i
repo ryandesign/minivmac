@@ -21,18 +21,14 @@
 #define kStrAppName "Mini vMac"
 #define kStrAppAbbrev "minivmac" /* [a-z0-9_]{1,8} */
 #define kMajorVersion "3"
-#define kMinorVersion "2"
-#define kMinorSubVersion "3"
-#define kStrCopyrightYear "2011"
+#define kMinorVersion "4"
+#define kMinorSubVersion "0"
+#define kStrCopyrightYear "2014"
 #define kMacCreatorSig "MnvM"
 #define kBundleIdentifier "com.gryphel.minivmac"
 #define kShortDescription "miniature Macintosh emulator"
 
-#if 0 /* (gbo_lang == gbk_lang_fre) */
-#define kStrHomePage "http://pages.videotron.com/plemieux/minivmac/"
-#else
-#define kStrHomePage "http://minivmac.sourceforge.net/"
-#endif
+#define kStrHomePage "http://www.gryphel.com/c/minivmac/"
 
 #define Have_SPBLDOPT 1
 #define Have_SPCNFGGL 1

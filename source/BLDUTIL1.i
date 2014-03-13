@@ -17,180 +17,6 @@
 	BuiLD system UTILities part 1
 */
 
-LOCALFUNC tMyErr CStr2Pbuf_v2(char *s, tPbuf *r)
-{
-	tMyErr err;
-	tPbuf v;
-	ui5r L = CStrLength(s);
-
-	if (noErr == (err = PbufNew_v2(L, &v))) {
-		err = PbufTransfer_v2(s, v, 0, L, trueblnr);
-		if (noErr == err) {
-			*r = v;
-		} else {
-			(void) PbufDispose_v2(v);
-				/* ignore any error, since already got one */
-		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr PStr2Pbuf_v2(ps3p s, tPbuf *r)
-{
-	tMyErr err;
-	tPbuf v;
-	ui5r L = PStrLength(s);
-
-	if (noErr == (err = PbufNew_v2(L, &v))) {
-		err = PbufTransfer_v2(PStrToPtr(s), v, 0, L, trueblnr);
-		if (noErr == err) {
-			*r = v;
-		} else {
-			(void) PbufDispose_v2(v);
-				/* ignore any error, since already got one */
-		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr WriteFromFileToVolUsingBuff_v2(short refNum,
-	tDrive Drive_No, ui5r Sony_Start, ui5r Sony_Count,
-	void *buff, ui5r BuffL)
-{
-	tMyErr err;
-	ui5r L = Sony_Count;
-	ui5r offset = Sony_Start;
-
-Label_1:
-	if (L == 0) {
-		err = noErr;
-	} else {
-		ui5r n = (L > BuffL) ? BuffL : L;
-
-		/* OccasionalSpin(); */
-
-		if (noErr == (err = CheckAbortRequested()))
-		if (noErr == (err = MyReadBytes_v2(refNum, buff, n)))
-		if (noErr == (err = DiskWrite_v2(buff, Drive_No, offset, &n)))
-		{
-			L -= n;
-			offset += n;
-
-			goto Label_1;
-		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr WriteFromFileToVol_v2(short refNum,
-	tDrive Drive_No, ui5r Sony_Start, ui5r Sony_Count)
-{
-	tMyErr err;
-	Handle h;
-
-	ui5r MaxBuffL = 2 * Sony_Count + 1;
-	ui5r Free = FreeMem();
-	ui5r BuffL = 64 * (ui5r)1024;
-
-	if (MaxBuffL > Free) {
-		MaxBuffL = Free;
-	}
-	if (MaxBuffL < 512) {
-		MaxBuffL = 512;
-	}
-
-	while (BuffL > MaxBuffL) {
-		BuffL >>= 1;
-	}
-
-	if (noErr == (err = MyHandleNew_v2(BuffL, &h))) {
-		HLock(h);
-
-		err = WriteFromFileToVolUsingBuff_v2(refNum, Drive_No,
-			Sony_Start, Sony_Count, *h, BuffL);
-
-		HUnlock(h);
-		DisposeHandle(h);
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr DiskGetRawNew(ui5r L, tPbuf Name, tDrive *Drive_No)
-{
-	tMyErr err;
-	ui5r SaveCallBack;
-	ui4r mode;
-	ui4r NewWanted;
-	tDrive InsertVol;
-	blnr InsertGotOne = falseblnr;
-
-	if (noErr == (err = DiskGetCallBack_v2(&SaveCallBack))) {
-		if (noErr == (err = DiskSetCallBack_v2(0))) {
-			if (noErr == (err = DiskGetRawMode_v2(&mode))) {
-				if (noErr == (err = DiskSetRawMode_v2(1))) {
-					if (noErr == (err = DiskNew_v2(L, Name))) {
-						do {
-							if (noErr != (err = DiskGetNewWanted_v2(
-								&NewWanted)))
-							{
-								NewWanted = (ui4b)0;
-							} else {
-								err = DiskNextPendingInsert(&InsertVol);
-							}
-						} while ((NewWanted != 0)
-							&& (err == (OSErr)0xFFC8)
-							&& (noErr ==
-								(err = CheckAbortRequested())));
-
-						if (noErr == err) {
-							InsertGotOne = trueblnr;
-						} else if (AbortRequested || (NewWanted == 0))
-						{
-							DisplayRunErr("Aborted!");
-							err = kMyErrReported;
-						}
-					}
-					Name = NotAPbuf;
-				}
-				err = CombineErr(err, DiskSetRawMode_v2(mode));
-			}
-		}
-		err = CombineErr(err, DiskSetCallBack_v2(SaveCallBack));
-	}
-
-	if (InsertGotOne) {
-		ui5r L0;
-
-		if (noErr == err) {
-			if (noErr == (err = DiskGetSize_v2(InsertVol, &L0))) {
-				if (L != L0) {
-					DisplayRunErr("new disk size wrong");
-					err = kMyErrReported;
-				} else {
-					/* ok */
-				}
-			}
-		}
-
-		if (noErr == err) {
-			*Drive_No = InsertVol;
-		} else {
-			DiskEjectDelete_v2(InsertVol);
-				/* ignore any error, since already got one */
-		}
-	}
-
-	if (NotAPbuf != Name) {
-		PbufDispose_v2(Name);
-	}
-
-	return err;
-}
-
 LOCALFUNC tMyErr ExportFromFile2HostFile_v2(short refNum,
 	ui5r L, tPbuf Name)
 /* takes ownership of Name */
@@ -198,8 +24,14 @@ LOCALFUNC tMyErr ExportFromFile2HostFile_v2(short refNum,
 	tMyErr err;
 	tDrive InsertVol;
 
-	if (noErr == (err = DiskGetRawNew(L, Name, &InsertVol))) {
-		err = WriteFromFileToVol_v2(refNum, InsertVol, 0, L);
+	if (noErr == (err = ProgressBar_SetStage_v2(
+		"Making the new file\311", 0)))
+	if (noErr == (err = HostVolInsertNew_v2(L, Name, &InsertVol))) {
+		if (noErr == (err = ProgressBar_SetStage_v2(
+			"Exporting, type command-period to abort\311", L)))
+		{
+			err = WriteFromFileToVol_v2(refNum, InsertVol, 0, L);
+		}
 		if (noErr == err) {
 			err = DiskEject_v2(InsertVol);
 		} else {

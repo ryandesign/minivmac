@@ -875,6 +875,14 @@ LOCALFUNC blnr CheckDateTime(void)
 	}
 }
 
+LOCALFUNC blnr InitLocationDat(void)
+{
+	GetCurrentTicks();
+	CurMacDateInSeconds = NewMacDateInSeconds;
+
+	return trueblnr;
+}
+
 /* --- basic dialogs --- */
 
 LOCALPROC CheckSavedMacMsg(void)
@@ -1210,9 +1218,12 @@ LOCALFUNC blnr ScanCommandLine(void)
 					rom_path = my_argv[i];
 				}
 			} else
+#if 0
 			if (0 == strcmp(my_argv[i], "-l")) {
 				SpeedValue = 0;
-			} else {
+			} else
+#endif
+			{
 				MacMsg(kStrBadArgTitle, kStrBadArgMessage, falseblnr);
 			}
 		} else {
@@ -1254,13 +1265,13 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 
 		MyDrawChangesAndClear();
 
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			if (n > 8) {
-				/* emulation not fast enough */
-				n = 8;
-				CurEmulatedTime = OnTrueTime - n;
-			}
+		if (n > 8) {
+			/* emulation not fast enough */
+			n = 8;
+			CurEmulatedTime = OnTrueTime - n;
+		}
 
+		if (ExtraTimeNotOver() && (--n > 0)) {
 			EmVideoDisable = trueblnr;
 
 			do {
@@ -1570,6 +1581,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (LoadInitialImages())
 	if (ScanCommandLine())
 	if (LoadMacRom())
+	if (InitLocationDat())
 	/* if (ReCreateMainWindow()) */
 	if (KC2MKCInit())
 	if (InitEmulation())

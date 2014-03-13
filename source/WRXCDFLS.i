@@ -402,7 +402,13 @@ LOCALPROC WriteSrcFileAPBXCDtype(void)
 	} else
 #endif
 	{
-		s = "sourcecode.c.c";
+		blnr UseAPI = ((DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
+
+		if (UseAPI && (gbk_apifam_cco == gbo_apifam)) {
+			s = "sourcecode.c.objc";
+		} else {
+			s = "sourcecode.c.c";
+		}
 	}
 	WriteCStrToDestFile(s);
 }
@@ -1151,7 +1157,9 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		if (! HaveMacBundleApp) {
 			WriteAPBXCDBgnObjList("OTHER_LDFLAGS");
 				WriteDestFileLn("\"-L/usr/X11R6/lib\",");
+#if 0
 				WriteDestFileLn("\"-lXext\",");
+#endif
 				WriteDestFileLn("\"-lX11\",");
 			WriteAPBXCDEndObjList();
 		}
@@ -1165,7 +1173,9 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 	WriteCStrToDestFile(";");
 	WriteEndDestFileLn();
 	if (ide_vers >= 2200) {
-		if (ide_vers >= 3200) {
+		if (ide_vers >= 4300) {
+			WriteDestFileLn("SDKROOT = macosx;");
+		} else if (ide_vers >= 3200) {
 			WriteDestFileLn("SDKROOT = macosx10.6;");
 		} else if (ide_vers >= 3100) {
 			WriteDestFileLn("SDKROOT = macosx10.5;");
@@ -1190,6 +1200,7 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 	if (ide_vers >= 2100) {
 		WriteAPBXCDBgnObjList("WARNING_CFLAGS");
 			WriteDestFileLn("\"-Wall\",");
+			WriteDestFileLn("\"-Wundef\",");
 			WriteDestFileLn("\"-Wstrict-prototypes\",");
 			WriteDestFileLn("\"-Wno-uninitialized\",");
 		WriteAPBXCDEndObjList();
@@ -1783,6 +1794,13 @@ LOCALPROC WriteXCDProjectFile(void)
 			if (HaveAPBXCD_IsaFirst) {
 				WriteAPBXCDDObjAPropIsa("PBXProject");
 			}
+			if (ide_vers >= 4300) {
+				WriteDestFileLn("attributes = {");
+				++DestFileIndent;
+					WriteDestFileLn("LastUpgradeCheck = 0430;");
+				--DestFileIndent;
+				WriteDestFileLn("};");
+			}
 			if (ide_vers >= 2100) {
 				WriteAPBXCDDObjAProp_SO("buildConfigurationList",
 					APBospcLstPrjCnfg, 0,
@@ -1906,7 +1924,7 @@ LOCALPROC WriteXCDProjectFile(void)
 			WriteDestFileLn("buildActionMask = 2147483647;");
 			WriteAPBXCDBgnObjList("files");
 				vCheckWriteDestErr(
-					DoAllSrcFilesWithSetup(
+					DoAllSrcFilesSortWithSetup(
 						DoSrcFileAPBXCDaddToSources));
 			WriteAPBXCDEndObjList();
 			if (! HaveAPBXCD_IsaFirst) {

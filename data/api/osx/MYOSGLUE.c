@@ -33,7 +33,6 @@
 
 #include "MYOSGLUE.h"
 
-
 /* --- adapting to API/ABI version differences --- */
 
 /*
@@ -730,7 +729,7 @@ LOCALFUNC tMacErr OpenNamedFileInFolderRef(FSRef *ParentRef,
 	return err;
 }
 
-#if dbglog_HAVE || UseActvCode
+#if dbglog_HAVE || UseActvFile
 LOCALFUNC tMacErr OpenWriteNamedFileInFolderRef(FSRef *ParentRef,
 	char *fileName, short *refnum)
 {
@@ -865,6 +864,10 @@ LOCALPROC dbglog_close0(void)
 	}
 }
 
+#endif
+
+#if 1 /* (0 != vMacScreenDepth) && (vMacScreenDepth < 4) */
+#define WantColorTransValid 1
 #endif
 
 #include "COMOSGLU.h"
@@ -1486,6 +1489,13 @@ GLOBALFUNC tMacErr HTCEimport(tPbuf *r)
 #endif
 
 
+#if EmLocalTalk
+
+#include "BPFILTER.h"
+
+#endif
+
+
 /* --- platform independent code can be thought of as going here --- */
 
 #include "PROGMAIN.h"
@@ -1515,10 +1525,6 @@ LOCALVAR blnr UseFullScreen = (WantInitFullScreen != 0);
 
 #if EnableMagnify
 LOCALVAR blnr UseMagnify = (WantInitMagnify != 0);
-#endif
-
-#ifndef MyWindowScale
-#define MyWindowScale 2
 #endif
 
 #if EnableMagnify
@@ -1564,101 +1570,109 @@ LOCALPROC SetScrnRectFromCoords(Rect *r,
 #endif
 }
 
-#if EnableMagnify
-#define MyScaledHeight (MyWindowScale * vMacScreenHeight)
-#define MyScaledWidth (MyWindowScale * vMacScreenWidth)
+LOCALVAR ui3p ScalingBuff = nullpr;
+
+LOCALVAR ui3p CLUT_final;
+
+#define CLUT_finalsz1 (256 * 8)
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+
+#define CLUT_finalClrSz (256 << (5 - vMacScreenDepth))
+
+#define CLUT_finalsz ((CLUT_finalClrSz > CLUT_finalsz1) \
+	? CLUT_finalClrSz : CLUT_finalsz1)
+
+#else
+#define CLUT_finalsz CLUT_finalsz1
 #endif
 
-LOCALVAR ui3p ScalingBuff = nullpr;
+
+#define ScrnMapr_DoMap UpdateBWLuminanceCopy
+#define ScrnMapr_Src GetCurDrawBuff()
+#define ScrnMapr_Dst ScalingBuff
+#define ScrnMapr_SrcDepth 0
+#define ScrnMapr_DstDepth 3
+#define ScrnMapr_Map CLUT_final
+
+#include "SCRNMAPR.h"
+
+
+#if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
+
+#define ScrnMapr_DoMap UpdateMappedColorCopy
+#define ScrnMapr_Src GetCurDrawBuff()
+#define ScrnMapr_Dst ScalingBuff
+#define ScrnMapr_SrcDepth vMacScreenDepth
+#define ScrnMapr_DstDepth 5
+#define ScrnMapr_Map CLUT_final
+
+#include "SCRNMAPR.h"
+
+#endif
+
+#if vMacScreenDepth >= 4
+
+#define ScrnTrns_DoTrans UpdateTransColorCopy
+#define ScrnTrns_Src GetCurDrawBuff()
+#define ScrnTrns_Dst ScalingBuff
+#define ScrnTrns_SrcDepth vMacScreenDepth
+#define ScrnTrns_DstDepth 5
+#define ScrnTrns_DstZLo 1
+
+#include "SCRNTRNS.h"
+
+#endif
 
 LOCALPROC UpdateLuminanceCopy(si4b top, si4b left,
 	si4b bottom, si4b right)
 {
 	int i;
-	int j;
-	ui5b t0;
 
-
-	UnusedParam(left);
-	UnusedParam(right);
 #if 0 != vMacScreenDepth
 	if (UseColorMode) {
-#if vMacScreenDepth < 4
-		ui5b CLUT_final[CLUT_size];
-#endif
-		ui3b *p1 = GetCurDrawBuff()
-			+ (ui5r)vMacScreenByteWidth * top;
-		ui5b *p2 = (ui5b *)ScalingBuff
-			+ (ui5r)vMacScreenWidth * top;
 
 #if vMacScreenDepth < 4
-		for (i = 0; i < CLUT_size; ++i) {
-			CLUT_final[i] = (((long)CLUT_reds[i] & 0xFF00) << 16)
-				| (((long)CLUT_greens[i] & 0xFF00) << 8)
-				| ((long)CLUT_blues[i] & 0xFF00);
+
+		if (! ColorTransValid) {
+			int j;
+			int k;
+			ui5p p4;
+
+			p4 = (ui5p)CLUT_final;
+			for (i = 0; i < 256; ++i) {
+				for (k = 1 << (3 - vMacScreenDepth); --k >= 0; ) {
+					j = (i >> (k << vMacScreenDepth)) & (CLUT_size - 1);
+					*p4++ = (((long)CLUT_reds[j] & 0xFF00) << 16)
+						| (((long)CLUT_greens[j] & 0xFF00) << 8)
+						| ((long)CLUT_blues[j] & 0xFF00);
+				}
+			}
+			ColorTransValid = trueblnr;
 		}
-#endif
 
-		for (i = bottom - top; --i >= 0; ) {
-#if 4 == vMacScreenDepth
-			for (j = vMacScreenWidth; --j >= 0; ) {
-				t0 = do_get_mem_word(p1);
-				p1 += 2;
-				*p2++ =
-					((t0 & 0x7C00) << 17) |
-					((t0 & 0x7000) << 12) |
-					((t0 & 0x03E0) << 14) |
-					((t0 & 0x0380) << 9) |
-					((t0 & 0x001F) << 11) |
-					((t0 & 0x001C) << 6);
-#if 0
-					((t0 & 0x7C00) << 9) |
-					((t0 & 0x7000) << 4) |
-					((t0 & 0x03E0) << 6) |
-					((t0 & 0x0380) << 1) |
-					((t0 & 0x001F) << 3) |
-					((t0 & 0x001C) >> 2);
-#endif
-			}
-#elif 5 == vMacScreenDepth
-			for (j = vMacScreenWidth; --j >= 0; ) {
-				t0 = do_get_mem_long(p1);
-				p1 += 4;
-				*p2++ = t0 << 8;
-			}
+		UpdateMappedColorCopy(top, left, bottom, right);
+
 #else
-			for (j = vMacScreenByteWidth; --j >= 0; ) {
-				t0 = *p1++;
-#if 1 == vMacScreenDepth
-				*p2++ = CLUT_final[t0 >> 6];
-				*p2++ = CLUT_final[(t0 >> 4) & 0x03];
-				*p2++ = CLUT_final[(t0 >> 2) & 0x03];
-				*p2++ = CLUT_final[t0 & 0x03];
-#elif 2 == vMacScreenDepth
-				*p2++ = CLUT_final[t0 >> 4];
-				*p2++ = CLUT_final[t0 & 0x0F];
-#elif 3 == vMacScreenDepth
-				*p2++ = CLUT_final[t0];
+		UpdateTransColorCopy(top, left, bottom, right);
 #endif
-			}
-#endif
-		}
+
 	} else
 #endif
 	{
-		int k;
-		ui3b *p1 = GetCurDrawBuff()
-			+ (ui5r)vMacScreenMonoByteWidth * top;
-		ui3b *p2 = ScalingBuff + (ui5r)vMacScreenWidth * top;
+		if (! ColorTransValid) {
+			int k;
+			ui3p p4 = (ui3p)CLUT_final;
 
-		for (i = bottom - top; --i >= 0; ) {
-			for (j = vMacScreenMonoByteWidth; --j >= 0; ) {
-				t0 = *p1++;
+			for (i = 0; i < 256; ++i) {
 				for (k = 8; --k >= 0; ) {
-					*p2++ = ((t0 >> k) & 0x01) - 1;
+					*p4++ = ((i >> k) & 0x01) - 1;
 				}
 			}
+			ColorTransValid = trueblnr;
 		}
+
+		UpdateBWLuminanceCopy(top, left, bottom, right);
 	}
 }
 
@@ -1704,6 +1718,10 @@ LOCALPROC MyDrawWithOpenGL(ui4r top, ui4r left, ui4r bottom, ui4r right)
 			}
 			if (right > ViewHStart + ViewHSize) {
 				right = ViewHStart + ViewHSize;
+			}
+
+			if ((top >= bottom) || (left >= right)) {
+				goto label_exit;
 			}
 		}
 #endif
@@ -1783,6 +1801,11 @@ LOCALPROC MyDrawWithOpenGL(ui4r top, ui4r left, ui4r bottom, ui4r right)
 		glFlush();
 #endif
 	}
+
+#if MayFullScreen
+label_exit:
+	;
+#endif
 }
 
 LOCALPROC Update_Screen(void)
@@ -1929,14 +1952,14 @@ LOCALPROC RunEmulatedTicksToTrueTime(void)
 #endif
 		MyDrawChangesAndClear();
 
+		if (n > 8) {
+			/* emulation not fast enough */
+			n = 8;
+			CurEmulatedTime = OnTrueTime - n;
+		}
+
 		if (ExtraTimeNotOver() && (--n > 0)) {
 			/* lagging, catch up */
-
-			if (n > 8) {
-				/* emulation not fast enough */
-				n = 8;
-				CurEmulatedTime = OnTrueTime - n;
-			}
 
 			EmVideoDisable = trueblnr;
 
@@ -2112,7 +2135,7 @@ typedef void
 LOCALPROC DoForEachDisplay0(CGDisplayCount dspCount,
 	CGDirectDisplayID *displays, ForEachDisplayProcPtr p)
 {
-	int i;
+	CGDisplayCount i;
 
 	if (noErr == MyCGGetActiveDisplayList(dspCount,
 		displays, &dspCount))
@@ -2407,6 +2430,8 @@ LOCALFUNC blnr InitLocationDat(void)
 				TimeSecBase = Date2MacSeconds(floorsec,
 					d.minute, d.hour,
 					d.day, d.month, d.year);
+
+				(void) CheckDateTime();
 			}
 			CFRelease(tz);
 		}
@@ -2968,7 +2993,8 @@ LOCALPROC ClearWeAreActive(void)
 
 /* --- basic dialogs --- */
 
-LOCALFUNC CFStringRef UnicodeStrFromCStr(char *s, blnr AddEllipsis)
+LOCALFUNC CFStringRef CFStringCreateFromSubstCStr(char *s,
+	blnr AddEllipsis)
 {
 	int L;
 	UniChar x[ClStrMaxLength];
@@ -2986,10 +3012,10 @@ LOCALPROC CheckSavedMacMsg(void)
 
 	if (nullpr != SavedBriefMsg) {
 		if (HaveMyCreateStandardAlert() && HaveMyRunStandardAlert()) {
-			CFStringRef briefMsgu = UnicodeStrFromCStr(
+			CFStringRef briefMsgu = CFStringCreateFromSubstCStr(
 				SavedBriefMsg, falseblnr);
 			if (NULL != briefMsgu) {
-				CFStringRef longMsgu = UnicodeStrFromCStr(
+				CFStringRef longMsgu = CFStringCreateFromSubstCStr(
 					SavedLongMsg, falseblnr);
 				if (NULL != longMsgu) {
 					DialogRef TheAlert;
@@ -2999,7 +3025,7 @@ LOCALPROC CheckSavedMacMsg(void)
 						briefMsgu, longMsgu, NULL,
 						&TheAlert);
 					if (noErr == err) {
-						err = MyRunStandardAlert(TheAlert, NULL, NULL);
+						(void) MyRunStandardAlert(TheAlert, NULL, NULL);
 					}
 					CFRelease(longMsgu);
 				}
@@ -3293,7 +3319,7 @@ LOCALFUNC tMacErr MakeNewDisk0(FSRef *saveFileParent,
 #endif
 
 #if IncludeSonyNameNew
-LOCALFUNC CFStringRef PbufToCFString(tPbuf i)
+LOCALFUNC CFStringRef CFStringCreateWithPbuf(tPbuf i)
 {
 	return CFStringCreateWithBytes(NULL,
 		(UInt8 *)PbufDat[i], PbufSize[i],
@@ -3459,10 +3485,6 @@ LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 	}
 
 	DisposeNavEventUPP(gEventProc);
-
-	if (NewDiskName != NULL) {
-		CFRelease(NewDiskName);
-	}
 }
 #endif
 
@@ -3544,7 +3566,7 @@ label_done:
 	return trueblnr;
 }
 
-#if UseActvCode
+#if UseActvFile
 
 #define ActvCodeFileName "act_1"
 
@@ -3637,7 +3659,7 @@ LOCALFUNC tMacErr ActvCodeFileSave(ui3p p)
 	return err;
 }
 
-#endif /* UseActvCode */
+#endif /* UseActvFile */
 
 /* --- utilities for adapting to the environment --- */
 
@@ -4285,10 +4307,14 @@ LOCALFUNC blnr CreateMainWindow(void)
 		if (ViewHSize >= vMacScreenWidth) {
 			ViewHStart = 0;
 			ViewHSize = vMacScreenWidth;
+		} else {
+			ViewHSize &= ~ 1;
 		}
 		if (ViewVSize >= vMacScreenHeight) {
 			ViewVStart = 0;
 			ViewVSize = vMacScreenHeight;
+		} else {
+			ViewVSize &= ~ 1;
 		}
 	}
 #endif
@@ -4353,6 +4379,10 @@ LOCALFUNC blnr CreateMainWindow(void)
 #endif
 			/* AGL_DEPTH_SIZE, 16,  */
 			AGL_NONE};
+
+#if 0 != vMacScreenDepth
+		ColorModeWorks = trueblnr;
+#endif
 
 		window_fmt = aglChoosePixelFormat(NULL, 0, window_attrib);
 		if (NULL == window_fmt) {
@@ -4485,7 +4515,9 @@ struct MyWState {
 #if VarFullScreen
 	blnr f_UseFullScreen;
 #endif
+#if EnableMagnify
 	blnr f_UseMagnify;
+#endif
 #if MayNotFullScreen
 	int f_CurWinIndx;
 #endif
@@ -4512,7 +4544,9 @@ LOCALPROC GetMyWState(MyWState *r)
 #if VarFullScreen
 	r->f_UseFullScreen = UseFullScreen;
 #endif
+#if EnableMagnify
 	r->f_UseMagnify = UseMagnify;
+#endif
 #if MayNotFullScreen
 	r->f_CurWinIndx = CurWinIndx;
 #endif
@@ -4538,7 +4572,9 @@ LOCALPROC SetMyWState(MyWState *r)
 #if VarFullScreen
 	UseFullScreen = r->f_UseFullScreen;
 #endif
+#if EnableMagnify
 	UseMagnify = r->f_UseMagnify;
+#endif
 #if MayNotFullScreen
 	CurWinIndx = r->f_CurWinIndx;
 #endif
@@ -4550,6 +4586,7 @@ LOCALPROC SetMyWState(MyWState *r)
 	ctx = window_ctx;
 }
 
+#if EnableMagnify || VarFullScreen
 LOCALFUNC blnr ReCreateMainWindow(void)
 {
 	MyWState old_state;
@@ -4630,6 +4667,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		return trueblnr;
 	}
 }
+#endif
 
 #if VarFullScreen && EnableMagnify
 enum {
@@ -4910,8 +4948,12 @@ LOCALPROC CheckForSavedTasks(void)
 		if (vSonyNewDiskWanted) {
 #if IncludeSonyNameNew
 			if (vSonyNewDiskName != NotAPbuf) {
-				MakeNewDisk(vSonyNewDiskSize,
-					PbufToCFString(vSonyNewDiskName));
+				CFStringRef NewDiskName =
+					CFStringCreateWithPbuf(vSonyNewDiskName);
+				MakeNewDisk(vSonyNewDiskSize, NewDiskName);
+				if (NewDiskName != NULL) {
+					CFRelease(NewDiskName);
+				}
 				PbufDispose(vSonyNewDiskName);
 				vSonyNewDiskName = NotAPbuf;
 			} else
@@ -5122,10 +5164,11 @@ LOCALPROC AppendMenuConvertCStr(
 	MenuCommand inCommandID,
 	char *s, blnr WantEllipsis)
 {
-	CFStringRef cfStr = UnicodeStrFromCStr(s, WantEllipsis);
+	CFStringRef cfStr = CFStringCreateFromSubstCStr(s, WantEllipsis);
 	if (NULL != cfStr) {
 		AppendMenuItemTextWithCFString(menu, cfStr,
 			0, inCommandID, NULL);
+		CFRelease(cfStr);
 	}
 }
 
@@ -5139,7 +5182,7 @@ LOCALFUNC MenuRef NewMenuFromConvertCStr(short menuID, char *s)
 {
 	MenuRef menu = NULL;
 
-	CFStringRef cfStr = UnicodeStrFromCStr(s, falseblnr);
+	CFStringRef cfStr = CFStringCreateFromSubstCStr(s, falseblnr);
 	if (NULL != cfStr) {
 		OSStatus err = CreateNewMenu(menuID, 0, &menu);
 		if (err != noErr) {
@@ -5231,6 +5274,9 @@ static void DisplayRegisterReconfigurationCallback(
 	CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags,
 	void *userInfo)
 {
+	UnusedParam(display);
+	UnusedParam(userInfo);
+
 	if (0 != (flags & kCGDisplayBeginConfigurationFlag)) {
 		/* fprintf(stderr, "kCGDisplayBeginConfigurationFlag\n"); */
 	} else {
@@ -5341,6 +5387,7 @@ LOCALPROC ReserveAllocAll(void)
 		* 4
 #endif
 		, 5, falseblnr);
+	ReserveAllocOneBlock(&CLUT_final, CLUT_finalsz, 5, falseblnr);
 #if MySoundEnabled
 	ReserveAllocOneBlock((ui3p *)&TheSoundBuffer,
 		dbhBufferSize, 5, falseblnr);
@@ -5390,6 +5437,9 @@ LOCALFUNC blnr InitOSGLU(void)
 #if UseActvCode
 	if (ActvCodeInit())
 #endif
+#if EmLocalTalk
+	if (InitLocalTalk())
+#endif
 	if (InitLocationDat())
 #if MySoundEnabled
 	if (MySound_Init())
@@ -5405,11 +5455,17 @@ LOCALFUNC blnr InitOSGLU(void)
 #if dbglog_HAVE && 0
 IMPORTPROC DoDumpTable(void);
 #endif
+#if dbglog_HAVE && 0
+IMPORTPROC DumpRTC(void);
+#endif
 
 LOCALPROC UnInitOSGLU(void)
 {
 #if dbglog_HAVE && 0
 	DoDumpTable();
+#endif
+#if dbglog_HAVE && 0
+	DumpRTC();
 #endif
 
 	if (MacMsgDisplayed) {

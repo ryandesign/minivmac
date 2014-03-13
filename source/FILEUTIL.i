@@ -671,7 +671,7 @@ GLOBALFUNC tMyErr MyCatInfoCopyInfo_v2(CInfoPBRec *cPB,
 				(0x0100 & r.hFileInfo.ioFlFndrInfo.fdFlags)
 				|
 				(0xFEFF & cPB->hFileInfo.ioFlFndrInfo.fdFlags)
-			*/;
+			*/
 			/* or frFlags */
 
 		r.hFileInfo.ioFlCrDat = cPB->hFileInfo.ioFlCrDat;

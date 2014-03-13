@@ -20,6 +20,63 @@
 
 #pragma segment MPWSupport
 
+LOCALPROC WriteLONGGLUEContents(void)
+{
+	++DestFileIndent;
+		WriteDestFileLn("CASE ON");
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("IMPORT long_main: CODE ");
+		WriteBlankLineToDestFile();
+	--DestFileIndent;
+	WriteDestFileLn("main PROC EXPORT");
+	++DestFileIndent;
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("JMP (long_main).L");
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("ENDP");
+		WriteBlankLineToDestFile();
+		WriteDestFileLn("END");
+	--DestFileIndent;
+}
+
+LOCALPROC WriteLongGlueObjName(void)
+{
+	WriteCStrToDestFile("LONGGLUE.o");
+}
+
+LOCALPROC WriteLongGlueObjPath(void)
+{
+	WriteFileInDirToDestFile0(Write_obj_d_ToDestFile,
+		WriteLongGlueObjName);
+}
+
+LOCALPROC WriteLongGlueSourceName(void)
+{
+	WriteCStrToDestFile("LONGGLUE.S");
+}
+
+LOCALPROC WriteLongGlueSourcePath(void)
+{
+	WriteFileInDirToDestFile0(Write_src_d_ToDestFile,
+		WriteLongGlueSourceName);
+}
+
+LOCALPROC DoLongGlueMakeCompileDeps(void)
+{
+	WriteMakeDependFile(WriteLongGlueSourcePath);
+}
+
+LOCALPROC DoLongGlueMakeCompileBody(void)
+{
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("Asm");
+	WritePathArgInMakeCmnd(WriteLongGlueSourcePath);
+	WriteCStrToDestFile(" -o");
+	WritePathArgInMakeCmnd(WriteLongGlueObjPath);
+	WriteCStrToDestFile(" -model far");
+	WriteEndDestFileLn();
+}
+
 LOCALPROC DoSrcFileMPWMakeObjects(void)
 {
 	WriteBgnDestFileLn();
@@ -92,7 +149,7 @@ LOCALPROC WriteMPWMakeFile(void)
 #if AsmSupported
 	if (HaveAsm) {
 		if (gbo_cpufam == gbk_cpufam_68k) {
-			WriteDestFileLn("mk_AOptions = -wb");
+			WriteDestFileLn("mk_AOptions = -wb -model far");
 		} else {
 			WriteDestFileLn("mk_AOptions = ");
 		}
@@ -112,12 +169,19 @@ LOCALPROC WriteMPWMakeFile(void)
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
+
+	if (gbo_cpufam == gbk_cpufam_68k) {
+		WriteMakeRule(WriteLongGlueObjPath,
+			DoLongGlueMakeCompileDeps,
+			DoLongGlueMakeCompileBody);
+	}
+
 	vCheckWriteDestErr(DoAllSrcFilesWithSetup(DoSrcFileMakeCompile));
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("ObjFiles = \266");
 	++DestFileIndent;
 		vCheckWriteDestErr(
-			DoAllSrcFilesWithSetup(DoSrcFileMPWMakeObjects));
+			DoAllSrcFilesSortWithSetup(DoSrcFileMPWMakeObjects));
 		WriteBlankLineToDestFile();
 	--DestFileIndent;
 
@@ -139,6 +203,9 @@ LOCALPROC WriteMPWMakeFile(void)
 	} else {
 		WriteMakeDependFile(WriteMainRsrcObjPath);
 	}
+	if (gbo_cpufam == gbk_cpufam_68k) {
+		WritePathArgInMakeCmnd(WriteLongGlueObjPath);
+	}
 	WriteEndDestFileLn();
 	++DestFileIndent;
 		if (HaveMacRrscs) {
@@ -158,7 +225,7 @@ LOCALPROC WriteMPWMakeFile(void)
 					WriteCStrToDestFile(" -rn");
 				}
 				WriteCStrToDestFile(
-					" -model far -srtsg all -sg Main"
+					" -model far -sg Main"
 					"=STDCLIB,SANELIB,CSANELib,SADEV,STDIO");
 			} else if (gbo_cpufam == gbk_cpufam_ppc) {
 				WriteCStrToDestFile("PPCLink");
@@ -173,11 +240,8 @@ LOCALPROC WriteMPWMakeFile(void)
 		WriteEndDestFileLn();
 
 		++DestFileIndent;
-			WriteBgnDestFileLn();
-			WriteCStrToDestFile("-o \"");
-			Write_machobinpath_ToDestFile();
-			WriteCStrToDestFile("\" \266");
-			WriteEndDestFileLn();
+
+			WriteDestFileLn("{ObjFiles} \266");
 
 			if (cur_targ == gbk_targ_carb) {
 				WriteDestFileLn("\"{SharedLibraries}CarbonLib\" \266");
@@ -210,19 +274,30 @@ LOCALPROC WriteMPWMakeFile(void)
 				WriteDestFileLn("\"{SharedLibraries}WindowsLib\" \266");
 			} else if (cur_targ == gbk_targ_m68k) {
 				WriteDestFileLn("\"{Libraries}Interface.o\" \266");
+				WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 				WriteDestFileLn("\"{Libraries}MacRuntime.o\" \266");
 				/* WriteDestFileLn("\"{Libraries}MathLib.o\" \266"); */
-				WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 			} else if (cur_targ == gbk_targ_mfpu) {
 				WriteDestFileLn("\"{Libraries}Interface.o\" \266");
+				WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 				WriteDestFileLn("\"{Libraries}MacRuntime.o\" \266");
 				/*
 					WriteDestFileLn("\"{Libraries}MathLib881.o\" \266");
 				*/
-				WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
+			}
+			if (gbo_cpufam == gbk_cpufam_68k) {
+				WriteBgnDestFileLn();
+				WriteQuoteToDestFile();
+				WriteLongGlueObjPath();
+				WriteQuoteToDestFile();
+				WriteCStrToDestFile(" \266");
+				WriteEndDestFileLn();
 			}
 
-			WriteDestFileLn("{ObjFiles}");
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("-o");
+			WritePathArgInMakeCmnd(Write_machobinpath_ToDestFile);
+			WriteEndDestFileLn();
 		--DestFileIndent;
 
 		WriteBgnDestFileLn();
@@ -260,6 +335,10 @@ LOCALFUNC tMyErr WriteMPWSpecificFiles(void)
 {
 	tMyErr err;
 
+	if ((gbo_cpufam != gbk_cpufam_68k) ||
+		(noErr == (err = WriteADestFile(&SrcDirR, "LONGGLUE", ".S",
+			WriteLONGGLUEContents)))
+		)
 	if ((! HaveMacBundleApp) || (noErr == (err = WritePListData())))
 	if (noErr == (err = WriteADestFile(&OutputDirR,
 		"Makefile", "", WriteMPWMakeFile)))

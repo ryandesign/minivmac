@@ -24,6 +24,7 @@
 #if AsmSupported
 #define kDepDirASrc 4
 #endif
+#define kDepDirSndA 5
 
 typedef void (*tDoOneExtraHeader)(int DepDir, char *s);
 
@@ -46,8 +47,10 @@ typedef void (*tWriteOneDocType)(
 #define kCSrcFlagAsmAvail 0
 #define kCSrcFlagAltSrc 1
 #define kCSrcFlagUseAPI 2
+#define kCSrcFlagSortFirst 3
 
 #define kCSrcFlgmNone 0
 #define kCSrcFlgmAsmAvail (1 << kCSrcFlagAsmAvail)
 #define kCSrcFlgmAltSrc (1 << kCSrcFlagAltSrc)
 #define kCSrcFlgmUseAPI (1 << kCSrcFlagUseAPI)
+#define kCSrcFlgmSortFirst (1 << kCSrcFlagSortFirst)
