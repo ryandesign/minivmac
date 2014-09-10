@@ -370,7 +370,7 @@ LOCALFUNC tMyErr TryAsSndApiOptionNot(void)
 		kNumSndApiLevels, GetSndApiName, &gbo_sndapi);
 }
 
-LOCALFUNC blnr ChooseSndApiOption(void)
+LOCALFUNC tMyErr ChooseSndApiOption(void)
 {
 	tMyErr err = noErr;
 
@@ -1242,6 +1242,38 @@ LOCALFUNC tMyErr TryAsNeedIntlNot(void)
 	return FlagTryAsOptionNot("-intl", &NeedIntl);
 }
 
+/* option: ItnlKyBdFix */
+
+LOCALVAR blnr ItnlKyBdFix;
+
+LOCALPROC ResetItnlKyBdFixOption(void)
+{
+	ItnlKyBdFix = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsItnlKyBdFixNot(void)
+{
+	return BooleanTryAsOptionNot("-ikb", &ItnlKyBdFix);
+}
+
+LOCALFUNC tMyErr ChooseItnlKyBdFix(void)
+{
+	tMyErr err = noErr;
+
+	if (nanblnr == ItnlKyBdFix) {
+		ItnlKyBdFix = (gbk_apifam_win == gbo_apifam);
+	} else {
+		if (ItnlKyBdFix) {
+			if (gbk_apifam_win != gbo_apifam) {
+				ReportParseFailure("-ikb is only for Windows");
+				err = kMyErrReported;
+			}
+		}
+	}
+
+	return err;
+}
+
 /* ROM size */
 
 LOCALVAR uimr RomSize;
@@ -1378,6 +1410,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetTimingAccuracyOption();
 	ResetMouseMotionOption();
 	ResetNeedIntl();
+	ResetItnlKyBdFixOption();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -1414,6 +1447,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsTimingAccuracyOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsMouseMotionOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsNeedIntlNot()))
+	if (kMyErrNoMatch == (err = TryAsItnlKyBdFixNot()))
 	{
 	}
 
@@ -1438,6 +1472,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseScreenOpts()))
 	if (noErr == (err = ChooseVidMemSize()))
 	if (noErr == (err = ChooseSndApiOption()))
+	if (noErr == (err = ChooseItnlKyBdFix()))
 	{
 		ChooseEmCpuVers();
 		ChooseInitFullScreen();

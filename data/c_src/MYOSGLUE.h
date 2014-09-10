@@ -398,3 +398,5 @@ EXPORTPROC MyEvtQOutDone(void);
 #define MKC_Print 0x69
 #define MKC_ScrollLock 0x6B
 #define MKC_Pause 0x71
+
+#define MKC_AngleBracket 0x0A /* found on german keyboard */

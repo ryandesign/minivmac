@@ -157,6 +157,9 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 
 	WriteCompCondBool("NeedIntlChars",
 		(gbo_lang != gbk_lang_eng) || NeedIntl);
+	if (gbk_apifam_win == gbo_apifam) {
+		WriteCompCondBool("ItnlKyBdFix", ItnlKyBdFix);
+	}
 	WriteCDefQuote("kStrAppName", WriteStrAppUnabrevName);
 	WriteCDefQuote("kAppVariationStr", WriteAppVariationStr);
 	WriteCDefQuote("kStrCopyrightYear", WriteAppCopyrightYearStr);

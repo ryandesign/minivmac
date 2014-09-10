@@ -434,6 +434,1141 @@ LOCALPROC SetCurMouseButton(blnr v)
 #define myVK_SNAPSHOT 0x2C
 #define myVK_PAUSE 0x13
 
+#define myVK_OEM_8 0xDF
+#define myVK_OEM_102 0xE2
+
+#ifndef ItnlKyBdFix
+#define ItnlKyBdFix 0
+#endif
+
+#if ItnlKyBdFix
+LOCALVAR ui3b MyVkMapA[256];
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkSwapZY(void)
+{
+	MyVkMapA['Z'] = 'Y';
+	MyVkMapA['Y'] = 'Z';
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkSwapGraveQuote(void)
+{
+	MyVkMapA[myVK_Grave] = myVK_SingleQuote;
+	MyVkMapA[myVK_SingleQuote] = myVK_Grave;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkSwapSlashSubtract(void)
+{
+	MyVkMapA[myVK_Slash] = myVK_Subtract;
+	MyVkMapA[myVK_Subtract] = myVK_Slash;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkSwapAQZWGraveQuote(void)
+{
+	MyVkSwapGraveQuote();
+	MyVkMapA['A'] = 'Q';
+	MyVkMapA['Q'] = 'A';
+	MyVkMapA['Z'] = 'W';
+	MyVkMapA['W'] = 'Z';
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapBelgian(void)
+{
+	MyVkSwapAQZWGraveQuote();
+	MyVkMapA['M'] = myVK_SemiColon;
+	MyVkMapA[myVK_SemiColon] = myVK_RightBracket;
+	MyVkMapA[myVK_RightBracket] = myVK_LeftBracket;
+	MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+	MyVkMapA[myVK_Subtract] = myVK_Equal;
+	MyVkMapA[myVK_Equal] = myVK_Slash;
+	MyVkMapA[myVK_Slash] = myVK_Period;
+	MyVkMapA[myVK_Period] = myVK_Comma;
+	MyVkMapA[myVK_Comma] = 'M';
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapSwiss(void)
+{
+	MyVkSwapZY();
+	MyVkMapA[myVK_OEM_8] = myVK_BackSlash;
+	MyVkMapA[myVK_BackSlash] = myVK_SingleQuote;
+	MyVkMapA[myVK_SingleQuote] = myVK_SemiColon;
+	MyVkMapA[myVK_SemiColon] = myVK_LeftBracket;
+	MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+	MyVkMapA[myVK_Subtract] = myVK_Slash;
+	MyVkMapA[myVK_Slash] = myVK_Grave;
+	MyVkMapA[myVK_Grave] = myVK_RightBracket;
+	MyVkMapA[myVK_RightBracket] = myVK_Equal;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapDanish(void)
+{
+	MyVkMapA[myVK_Equal] = myVK_Subtract;
+	MyVkMapA[myVK_Subtract] = myVK_Slash;
+	MyVkMapA[myVK_Slash] = myVK_BackSlash;
+	MyVkMapA[myVK_BackSlash] = myVK_Grave;
+	MyVkMapA[myVK_Grave] = myVK_SemiColon;
+	MyVkMapA[myVK_SemiColon] = myVK_RightBracket;
+	MyVkMapA[myVK_RightBracket] = myVK_LeftBracket;
+	MyVkMapA[myVK_LeftBracket] = myVK_Equal;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapBritish(void)
+{
+	MyVkMapA[myVK_OEM_8] = myVK_Grave;
+	MyVkMapA[myVK_Grave] = myVK_SingleQuote;
+	MyVkMapA[myVK_SingleQuote] = myVK_BackSlash;
+	MyVkMapA[myVK_BackSlash] = myVK_OEM_102;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapSpanish(void)
+{
+	MyVkMapA[myVK_SemiColon] = myVK_LeftBracket;
+	MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+	MyVkMapA[myVK_Subtract] = myVK_Slash;
+	MyVkMapA[myVK_Slash] = myVK_BackSlash;
+	MyVkMapA[myVK_BackSlash] = myVK_Grave;
+	MyVkMapA[myVK_Grave] = myVK_SemiColon;
+
+	MyVkMapA[myVK_RightBracket] = myVK_Equal;
+	MyVkMapA[myVK_Equal] = myVK_RightBracket;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapDutch(void)
+{
+	MyVkSwapGraveQuote();
+	MyVkMapA[myVK_SemiColon] = myVK_RightBracket;
+	MyVkMapA[myVK_RightBracket] = myVK_LeftBracket;
+	MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+	MyVkMapA[myVK_Subtract] = myVK_Slash;
+	MyVkMapA[myVK_Slash] = myVK_Equal;
+	MyVkMapA[myVK_Equal] = myVK_SemiColon;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapGreekIBM(void)
+{
+	MyVkSwapSlashSubtract();
+	MyVkMapA[myVK_LeftBracket] = myVK_Equal;
+	MyVkMapA[myVK_Equal] = myVK_LeftBracket;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapFrench(void)
+{
+	MyVkSwapAQZWGraveQuote();
+	MyVkMapA['M'] = myVK_SemiColon;
+	MyVkMapA[myVK_SemiColon] = myVK_RightBracket;
+	MyVkMapA[myVK_RightBracket] = myVK_LeftBracket;
+	MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+	MyVkMapA[myVK_Comma] = 'M';
+	MyVkMapA[myVK_Period] = myVK_Comma;
+	MyVkMapA[myVK_Slash] = myVK_Period;
+	MyVkMapA[myVK_OEM_8] = myVK_Slash;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapGerman(void)
+{
+	MyVkSwapZY();
+	MyVkMapSpanish();
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapBosnian(void)
+{
+	MyVkSwapZY();
+	/* not in Windows 95 */
+	MyVkSwapSlashSubtract();
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapBulgarian(void)
+{
+	MyVkMapA[myVK_OEM_8] = myVK_Comma;
+	MyVkMapA[myVK_Comma] = 'Q';
+	MyVkMapA['Q'] = myVK_Period;
+	MyVkMapA[myVK_Period] = myVK_Equal;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyVkMapFromLayout(uimr sv)
+{
+	int i;
+
+	for (i = 0; i < 256; ++i) {
+		MyVkMapA[i] = i;
+	}
+
+	switch (sv) {
+		case 0x00000409:
+			/* United States 101 */
+			break;
+		case 0x0000041c:
+			/* Albanian; */
+			MyVkSwapZY();
+			break;
+		case 0x0000042B:
+			/* Armenian Eastern; */
+			MyVkMapDutch();
+			break;
+		case 0x0001042B:
+			/* Armenian Western; */
+			MyVkMapDutch();
+			break;
+		case 0x0000042C:
+			/* not in Windows 95 */
+			/* Azeri Latin */
+			MyVkMapBritish();
+			break;
+		case 0x0001080C:
+			/* Belgian (comma) */
+			MyVkMapBelgian();
+			break;
+		case 0x0000080c:
+			/* Belgian French */
+			MyVkMapBelgian();
+			break;
+		case 0x00000813:
+			/* not in Windows 95 */
+			/* Belgian (period); */
+			MyVkMapBelgian();
+			break;
+		case 0x0000141A:
+			/* not in Windows 95 */
+			/* Bosnian */
+			MyVkMapBosnian();
+			break;
+		case 0x00000809:
+			/* British / United Kingdom */
+			MyVkMapBritish();
+			break;
+		case 0x00000452:
+			/* not in Windows 95 */
+			/* United Kingdom Extended */
+			MyVkMapBritish();
+			break;
+		case 0x00000402:
+			/* Bulgarian */
+			/* not same in Windows 95 */
+			MyVkMapBulgarian();
+			break;
+		case 0x00030402:
+			/* Bulgarian */
+			MyVkMapBulgarian();
+			break;
+		case 0x00020402:
+			/* Bulgarian (Phonetic) */
+			MyVkMapBosnian();
+			break;
+		case 0x00001009:
+			/* Canadian Multilingual */
+			/* not in Windows 95 */
+			MyVkSwapGraveQuote();
+			break;
+		case 0x00011009:
+			/* Canadian Standard */
+			MyVkSwapGraveQuote();
+			break;
+		case 0x0000041a:
+			/* Croatian */
+			MyVkMapBosnian();
+			break;
+		case 0x00000405:
+			/* Czech */
+			MyVkMapBosnian();
+#if 0
+			/* but Windows 7 gives */
+			MyVkSwapZY();
+			MyVkMapA[myVK_Equal] = myVK_Subtract;
+			MyVkMapA[myVK_Subtract] = myVK_Slash;
+			MyVkMapA[myVK_Slash] = myVK_Equal;
+#endif
+			break;
+		case 0x00020405:
+			/* Czech (Programmers) */
+			/* only in Windows 95 */
+			/* MyVkSwapZY(); */
+			break;
+		case 0x00010405:
+			/* Czech (Qwerty) */
+			/* only in Windows 95 */
+			/* MyVkSwapZY(); */
+			break;
+		case 0x00000406:
+			/* Danish */
+			MyVkMapDanish();
+			break;
+		case 0x00000413:
+			/* Dutch */
+			MyVkMapDutch();
+			break;
+		case 0x00000425:
+			/* Estonian */
+			MyVkMapA[myVK_Grave] = myVK_LeftBracket;
+			MyVkMapA[myVK_LeftBracket] = myVK_RightBracket;
+			MyVkMapA[myVK_RightBracket] = myVK_Slash;
+			MyVkMapA[myVK_Slash] = myVK_SingleQuote;
+			MyVkMapA[myVK_SingleQuote] = myVK_Grave;
+			/* only in Windows 95 ? */
+			/* MyVkMapA[VK_DECIMAL] = VK_DELETE; */
+			break;
+		case 0x00000438:
+			/* Faeroe Islands */
+			MyVkMapDanish();
+			break;
+		case 0x0000040b:
+			/* Finnish */
+			MyVkMapDanish();
+			break;
+		case 0x0001083B:
+			/* not in Windows 95 */
+			/* Finnish with Sami */
+			MyVkMapDanish();
+			break;
+		case 0x0000040c:
+			/* v = kMyKbdFrench; */
+			/* French */
+			MyVkMapFrench();
+			break;
+		case 0x00000c0c:
+			/* French Canadian */
+			MyVkSwapGraveQuote();
+			break;
+		case 0x00011809:
+			/* not in Windows 95 */
+			/* Gaelic */
+			MyVkMapBritish();
+			break;
+		case 0x00010407:
+			/* German (IBM) */
+			MyVkMapGerman();
+			break;
+		case 0x00000407:
+			/* German (Standard) */
+			MyVkMapGerman();
+			break;
+		case 0x00010408:
+			/* Greek IBM 220 */
+			/* not in Windows 95 */
+			MyVkMapGreekIBM();
+			break;
+		case 0x00030408:
+			/* Greek IBM 319 */
+			/* not in Windows 95 */
+			MyVkMapGreekIBM();
+			break;
+		case 0x00020408:
+			/* Greek Latin IBM 220 */
+			/* not in Windows 95 */
+			MyVkSwapSlashSubtract();
+			break;
+		case 0x00040408:
+			/* Greek Latin IBM 319 */
+			/* not in Windows 95 */
+			MyVkSwapSlashSubtract();
+			break;
+		case 0x0000040e:
+			/* Hungarian */
+			MyVkMapBosnian();
+			MyVkMapA[myVK_Grave] = '0';
+			MyVkMapA['0'] = myVK_Grave;
+			break;
+		case 0x0001040E:
+			/* Hungarian (101 Keys) */
+			MyVkMapA[myVK_Grave] = '0';
+			MyVkMapA['0'] = myVK_Grave;
+			break;
+		case 0x0000040f:
+			/* Icelandic */
+			MyVkMapDanish();
+			break;
+		case 0x00001809:
+			/* Irish */
+			MyVkMapBritish();
+			break;
+		case 0x00000410:
+			/* Italian */
+			MyVkMapSpanish();
+			break;
+		case 0x00010410:
+			/* Italian 142 */
+			MyVkMapSpanish();
+			break;
+		case 0x0000080a:
+			/* Latin American */
+			MyVkMapSpanish();
+			break;
+		case 0x0000046E:
+			/* Luxembourgish */
+			MyVkMapSwiss();
+			break;
+		case 0x00000414:
+			/* Norwegian */
+			MyVkMapDanish();
+			break;
+		case 0x0000043B:
+			/* Norwegian with Sami */
+			MyVkMapDanish();
+			break;
+		case 0x00010415:
+			/* Polish (214) */
+			MyVkSwapZY();
+			/* not in windows 95 */
+			MyVkMapA[myVK_Equal] = myVK_Subtract;
+			MyVkMapA[myVK_Subtract] = myVK_Slash;
+			MyVkMapA[myVK_Slash] = myVK_Equal;
+			break;
+		case 0x00010416:
+			/* Porguguese (Brazilian ABNT2) */
+			/* MyVkMapA[myVK_OEM_8] = ??; */
+			/* MyVkMapA[VK_SEPARATOR] = ??; */
+			break;
+		case 0x00000816:
+			/* Porguguese (Standard) */
+			MyVkMapA[myVK_SemiColon] = myVK_RightBracket;
+			MyVkMapA[myVK_RightBracket] = myVK_Equal;
+			MyVkMapA[myVK_Equal] = myVK_LeftBracket;
+			MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+			MyVkMapA[myVK_Subtract] = myVK_Slash;
+			MyVkMapA[myVK_Slash] = myVK_BackSlash;
+			MyVkMapA[myVK_BackSlash] = myVK_Grave;
+			MyVkMapA[myVK_Grave] = myVK_SemiColon;
+			break;
+		case 0x00000418:
+			/* Romanian (Legacy) */
+			MyVkSwapZY();
+			/* only in Windows 95 */
+			/* MyVkSwapSlashSubtract(); */
+			break;
+		case 0x0002083B:
+			/* Sami Extended Finland-Sweden */
+			MyVkMapDanish();
+			break;
+		case 0x0001043B:
+			/* Sami Extended Norway */
+			MyVkMapDanish();
+			break;
+		case 0x00010C1A:
+			/* in Windows 95 */
+			/* Serbian (Latin) */
+			MyVkSwapZY();
+			break;
+		case 0x0000081A:
+			/* not in Windows 95 */
+			/* Serbian (Latin) */
+			MyVkMapBosnian();
+			break;
+		case 0x0000041b:
+			/* Slovak */
+			MyVkMapBosnian();
+			/* not in Windows 95 */
+			MyVkMapA[myVK_OEM_8] = myVK_Equal;
+			break;
+		case 0x00000424:
+			/* Slovenian */
+			MyVkMapBosnian();
+			break;
+		case 0x0000040A:
+			/* Spanish, not windows 95 */
+			MyVkMapSpanish();
+			break;
+		case 0x0001040A:
+			/* Spanish Variation, not windows 95 */
+			MyVkMapA[myVK_OEM_8] = myVK_Slash;
+			MyVkMapA[myVK_Slash] = myVK_BackSlash;
+			MyVkMapA[myVK_BackSlash] = myVK_Grave;
+			MyVkMapA[myVK_Grave] = myVK_SemiColon;
+			MyVkMapA[myVK_SemiColon] = myVK_RightBracket;
+			MyVkMapA[myVK_RightBracket] = myVK_LeftBracket;
+			MyVkMapA[myVK_LeftBracket] = myVK_Equal;
+			break;
+		case 0x00000c0a:
+			/* kMyKbdSpanish; */
+			/* Spanish Modern, windows 95 */
+			MyVkMapSpanish();
+			break;
+		case 0x00000403:
+			/* Spanish Traditional */
+			MyVkMapSpanish();
+			break;
+		case 0x0000041d:
+			/* Swedish */
+			MyVkMapDanish();
+			break;
+		case 0x0000083B:
+			/* not in windows 95 */
+			/* Swedish with Sami */
+			MyVkMapDanish();
+			break;
+		case 0x0000100c:
+			/* Swiss French */
+			MyVkMapSwiss();
+			break;
+		case 0x00000807:
+			/* Swiss German */
+			MyVkMapSwiss();
+			break;
+		case 0x0000085D:
+			/* Inuktitut Latin */
+			/* in windows 7, not XP */
+			MyVkMapBritish();
+			break;
+		case 0x0001045D:
+			/* Inuktitut - Naqittaut */
+			MyVkMapBritish();
+			break;
+		case 0x0000046F:
+			/* Greenlandic */
+			MyVkMapDanish();
+			break;
+		case 0x00020427:
+			/* Lithuanian Standard */
+			MyVkMapDanish();
+			break;
+		case 0x0000042f:
+			/* Macedonian (FYROM) - Standard */
+			MyVkMapBosnian();
+			break;
+		case 0x0000042E:
+			/* Sorbian Standard (Legacy) */
+			MyVkMapGerman();
+			break;
+		case 0x0001042E:
+			/* Sorbian Extended */
+			MyVkMapGerman();
+			break;
+		case 0x0002042E:
+			/* Sorbian Standard */
+			MyVkMapGerman();
+			break;
+		case 0x00000488:
+			/* Wolof */
+			MyVkMapFrench();
+			break;
+		case 0x0000041f:
+			/* Turkish (Q type) */
+			/* windows 95 */
+			/* MyVkMapA[myVK_Equal] = myVK_Subtract; */
+			/* MyVkMapA[myVK_Subtract] = myVK_Equal; */
+			/* not windows 95 */
+			MyVkMapA[myVK_OEM_8] = myVK_Subtract;
+			MyVkMapA[myVK_Subtract] = myVK_Equal;
+
+			MyVkMapA[myVK_Comma] = myVK_BackSlash;
+			MyVkMapA[myVK_BackSlash] = myVK_Period;
+			MyVkMapA[myVK_Period] = myVK_Slash;
+			MyVkMapA[myVK_Slash] = myVK_Comma;
+			break;
+		case 0x00010409:
+			/* United States Dvorak */
+			MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+			MyVkMapA[myVK_RightBracket] = myVK_Equal;
+			MyVkMapA[myVK_SingleQuote] = 'Q';
+			MyVkMapA[myVK_Comma] = 'W';
+			MyVkMapA[myVK_Period] = 'E';
+			MyVkMapA['P'] = 'R';
+			MyVkMapA['Y'] = 'T';
+			MyVkMapA['F'] = 'Y';
+			MyVkMapA['G'] = 'U';
+			MyVkMapA['C'] = 'I';
+			MyVkMapA['R'] = 'O';
+			MyVkMapA['L'] = 'P';
+			MyVkMapA[myVK_Slash] = myVK_LeftBracket;
+			MyVkMapA[myVK_Equal] = myVK_RightBracket;
+			MyVkMapA['O'] = 'S';
+			MyVkMapA['E'] = 'D';
+			MyVkMapA['U'] = 'F';
+			MyVkMapA['I'] = 'G';
+			MyVkMapA['D'] = 'H';
+			MyVkMapA['H'] = 'J';
+			MyVkMapA['T'] = 'K';
+			MyVkMapA['N'] = 'L';
+			MyVkMapA['S'] = myVK_SemiColon;
+			MyVkMapA[myVK_Subtract] = myVK_SingleQuote;
+			MyVkMapA[myVK_SemiColon] = 'Z';
+			MyVkMapA['Q'] = 'X';
+			MyVkMapA['J'] = 'C';
+			MyVkMapA['K'] = 'V';
+			MyVkMapA['X'] = 'B';
+			MyVkMapA['B'] = 'N';
+			MyVkMapA['W'] = myVK_Comma;
+			MyVkMapA['V'] = myVK_Period;
+			MyVkMapA['Z'] = myVK_Slash;
+			break;
+#if 0
+		/* too complicated, don't bother with */
+		case 0x0x00000426:
+			/* Latvian */
+			MyVkMapA['F'] = myVK_Equal;
+			MyVkMapA['G'] = 'W';
+			MyVkMapA['J'] = 'E';
+			MyVkMapA['M'] = 'T';
+			MyVkMapA['V'] = 'Y';
+			MyVkMapA['N'] = 'U';
+			MyVkMapA['Z'] = 'I';
+			MyVkMapA['W'] = 'O';
+			MyVkMapA['X'] = 'P';
+			MyVkMapA['Y'] = myVK_LeftBracket;
+			MyVkMapA['H'] = myVK_RightBracket;
+			MyVkMapA[myVK_SemiColon] = 'A';
+			MyVkMapA['U'] = 'S';
+			MyVkMapA['S'] = 'D';
+			MyVkMapA['I'] = 'F';
+			MyVkMapA['L'] = 'G';
+			MyVkMapA['D'] = 'H';
+			MyVkMapA['A'] = 'J';
+			MyVkMapA['T'] = 'K';
+			MyVkMapA['E'] = 'L';
+			MyVkMapA['C'] = myVK_SemiColon;
+			MyVkMapA[myVK_LeftBracket] = 'Z';
+			MyVkMapA['B'] = 'X';
+			MyVkMapA[myVK_RightBracket] = 'C';
+			MyVkMapA['K'] = 'V';
+			MyVkMapA['P'] = 'B';
+			MyVkMapA['O'] = 'N';
+			MyVkMapA[myVK_OEM_8] = 'M';
+			break;
+		case 0x0001041F:
+			/* Turkish (F type) */
+
+			MyVkMapA[myVK_Equal] = myVK_Subtract;
+			MyVkMapA[myVK_Subtract] = myVK_Equal;
+			MyVkMapA['F'] = 'Q';
+			MyVkMapA['G'] = 'W';
+			MyVkMapA[myVK_SemiColon] = 'E';
+			MyVkMapA['I'] = 'R';
+			MyVkMapA['O'] = 'T';
+			MyVkMapA['D'] = 'Y';
+			MyVkMapA['R'] = 'U';
+			MyVkMapA['N'] = 'I';
+			MyVkMapA['H'] = 'O';
+			MyVkMapA['Q'] = myVK_LeftBracket;
+			MyVkMapA['W'] = myVK_RightBracket;
+			MyVkMapA['U'] = 'A';
+			MyVkMapA[myVK_LeftBracket] = 'S';
+			MyVkMapA['E'] = 'D';
+			MyVkMapA['A'] = 'F';
+			MyVkMapA[myVK_RightBracket] = 'G';
+			MyVkMapA['T'] = 'H';
+			MyVkMapA['K'] = 'J';
+			MyVkMapA['M'] = 'K';
+			MyVkMapA['Y'] = myVK_SemiColon;
+			MyVkMapA['X'] = myVK_BackSlash;
+			MyVkMapA['J'] = 'Z';
+			MyVkMapA[myVK_BackSlash] = 'X';
+			MyVkMapA['V'] = 'C';
+			MyVkMapA['C'] = 'V';
+			MyVkMapA[myVK_Slash] = 'B';
+			MyVkMapA['Z'] = 'N';
+			MyVkMapA['S'] = 'M';
+			MyVkMapA['B'] = myVK_Comma;
+			MyVkMapA[myVK_Comma] = myVK_Slash;
+			break;
+		case 0x00030409:
+			/* United States LH Dvorak */
+			MyVkMapA[myVK_LeftBracket] = '1';
+			MyVkMapA[myVK_RightBracket] = '2';
+			MyVkMapA[myVK_Slash] = '3';
+			MyVkMapA['P'] = '4';
+			MyVkMapA['F'] = '5';
+			MyVkMapA['M'] = '6';
+			MyVkMapA['L'] = '7';
+			MyVkMapA['J'] = '8';
+			MyVkMapA['4'] = '9';
+			MyVkMapA['3'] = '0';
+			MyVkMapA['2'] = myVK_Subtract;
+			MyVkMapA['1'] = myVK_Equal;
+			MyVkMapA[myVK_SemiColon] = 'Q';
+			MyVkMapA['Q'] = 'W';
+			MyVkMapA['B'] = 'E';
+			MyVkMapA['Y'] = 'R';
+			MyVkMapA['U'] = 'T';
+			MyVkMapA['R'] = 'Y';
+			MyVkMapA['S'] = 'U';
+			MyVkMapA['O'] = 'I';
+			MyVkMapA[myVK_Period] = 'O';
+			MyVkMapA['6'] = 'P';
+			MyVkMapA['5'] = myVK_LeftBracket;
+			MyVkMapA[myVK_Equal] = myVK_RightBracket;
+			MyVkMapA[myVK_Subtract] = 'A';
+			MyVkMapA['K'] = 'S';
+			MyVkMapA['C'] = 'D';
+			MyVkMapA['D'] = 'F';
+			MyVkMapA['T'] = 'G';
+			MyVkMapA['E'] = 'J';
+			MyVkMapA['A'] = 'K';
+			MyVkMapA['Z'] = 'L';
+			MyVkMapA['8'] = myVK_SemiColon;
+			MyVkMapA['7'] = myVK_SingleQuote;
+			MyVkMapA[myVK_SingleQuote] = 'Z';
+			MyVkMapA['G'] = 'C';
+			MyVkMapA['W'] = 'B';
+			MyVkMapA['I'] = 'M';
+			MyVkMapA['0'] = myVK_Period;
+			MyVkMapA['9'] = myVK_Slash;
+			break;
+		case 0x00040409:
+			/* United States RH Dvorak */
+			MyVkMapA['J'] = '5';
+			MyVkMapA['L'] = '6';
+			MyVkMapA['M'] = '7';
+			MyVkMapA['F'] = '8';
+			MyVkMapA['P'] = '9';
+			MyVkMapA[myVK_Slash] = '0';
+			MyVkMapA[myVK_LeftBracket] = myVK_Subtract;
+			MyVkMapA[myVK_RightBracket] = myVK_Equal;
+			MyVkMapA['5'] = 'Q';
+			MyVkMapA['6'] = 'W';
+			MyVkMapA['Q'] = 'E';
+			MyVkMapA[myVK_Period] = 'R';
+			MyVkMapA['O'] = 'T';
+			MyVkMapA['R'] = 'Y';
+			MyVkMapA['S'] = 'U';
+			MyVkMapA['U'] = 'I';
+			MyVkMapA['Y'] = 'O';
+			MyVkMapA['B'] = 'P';
+			MyVkMapA[myVK_SemiColon] = myVK_LeftBracket;
+			MyVkMapA[myVK_Equal] = myVK_RightBracket;
+			MyVkMapA['7'] = 'A';
+			MyVkMapA['8'] = 'S';
+			MyVkMapA['Z'] = 'D';
+			MyVkMapA['A'] = 'F';
+			MyVkMapA['E'] = 'G';
+			MyVkMapA['T'] = 'J';
+			MyVkMapA['D'] = 'K';
+			MyVkMapA['C'] = 'L';
+			MyVkMapA['K'] = myVK_SemiColon;
+			MyVkMapA[myVK_Subtract] = myVK_SingleQuote;
+			MyVkMapA['9'] = 'Z';
+			MyVkMapA['0'] = 'X';
+			MyVkMapA['X'] = 'C';
+			MyVkMapA[myVK_Comma] = 'V';
+			MyVkMapA['I'] = 'B';
+			MyVkMapA['W'] = 'M';
+			MyVkMapA['V'] = myVK_Comma;
+			MyVkMapA['G'] = myVK_Period;
+			MyVkMapA[myVK_SingleQuote] = myVK_Slash;
+			break;
+#endif
+#if 0
+		case 0x0000082C:
+			/* not in Windows 95 */
+			/* Azeri Cyrillic */
+			break;
+		case 0x00000423:
+			/* Belarusian */
+			break;
+		case 0x00000445:
+			/* not in Windows 95 */
+			/* Bengali */
+			break;
+		case 0x00010445:
+			/* not in Windows 95 */
+			/* Bengali (Inscript) */
+			break;
+		case 0x0000201A:
+			/* not in Windows 95 */
+			/* Bosnian Cyrillic*/
+			break;
+		case 0x00010402:
+			/* Bulgarian Latin */
+#if 0 /* Only in Windows 95 */
+			MyVkMapA['J'] = 'Q';
+			MyVkMapA['C'] = 'W';
+			MyVkMapA['U'] = 'E';
+			MyVkMapA['K'] = 'R';
+			MyVkMapA['E'] = 'T';
+			MyVkMapA['N'] = 'Y';
+			MyVkMapA['G'] = 'U';
+			MyVkMapA[myVK_SemiColon] = 'I';
+			MyVkMapA[myVK_OEM_102] = 'O';
+			MyVkMapA['Z'] = 'P';
+			MyVkMapA['H'] = myVK_LeftBracket;
+			MyVkMapA['F'] = 'A';
+			MyVkMapA['Y'] = 'S';
+			MyVkMapA['W'] = 'D';
+			MyVkMapA['A'] = 'F';
+			MyVkMapA['P'] = 'G';
+			MyVkMapA['R'] = 'H';
+			MyVkMapA['O'] = 'J';
+			MyVkMapA['L'] = 'K';
+			MyVkMapA['D'] = 'L';
+			MyVkMapA['V'] = myVK_SemiColon;
+			MyVkMapA[myVK_LeftBracket] = 'Z';
+			MyVkMapA['S'] = 'X';
+			MyVkMapA['M'] = 'C';
+			MyVkMapA['I'] = 'V';
+			MyVkMapA['T'] = 'B';
+			MyVkMapA['X'] = 'N';
+			MyVkMapA['B'] = 'M';
+			MyVkMapA['Q'] = myVK_OEM_102;
+#endif
+			break;
+		case 0x00000408:
+			/* Greek */
+			break;
+		case 0x00050408:
+			/* Greek Latin */
+			break;
+		case 0x00060408:
+			/* Greek Polytonic */
+			break;
+		case 0x0000043F:
+			/* Kazakh */
+			break;
+		case 0x00000440:
+			/* Kyrgyz Cyrillic */
+			break;
+		case 0x00010426:
+			/* Latvian Latin */
+			break;
+		case 0x00010427:
+			/* Lithuanian */
+			break;
+		case 0x00000427:
+			/* Lithuanian (IBM) */
+			break;
+		case 0x0000044C:
+			/* Malayalam */
+			break;
+		case 0x0000042f:
+			/* Macedonian (FYROM) */
+			break;
+		case 0x0000043A:
+			/* Maltese 47-key */
+			break;
+		case 0x0001043A:
+			/* Maltese 48-key */
+			break;
+		case 0x00000481:
+			/* Maori */
+			break;
+		case 0x00000450:
+			/* Mongolian Cyrillic */
+			break;
+		case 0x00000461:
+			/* Nepali */
+			break;
+		case 0x00000463:
+			/* Pashto */
+			break;
+		case 0x00000415:
+			/* Polish (Programmers) */
+			break;
+		case 0x00000416:
+			/* Porguguese (Brazilian standard) */
+			break;
+		case 0x00000419:
+			/* Russian */
+			break;
+		case 0x00010419:
+			/* Russian (Typewriter) */
+			break;
+		case 0x00000c1a:
+			/* Serbian */
+			break;
+		case 0x0001041B:
+			/* Slovak (Qwerty) */
+			break;
+		case 0x00000444:
+			/* Tatar */
+			break;
+		case 0x00000422:
+			/* Ukrainian */
+			break;
+		case 0x00020409:
+			/* United States International */
+			break;
+		case 0x00000843:
+			/* Uzbek Cyrillic */
+			break;
+		case 0x00010418:
+			/* Romanian (Standard) */
+			break;
+		case 0x00020418:
+			/* Romanian (Programmers) */
+			break;
+		case 0x00000401:
+			/* Arabic (101) */
+			break;
+		case 0x00010401:
+			/* Arabic (102) */
+			break;
+		case 0x0000044D:
+			/* Assamese - INSCRIPT */
+			break;
+		case 0x0000046D:
+			/* Bashkir */
+			break;
+		case 0x00040402:
+			/* Bulgarian (Phonetic Traditional) */
+			break;
+		case 0x00000404:
+			/* Chinese (Traditional) */
+			break;
+		case 0x00000804:
+			/* Chinese (Simplified) */
+			break;
+		case 0x00000C04:
+			/* Chinese (Traditional, Hong Kong S.A.R.) */
+			break;
+		case 0x00001004:
+			/* Chinese (Simplified, Singapore) */
+			break;
+		case 0x00001404:
+			/* Chinese (Traditional, Macao S.A.R.) */
+			break;
+		case 0x0000040D:
+			/* Hebrew */
+			break;
+		case 0x00000447:
+			/* Gujarati */
+			break;
+		case 0x00000468:
+			/* Hausa */
+			break;
+		case 0x00010439:
+			/* Hindi Traditional */
+			break;
+		case 0x00000439:
+			/* Devanagari - INSCRIPT */
+			break;
+		case 0x00000465:
+			/* Divehi Phonetic */
+			break;
+		case 0x00010465:
+			/* Divehi Typewriter */
+			break;
+		case 0x00000437:
+			/* Georgian */
+			break;
+		case 0x00010437:
+			/* Georgian (QWERTY) */
+			break;
+		case 0x00020437:
+			/* Georgian (Ergonomic) */
+			break;
+		case 0x00000470:
+			/* Igbo */
+			break;
+		case 0x00000411:
+			/* Japanese */
+			/* MyVkMapA[??] = ??; */
+			break;
+		case 0x00000412:
+			/* Korean */
+			/* MyVkMapA[VK_ZOOM] = ??; */
+			/* MyVkMapA[VK_HELP] = VK_ZOOM; */
+			/* MyVkMapA[??] = VK_HELP; */
+			/* MyVkMapA[??] = ??; */
+			break;
+		case 0x0000044B:
+			/* Kannada */
+			break;
+		case 0x00000453:
+			/* Khmer */
+			break;
+		case 0x00000454:
+			/* Lao */
+			break;
+		case 0x00000448:
+			/* Oriya */
+			break;
+		case 0x0000044E:
+			/* Marathi */
+			break;
+		case 0x00000850:
+			/* Mongolian (Mongolian Script) */
+			break;
+		case 0x00000429:
+			/* Persion */
+			break;
+		case 0x00000446:
+			/* Punjabi */
+			break;
+		case 0x0000046C:
+			/* Sesotho sa Leboa */
+			break;
+		case 0x00000432:
+			/* Setswana */
+			break;
+		case 0x0000045B:
+			/* Sinhala */
+			break;
+		case 0x0001045B:
+			/* Sinhala - Wij 9 */
+			break;
+		case 0x0000045A:
+			/* Syriac */
+			break;
+		case 0x0001045A:
+			/* Syriac Phonetic */
+			break;
+		case 0x00000428:
+			/* Tajik */
+			break;
+		case 0x00000449:
+			/* Tamil */
+			break;
+		case 0x0000044A:
+			/* Telugu */
+			break;
+		case 0x0000041E:
+			/* Thai Kedmanee */
+			break;
+		case 0x0001041E:
+			/* Thai Pattachote */
+			break;
+		case 0x0002041E:
+			/* Thai Kedmanee (non-ShiftLock) */
+			break;
+		case 0x0003041E:
+			/* Thai Pattachote (non-ShiftLock) */
+			break;
+		case 0x00000451:
+			/* Tibetan (PRC) */
+			break;
+		case 0x00000442:
+			/* Turkmen */
+			break;
+		case 0x00020422:
+			/* Ukrainian (Enhanced) */
+			break;
+		case 0x00000420:
+			/* Urdu */
+			break;
+		case 0x00050409:
+			/* US English Table for IBM Arabic 238_L */
+			break;
+		case 0x00000480:
+			/* Uyghur (Legacy) */
+			break;
+		case 0x00010480:
+			/* Uyghur */
+			break;
+		case 0x0000042A:
+			/* Vietnamese */
+			break;
+		case 0x00000485:
+			/* Yakut */
+			break;
+		case 0x0000046A:
+			/* Yoruba */
+			break;
+#endif
+	}
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALVAR uimr CurKyBdLytNm = 0;
+#endif
+
+#if ItnlKyBdFix
+LOCALFUNC blnr tStrIsHex(TCHAR *s, int n, uimr *r)
+{
+	short i;
+	TCHAR c1;
+	TCHAR *p = s;
+	uimr v = 0;
+
+	for (i = n; --i >= 0; ) {
+		v <<= 4;
+		c1 = *p++;
+		if ((c1 >= '0') && (c1 <= '9')) {
+			v += c1 - '0';
+		} else if ((c1 >= 'A') && (c1 <= 'F')) {
+			v += c1 - ('A' - 10);
+		} else if ((c1 >= 'a') && (c1 <= 'f')) {
+			v += c1 - ('a' - 10);
+		} else {
+			return falseblnr;
+		}
+	}
+
+	*r = v;
+	return trueblnr;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALFUNC blnr MyGetKeyboardLayoutHex(uimr *r)
+{
+	TCHAR s[KL_NAMELENGTH];
+	blnr IsOk = falseblnr;
+
+	if (! GetKeyboardLayoutName(s)) {
+		/* ReportWinLastError(); */
+	} else {
+		size_t n = _tcslen(s);
+
+		if (8 != n) {
+			/* fail */
+		} else {
+			IsOk = tStrIsHex(s, n, r);
+		}
+	}
+
+	return IsOk;
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyCheckKeyboardLayout(void)
+{
+	uimr sv;
+
+	if (! MyGetKeyboardLayoutHex(&sv)) {
+	} else if (sv == CurKyBdLytNm) {
+		/* no change */
+	} else {
+		CurKyBdLytNm = sv;
+
+		MyVkMapFromLayout(sv);
+	}
+}
+#endif
+
+#if ItnlKyBdFix
+LOCALPROC MyInitCheckKeyboardLayout(void)
+{
+	uimr sv;
+
+	if (! MyGetKeyboardLayoutHex(&sv)) {
+		sv = 0x00000409;
+	}
+
+	CurKyBdLytNm = sv;
+
+	MyVkMapFromLayout(sv);
+}
+#endif
+
 LOCALVAR si3b WinKey2Mac[256];
 
 LOCALPROC AssignOneMacKey(ui3b WinKey, si3b MacKey)
@@ -615,14 +1750,26 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 	AssignOneMacKey(myVK_SCROLL, MKC_ScrollLock);
 	AssignOneMacKey(myVK_PAUSE, MKC_Pause);
 
+	AssignOneMacKey(myVK_OEM_102, MKC_AngleBracket);
+
 	InitKeyCodes();
+
+#if ItnlKyBdFix
+	MyInitCheckKeyboardLayout();
+#endif
 
 	return trueblnr;
 }
 
 LOCALPROC DoKeyCode(int i, blnr down)
 {
-	int key = WinKey2Mac[i];
+	int key = WinKey2Mac[
+#if ItnlKyBdFix
+		MyVkMapA[i]
+#else
+		i
+#endif
+		];
 	if (key >= 0) {
 		Keyboard_UpdateKeyMap2(key, down);
 	}
@@ -4624,6 +5771,12 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 #endif
 
 			break;
+#if ItnlKyBdFix
+		case WM_INPUTLANGCHANGE:
+			MyCheckKeyboardLayout();
+			return TRUE;
+			break;
+#endif
 
 		case WM_CLOSE:
 			RequestMacOff = trueblnr;

@@ -261,6 +261,7 @@ enum {
 	gbk_targ_lspr, /* X11 for linux on SPARC */
 	gbk_targ_fbsd, /* FreeBSD for x86 */
 	gbk_targ_fb64, /* FreeBSD for x64 */
+	gbk_targ_fbpc, /* FreeBSD for PowerPC */
 	gbk_targ_obsd, /* OpenBSD for x86 */
 	gbk_targ_ob64, /* OpenBSD for x64 */
 	gbk_targ_nbsd, /* NetBSD for x86 */
@@ -344,6 +345,9 @@ LOCALFUNC char * GetTargetName(int i)
 			break;
 		case gbk_targ_fb64:
 			s = "fb64";
+			break;
+		case gbk_targ_fbpc:
+			s = "fbpc";
 			break;
 		case gbk_targ_obsd:
 			s = "obsd";
@@ -431,7 +435,7 @@ LOCALFUNC tMyErr ChooseTarg(void)
 	return err;
 }
 
-/* derived option: target cpu family */
+/* derived (usually) option: target cpu family */
 
 enum {
 	gbk_cpufam_68k, /* Motorola 680x0 */
@@ -447,61 +451,111 @@ enum {
 
 LOCALVAR int gbo_cpufam;
 
+LOCALPROC ResetCPUFamOption(void)
+{
+	gbo_cpufam = kListOptionAuto;
+}
+
+LOCALFUNC char * GetCPUFamName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_cpufam_68k:
+			s = "68k";
+			break;
+		case gbk_cpufam_ppc:
+			s = "ppc";
+			break;
+		case gbk_cpufam_x86:
+			s = "x86";
+			break;
+		case gbk_cpufam_spr:
+			s = "spr";
+			break;
+		case gbk_cpufam_arm:
+			s = "arm";
+			break;
+		case gbk_cpufam_x64:
+			s = "x64";
+			break;
+		case gbk_cpufam_mip:
+			s = "mip";
+			break;
+		case gbk_cpufam_gen:
+			s = "gen";
+			break;
+		default:
+			s = "(unknown CPU)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC tMyErr TryAsCPUFamOptionNot(void)
+{
+	return FindNamedOption("-cpu",
+		kNumCPUFamilies, GetCPUFamName, &gbo_cpufam);
+}
+
 LOCALPROC ChooseCPUFam(void)
 {
-	switch (cur_targ) {
-		case gbk_targ_m68k:
-		case gbk_targ_mfpu:
-			gbo_cpufam = gbk_cpufam_68k;
-			break;
-		case gbk_targ_mppc:
-		case gbk_targ_carb:
-		case gbk_targ_mach:
-		case gbk_targ_mx11:
-		case gbk_targ_lppc:
-			gbo_cpufam = gbk_cpufam_ppc;
-			break;
-		case gbk_targ_wx86:
-		case gbk_targ_wc86:
-		case gbk_targ_lx86:
-		case gbk_targ_sl86:
-		case gbk_targ_fbsd:
-		case gbk_targ_obsd:
-		case gbk_targ_nbsd:
-		case gbk_targ_dbsd:
-		case gbk_targ_oind:
-		case gbk_targ_minx:
-		case gbk_targ_imch:
-		case gbk_targ_mi11:
-		case gbk_targ_cygw:
-			gbo_cpufam = gbk_cpufam_x86;
-			break;
-		case gbk_targ_lspr:
-		case gbk_targ_slrs:
-			gbo_cpufam = gbk_cpufam_spr;
-			break;
-		case gbk_targ_wcar:
-		case gbk_targ_ndsa:
-		case gbk_targ_larm:
-			gbo_cpufam = gbk_cpufam_arm;
-			break;
-		case gbk_targ_mc64:
-		case gbk_targ_lx64:
-		case gbk_targ_wx64:
-		case gbk_targ_fb64:
-		case gbk_targ_ob64:
-		case gbk_targ_nb64:
-		case gbk_targ_db64:
-		case gbk_targ_oi64:
-		case gbk_targ_mx64:
-			gbo_cpufam = gbk_cpufam_x64;
-			break;
-		case gbk_targ_irix:
-			gbo_cpufam = gbk_cpufam_mip;
-			break;
-		case gbk_targ_xgen:
-			gbo_cpufam = gbk_cpufam_gen;
-			break;
+	if (kListOptionAuto == gbo_cpufam) {
+		switch (cur_targ) {
+			case gbk_targ_m68k:
+			case gbk_targ_mfpu:
+				gbo_cpufam = gbk_cpufam_68k;
+				break;
+			case gbk_targ_mppc:
+			case gbk_targ_carb:
+			case gbk_targ_mach:
+			case gbk_targ_mx11:
+			case gbk_targ_lppc:
+			case gbk_targ_fbpc:
+				gbo_cpufam = gbk_cpufam_ppc;
+				break;
+			case gbk_targ_wx86:
+			case gbk_targ_wc86:
+			case gbk_targ_lx86:
+			case gbk_targ_sl86:
+			case gbk_targ_fbsd:
+			case gbk_targ_obsd:
+			case gbk_targ_nbsd:
+			case gbk_targ_dbsd:
+			case gbk_targ_oind:
+			case gbk_targ_minx:
+			case gbk_targ_imch:
+			case gbk_targ_mi11:
+			case gbk_targ_cygw:
+				gbo_cpufam = gbk_cpufam_x86;
+				break;
+			case gbk_targ_lspr:
+			case gbk_targ_slrs:
+				gbo_cpufam = gbk_cpufam_spr;
+				break;
+			case gbk_targ_wcar:
+			case gbk_targ_ndsa:
+			case gbk_targ_larm:
+				gbo_cpufam = gbk_cpufam_arm;
+				break;
+			case gbk_targ_mc64:
+			case gbk_targ_lx64:
+			case gbk_targ_wx64:
+			case gbk_targ_fb64:
+			case gbk_targ_ob64:
+			case gbk_targ_nb64:
+			case gbk_targ_db64:
+			case gbk_targ_oi64:
+			case gbk_targ_mx64:
+				gbo_cpufam = gbk_cpufam_x64;
+				break;
+			case gbk_targ_irix:
+				gbo_cpufam = gbk_cpufam_mip;
+				break;
+			case gbk_targ_xgen:
+				gbo_cpufam = gbk_cpufam_gen;
+				break;
+		}
 	}
 }
 
@@ -561,6 +615,7 @@ LOCALPROC ChooseTargFam(void)
 			break;
 		case gbk_targ_fbsd:
 		case gbk_targ_fb64:
+		case gbk_targ_fbpc:
 			gbo_targfam = gbk_targfam_fbsd;
 			break;
 		case gbk_targ_obsd:
@@ -1542,6 +1597,7 @@ LOCALPROC ChooseAssembler(void)
 LOCALPROC GNResetCommandLineParameters(void)
 {
 	ResetTargetOption();
+	ResetCPUFamOption();
 	ResetIdeOption();
 	ResetIdeVersOption();
 	ResetCmndLine();
@@ -1569,6 +1625,7 @@ LOCALFUNC tMyErr TryAsGNOptionNot(void)
 	tMyErr err;
 
 	if (kMyErrNoMatch == (err = TryAsTargetOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsCPUFamOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeVersOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsCmndLineOptionNot()))

@@ -1207,7 +1207,8 @@ LOCALPROC DoSaveNewFile(void)
 		"Select destination\311", 0)))
 	{
 		UpdateProgressBar();
-		err = CreateOpenNewFile_v2((StringPtr)"\pOutput File", s,
+		err = CreateOpenNewFile_v2((StringPtr)"\pOutput File",
+			(StringPtr)"\p",
 			'GrBl' /* creator (ExportFl) */,
 			'TEXT' /* type */,
 			&d, s, &refNum);
