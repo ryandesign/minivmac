@@ -582,6 +582,12 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 		SonyWantChecksumsUpdated);
 	WriteDestFileLn("#define Sony_VerifyChecksums 0");
 
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define CaretBlinkTime ");
+	WriteCStrToDestFile("0x");
+	WriteHexByteToOutput(cur_CaretBlinkTime);
+	WriteEndDestFileLn();
+
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
 

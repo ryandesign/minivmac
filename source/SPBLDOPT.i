@@ -1376,6 +1376,47 @@ LOCALPROC ChooseUseAsm68k(void)
 		&& (! WantDisasm);
 }
 
+/* option: Parameter RAM CaretBlinkTime */
+	/* usually in 3 (Fast), 8 (Medium), 15 (Slow) */
+
+LOCALVAR uimr cur_CaretBlinkTime;
+LOCALVAR blnr have_CaretBlinkTime;
+
+LOCALPROC ResetCaretBlinkTimeOption(void)
+{
+	have_CaretBlinkTime = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsCaretBlinkTimeOptionNot(void)
+{
+	return NumberTryAsOptionNot("-cbt",
+		(long *)&cur_CaretBlinkTime, &have_CaretBlinkTime);
+}
+
+LOCALFUNC tMyErr ChooseCaretBlinkTime(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_CaretBlinkTime) {
+		if ((cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx)) {
+			cur_CaretBlinkTime = 8;
+		} else {
+			cur_CaretBlinkTime = 3;
+		}
+
+		have_CaretBlinkTime = trueblnr;
+	} else {
+		if ((cur_CaretBlinkTime <= 0) || (cur_CaretBlinkTime > 15)) {
+			ReportParseFailure(
+				"-cbt must be a number between 1 and 15");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -1411,6 +1452,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetMouseMotionOption();
 	ResetNeedIntl();
 	ResetItnlKyBdFixOption();
+	ResetCaretBlinkTimeOption();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -1448,6 +1490,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsMouseMotionOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsNeedIntlNot()))
 	if (kMyErrNoMatch == (err = TryAsItnlKyBdFixNot()))
+	if (kMyErrNoMatch == (err = TryAsCaretBlinkTimeOptionNot()))
 	{
 	}
 
@@ -1473,6 +1516,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseVidMemSize()))
 	if (noErr == (err = ChooseSndApiOption()))
 	if (noErr == (err = ChooseItnlKyBdFix()))
+	if (noErr == (err = ChooseCaretBlinkTime()))
 	{
 		ChooseEmCpuVers();
 		ChooseInitFullScreen();

@@ -116,6 +116,15 @@ LOCALPROC WriteUnsignedToOutput(uimr v)
 #endif
 }
 
+LOCALPROC WriteHexByteToOutput(unsigned int v)
+{
+	MyPStr s;
+
+	s[0] = 2;
+	ui3r2Hex(v, PStrToMyCharPtr(s));
+	strmo_writePStr(s);
+}
+
 LOCALPROC WriteHexWordToOutput(unsigned int v)
 {
 	MyPStr s;

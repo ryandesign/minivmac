@@ -108,14 +108,6 @@ LOCALVAR ui5b LastRealDate;
 #endif
 #endif
 
-#ifndef CaretBlinkTime /* in 3,8,15 */
-#if (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)
-#define CaretBlinkTime 8
-#else
-#define CaretBlinkTime 3
-#endif
-#endif
-
 #ifndef DiskCacheSz /* in 1,2,3,4,6,8,12 */
 /* actual cache size is DiskCacheSz * 32k */
 #if (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)
