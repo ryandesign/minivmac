@@ -562,8 +562,14 @@ Label_2:
 	return trueblnr;
 }
 
-LOCALVAR blnr EmVideoDisable = falseblnr;
-LOCALVAR si3b EmLagTime = 0;
+GLOBALVAR blnr EmVideoDisable = falseblnr;
+GLOBALVAR si3b EmLagTime = 0;
+
+GLOBALVAR ui5b OnTrueTime = 0;
+	/*
+		The time slice we are currently dealing
+		with, in the same units as TrueEmulatedTime.
+	*/
 
 LOCALVAR si4b ScreenChangedTop;
 LOCALVAR si4b ScreenChangedLeft;

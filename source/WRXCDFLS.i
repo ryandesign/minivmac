@@ -158,7 +158,7 @@ LOCALPROC WriteAPBXCDSepA(void)
 	if (0 == APBXCDForceSameLine) {
 		WriteNextLineSameDent();
 	} else {
-		WriteCStrToDestFile(" ");
+		strmo_writeSpace();
 	}
 }
 
@@ -175,7 +175,7 @@ LOCALPROC WriteAPBXCDDObjectAPropEnd(void)
 	if (0 == APBXCDForceSameLine) {
 		WriteEndDestFileLn();
 	} else {
-		WriteCStrToDestFile(" ");
+		strmo_writeSpace();
 	}
 }
 
@@ -1230,7 +1230,7 @@ LOCALPROC WriteAPBplist(void)
 	WriteCStrToDestFile("-//Apple Computer//DTD PLIST 1.0//EN");
 	WriteBackSlashToDestFile();
 	WriteQuoteToDestFile();
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteBackSlashToDestFile();
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(

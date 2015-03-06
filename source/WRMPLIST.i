@@ -174,7 +174,7 @@ LOCALPROC WriteMainPLC(MyProc p)
 LOCALPROC WritepDtIconTypeName(void)
 {
 	WriteStrAppUnabrevName();
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteCStrToDestFile(DoDocType_gd()->LongName);
 }
 
@@ -246,7 +246,7 @@ LOCALPROC WriteMyInfoPListContents(void)
 		WritePListKeyProcString("CFBundleSignature",
 			Write_MacCreatorSigOrGeneric);
 		WritePListKeyProcString("CFBundleVersion", WriteVersionStr);
-		WritePListKeyString("LSRequiresCarbon", "true/");
+		WritePListKeyString("LSRequiresCarbon", "1");
 
 	WritePListEndDict();
 }

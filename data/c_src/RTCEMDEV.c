@@ -84,14 +84,6 @@ LOCALVAR ui5b LastRealDate;
 #define RTCinitPRAM 1
 #endif
 
-#ifndef SpeakerVol /* in 0..7 */
-#if MySoundEnabled
-#define SpeakerVol 7
-#else
-#define SpeakerVol 0
-#endif
-#endif
-
 #ifndef TrackSpeed /* in 0..4 */
 #define TrackSpeed 0
 #endif

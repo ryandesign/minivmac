@@ -242,12 +242,22 @@ LOCALPROC WriteCompCondBool(char *s, blnr v)
 	WriteEndDestFileLn();
 }
 
+LOCALPROC WriteDefineUimr(char *s, uimr v)
+{
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define ");
+	WriteCStrToDestFile(s);
+	strmo_writeSpace();
+	WriteUnsignedToOutput(v);
+	WriteEndDestFileLn();
+}
+
 LOCALPROC WriteCDefQuote(char *s, MyProc p)
 {
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define ");
 	WriteCStrToDestFile(s);
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteQuoteToDestFile();
 	p();
 	WriteQuoteToDestFile();
@@ -748,7 +758,7 @@ LOCALPROC WritePathArgInMakeCmnd(MyProc p)
 		case gbk_ide_msv:
 		case gbk_ide_dkp:
 		case gbk_ide_ccc:
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteQuoteToDestFile();
 			p();
 			WriteQuoteToDestFile();
@@ -759,7 +769,7 @@ LOCALPROC WritePathArgInMakeCmnd(MyProc p)
 		case gbk_ide_plc:
 		case gbk_ide_dvc:
 		case gbk_ide_mgw:
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			p();
 			break;
 		default:
@@ -801,7 +811,7 @@ LOCALPROC WriteMakeDependFile(MyProc p)
 	switch (cur_ide) {
 		case gbk_ide_msv:
 		case gbk_ide_mpw:
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteQuoteToDestFile();
 			p();
 			WriteQuoteToDestFile();
@@ -817,7 +827,7 @@ LOCALPROC WriteMakeDependFile(MyProc p)
 		case gbk_ide_plc:
 		case gbk_ide_dkp:
 		case gbk_ide_ccc:
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			p();
 			break;
 		default:
@@ -1102,7 +1112,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 			WritePathArgInMakeCmnd(psrc);
 			WriteCStrToDestFile(" -o");
 			WritePathArgInMakeCmnd(pobj);
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteMakeVar("mk_COptions");
 			if (UseAPI) {
 				if (gbo_apifam == gbk_apifam_xwn) {
@@ -1150,7 +1160,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 		case gbk_ide_msv:
 			WriteCompileCExec();
 			WritePathArgInMakeCmnd(psrc);
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteMakeVar("mk_COptions");
 			break;
 		case gbk_ide_lcc:
@@ -1158,7 +1168,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 			WritePathArgInMakeCmnd(psrc);
 			WriteCStrToDestFile(" -Fo");
 			pobj();
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteMakeVar("mk_COptions");
 			break;
 		case gbk_ide_dmc:
@@ -1166,7 +1176,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 			WritePathArgInMakeCmnd(psrc);
 			WriteCStrToDestFile(" -o");
 			pobj();
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteMakeVar("mk_COptions");
 			break;
 		case gbk_ide_plc:
@@ -1176,7 +1186,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 			WriteQuoteToDestFile();
 			pobj();
 			WriteQuoteToDestFile();
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteMakeVar("mk_COptions");
 			break;
 		default:
@@ -1215,7 +1225,7 @@ LOCALPROC WriteCompileAsm(MyProc psrc, MyProc obj)
 	WritePathArgInMakeCmnd(psrc);
 	WriteCStrToDestFile(" -o");
 	WritePathArgInMakeCmnd(obj);
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteMakeVar("mk_AOptions");
 	WriteEndDestFileLn();
 }

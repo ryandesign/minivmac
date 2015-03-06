@@ -872,306 +872,14 @@ LOCALPROC dbglog_close0(void)
 
 #include "COMOSGLU.h"
 
-/* --- sound --- */
-
-LOCALVAR ui5b CurEmulatedTime = 0;
-
-#if MySoundEnabled
-
-#define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
-#define kSoundBuffers (1 << kLn2SoundBuffers)
-#define kSoundBuffMask (kSoundBuffers - 1)
-
-#define DesiredMinFilledSoundBuffs 3
-	/*
-		if too big then sound lags behind emulation.
-		if too small then sound will have pauses.
-	*/
-
-#define kLnOneBuffLen 9
-#define kLnAllBuffLen (kLn2SoundBuffers + kLnOneBuffLen)
-#define kOneBuffLen (1UL << kLnOneBuffLen)
-#define kAllBuffLen (1UL << kLnAllBuffLen)
-#define kLnOneBuffSz (kLnOneBuffLen + kLn2SoundSampSz - 3)
-#define kLnAllBuffSz (kLnAllBuffLen + kLn2SoundSampSz - 3)
-#define kOneBuffSz (1UL << kLnOneBuffSz)
-#define kAllBuffSz (1UL << kLnAllBuffSz)
-#define kOneBuffMask (kOneBuffLen - 1)
-#define kAllBuffMask (kAllBuffLen - 1)
-#define dbhBufferSize (kAllBuffSz + kOneBuffSz)
-
-#define dbglog_SoundStuff 0
-#define dbglog_SoundBuffStats (dbglog_HAVE && 0)
-
-LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
-volatile static ui4b ThePlayOffset;
-volatile static ui4b TheFillOffset;
-volatile static blnr wantplaying;
-volatile static ui4b MinFilledSoundBuffs;
-#if dbglog_SoundBuffStats
-LOCALVAR ui4b MaxFilledSoundBuffs;
-#endif
-LOCALVAR ui4b TheWriteOffset;
-
-#if MySoundRecenterSilence
-#define SilentBlockThreshold 96
-LOCALVAR trSoundSamp LastSample = 0x00;
-LOCALVAR trSoundSamp LastModSample;
-LOCALVAR ui4r SilentBlockCounter;
-#endif
-
-LOCALPROC RampSound(tpSoundSamp p,
-	trSoundSamp BeginVal, trSoundSamp EndVal)
-{
-	int i;
-	ui5r v = (((ui5r)BeginVal) << kLnOneBuffLen) + (kLnOneBuffLen >> 1);
-
-	for (i = kOneBuffLen; --i >= 0; ) {
-		*p++ = v >> kLnOneBuffLen;
-		v = v + EndVal - BeginVal;
-	}
-}
-
-#if 4 == kLn2SoundSampSz
-LOCALPROC ConvertSoundBlockToNative(tpSoundSamp p)
-{
-	int i;
-
-	for (i = kOneBuffLen; --i >= 0; ) {
-		*p++ -= 0x8000;
-	}
-}
-#else
-#define ConvertSoundBlockToNative(p)
-#endif
-
-#if 4 == kLn2SoundSampSz
-#define ConvertSoundSampleToNative(v) ((v) + 0x8000)
-#else
-#define ConvertSoundSampleToNative(v) (v)
-#endif
-
-/* Structs */
-struct PerChanInfo {
-	volatile ui4b (*CurPlayOffset);
-	volatile ui4b (*CurFillOffset);
-	volatile ui4b (*MinFilledSoundBuffs);
-	volatile blnr PlayingBuffBlock;
-	volatile trSoundSamp lastv;
-	volatile blnr (*wantplaying);
-	tpSoundSamp dbhBufferPtr;
-	CmpSoundHeader /* ExtSoundHeader */ soundHeader;
-};
-typedef struct PerChanInfo   PerChanInfo;
-typedef struct PerChanInfo * PerChanInfoPtr;
-
-
-LOCALVAR PerChanInfo TheperChanInfoR;
-
-LOCALVAR SndCallBackUPP gCarbonSndPlayDoubleBufferCallBackUPP = NULL;
-
-LOCALVAR SndChannelPtr sndChannel = NULL; /* our sound channel */
-
-LOCALPROC MySound_BeginPlaying(void)
-{
-#if dbglog_SoundStuff
-	fprintf(stderr, "MySound_BeginPlaying\n");
-#endif
-
-	if (NULL != sndChannel) {
-		SndCommand callBack;
-
-		callBack.cmd = callBackCmd;
-		callBack.param1 = 0; /* unused */
-		callBack.param2 = (long)&TheperChanInfoR;
-
-		sndChannel->callBack = gCarbonSndPlayDoubleBufferCallBackUPP;
-
-		(void) SndDoCommand (sndChannel, &callBack, true);
-	}
-}
-
-LOCALPROC MySound_WroteABlock(void)
-{
-#if MySoundRecenterSilence || (4 == kLn2SoundSampSz)
-	ui4b PrevWriteOffset = TheWriteOffset - kOneBuffLen;
-	tpSoundSamp p = TheSoundBuffer + (PrevWriteOffset & kAllBuffMask);
-#endif
-
-#if MySoundRecenterSilence
-	int i;
-	tpSoundSamp p0;
-	trSoundSamp lastv = LastSample;
-	blnr GotSilentBlock = trueblnr;
-
-	p0 = p;
-	for (i = kOneBuffLen; --i >= 0; ) {
-		trSoundSamp v = *p++;
-		if (v != lastv) {
-			LastSample = *(p0 + kOneBuffLen - 1);
-			GotSilentBlock = falseblnr;
-			goto label_done;
-		}
-	}
-label_done:
-	p = p0;
-
-	if (GotSilentBlock) {
-		if ((! wantplaying) && (PrevWriteOffset == ThePlayOffset)) {
-			TheWriteOffset = PrevWriteOffset;
-			return; /* forget this block */
-		}
-		++SilentBlockCounter;
-#if dbglog_SoundStuff
-		fprintf(stderr, "GotSilentBlock %d\n", SilentBlockCounter);
-#endif
-		if (SilentBlockCounter >= SilentBlockThreshold) {
-			trSoundSamp NewModSample;
-
-			if (SilentBlockThreshold == SilentBlockCounter) {
-				LastModSample = LastSample;
-			} else {
-				SilentBlockCounter = SilentBlockThreshold;
-					/* prevent overflow */
-			}
-#if 3 == kLn2SoundSampSz
-			if (LastModSample > kCenterSound) {
-				NewModSample = LastModSample - 1;
-			} else if (LastModSample < kCenterSound) {
-				NewModSample = LastModSample + 1;
-			} else {
-				NewModSample = kCenterSound;
-			}
-#elif 4 == kLn2SoundSampSz
-			if (LastModSample > kCenterSound + 0x0100) {
-				NewModSample = LastModSample - 0x0100;
-			} else if (LastModSample < kCenterSound - 0x0100) {
-				NewModSample = LastModSample + 0x0100;
-			} else {
-				NewModSample = kCenterSound;
-			}
-#else
-#error "unsupported kLn2SoundSampSz"
-#endif
-#if dbglog_SoundStuff
-			fprintf(stderr, "LastModSample %d\n", LastModSample);
-#endif
-			RampSound(p, LastModSample, NewModSample);
-			LastModSample = NewModSample;
-		}
-	} else {
-#if EnableAutoSlow && 0
-		QuietEnds();
-#endif
-
-		if (SilentBlockCounter >= SilentBlockThreshold) {
-			tpSoundSamp pramp;
-			ui4b TotLen = TheWriteOffset
-				- ThePlayOffset;
-			ui4b TotBuffs = TotLen >> kLnOneBuffLen;
-
-			if (TotBuffs >= 3) {
-				pramp = TheSoundBuffer
-					+ ((PrevWriteOffset - kOneBuffLen) & kAllBuffMask);
-			} else {
-				pramp = p;
-				p = TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
-				MyMoveBytes((anyp)pramp, (anyp)p, kOneBuffSz);
-				TheWriteOffset += kOneBuffLen;
-			}
-#if dbglog_SoundStuff
-			fprintf(stderr, "LastModSample %d\n", LastModSample);
-			fprintf(stderr, "LastSample %d\n", LastSample);
-#endif
-			RampSound(pramp, LastModSample, LastSample);
-			ConvertSoundBlockToNative(pramp);
-		}
-		SilentBlockCounter = 0;
-	}
-#endif
-
-	ConvertSoundBlockToNative(p);
-
-	if (wantplaying) {
-		TheFillOffset = TheWriteOffset;
-	} else if (((TheWriteOffset - ThePlayOffset) >> kLnOneBuffLen) < 12)
-	{
-		/* just wait */
-	} else {
-		TheFillOffset = TheWriteOffset;
-		wantplaying = trueblnr;
-		MySound_BeginPlaying();
-	}
-
-#if dbglog_SoundBuffStats
-	{
-		ui4b ToPlayLen = TheFillOffset
-			- ThePlayOffset;
-		ui4b ToPlayBuffs = ToPlayLen >> kLnOneBuffLen;
-
-		if (ToPlayBuffs > MaxFilledSoundBuffs) {
-			MaxFilledSoundBuffs = ToPlayBuffs;
-		}
-	}
-#endif
-}
-
-GLOBALPROC MySound_EndWrite(ui4r actL)
-{
-	TheWriteOffset += actL;
-
-	if (0 == (TheWriteOffset & kOneBuffMask)) {
-		/* just finished a block */
-
-		MySound_WroteABlock();
-	}
-}
-
-GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
-{
-	ui4b ToFillLen = kAllBuffLen - (TheWriteOffset - ThePlayOffset);
-	ui4b WriteBuffContig =
-		kOneBuffLen - (TheWriteOffset & kOneBuffMask);
-
-	if (WriteBuffContig < n) {
-		n = WriteBuffContig;
-	}
-	if (ToFillLen < n) {
-		/* overwrite previous buffer */
-		TheWriteOffset -= kOneBuffLen;
-	}
-
-	*actL = n;
-	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
-}
-
-LOCALPROC MySound_SecondNotify(void)
-{
-	if (sndChannel != NULL) {
-		if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
-			++CurEmulatedTime;
-		} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
-			--CurEmulatedTime;
-		}
-#if dbglog_SoundBuffStats
-		fprintf(DumpFile, "MinFilledSoundBuffs = %d\n",
-			MinFilledSoundBuffs);
-		fprintf(DumpFile, "MaxFilledSoundBuffs = %d\n",
-			MaxFilledSoundBuffs);
-		MaxFilledSoundBuffs = 0;
-#endif
-		MinFilledSoundBuffs = kSoundBuffers;
-	}
-}
-
-#endif
-
 /* --- time, date --- */
 
 /*
 	be sure to avoid getting confused if TickCount
 	overflows and wraps.
 */
+
+#define dbglog_TimeStuff (0 && dbglog_HAVE)
 
 LOCALVAR ui5b TrueEmulatedTime = 0;
 
@@ -1185,10 +893,15 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 	EventTime TimeDiff = LatestTime - NextTickChangeTime;
 
 	if (TimeDiff >= 0.0) {
-		if (TimeDiff > 3 * MyTickDuration) {
+		if (TimeDiff > 16 * MyTickDuration) {
 			/* emulation interrupted, forget it */
 			++TrueEmulatedTime;
 			NextTickChangeTime = LatestTime + MyTickDuration;
+
+#if dbglog_TimeStuff
+			dbglog_writelnNum("emulation interrupted",
+				TrueEmulatedTime);
+#endif
 		} else {
 			do {
 				++TrueEmulatedTime;
@@ -1198,8 +911,6 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 		}
 	}
 }
-
-LOCALVAR ui5b OnTrueTime = 0;
 
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
@@ -1927,153 +1638,17 @@ LOCALPROC CheckMouseState(void)
 LOCALVAR blnr gLackFocusFlag = falseblnr;
 LOCALVAR blnr gWeAreActive = falseblnr;
 
-LOCALPROC RunEmulatedTicksToTrueTime(void)
+GLOBALPROC DoneWithDrawingForTick(void)
 {
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-#if MySoundEnabled
-			MySound_SecondNotify();
-#endif
-		}
-
-		if (gWeAreActive) {
-			CheckMouseState();
-		}
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-
 #if EnableMouseMotion && MayFullScreen
-		if (HaveMouseMotion) {
-			AutoScrollScreen();
-		}
+	if (HaveMouseMotion) {
+		AutoScrollScreen();
+	}
 #endif
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			/* lagging, catch up */
-
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
-}
-
-LOCALVAR EventRef EventForMyLowPriority = nil;
-
-LOCALPROC PostMyLowPriorityTasksEvent(void)
-{
-	EventQueueRef mq = GetMainEventQueue();
-
-	if (IsEventInQueue(mq, EventForMyLowPriority)) {
-		(void) RemoveEventFromQueue(mq, EventForMyLowPriority);
-	}
-	(void) SetEventTime(EventForMyLowPriority, GetCurrentEventTime());
-
-	if (noErr == PostEventToQueue(mq,
-		EventForMyLowPriority, kEventPriorityLow))
-	{
-	}
+	MyDrawChangesAndClear();
 }
 
 LOCALVAR blnr CurSpeedStopped = trueblnr;
-
-LOCALPROC PostIfStoppedLowPriorityEvent(void)
-{
-	if (CurSpeedStopped) {
-		PostMyLowPriorityTasksEvent();
-	}
-}
-
-static pascal void MyTimerProc(EventLoopTimerRef inTimer,
-	void *inUserData)
-{
-	UnusedParam(inUserData);
-
-	if (CurSpeedStopped) {
-		(void) SetEventLoopTimerNextFireTime(
-			inTimer, kEventDurationForever);
-	} else {
-		UpdateTrueEmulatedTime();
-		{
-			EventTimeout inTimeout =
-				NextTickChangeTime - GetCurrentEventTime();
-			if (inTimeout > 0.0) {
-				(void) SetEventLoopTimerNextFireTime(
-					inTimer, inTimeout);
-				/*
-					already a periodic timer, this is just to make
-					sure of accuracy.
-				*/
-			}
-		}
-
-		OnTrueTime = TrueEmulatedTime;
-		RunEmulatedTicksToTrueTime();
-
-		PostMyLowPriorityTasksEvent();
-	}
-}
-
-LOCALVAR EventLoopTimerRef MyTimerRef = NULL;
-
-LOCALFUNC blnr InitMyLowPriorityTasksEvent(void)
-{
-	if (noErr != InstallEventLoopTimer(GetMainEventLoop(),
-		kEventDurationMinute, /* will set actual time later */
-		MyTickDuration,
-		NewEventLoopTimerUPP(MyTimerProc),
-		NULL, &MyTimerRef))
-	{
-		MyTimerRef = NULL;
-	} else if (noErr != CreateEvent(nil,
-		'MnvM', 'MnvM', GetCurrentEventTime(),
-		kEventAttributeNone, &EventForMyLowPriority))
-	{
-		EventForMyLowPriority = nil;
-	} else {
-		if (noErr == PostEventToQueue(GetMainEventQueue(),
-			EventForMyLowPriority, kEventPriorityLow))
-		{
-			return trueblnr;
-			/* ReleaseEvent(EventForMyLowPriority); */
-		}
-	}
-
-	return falseblnr;
-}
-
-LOCALPROC UnInitMyLowPriorityTasksEvent(void)
-{
-	if (NULL != MyTimerRef) {
-		(void) RemoveEventLoopTimer(MyTimerRef);
-	}
-	if (nil != EventForMyLowPriority) {
-		EventQueueRef mq = GetMainEventQueue();
-
-		if (IsEventInQueue(mq, EventForMyLowPriority)) {
-			(void) RemoveEventFromQueue(mq, EventForMyLowPriority);
-		}
-		ReleaseEvent(EventForMyLowPriority);
-	}
-}
 
 /* --- keyboard --- */
 
@@ -2437,6 +2012,8 @@ LOCALFUNC blnr InitLocationDat(void)
 		}
 	}
 
+	OnTrueTime = TrueEmulatedTime;
+
 	return trueblnr;
 }
 
@@ -2445,34 +2022,200 @@ LOCALPROC StartUpTimeAdjust(void)
 	NextTickChangeTime = GetCurrentEventTime() + MyTickDuration;
 }
 
-/* --- sound, part 2 --- */
+/* --- sound --- */
 
 #if MySoundEnabled
 
+#define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
+#define kSoundBuffers (1 << kLn2SoundBuffers)
+#define kSoundBuffMask (kSoundBuffers - 1)
+
+#define DesiredMinFilledSoundBuffs 3
+	/*
+		if too big then sound lags behind emulation.
+		if too small then sound will have pauses.
+	*/
+
+#define kLnOneBuffLen 9
+#define kLnAllBuffLen (kLn2SoundBuffers + kLnOneBuffLen)
+#define kOneBuffLen (1UL << kLnOneBuffLen)
+#define kAllBuffLen (1UL << kLnAllBuffLen)
+#define kLnOneBuffSz (kLnOneBuffLen + kLn2SoundSampSz - 3)
+#define kLnAllBuffSz (kLnAllBuffLen + kLn2SoundSampSz - 3)
+#define kOneBuffSz (1UL << kLnOneBuffSz)
+#define kAllBuffSz (1UL << kLnAllBuffSz)
+#define kOneBuffMask (kOneBuffLen - 1)
+#define kAllBuffMask (kAllBuffLen - 1)
+#define dbhBufferSize (kAllBuffSz + kOneBuffSz)
+
+#define dbglog_SoundStuff (0 && dbglog_HAVE)
+#define dbglog_SoundBuffStats (0 && dbglog_HAVE)
+
+LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
+volatile static ui4b ThePlayOffset;
+volatile static ui4b TheFillOffset;
+volatile static ui4b MinFilledSoundBuffs;
+#if dbglog_SoundBuffStats
+LOCALVAR ui4b MaxFilledSoundBuffs;
+#endif
+LOCALVAR ui4b TheWriteOffset;
+
 LOCALPROC MySound_Start0(void)
 {
+	/* Reset variables */
 	ThePlayOffset = 0;
 	TheFillOffset = 0;
 	TheWriteOffset = 0;
-	MinFilledSoundBuffs = kSoundBuffers;
+	MinFilledSoundBuffs = kSoundBuffers + 1;
 #if dbglog_SoundBuffStats
 	MaxFilledSoundBuffs = 0;
 #endif
-	wantplaying = falseblnr;
+}
 
-#if MySoundRecenterSilence
-	LastModSample = kCenterSound;
-	SilentBlockCounter = SilentBlockThreshold;
+GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
+{
+	ui4b ToFillLen = kAllBuffLen - (TheWriteOffset - ThePlayOffset);
+	ui4b WriteBuffContig =
+		kOneBuffLen - (TheWriteOffset & kOneBuffMask);
+
+	if (WriteBuffContig < n) {
+		n = WriteBuffContig;
+	}
+	if (ToFillLen < n) {
+		/* overwrite previous buffer */
+#if dbglog_SoundStuff
+		dbglog_writeln("sound buffer over flow");
+#endif
+		TheWriteOffset -= kOneBuffLen;
+	}
+
+	*actL = n;
+	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
+}
+
+#if 4 == kLn2SoundSampSz
+LOCALPROC ConvertSoundBlockToNative(tpSoundSamp p)
+{
+	int i;
+
+	for (i = kOneBuffLen; --i >= 0; ) {
+		*p++ -= 0x8000;
+	}
+}
+#else
+#define ConvertSoundBlockToNative(p)
+#endif
+
+LOCALPROC MySound_WroteABlock(void)
+{
+#if (4 == kLn2SoundSampSz)
+	ui4b PrevWriteOffset = TheWriteOffset - kOneBuffLen;
+	tpSoundSamp p = TheSoundBuffer + (PrevWriteOffset & kAllBuffMask);
+#endif
+
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_WroteABlock");
+#endif
+
+	ConvertSoundBlockToNative(p);
+
+	TheFillOffset = TheWriteOffset;
+
+#if dbglog_SoundBuffStats
+	{
+		ui4b ToPlayLen = TheFillOffset
+			- ThePlayOffset;
+		ui4b ToPlayBuffs = ToPlayLen >> kLnOneBuffLen;
+
+		if (ToPlayBuffs > MaxFilledSoundBuffs) {
+			MaxFilledSoundBuffs = ToPlayBuffs;
+		}
+	}
 #endif
 }
+
+LOCALFUNC blnr MySound_EndWrite0(ui4r actL)
+{
+	blnr v;
+
+	TheWriteOffset += actL;
+
+	if (0 != (TheWriteOffset & kOneBuffMask)) {
+		v = falseblnr;
+	} else {
+		/* just finished a block */
+
+		MySound_WroteABlock();
+
+		v = trueblnr;
+	}
+
+	return v;
+}
+
+LOCALPROC MySound_SecondNotify0(void)
+{
+	if (MinFilledSoundBuffs <= kSoundBuffers) {
+		if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too high");
+#endif
+			NextTickChangeTime += MyTickDuration;
+		} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too low");
+#endif
+			++TrueEmulatedTime;
+		}
+#if dbglog_SoundBuffStats
+		dbglog_writelnNum("MinFilledSoundBuffs",
+			MinFilledSoundBuffs);
+		dbglog_writelnNum("MaxFilledSoundBuffs",
+			MaxFilledSoundBuffs);
+		MaxFilledSoundBuffs = 0;
+#endif
+		MinFilledSoundBuffs = kSoundBuffers + 1;
+	}
+}
+
+LOCALPROC RampSound(tpSoundSamp p,
+	trSoundSamp BeginVal, trSoundSamp EndVal)
+{
+	int i;
+	ui5r v = (((ui5r)BeginVal) << kLnOneBuffLen) + (kLnOneBuffLen >> 1);
+
+	for (i = kOneBuffLen; --i >= 0; ) {
+		*p++ = v >> kLnOneBuffLen;
+		v = v + EndVal - BeginVal;
+	}
+}
+
+#if 4 == kLn2SoundSampSz
+#define ConvertSoundSampleFromNative(v) ((v) + 0x8000)
+#else
+#define ConvertSoundSampleFromNative(v) (v)
+#endif
+
+struct MySoundR {
+	tpSoundSamp fTheSoundBuffer;
+	volatile ui4b (*fPlayOffset);
+	volatile ui4b (*fFillOffset);
+	volatile ui4b (*fMinFilledSoundBuffs);
+
+	volatile blnr PlayingBuffBlock;
+	volatile trSoundSamp lastv;
+	volatile blnr wantplaying;
+	volatile blnr StartingBlocks;
+
+	CmpSoundHeader /* ExtSoundHeader */ soundHeader;
+};
+typedef struct MySoundR   MySoundR;
+
 
 /*
 	Some of this code descended from CarbonSndPlayDB, an
 	example from Apple, as found being used in vMac for Mac OS.
 */
-
-#define SOUND_SAMPLERATE rate22khz
-	/* = 0x56EE8BA3 = (7833600 * 2 / 704) << 16 */
 
 LOCALPROC InsertSndDoCommand(SndChannelPtr chan, SndCommand * newCmd)
 {
@@ -2492,76 +2235,101 @@ LOCALPROC InsertSndDoCommand(SndChannelPtr chan, SndCommand * newCmd)
 /* call back */ static pascal void
 MySound_CallBack(SndChannelPtr theChannel, SndCommand * theCallBackCmd)
 {
-	PerChanInfoPtr perChanInfoPtr =
-		(PerChanInfoPtr)(theCallBackCmd->param2);
-	blnr wantplaying0 = *perChanInfoPtr->wantplaying;
+	MySoundR *datp =
+		(MySoundR *)(theCallBackCmd->param2);
+	blnr wantplaying0 = datp->wantplaying;
+	trSoundSamp v0 = datp->lastv;
 
 #if dbglog_SoundStuff
-	fprintf(stderr, "Enter MySound_CallBack\n");
+	dbglog_writeln("Enter MySound_CallBack");
 #endif
 
-	if (perChanInfoPtr->PlayingBuffBlock) {
+	if (datp->PlayingBuffBlock) {
 		/* finish with last sample */
 #if dbglog_SoundStuff
-		fprintf(stderr, "done with sample\n");
+		dbglog_writeln("done with sample");
 #endif
 
-		*perChanInfoPtr->CurPlayOffset += kOneBuffLen;
-		perChanInfoPtr->PlayingBuffBlock = falseblnr;
+		*datp->fPlayOffset += kOneBuffLen;
+		datp->PlayingBuffBlock = falseblnr;
 	}
 
-	if ((! wantplaying0) && (kCenterSound == perChanInfoPtr->lastv)) {
+	if ((! wantplaying0) && (kCenterSound == v0)) {
 #if dbglog_SoundStuff
-		fprintf(stderr, "terminating\n");
+		dbglog_writeln("terminating");
 #endif
 	} else {
 		SndCommand playCmd;
 		tpSoundSamp p;
-		ui4b CurPlayOffset = *perChanInfoPtr->CurPlayOffset;
-		ui4b ToPlayLen = *perChanInfoPtr->CurFillOffset - CurPlayOffset;
+		trSoundSamp v1 = v0;
+		blnr WantRamp = falseblnr;
+		ui4b CurPlayOffset = *datp->fPlayOffset;
+		ui4b ToPlayLen = *datp->fFillOffset - CurPlayOffset;
 		ui4b FilledSoundBuffs = ToPlayLen >> kLnOneBuffLen;
 
-		if (FilledSoundBuffs < *perChanInfoPtr->MinFilledSoundBuffs) {
-			*perChanInfoPtr->MinFilledSoundBuffs = FilledSoundBuffs;
+		if (FilledSoundBuffs < *datp->fMinFilledSoundBuffs) {
+			*datp->fMinFilledSoundBuffs = FilledSoundBuffs;
 		}
 
-		if (wantplaying0 && (0 != FilledSoundBuffs)) {
-			/* play next sample */
-			p = perChanInfoPtr->dbhBufferPtr
-				+ (CurPlayOffset & kAllBuffMask);
-			perChanInfoPtr->PlayingBuffBlock = trueblnr;
-			perChanInfoPtr->lastv =
-				ConvertSoundSampleToNative(*(p + kOneBuffLen - 1));
+		if (! wantplaying0) {
 #if dbglog_SoundStuff
-			fprintf(stderr, "playing sample\n");
+			dbglog_writeln("playing end transistion");
 #endif
-		} else {
+			v1 = kCenterSound;
+
+			WantRamp = trueblnr;
+		} else
+		if (datp->StartingBlocks) {
 #if dbglog_SoundStuff
-			fprintf(stderr, "playing transistion\n");
+			dbglog_writeln("playing start block");
 #endif
-			/* play transition */
-			trSoundSamp v0 = perChanInfoPtr->lastv;
-			trSoundSamp v1 = v0;
-			p = perChanInfoPtr->dbhBufferPtr + kAllBuffLen;
-			if (! wantplaying0) {
+
+			if ((ToPlayLen >> kLnOneBuffLen) < 12) {
+				datp->StartingBlocks = falseblnr;
 #if dbglog_SoundStuff
-				fprintf(stderr, "transistion to silence\n");
+				dbglog_writeln("have enough samples to start");
 #endif
-				v1 = kCenterSound;
-				perChanInfoPtr->lastv = kCenterSound;
+
+				p = datp->fTheSoundBuffer
+					+ (CurPlayOffset & kAllBuffMask);
+				v1 = ConvertSoundSampleFromNative(*p);
 			}
 
+			WantRamp = trueblnr;
+		} else
+		if (0 == FilledSoundBuffs) {
 #if dbglog_SoundStuff
-			fprintf(stderr, "v0 %d\n", v0);
-			fprintf(stderr, "v1 %d\n", v1);
+			dbglog_writeln("playing under run");
+#endif
+
+			WantRamp = trueblnr;
+		} else
+		{
+			/* play next sample */
+			p = datp->fTheSoundBuffer
+				+ (CurPlayOffset & kAllBuffMask);
+			datp->PlayingBuffBlock = trueblnr;
+			v1 =
+				ConvertSoundSampleFromNative(*(p + kOneBuffLen - 1));
+#if dbglog_SoundStuff
+			dbglog_writeln("playing sample");
+#endif
+		}
+
+		if (WantRamp) {
+			p = datp->fTheSoundBuffer + kAllBuffLen;
+
+#if dbglog_SoundStuff
+			dbglog_writelnNum("v0", v0);
+			dbglog_writelnNum("v1", v1);
 #endif
 
 			RampSound(p, v0, v1);
 			ConvertSoundBlockToNative(p);
 		}
 
-		perChanInfoPtr->soundHeader.samplePtr = (Ptr)p;
-		perChanInfoPtr->soundHeader.numFrames =
+		datp->soundHeader.samplePtr = (Ptr)p;
+		datp->soundHeader.numFrames =
 			(unsigned long)kOneBuffLen;
 
 		/* Insert our callback command */
@@ -2571,9 +2339,9 @@ MySound_CallBack(SndChannelPtr theChannel, SndCommand * theCallBackCmd)
 		{
 			int i;
 			tpSoundSamp pS =
-				(tpSoundSamp)perChanInfoPtr->soundHeader.samplePtr;
+				(tpSoundSamp)datp->soundHeader.samplePtr;
 
-			for (i = perChanInfoPtr->soundHeader.numFrames; --i >= 0; )
+			for (i = datp->soundHeader.numFrames; --i >= 0; )
 			{
 				fprintf(stderr, "%d\n", *pS++);
 			}
@@ -2583,125 +2351,200 @@ MySound_CallBack(SndChannelPtr theChannel, SndCommand * theCallBackCmd)
 		/* Play the next buffer */
 		playCmd.cmd = bufferCmd;
 		playCmd.param1 = 0;
-		playCmd.param2 = (long)&(perChanInfoPtr->soundHeader);
+		playCmd.param2 = (long)&(datp->soundHeader);
 		InsertSndDoCommand (theChannel, &playCmd);
+
+		datp->lastv = v1;
 	}
 }
 
+LOCALVAR MySoundR cur_audio;
+
+LOCALVAR SndCallBackUPP gCarbonSndPlayDoubleBufferCallBackUPP = NULL;
+
+LOCALVAR SndChannelPtr sndChannel = NULL; /* our sound channel */
 
 LOCALPROC MySound_Start(void)
 {
+#if dbglog_SoundStuff
+	dbglog_writeln("MySound_Start");
+#endif
+
 	if (NULL == sndChannel) {
-		SndChannelPtr  chan = NULL;
+		SndCommand callBack;
+		SndChannelPtr chan = NULL;
+
+		cur_audio.wantplaying = falseblnr;
+		cur_audio.StartingBlocks = falseblnr;
 
 		MySound_Start0();
 
 		SndNewChannel(&chan, sampledSynth, initMono, nil);
-		if (chan != NULL) {
+		if (NULL != chan) {
 			sndChannel = chan;
 
-			TheperChanInfoR.PlayingBuffBlock = falseblnr;
-			TheperChanInfoR.lastv = kCenterSound;
+			cur_audio.PlayingBuffBlock = falseblnr;
+			cur_audio.lastv = kCenterSound;
+			cur_audio.StartingBlocks = trueblnr;
+			cur_audio.wantplaying = trueblnr;
+
+			callBack.cmd = callBackCmd;
+			callBack.param1 = 0; /* unused */
+			callBack.param2 = (long)&cur_audio;
+
+			sndChannel->callBack =
+				gCarbonSndPlayDoubleBufferCallBackUPP;
+
+			(void) SndDoCommand (sndChannel, &callBack, true);
 		}
 	}
 }
 
-#define IgnorableEventMask \
-	(mUpMask | keyDownMask | keyUpMask | autoKeyMask)
-
 LOCALPROC MySound_Stop(void)
 {
-	if (sndChannel != NULL) {
-#if 1
-/*
-		this may not be necessary, but try to clean up
-		in case it might help prevent problems.
-*/
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_Stop");
+#endif
+
+	if (NULL != sndChannel) {
+		ui4r retry_limit = 50; /* half of a second */
 		SCStatus r;
-		blnr busy = falseblnr;
 
-		wantplaying = falseblnr;
-		do {
-			r.scChannelBusy = falseblnr; /* what is this for? */
-			if (noErr == SndChannelStatus(sndChannel,
-				sizeof(SCStatus), &r))
-			{
-				busy = r.scChannelBusy;
-			}
-#if 0
-			if (busy) {
-				/*
-					give time back, particularly important
-					if got here on a suspend event.
-				*/
-				/*
-					Oops, no. Not with carbon events. Our
-					own callbacks can get called, such
-					as MyTimerProc.
-				*/
-				EventRecord theEvent;
+		cur_audio.wantplaying = falseblnr;
+#if dbglog_SoundStuff
+		dbglog_writeln("cleared wantplaying");
+#endif
 
-				{
-					(void) WaitNextEvent(IgnorableEventMask,
-						&theEvent, 1, NULL);
-				}
-			}
+label_retry:
+		r.scChannelBusy = falseblnr; /* what is this for? */
+		if (noErr != SndChannelStatus(sndChannel,
+			sizeof(SCStatus), &r))
+		{
+			/* fail */
+		} else
+		if ((! r.scChannelBusy) && (kCenterSound == cur_audio.lastv)) {
+			/* done */
+
+			/*
+				observed reporting not busy unexpectedly,
+				so also check lastv.
+			*/
+		} else
+		if (0 == --retry_limit) {
+#if dbglog_SoundStuff
+			dbglog_writeln("retry limit reached");
 #endif
-		} while (busy);
+			/*
+				don't trust SndChannelStatus, make
+				sure don't get in infinite loop.
+			*/
+
+			/* done */
+		} else
+		{
+			/*
+				give time back, particularly important
+				if got here on a suspend event.
+			*/
+			struct timespec rqt;
+			struct timespec rmt;
+
+#if dbglog_SoundStuff
+			dbglog_writeln("busy, so sleep");
 #endif
+
+			rqt.tv_sec = 0;
+			rqt.tv_nsec = 10000000;
+			(void) nanosleep(&rqt, &rmt);
+
+			goto label_retry;
+		}
+
 		SndDisposeChannel(sndChannel, true);
 		sndChannel = NULL;
 	}
+
+#if dbglog_SoundStuff
+	dbglog_writeln("leave MySound_Stop");
+#endif
 }
+
+#define SOUND_SAMPLERATE rate22khz
+	/* = 0x56EE8BA3 = (7833600 * 2 / 704) << 16 */
 
 LOCALFUNC blnr MySound_Init(void)
 {
-	gCarbonSndPlayDoubleBufferCallBackUPP =
-		NewSndCallBackUPP(MySound_CallBack);
-	if (gCarbonSndPlayDoubleBufferCallBackUPP != NULL) {
-		TheperChanInfoR.dbhBufferPtr = TheSoundBuffer;
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_Init");
+#endif
 
-		TheperChanInfoR.CurPlayOffset = &ThePlayOffset;
-		TheperChanInfoR.CurFillOffset = &TheFillOffset;
-		TheperChanInfoR.MinFilledSoundBuffs = &MinFilledSoundBuffs;
-		TheperChanInfoR.wantplaying = &wantplaying;
+	cur_audio.fTheSoundBuffer = TheSoundBuffer;
 
-		/* Init basic per channel information */
-		TheperChanInfoR.soundHeader.sampleRate = SOUND_SAMPLERATE;
-			/* sample rate */
-		TheperChanInfoR.soundHeader.numChannels = 1; /* one channel */
-		TheperChanInfoR.soundHeader.loopStart = 0;
-		TheperChanInfoR.soundHeader.loopEnd = 0;
-		TheperChanInfoR.soundHeader.encode = cmpSH /* extSH */;
-		TheperChanInfoR.soundHeader.baseFrequency = kMiddleC;
-		TheperChanInfoR.soundHeader.numFrames =
-			(unsigned long)kOneBuffLen;
-		/* TheperChanInfoR.soundHeader.AIFFSampleRate = 0; */
-			/* unused */
-		TheperChanInfoR.soundHeader.markerChunk = nil;
-		TheperChanInfoR.soundHeader.futureUse2 = 0;
-		TheperChanInfoR.soundHeader.stateVars = nil;
-		TheperChanInfoR.soundHeader.leftOverSamples = nil;
-		TheperChanInfoR.soundHeader.compressionID = 0;
-			/* no compression */
-		TheperChanInfoR.soundHeader.packetSize = 0;
-			/* no compression */
-		TheperChanInfoR.soundHeader.snthID = 0;
-		TheperChanInfoR.soundHeader.sampleSize = (1 << kLn2SoundSampSz);
-			/* 8 or 16 bits per sample */
-		TheperChanInfoR.soundHeader.sampleArea[0] = 0;
+	cur_audio.fPlayOffset = &ThePlayOffset;
+	cur_audio.fFillOffset = &TheFillOffset;
+	cur_audio.fMinFilledSoundBuffs = &MinFilledSoundBuffs;
+	cur_audio.wantplaying = falseblnr;
+
+	/* Init basic per channel information */
+	cur_audio.soundHeader.sampleRate = SOUND_SAMPLERATE;
+		/* sample rate */
+	cur_audio.soundHeader.numChannels = 1; /* one channel */
+	cur_audio.soundHeader.loopStart = 0;
+	cur_audio.soundHeader.loopEnd = 0;
+	cur_audio.soundHeader.encode = cmpSH /* extSH */;
+	cur_audio.soundHeader.baseFrequency = kMiddleC;
+	cur_audio.soundHeader.numFrames =
+		(unsigned long)kOneBuffLen;
+	/* cur_audio.soundHeader.AIFFSampleRate = 0; */
+		/* unused */
+	cur_audio.soundHeader.markerChunk = nil;
+	cur_audio.soundHeader.futureUse2 = 0;
+	cur_audio.soundHeader.stateVars = nil;
+	cur_audio.soundHeader.leftOverSamples = nil;
+	cur_audio.soundHeader.compressionID = 0;
+		/* no compression */
+	cur_audio.soundHeader.packetSize = 0;
+		/* no compression */
+	cur_audio.soundHeader.snthID = 0;
+	cur_audio.soundHeader.sampleSize = (1 << kLn2SoundSampSz);
+		/* 8 or 16 bits per sample */
+	cur_audio.soundHeader.sampleArea[0] = 0;
 #if 3 == kLn2SoundSampSz
-		TheperChanInfoR.soundHeader.format = kSoundNotCompressed;
+	cur_audio.soundHeader.format = kSoundNotCompressed;
 #elif 4 == kLn2SoundSampSz
-		TheperChanInfoR.soundHeader.format = k16BitNativeEndianFormat;
+	cur_audio.soundHeader.format = k16BitNativeEndianFormat;
 #else
 #error "unsupported kLn2SoundSampSz"
 #endif
-		TheperChanInfoR.soundHeader.samplePtr = (Ptr)TheSoundBuffer;
+	cur_audio.soundHeader.samplePtr = (Ptr)TheSoundBuffer;
+
+	gCarbonSndPlayDoubleBufferCallBackUPP =
+		NewSndCallBackUPP(MySound_CallBack);
+	if (gCarbonSndPlayDoubleBufferCallBackUPP != NULL) {
+
+		MySound_Start();
+			/*
+				This should be taken care of by LeaveSpeedStopped,
+				but since takes a while to get going properly,
+				start early.
+			*/
 
 		return trueblnr;
 	}
 	return falseblnr;
+}
+
+GLOBALPROC MySound_EndWrite(ui4r actL)
+{
+	if (MySound_EndWrite0(actL)) {
+	}
+}
+
+LOCALPROC MySound_SecondNotify(void)
+{
+	if (sndChannel != NULL) {
+		MySound_SecondNotify0();
+	}
 }
 
 #endif
@@ -2986,8 +2829,6 @@ LOCALPROC ClearWeAreActive(void)
 #endif
 
 		ForceShowCursor();
-
-		PostIfStoppedLowPriorityEvent();
 	}
 }
 
@@ -3038,18 +2879,14 @@ LOCALPROC CheckSavedMacMsg(void)
 }
 
 LOCALVAR blnr gTrueBackgroundFlag = falseblnr;
-LOCALVAR blnr ADialogIsUp = falseblnr;
 
 LOCALPROC MyBeginDialog(void)
 {
 	ClearWeAreActive();
-	ADialogIsUp = trueblnr;
 }
 
 LOCALPROC MyEndDialog(void)
 {
-	ADialogIsUp = falseblnr;
-	PostIfStoppedLowPriorityEvent();
 }
 
 /* --- hide/show menubar --- */
@@ -3773,8 +3610,6 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 		/* vCheckSysCode */ (void) (AEDisposeDesc(&docList));
 	}
 
-	PostIfStoppedLowPriorityEvent();
-
 	return /* GetASysResultCode() */ 0;
 }
 
@@ -3802,8 +3637,6 @@ LOCALFUNC blnr GotRequiredParams0(AppleEvent *theAppleEvent)
 	if (GotRequiredParams(theAppleEvent)) {
 		RequestMacOff = trueblnr;
 	}
-
-	PostIfStoppedLowPriorityEvent();
 
 	return /* GetASysResultCode() */ 0;
 }
@@ -3937,8 +3770,6 @@ static pascal OSErr GlobalReceiveHandler(WindowRef pWindow,
 #endif
 	}
 
-	PostIfStoppedLowPriorityEvent();
-
 	return noErr;
 }
 
@@ -4034,7 +3865,6 @@ static pascal OSStatus windowEventHandler(
 				case kEventWindowClose:
 					RequestMacOff = trueblnr;
 					result = noErr;
-					PostIfStoppedLowPriorityEvent();
 					break;
 				case kEventWindowDrawContent:
 					Update_Screen();
@@ -4050,7 +3880,6 @@ static pascal OSStatus windowEventHandler(
 				case kEventWindowFocusAcquired:
 					gLackFocusFlag = falseblnr;
 					result = noErr;
-					PostIfStoppedLowPriorityEvent();
 					break;
 				case kEventWindowFocusRelinquish:
 					{
@@ -4752,8 +4581,6 @@ LOCALPROC LeaveSpeedStopped(void)
 #endif
 
 	StartUpTimeAdjust();
-	(void) SetEventLoopTimerNextFireTime(
-		MyTimerRef, MyTickDuration);
 }
 
 LOCALPROC EnterSpeedStopped(void)
@@ -4859,13 +4686,8 @@ LOCALPROC CheckForSavedTasks(void)
 		}
 	}
 
-	if (ForceMacOff) {
-		QuitApplicationEventLoop();
-		return;
-	}
-
 	if (! gWeAreActive) {
-		if (! (gTrueBackgroundFlag || ADialogIsUp || gLackFocusFlag)) {
+		if (! (gTrueBackgroundFlag || gLackFocusFlag)) {
 			gWeAreActive = trueblnr;
 			ReconnectKeyCodes3();
 			SetCursorArrow();
@@ -4935,8 +4757,6 @@ LOCALPROC CheckForSavedTasks(void)
 		ScreenChangedAll();
 	}
 
-	MyDrawChangesAndClear();
-
 	if (! gWeAreActive) {
 		/*
 			dialog during drag and drop hangs if in background
@@ -4968,8 +4788,6 @@ LOCALPROC CheckForSavedTasks(void)
 		if (RequestInsertDisk) {
 			RequestInsertDisk = falseblnr;
 			InsertADisk0();
-
-			PostIfStoppedLowPriorityEvent();
 		}
 	}
 
@@ -5096,7 +4914,6 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler,
 				case kEventAppActivated:
 					gTrueBackgroundFlag = falseblnr;
 					result = noErr;
-					PostIfStoppedLowPriorityEvent();
 					break;
 				case kEventAppDeactivated:
 					gTrueBackgroundFlag = trueblnr;
@@ -5115,7 +4932,6 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler,
 							kEventParamDirectObject, typeHICommand,
 							NULL, sizeof(HICommand), NULL, &hiCommand);
 						result = MyProcessCommand(hiCommand.commandID);
-						PostIfStoppedLowPriorityEvent();
 					}
 					break;
 			}
@@ -5128,28 +4944,17 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler,
 					case kEventRawKeyDown:
 						result = Keyboard_UpdateKeyMap3(
 							theEvent, trueblnr);
-						PostIfStoppedLowPriorityEvent();
 						break;
 					case kEventRawKeyUp:
 						result = Keyboard_UpdateKeyMap3(
 							theEvent, falseblnr);
-						PostIfStoppedLowPriorityEvent();
 						break;
 					case kEventRawKeyModifiersChanged:
 						HandleEventModifiers(theEvent);
 						result = noErr;
-						PostIfStoppedLowPriorityEvent();
 						break;
 					default:
 						break;
-				}
-			}
-			break;
-		case 'MnvM':
-			if ('MnvM' == eventKind) {
-				CheckForSavedTasks();
-				if (! CurSpeedStopped) {
-					DoEmulateExtraTime();
 				}
 			}
 			break;
@@ -5335,8 +5140,7 @@ LOCALFUNC blnr InstallOurEventHandlers(void)
 		{kEventClassKeyboard, kEventRawKeyUp},
 		{kEventClassApplication, kEventAppActivated},
 		{kEventClassApplication, kEventAppDeactivated},
-		{kEventClassCommand, kEventProcessCommand},
-		{'MnvM', 'MnvM'}
+		{kEventClassCommand, kEventProcessCommand}
 	};
 
 	InstallApplicationEventHandler(
@@ -5428,6 +5232,9 @@ LOCALFUNC blnr InitOSGLU(void)
 #if dbglog_HAVE
 	if (dbglog_open())
 #endif
+#if MySoundEnabled
+	if (MySound_Init())
+#endif
 	if (InstallOurAppearanceClient())
 	if (InstallOurEventHandlers())
 	if (InstallOurMenus())
@@ -5441,11 +5248,6 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (InitLocalTalk())
 #endif
 	if (InitLocationDat())
-#if MySoundEnabled
-	if (MySound_Init())
-#endif
-	if (InitMyLowPriorityTasksEvent())
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -5475,8 +5277,6 @@ LOCALPROC UnInitOSGLU(void)
 #if MayFullScreen
 	UngrabMachine();
 #endif
-
-	UnInitMyLowPriorityTasksEvent();
 
 #if MySoundEnabled
 	MySound_Stop();
@@ -5515,11 +5315,198 @@ LOCALPROC ZapOSGLUVars(void)
 	ZapWinStateVars();
 }
 
+GLOBALPROC WaitForNextTick(void)
+{
+	OSStatus err;
+	EventRef theEvent;
+	ui3r NumChecks;
+	EventTimeout inTimeout;
+	EventTargetRef theTarget = GetEventDispatcherTarget();
+
+	inTimeout = kEventDurationNoWait;
+
+label_retry:
+	NumChecks = 0;
+	while ((NumChecks < 32) && (noErr == (err =
+		ReceiveNextEvent(0, NULL, inTimeout,
+			true, &theEvent))))
+	{
+		(void) SendEventToEventTarget(theEvent, theTarget);
+		ReleaseEvent(theEvent);
+		inTimeout = kEventDurationNoWait;
+		++NumChecks;
+	}
+
+	CheckForSavedTasks();
+
+	if (ForceMacOff) {
+		return;
+	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		inTimeout = kEventDurationForever;
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
+		inTimeout =
+			NextTickChangeTime - GetCurrentEventTime();
+		if (inTimeout > 0.0) {
+#if 1
+			struct timespec rqt;
+			struct timespec rmt;
+
+			rqt.tv_sec = 0;
+			rqt.tv_nsec = inTimeout / kEventDurationNanosecond;
+			(void) nanosleep(&rqt, &rmt);
+			inTimeout = kEventDurationNoWait;
+			goto label_retry;
+#elif 1
+			usleep(inTimeout / kEventDurationMicrosecond);
+			inTimeout = kEventDurationNoWait;
+			goto label_retry;
+#else
+			/*
+				This has higher overhead.
+			*/
+			goto label_retry;
+#endif
+		}
+	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+	}
+
+	if (gWeAreActive) {
+		CheckMouseState();
+	}
+
+	OnTrueTime = TrueEmulatedTime;
+
+#if dbglog_TimeStuff
+	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
+#endif
+}
+
+/* adapted from Apple "Technical Q&A QA1061" */
+
+static pascal OSStatus EventLoopEventHandler(
+	EventHandlerCallRef inHandlerCallRef, EventRef inEvent,
+	void *inUserData)
+/*
+	This code contains the standard Carbon event dispatch loop,
+	as per "Inside Macintosh: Handling Carbon Events", Listing 3-10,
+	except:
+
+	o this loop supports yielding to cooperative threads based on the
+		application maintaining the gNumberOfRunningThreads global
+		variable, and
+
+	o it also works around a problem with the Inside Macintosh code
+		which unexpectedly quits when run on traditional Mac OS 9.
+
+	See RunApplicationEventLoopWithCooperativeThreadSupport for
+	an explanation of why this is inside a Carbon event handler.
+
+	The code in Inside Mac has a problem in that it quits the
+	event loop when ReceiveNextEvent returns an error.  This is
+	wrong because ReceiveNextEvent can return eventLoopQuitErr
+	when you call WakeUpProcess on traditional Mac OS.  So, rather
+	than relying on an error from ReceiveNextEvent, this routine tracks
+	whether the application is really quitting by installing a
+	customer handler for the kEventClassApplication/kEventAppQuit
+	Carbon event.  All the custom handler does is call through
+	to the previous handler and, if it returns noErr (which indicates
+	the application is quitting, it sets quitNow so that our event
+	loop quits.
+
+	Note that this approach continues to support
+	QuitApplicationEventLoop, which is a simple wrapper that just posts
+	a kEventClassApplication/kEventAppQuit event to the event loop.
+*/
+{
+	UnusedParam(inHandlerCallRef);
+	UnusedParam(inEvent);
+	UnusedParam(inUserData);
+
+	ProgramMain();
+	QuitApplicationEventLoop();
+
+	return noErr;
+}
+
+LOCALPROC RunApplicationEventLoopWithCooperativeThreadSupport(void)
+/*
+	A reimplementation of RunApplicationEventLoop that supports
+	yielding time to cooperative threads.
+*/
+{
+	static const EventTypeSpec eventSpec = {'KWIN', 'KWIN'};
+	EventHandlerUPP theEventLoopEventHandlerUPP = nil;
+	EventHandlerRef installedHandler = NULL;
+	EventRef dummyEvent = nil;
+
+/*
+	Install EventLoopEventHandler, create a dummy event and post it,
+	and then call RunApplicationEventLoop.  The rationale for this
+	is as follows:  We want to unravel RunApplicationEventLoop so
+	that we can can yield to cooperative threads.  In fact, the
+	core code for RunApplicationEventLoop is pretty easy (you
+	can see it above in EventLoopEventHandler).  However, if you
+	just execute this code you miss out on all the standard event
+	handlers.  These are relatively easy to reproduce (handling
+	the quit event and so on), but doing so is a pain because
+	a) it requires a bunch boilerplate code, and b) if Apple
+	extends the list of standard event handlers, your application
+	wouldn't benefit.  So, we execute our event loop from within
+	a Carbon event handler that we cause to be executed by
+	explicitly posting an event to our event loop.  Thus, the
+	standard event handlers are installed while our event loop runs.
+*/
+	if (nil == (theEventLoopEventHandlerUPP
+		= NewEventHandlerUPP(EventLoopEventHandler)))
+	{
+		/* fail */
+	} else
+	if (noErr != InstallEventHandler(GetApplicationEventTarget(),
+		theEventLoopEventHandlerUPP, 1, &eventSpec, nil,
+		&installedHandler))
+	{
+		/* fail */
+	} else
+	if (noErr != MacCreateEvent(nil, 'KWIN', 'KWIN',
+		GetCurrentEventTime(), kEventAttributeNone,
+		&dummyEvent))
+	{
+		/* fail */
+	} else
+	if (noErr != PostEventToQueue(GetMainEventQueue(),
+		dummyEvent, kEventPriorityHigh))
+	{
+		/* fail */
+	} else
+	{
+		RunApplicationEventLoop();
+	}
+
+	if (nil != dummyEvent) {
+		ReleaseEvent(dummyEvent);
+	}
+
+	if (NULL != installedHandler) {
+		(void) RemoveEventHandler(installedHandler);
+	}
+}
+
 int main(void)
 {
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
-		RunApplicationEventLoop();
+		RunApplicationEventLoopWithCooperativeThreadSupport();
 	}
 	UnInitOSGLU();
 

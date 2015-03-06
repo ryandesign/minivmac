@@ -2035,8 +2035,9 @@ LOCALPROC LowerMyPriority(void)
 
 /* --- time, date, location --- */
 
+#define dbglog_TimeStuff (0 && dbglog_HAVE)
+
 LOCALVAR ui5b TrueEmulatedTime = 0;
-LOCALVAR ui5b CurEmulatedTime = 0;
 
 #define MyInvTimeDivPow 16
 #define MyInvTimeDiv (1 << MyInvTimeDivPow)
@@ -2073,10 +2074,15 @@ LOCALFUNC blnr UpdateTrueEmulatedTime(void)
 		TimeDiff = (LatestTime - NextIntTime);
 			/* this should work even when time wraps */
 		if (TimeDiff >= 0) {
-			if (TimeDiff > 64) {
+			if (TimeDiff > 256) {
 				/* emulation interrupted, forget it */
 				++TrueEmulatedTime;
 				InitNextTime();
+
+#if dbglog_TimeStuff
+				dbglog_writelnNum("emulation interrupted",
+					TrueEmulatedTime);
+#endif
 			} else {
 				do {
 					++TrueEmulatedTime;
@@ -2085,11 +2091,13 @@ LOCALFUNC blnr UpdateTrueEmulatedTime(void)
 				} while (TimeDiff >= 0);
 			}
 			return trueblnr;
-		} else {
-			if (TimeDiff < -20) {
-				/* clock goofed if ever get here, reset */
-				InitNextTime();
-			}
+		} else if (TimeDiff < -256) {
+			/* clock goofed if ever get here, reset */
+#if dbglog_TimeStuff
+			dbglog_writeln("clock set back");
+#endif
+
+			InitNextTime();
 		}
 	}
 	return falseblnr;
@@ -2139,25 +2147,14 @@ LOCALFUNC blnr Init60thCheck(void)
 	}
 
 	LastTime = timeGetTime();
+	InitNextTime();
+
+	OnTrueTime = TrueEmulatedTime;
+
 	(void) CheckDateTime();
 
 	return trueblnr;
 }
-
-/* --- timer thread --- */
-
-#ifndef UseTimerThread
-#define UseTimerThread 1
-#endif
-
-#if UseTimerThread
-LOCALVAR HANDLE hMyThread = NULL;
-LOCALVAR DWORD MyThreadID;
-
-LOCALVAR blnr volatile QuitMyThread = falseblnr;
-
-LOCALVAR blnr volatile MyTimerIsRunning = falseblnr;
-LOCALVAR blnr volatile MyTimerShouldRun = falseblnr;
 
 #ifndef MyTimeResolution
 #define MyTimeResolution 3
@@ -2168,119 +2165,36 @@ LOCALVAR blnr volatile MyTimerShouldRun = falseblnr;
 		anyway, and should not cause much observable difference.
 	*/
 
-DWORD WINAPI MyThreadProc(void *pDat);
-
-DWORD WINAPI MyThreadProc(void *pDat)
-{
-	MSG msg;
-
-	UnusedParam(pDat);
-
-	(void) PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_REMOVE);
-		/* force creation of message queue */
-
-	while (! QuitMyThread) {
-		if (! MyTimerShouldRun) {
-			(void) GetMessage(&msg, NULL, WM_USER, WM_USER);
-			/*
-				sleep until someone sends us a message,
-				any WM_USER message, contents don't matter
-			*/
-		} else {
-#if MyTimeResolution != 0
-			TIMECAPS tc;
-			blnr HaveSetTimeResolution = falseblnr;
-			/*
-				Not clear whether timeBeginPeriod affects
-				thread or entire application, so call it
-				in here.
-			*/
-			if (timeGetDevCaps(&tc, sizeof(TIMECAPS))
-				== TIMERR_NOERROR)
-			{
-				if ((MyTimeResolution >= tc.wPeriodMin)
-					&& (MyTimeResolution <= tc.wPeriodMax))
-				{
-					if (timeBeginPeriod(MyTimeResolution)
-						== TIMERR_NOERROR)
-					{
-						HaveSetTimeResolution = trueblnr;
-					}
-				}
-			}
+#if (MyTimeResolution != 0)
+LOCALVAR blnr HaveSetTimeResolution = falseblnr;
 #endif
 
-			LastTime = timeGetTime();
-			InitNextTime();
-
-			MyTimerIsRunning = trueblnr;
-			do {
-				if (UpdateTrueEmulatedTime()) {
-					/* MSG msg; */
-					/*
-						(void) PeekMessage(&msg, MainWnd,
-							WM_USER, WM_USER, PM_REMOVE);
-					*/
-						/* if already have message, remove it */
-						/* no, not clear if thread safe */
-					(void) PostMessage(MainWnd, WM_USER, 0, 0);
-				}
-
-				Sleep(NextIntTime - LastTime);
-			} while (MyTimerShouldRun && ! QuitMyThread);
-			MyTimerIsRunning = falseblnr;
-
-#if MyTimeResolution != 0
-			if (HaveSetTimeResolution) {
-				(void) timeEndPeriod(MyTimeResolution);
-			}
-#endif
-		}
-	}
-	QuitMyThread = falseblnr;
-	return (0);
-}
-
+#if (MyTimeResolution != 0)
 LOCALPROC MyTimer_Suspend(void)
 {
-	MyTimerShouldRun = falseblnr;
+	if (HaveSetTimeResolution) {
+		(void) timeEndPeriod(MyTimeResolution);
+		HaveSetTimeResolution = falseblnr;
+	}
 }
+#endif
 
+#if (MyTimeResolution != 0)
 LOCALPROC MyTimer_Resume(void)
 {
-	if (! MyTimerShouldRun) {
-		MyTimerShouldRun = trueblnr;
+	TIMECAPS tc;
 
-		(void) PostThreadMessage(
-			MyThreadID, WM_USER, 0, 0);
-			/* wake up timer thread */
-	}
-}
-
-LOCALFUNC blnr MyTimer_Init(void)
-{
-	hMyThread = CreateThread(NULL, 0, MyThreadProc,
-		NULL, 0, &MyThreadID);
-	if (hMyThread == NULL) {
-		return falseblnr;
-	} else {
-		SetThreadPriority(hMyThread,
-			THREAD_PRIORITY_HIGHEST);
-		return trueblnr;
-	}
-}
-
-LOCALPROC MyTimer_UnInit(void)
-{
-	if (hMyThread != NULL) {
-		QuitMyThread = trueblnr;
-		if (! MyTimerShouldRun) {
-			(void) PostThreadMessage(
-				MyThreadID, WM_USER, 0, 0);
-				/* wake up timer thread */
-		}
-		while (QuitMyThread) {
-			Sleep(1);
+	if (timeGetDevCaps(&tc, sizeof(TIMECAPS))
+		== TIMERR_NOERROR)
+	{
+		if ((MyTimeResolution >= tc.wPeriodMin)
+			&& (MyTimeResolution <= tc.wPeriodMax))
+		{
+			if (timeBeginPeriod(MyTimeResolution)
+				== TIMERR_NOERROR)
+			{
+				HaveSetTimeResolution = trueblnr;
+			}
 		}
 	}
 }
@@ -2313,6 +2227,9 @@ LOCALPROC MyTimer_UnInit(void)
 #define kAllBuffMask (kAllBuffLen - 1)
 #define dbhBufferSize (kAllBuffSz + kOneBuffSz)
 
+#define dbglog_SoundStuff (0 && dbglog_HAVE)
+#define dbglog_SoundBuffStats (0 && dbglog_HAVE)
+
 LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
 LOCALVAR ui4b ThePlayOffset;
 LOCALVAR ui4b TheFillOffset;
@@ -2324,7 +2241,7 @@ LOCALVAR ui4b TheWriteOffset;
 	/* = round(7833600 * 2 / 704) */
 
 
-LOCALPROC FillWithSilence(ui3p p, int n, ui3b v)
+LOCALPROC FillWithSilence(tpSoundSamp p, int n, trSoundSamp v)
 {
 	int i;
 
@@ -2351,15 +2268,22 @@ LOCALPROC MySound_Start(void)
 		WAVEFORMATEX wfex;
 		MMRESULT mmr;
 		int i;
-		ui3p p;
+		tpSoundSamp p;
 		WAVEHDR *pwh;
 
 		wfex.wFormatTag = WAVE_FORMAT_PCM;
 		wfex.nChannels = 1;
 		wfex.nSamplesPerSec = SOUND_SAMPLERATE;
 		wfex.nAvgBytesPerSec = SOUND_SAMPLERATE;
+#if 3 == kLn2SoundSampSz
 		wfex.nBlockAlign = 1;
 		wfex.wBitsPerSample = 8;
+#elif 4 == kLn2SoundSampSz
+		wfex.nBlockAlign = 2;
+		wfex.wBitsPerSample = 16;
+#else
+#error "unsupported audio format"
+#endif
 		wfex.cbSize = 0;
 		mmr = waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfex, 0,
 			0 /* (DWORD) AppInstance */, CALLBACK_NULL);
@@ -2375,7 +2299,7 @@ LOCALPROC MySound_Start(void)
 			pwh = whdr;
 			for (i = 0; i < kSoundBuffers; ++i) {
 				pwh->lpData = (LPSTR)p;
-				pwh->dwBufferLength = kOneBuffLen;
+				pwh->dwBufferLength = kOneBuffSz;
 				pwh->dwBytesRecorded = 0;
 				pwh->dwUser = 0;
 				pwh->dwFlags = 0;
@@ -2498,12 +2422,28 @@ label_retry:
 	}
 }
 
+#if 4 == kLn2SoundSampSz
+LOCALPROC ConvertSoundBlockToNative(tpSoundSamp p)
+{
+	int i;
+
+	for (i = kOneBuffLen; --i >= 0; ) {
+		*p++ -= 0x8000;
+	}
+}
+#else
+#define ConvertSoundBlockToNative(p)
+#endif
+
 LOCALPROC MySound_FilledBlocks(void)
 {
 	while (0 != ((TheWriteOffset - TheFillOffset) >> kLnOneBuffLen)) {
 		ui4b CurFillBuffer =
 			(TheFillOffset >> kLnOneBuffLen) & kSoundBuffMask;
 		blnr IsOk = falseblnr;
+
+		ConvertSoundBlockToNative((tpSoundSamp)
+			whdr[CurFillBuffer].lpData);
 
 		if (hWaveOut != NULL) {
 			MMRESULT mmr = waveOutWrite(hWaveOut,
@@ -2574,9 +2514,15 @@ LOCALPROC MySound_SecondNotify(void)
 {
 	if (hWaveOut != NULL) {
 		if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
-			++CurEmulatedTime;
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too high");
+#endif
+			IncrNextTime();
 		} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
-			--CurEmulatedTime;
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too low");
+#endif
+			++TrueEmulatedTime;
 		}
 		MinFilledSoundBuffs = kSoundBuffers;
 	}
@@ -2637,12 +2583,9 @@ LOCALPROC AdjustMachineGrab(void)
 
 /* --- basic dialogs --- */
 
-LOCALVAR blnr ADialogIsUp = falseblnr;
-
 LOCALPROC MyBeginDialog(void)
 {
 	DisconnectKeyCodes3();
-	ADialogIsUp = trueblnr;
 #if MayFullScreen
 	GrabMachine = falseblnr;
 	UnGrabTheMachine();
@@ -2652,7 +2595,6 @@ LOCALPROC MyBeginDialog(void)
 
 LOCALPROC MyEndDialog(void)
 {
-	ADialogIsUp = falseblnr;
 	ReconnectKeyCodes3();
 }
 
@@ -3675,6 +3617,16 @@ LOCALPROC MyDrawChangesAndClear(void)
 			ScreenChangedBottom, ScreenChangedRight);
 		ScreenClearChanges();
 	}
+}
+
+GLOBALPROC DoneWithDrawingForTick(void)
+{
+#if EnableMouseMotion && MayFullScreen
+	if (HaveMouseMotion) {
+		AutoScrollScreen();
+	}
+#endif
+	MyDrawChangesAndClear();
 }
 
 LOCALFUNC blnr InitTheCursor(void)
@@ -5354,81 +5306,16 @@ LOCALPROC DragFunc(HDROP hDrop)
 }
 #endif
 
-LOCALVAR ui5b OnTrueTime = 0;
-
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
 #if MySoundEnabled
 	SoundCheckVeryOften();
 #endif
-#if ! UseTimerThread
 	(void) UpdateTrueEmulatedTime();
-#endif
-	return (TrueEmulatedTime == OnTrueTime)
-#if UseTimerThread
-		&& MyTimerIsRunning
-#endif
-		;
+	return (TrueEmulatedTime == OnTrueTime);
 }
 
 /* --- platform independent code can be thought of as going here --- */
-
-#include "PROGMAIN.h"
-
-LOCALPROC RunEmulatedTicksToTrueTime(void)
-{
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-#if MySoundEnabled
-			MySound_SecondNotify();
-#endif
-		}
-
-		if (! (gBackgroundFlag || ADialogIsUp)) {
-#if ! UseWinCE
-			CheckMouseState();
-#endif
-
-#if EnableGrabSpecialKeys
-			CheckForLostKeyUps();
-#endif
-		}
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-
-#if EnableMouseMotion && MayFullScreen
-		if (HaveMouseMotion) {
-			AutoScrollScreen();
-		}
-#endif
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			/* lagging, catch up */
-
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
-}
 
 LOCALPROC LeaveBackground(void)
 {
@@ -5451,18 +5338,18 @@ LOCALPROC LeaveSpeedStopped(void)
 #if MySoundEnabled
 	MySound_Start();
 #endif
-#if UseTimerThread
+#if (MyTimeResolution != 0)
 	MyTimer_Resume();
 #endif
 }
 
 LOCALPROC EnterSpeedStopped(void)
 {
+#if (MyTimeResolution != 0)
+	MyTimer_Suspend();
+#endif
 #if MySoundEnabled
 	MySound_Stop();
-#endif
-#if UseTimerThread
-	MyTimer_Suspend();
 #endif
 }
 
@@ -5525,7 +5412,7 @@ LOCALPROC CheckForSavedTasks(void)
 	}
 
 #if EnableMagnify || VarFullScreen
-	if (! (gTrueBackgroundFlag || ADialogIsUp)) {
+	if (! (gTrueBackgroundFlag)) {
 		CheckMagnifyAndFullScreen();
 	}
 #endif
@@ -5535,19 +5422,16 @@ LOCALPROC CheckForSavedTasks(void)
 #if VarFullScreen
 		UseFullScreen &&
 #endif
-		! (gTrueBackgroundFlag || ADialogIsUp || CurSpeedStopped)))
+		! (gTrueBackgroundFlag || CurSpeedStopped)))
 	{
 		GrabMachine = ! GrabMachine;
 		AdjustMachineGrab();
 	}
 #endif
 
-	if (gTrueBackgroundFlag || ADialogIsUp) {
+	if (gTrueBackgroundFlag) {
 		/*
 			wait til later
-			(shouldn't actually be possible to
-			get here if ADialogIsUp, but leave
-			test in to match mac version.)
 		*/
 	} else {
 #if IncludeSonyNew
@@ -5579,7 +5463,7 @@ LOCALPROC CheckForSavedTasks(void)
 	}
 
 	if (HaveCursorHidden != (WantCursorHidden
-		&& ! (gTrueBackgroundFlag || ADialogIsUp || CurSpeedStopped)))
+		&& ! (gTrueBackgroundFlag || CurSpeedStopped)))
 	{
 		HaveCursorHidden = ! HaveCursorHidden;
 		if (HaveCursorHidden) {
@@ -5598,13 +5482,7 @@ LOCALPROC CheckForSavedTasks(void)
 		NeedWholeScreenDraw = falseblnr;
 		ScreenChangedAll();
 	}
-
-	MyDrawChangesAndClear();
 }
-
-#if UseTimerThread
-LOCALVAR blnr GotTheTick = falseblnr;
-#endif
 
 #if UseWinCE
 /* Sip Status ON/OFF */
@@ -5619,13 +5497,6 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 {
 	switch (uMessage)
 	{
-#if UseTimerThread
-		case WM_USER:
-			OnTrueTime = TrueEmulatedTime;
-			RunEmulatedTicksToTrueTime();
-			GotTheTick = trueblnr;
-			break;
-#endif
 		case WM_PAINT:
 			{
 				PAINTSTRUCT ps;
@@ -5771,7 +5642,7 @@ LRESULT CALLBACK Win32WMProc(HWND hwnd,
 #endif
 
 			break;
-#if ItnlKyBdFix
+#if ItnlKyBdFix && ! UseWinCE
 		case WM_INPUTLANGCHANGE:
 			MyCheckKeyboardLayout();
 			return TRUE;
@@ -5891,65 +5762,68 @@ LOCALFUNC blnr RegisterOurClass(void)
 	}
 }
 
-LOCALPROC CheckForSystemEvents(void)
-{
-	MSG msg;
-
-	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-#if UseTimerThread
-		if (WM_USER == msg.message) {
-			/* ignore it, not ready for next tick yet */
-		} else
-#endif
-		{
-			DispatchMessage(&msg);
-		}
-	}
-}
-
 LOCALPROC WaitForTheNextEvent(void)
 {
 	MSG msg;
 
-	if (GetMessage(&msg, NULL, 0, 0) != -1) {
+	if (-1 != GetMessage(&msg, NULL, 0, 0)) {
 		DispatchMessage(&msg);
 	}
 }
 
-LOCALPROC RunOnEndOfSixtieth(void)
+LOCALPROC CheckForSystemEvents(void)
 {
-#if UseTimerThread
-	GotTheTick = falseblnr;
+	MSG msg;
+	ui3r i = 0;
 
-	while (! GotTheTick) {
-		WaitForTheNextEvent();
+	while ((i < 32) && (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))) {
+		DispatchMessage(&msg);
+		++i;
 	}
-#else
-	while (ExtraTimeNotOver()) {
+}
+
+GLOBALPROC WaitForNextTick(void)
+{
+label_retry:
+	CheckForSystemEvents();
+	CheckForSavedTasks();
+
+	if (ForceMacOff) {
+		return;
+	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		WaitForTheNextEvent();
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
 		Sleep(NextIntTime - LastTime);
+		goto label_retry;
+	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+	}
+
+	if (! (gBackgroundFlag)) {
+#if ! UseWinCE
+		CheckMouseState();
+#endif
+
+#if EnableGrabSpecialKeys
+		CheckForLostKeyUps();
+#endif
 	}
 
 	OnTrueTime = TrueEmulatedTime;
-	RunEmulatedTicksToTrueTime();
+
+#if dbglog_TimeStuff
+	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
 #endif
-}
-
-LOCALPROC MainEventLoop(void)
-{
-	for (; ; ) {
-		CheckForSystemEvents();
-		CheckForSavedTasks();
-		if (ForceMacOff) {
-			return;
-		}
-
-		if (CurSpeedStopped) {
-			WaitForTheNextEvent();
-		} else {
-			DoEmulateExtraTime();
-			RunOnEndOfSixtieth();
-		}
-	}
 }
 
 #if UseWinCE
@@ -6051,6 +5925,8 @@ LOCALPROC UninitHotKeys(void)
 	}
 }
 #endif
+
+#include "PROGMAIN.h"
 
 /* ************************ */
 
@@ -6160,10 +6036,6 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (InitHotKeys())
 #endif
 	if (Init60thCheck())
-#if UseTimerThread
-	if (MyTimer_Init())
-#endif
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -6172,8 +6044,8 @@ LOCALFUNC blnr InitOSGLU(void)
 
 LOCALPROC UnInitOSGLU(void)
 {
-#if UseTimerThread
-	MyTimer_UnInit();
+#if (MyTimeResolution != 0)
+	MyTimer_Suspend();
 #endif
 	MyMouseCaptureSet(falseblnr);
 
@@ -6232,7 +6104,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
-		MainEventLoop();
+		ProgramMain();
 	}
 	UnInitOSGLU();
 

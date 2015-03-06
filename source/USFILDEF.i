@@ -499,7 +499,7 @@ LOCALPROC DoSrcFileStandardMakeObjects(void)
 {
 	WriteBgnDestFileLn();
 	WriteSrcFileObjPath();
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteBackSlashToDestFile();
 	WriteEndDestFileLn();
 }

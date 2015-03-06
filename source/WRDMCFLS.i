@@ -24,7 +24,7 @@ LOCALPROC WriteMainRsrcObjDMCbuild(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("rcc.exe -o");
 	WriteMainRsrcObjPath();
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteMainRsrcSrcPath();
 	WriteEndDestFileLn();
 }

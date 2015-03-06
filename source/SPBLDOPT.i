@@ -1302,16 +1302,54 @@ LOCALPROC ChooseRomSize(void)
 	}
 }
 
+/* option: screen depth */
+
+LOCALVAR uimr cur_SoundSampSz;
+LOCALVAR blnr have_SoundSampSz;
+
+LOCALPROC ResetSoundSampSzOption(void)
+{
+	have_SoundSampSz = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsSoundSampSzOptionNot(void)
+{
+	return NumberTryAsOptionNot("-sss",
+		(long *)&cur_SoundSampSz, &have_SoundSampSz);
+}
+
+LOCALFUNC tMyErr ChooseSoundSampSz(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_SoundSampSz) {
+		if (gbk_sndapi_ddsp == gbo_sndapi) {
+			cur_SoundSampSz = 4;
+		} else {
+			cur_SoundSampSz = 3;
+		}
+		have_SoundSampSz = trueblnr;
+	} else {
+		if ((cur_SoundSampSz < 3) || (cur_SoundSampSz > 4)) {
+			ReportParseFailure(
+				"-sss must be 3 or 4");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
 /* total memory size */
 
 #define dbglog_buflnsz 18
 
 #define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
 #define kLnOneBuffLen 9
-#define kLn2SoundSampSz 3
 
 #define dbhBufferSize (((1UL << kLn2SoundBuffers) + 1UL) \
-	<< (kLnOneBuffLen + kLn2SoundSampSz - 3))
+	<< (kLnOneBuffLen + cur_SoundSampSz - 3))
 
 #define vMacScreenNumBytes ((((cur_hres * cur_vres) \
 	<< cur_ScrnDpth) + 7) >> 3)
@@ -1417,6 +1455,47 @@ LOCALFUNC tMyErr ChooseCaretBlinkTime(void)
 	return err;
 }
 
+/* option: Speaker Volume */
+	/* usually in 3 (Fast), 8 (Medium), 15 (Slow) */
+
+LOCALVAR uimr cur_SpeakerVol;
+LOCALVAR blnr have_SpeakerVol;
+
+LOCALPROC ResetSpeakerVolOption(void)
+{
+	have_SpeakerVol = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsSpeakerVolOptionNot(void)
+{
+	return NumberTryAsOptionNot("-svl",
+		(long *)&cur_SpeakerVol, &have_SpeakerVol);
+}
+
+LOCALFUNC tMyErr ChooseSpeakerVol(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_SpeakerVol) {
+		if (MySoundEnabled) {
+			cur_SpeakerVol = 7;
+		} else {
+			cur_SpeakerVol = 0;
+		}
+
+		have_SpeakerVol = trueblnr;
+	} else {
+		if ((cur_SpeakerVol < 0) || (cur_SpeakerVol >= 8)) {
+			ReportParseFailure(
+				"-svl must be a number between 0 and 7");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -1453,6 +1532,8 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetNeedIntl();
 	ResetItnlKyBdFixOption();
 	ResetCaretBlinkTimeOption();
+	ResetSpeakerVolOption();
+	ResetSoundSampSzOption();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -1491,6 +1572,8 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsNeedIntlNot()))
 	if (kMyErrNoMatch == (err = TryAsItnlKyBdFixNot()))
 	if (kMyErrNoMatch == (err = TryAsCaretBlinkTimeOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsSpeakerVolOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsSoundSampSzOptionNot()))
 	{
 	}
 
@@ -1517,6 +1600,8 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseSndApiOption()))
 	if (noErr == (err = ChooseItnlKyBdFix()))
 	if (noErr == (err = ChooseCaretBlinkTime()))
+	if (noErr == (err = ChooseSpeakerVol()))
+	if (noErr == (err = ChooseSoundSampSz()))
 	{
 		ChooseEmCpuVers();
 		ChooseInitFullScreen();

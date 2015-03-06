@@ -46,7 +46,7 @@ LOCALPROC WriteBeginMacro(char *s, uimr n, ptMacroParamToName p)
 			WriteCStrToDestFile("\t.macro ");
 			WriteCStrToDestFile(s);
 			if (n != 0) {
-				WriteCStrToDestFile(" ");
+				strmo_writeSpace();
 				WriteCStrToDestFile(p(0));
 				for (i = 1; i < n; i++) {
 					WriteCStrToDestFile(", ");
@@ -830,7 +830,7 @@ LOCALPROC WriteRegEquate(char *newname, char *oldname)
 			WriteBgnDestFileLn();
 			WriteCStrToDestFile("#define ");
 			WriteCStrToDestFile(newname);
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteCStrToDestFile(oldname);
 			WriteEndDestFileLn();
 			break;

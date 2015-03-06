@@ -156,7 +156,7 @@ LOCALPROC WriteMainRsrcObjLccbuild(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("lrc.exe -fo");
 	WriteMainRsrcObjPath();
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteMainRsrcSrcPath();
 	WriteEndDestFileLn();
 }

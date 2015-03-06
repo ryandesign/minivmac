@@ -974,6 +974,16 @@ LOCALPROC MyDrawChangesAndClear(void)
 	}
 }
 
+GLOBALPROC DoneWithDrawingForTick(void)
+{
+#if EnableMouseMotion && MayFullScreen
+	if (HaveMouseMotion) {
+		AutoScrollScreen();
+	}
+#endif
+	MyDrawChangesAndClear();
+}
+
 /* --- keyboard --- */
 
 LOCALVAR ui5b LastEmKeys[4];
@@ -1443,6 +1453,8 @@ LOCALPROC DisconnectKeyCodes3(void)
 
 /* --- time, date, location --- */
 
+#define dbglog_TimeStuff (0 && dbglog_HAVE)
+
 /*
 	be sure to avoid getting confused if TickCount
 	overflows and wraps.
@@ -1458,19 +1470,6 @@ LOCALVAR ui5b TrueEmulatedTime = 0;
 		(time when the emulation is
 		stopped for more than a few ticks
 		should not be counted.)
-	*/
-LOCALVAR ui5b CurEmulatedTime = 0;
-	/*
-		The number of ticks that have been
-		emulated so far.
-
-		That is, the number of times
-		"DoEmulateOneTick" has been called,
-		with the exception that CurEmulatedTime
-		can be adjusted if the emulation
-		needs to sped up or slowed down,
-		such as if sound output is lagging
-		or gaining.
 	*/
 
 LOCALVAR long int LastTime;
@@ -1497,16 +1496,23 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 		not for this port.
 	*/
 	long int LatestTime = TickCount();
-	ui5b TimeDiff = LatestTime - LastTime;
+	si5b TimeDiff = LatestTime - LastTime;
 
 	if (TimeDiff != 0) {
 		LastTime = LatestTime;
 
-		if (TimeDiff > 4) {
-			/* emulation interrupted, forget it */
-			++TrueEmulatedTime;
-		} else {
-			TrueEmulatedTime += TimeDiff;
+		if (TimeDiff >= 0) {
+			if (TimeDiff > 16) {
+				/* emulation interrupted, forget it */
+				++TrueEmulatedTime;
+
+#if dbglog_TimeStuff
+				dbglog_writelnNum("emulation interrupted",
+					TrueEmulatedTime);
+#endif
+			} else {
+				TrueEmulatedTime += TimeDiff;
+			}
 		}
 	}
 }
@@ -1550,7 +1556,6 @@ LOCALFUNC blnr InitLocationDat(void)
 
 #if MySoundEnabled
 
-
 #define kLn2SoundBuffers 4 /* kSoundBuffers must be a power of two */
 #define kSoundBuffers (1 << kLn2SoundBuffers)
 #define kSoundBuffMask (kSoundBuffers - 1)
@@ -1573,36 +1578,49 @@ LOCALFUNC blnr InitLocationDat(void)
 #define kAllBuffMask (kAllBuffLen - 1)
 #define dbhBufferSize (kAllBuffSz + kOneBuffSz)
 
-#define DbgLog_SoundStuff 0
-#define DbgLog_SoundBuffStats (dbglog_HAVE && 0)
+#define dbglog_SoundStuff (0 && dbglog_HAVE)
+#define dbglog_SoundBuffStats (0 && dbglog_HAVE)
 
 LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
 volatile static ui4b ThePlayOffset;
 volatile static ui4b TheFillOffset;
-volatile static blnr wantplaying;
 volatile static ui4b MinFilledSoundBuffs;
-#if DbgLog_SoundBuffStats
+#if dbglog_SoundBuffStats
 LOCALVAR ui4b MaxFilledSoundBuffs;
 #endif
 LOCALVAR ui4b TheWriteOffset;
 
-#if MySoundRecenterSilence
-#define SilentBlockThreshold 96
-LOCALVAR trSoundSamp LastSample = 0x00;
-LOCALVAR trSoundSamp LastModSample;
-LOCALVAR ui4r SilentBlockCounter;
-#endif
-
-LOCALPROC RampSound(tpSoundSamp p,
-	trSoundSamp BeginVal, trSoundSamp EndVal)
+LOCALPROC MySound_Start0(void)
 {
-	int i;
-	ui5r v = (((ui5r)BeginVal) << kLnOneBuffLen) + (kLnOneBuffLen >> 1);
+	/* Reset variables */
+	ThePlayOffset = 0;
+	TheFillOffset = 0;
+	TheWriteOffset = 0;
+	MinFilledSoundBuffs = kSoundBuffers + 1;
+#if dbglog_SoundBuffStats
+	MaxFilledSoundBuffs = 0;
+#endif
+}
 
-	for (i = kOneBuffLen; --i >= 0; ) {
-		*p++ = v >> kLnOneBuffLen;
-		v = v + EndVal - BeginVal;
+GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
+{
+	ui4b ToFillLen = kAllBuffLen - (TheWriteOffset - ThePlayOffset);
+	ui4b WriteBuffContig =
+		kOneBuffLen - (TheWriteOffset & kOneBuffMask);
+
+	if (WriteBuffContig < n) {
+		n = WriteBuffContig;
 	}
+	if (ToFillLen < n) {
+		/* overwrite previous buffer */
+#if dbglog_SoundStuff
+		dbglog_writeln("sound buffer over flow");
+#endif
+		TheWriteOffset -= kOneBuffLen;
+	}
+
+	*actL = n;
+	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
 }
 
 #if 4 == kLn2SoundSampSz
@@ -1618,68 +1636,116 @@ LOCALPROC ConvertSoundBlockToNative(tpSoundSamp p)
 #define ConvertSoundBlockToNative(p)
 #endif
 
-#if 4 == kLn2SoundSampSz
-#define ConvertSoundSampleToNative(v) ((v) + 0x8000)
-#else
-#define ConvertSoundSampleToNative(v) (v)
-#endif
-
-LOCALPROC MySound_Start0(void)
+LOCALPROC MySound_WroteABlock(void)
 {
-	ThePlayOffset = 0;
-	TheFillOffset = 0;
-	TheWriteOffset = 0;
-	MinFilledSoundBuffs = kSoundBuffers;
-#if DbgLog_SoundBuffStats
-	MaxFilledSoundBuffs = 0;
+#if (4 == kLn2SoundSampSz)
+	ui4b PrevWriteOffset = TheWriteOffset - kOneBuffLen;
+	tpSoundSamp p = TheSoundBuffer + (PrevWriteOffset & kAllBuffMask);
 #endif
-	wantplaying = falseblnr;
 
-#if MySoundRecenterSilence
-	LastModSample = kCenterSound;
-	SilentBlockCounter = SilentBlockThreshold;
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_WroteABlock");
+#endif
+
+	ConvertSoundBlockToNative(p);
+
+	TheFillOffset = TheWriteOffset;
+
+#if dbglog_SoundBuffStats
+	{
+		ui4b ToPlayLen = TheFillOffset
+			- ThePlayOffset;
+		ui4b ToPlayBuffs = ToPlayLen >> kLnOneBuffLen;
+
+		if (ToPlayBuffs > MaxFilledSoundBuffs) {
+			MaxFilledSoundBuffs = ToPlayBuffs;
+		}
+	}
 #endif
 }
 
+LOCALFUNC blnr MySound_EndWrite0(ui4r actL)
+{
+	blnr v;
+
+	TheWriteOffset += actL;
+
+	if (0 != (TheWriteOffset & kOneBuffMask)) {
+		v = falseblnr;
+	} else {
+		/* just finished a block */
+
+		MySound_WroteABlock();
+
+		v = trueblnr;
+	}
+
+	return v;
+}
 
 LOCALPROC MySound_SecondNotify0(void)
 {
-	if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
-		++CurEmulatedTime;
-	} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
-		--CurEmulatedTime;
-	}
-#if DbgLog_SoundBuffStats
-	fprintf(DumpFile, "MinFilledSoundBuffs = %d\n",
-		MinFilledSoundBuffs);
-	fprintf(DumpFile, "MaxFilledSoundBuffs = %d\n",
-		MaxFilledSoundBuffs);
-	MaxFilledSoundBuffs = 0;
+	if (MinFilledSoundBuffs <= kSoundBuffers) {
+		if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too high");
 #endif
-	MinFilledSoundBuffs = kSoundBuffers;
+			++LastTime;
+		} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too low");
+#endif
+			++TrueEmulatedTime;
+		}
+#if dbglog_SoundBuffStats
+		dbglog_writelnNum("MinFilledSoundBuffs",
+			MinFilledSoundBuffs);
+		dbglog_writelnNum("MaxFilledSoundBuffs",
+			MaxFilledSoundBuffs);
+		MaxFilledSoundBuffs = 0;
+#endif
+		MinFilledSoundBuffs = kSoundBuffers + 1;
+	}
 }
+
+LOCALPROC RampSound(tpSoundSamp p,
+	trSoundSamp BeginVal, trSoundSamp EndVal)
+{
+	int i;
+	ui5r v = (((ui5r)BeginVal) << kLnOneBuffLen) + (kLnOneBuffLen >> 1);
+
+	for (i = kOneBuffLen; --i >= 0; ) {
+		*p++ = v >> kLnOneBuffLen;
+		v = v + EndVal - BeginVal;
+	}
+}
+
+#if 4 == kLn2SoundSampSz
+#define ConvertSoundSampleFromNative(v) ((v) + 0x8000)
+#else
+#define ConvertSoundSampleFromNative(v) (v)
+#endif
+
+struct MySoundR {
+	tpSoundSamp fTheSoundBuffer;
+	volatile ui4b (*fPlayOffset);
+	volatile ui4b (*fFillOffset);
+	volatile ui4b (*fMinFilledSoundBuffs);
+
+	volatile blnr PlayingBuffBlock;
+	volatile trSoundSamp lastv;
+	volatile blnr wantplaying;
+	volatile blnr StartingBlocks;
+
+	CmpSoundHeader /* ExtSoundHeader */ soundHeader;
+};
+typedef struct MySoundR   MySoundR;
+
 
 /*
 	Some of this code descended from CarbonSndPlayDB, an
 	example from Apple, as found being used in vMac for Mac OS.
 */
-
-#define SOUND_SAMPLERATE rate22khz
-	/* = 0x56EE8BA3 = (7833600 * 2 / 704) << 16 */
-
-/* Structs */
-struct PerChanInfo {
-	volatile ui4b (*CurPlayOffset);
-	volatile ui4b (*CurFillOffset);
-	volatile ui4b (*MinFilledSoundBuffs);
-	volatile blnr PlayingBuffBlock;
-	volatile trSoundSamp lastv;
-	volatile blnr (*wantplaying);
-	tpSoundSamp dbhBufferPtr;
-	CmpSoundHeader /* ExtSoundHeader */ soundHeader;
-};
-typedef struct PerChanInfo   PerChanInfo;
-typedef struct PerChanInfo * PerChanInfoPtr;
 
 LOCALPROC InsertSndDoCommand(SndChannelPtr chan, SndCommand * newCmd)
 {
@@ -1699,76 +1765,101 @@ LOCALPROC InsertSndDoCommand(SndChannelPtr chan, SndCommand * newCmd)
 /* call back */ static pascal void
 MySound_CallBack(SndChannelPtr theChannel, SndCommand * theCallBackCmd)
 {
-	PerChanInfoPtr perChanInfoPtr =
-		(PerChanInfoPtr)(theCallBackCmd->param2);
-	blnr wantplaying0 = *perChanInfoPtr->wantplaying;
+	MySoundR *datp =
+		(MySoundR *)(theCallBackCmd->param2);
+	blnr wantplaying0 = datp->wantplaying;
+	trSoundSamp v0 = datp->lastv;
 
-#if DbgLog_SoundStuff
-	fprintf(stderr, "Enter MySound_CallBack\n");
+#if dbglog_SoundStuff
+	dbglog_writeln("Enter MySound_CallBack");
 #endif
 
-	if (perChanInfoPtr->PlayingBuffBlock) {
+	if (datp->PlayingBuffBlock) {
 		/* finish with last sample */
-#if DbgLog_SoundStuff
-		fprintf(stderr, "done with sample\n");
+#if dbglog_SoundStuff
+		dbglog_writeln("done with sample");
 #endif
 
-		*perChanInfoPtr->CurPlayOffset += kOneBuffLen;
-		perChanInfoPtr->PlayingBuffBlock = falseblnr;
+		*datp->fPlayOffset += kOneBuffLen;
+		datp->PlayingBuffBlock = falseblnr;
 	}
 
-	if ((! wantplaying0) && (kCenterSound == perChanInfoPtr->lastv)) {
-#if DbgLog_SoundStuff
-		fprintf(stderr, "terminating\n");
+	if ((! wantplaying0) && (kCenterSound == v0)) {
+#if dbglog_SoundStuff
+		dbglog_writeln("terminating");
 #endif
 	} else {
 		SndCommand playCmd;
 		tpSoundSamp p;
-		ui4b CurPlayOffset = *perChanInfoPtr->CurPlayOffset;
-		ui4b ToPlayLen = *perChanInfoPtr->CurFillOffset - CurPlayOffset;
+		trSoundSamp v1 = v0;
+		blnr WantRamp = falseblnr;
+		ui4b CurPlayOffset = *datp->fPlayOffset;
+		ui4b ToPlayLen = *datp->fFillOffset - CurPlayOffset;
 		ui4b FilledSoundBuffs = ToPlayLen >> kLnOneBuffLen;
 
-		if (FilledSoundBuffs < *perChanInfoPtr->MinFilledSoundBuffs) {
-			*perChanInfoPtr->MinFilledSoundBuffs = FilledSoundBuffs;
+		if (FilledSoundBuffs < *datp->fMinFilledSoundBuffs) {
+			*datp->fMinFilledSoundBuffs = FilledSoundBuffs;
 		}
 
-		if (wantplaying0 && (0 != FilledSoundBuffs)) {
-			/* play next sample */
-			p = perChanInfoPtr->dbhBufferPtr
-				+ (CurPlayOffset & kAllBuffMask);
-			perChanInfoPtr->PlayingBuffBlock = trueblnr;
-			perChanInfoPtr->lastv =
-				ConvertSoundSampleToNative(*(p + kOneBuffLen - 1));
-#if DbgLog_SoundStuff
-			fprintf(stderr, "playing sample\n");
+		if (! wantplaying0) {
+#if dbglog_SoundStuff
+			dbglog_writeln("playing end transistion");
 #endif
-		} else {
-#if DbgLog_SoundStuff
-			fprintf(stderr, "playing transistion\n");
+			v1 = kCenterSound;
+
+			WantRamp = trueblnr;
+		} else
+		if (datp->StartingBlocks) {
+#if dbglog_SoundStuff
+			dbglog_writeln("playing start block");
 #endif
-			/* play transition */
-			trSoundSamp v0 = perChanInfoPtr->lastv;
-			trSoundSamp v1 = v0;
-			p = perChanInfoPtr->dbhBufferPtr + kAllBuffLen;
-			if (! wantplaying0) {
-#if DbgLog_SoundStuff
-				fprintf(stderr, "transistion to silence\n");
+
+			if ((ToPlayLen >> kLnOneBuffLen) < 12) {
+				datp->StartingBlocks = falseblnr;
+#if dbglog_SoundStuff
+				dbglog_writeln("have enough samples to start");
 #endif
-				v1 = kCenterSound;
-				perChanInfoPtr->lastv = kCenterSound;
+
+				p = datp->fTheSoundBuffer
+					+ (CurPlayOffset & kAllBuffMask);
+				v1 = ConvertSoundSampleFromNative(*p);
 			}
 
-#if DbgLog_SoundStuff
-			fprintf(stderr, "v0 %d\n", v0);
-			fprintf(stderr, "v1 %d\n", v1);
+			WantRamp = trueblnr;
+		} else
+		if (0 == FilledSoundBuffs) {
+#if dbglog_SoundStuff
+			dbglog_writeln("playing under run");
+#endif
+
+			WantRamp = trueblnr;
+		} else
+		{
+			/* play next sample */
+			p = datp->fTheSoundBuffer
+				+ (CurPlayOffset & kAllBuffMask);
+			datp->PlayingBuffBlock = trueblnr;
+			v1 =
+				ConvertSoundSampleFromNative(*(p + kOneBuffLen - 1));
+#if dbglog_SoundStuff
+			dbglog_writeln("playing sample");
+#endif
+		}
+
+		if (WantRamp) {
+			p = datp->fTheSoundBuffer + kAllBuffLen;
+
+#if dbglog_SoundStuff
+			dbglog_writelnNum("v0", v0);
+			dbglog_writelnNum("v1", v1);
 #endif
 
 			RampSound(p, v0, v1);
 			ConvertSoundBlockToNative(p);
 		}
 
-		perChanInfoPtr->soundHeader.samplePtr = (Ptr)p;
-		perChanInfoPtr->soundHeader.numFrames =
+		datp->soundHeader.samplePtr = (Ptr)p;
+		datp->soundHeader.numFrames =
 			(unsigned long)kOneBuffLen;
 
 		/* Insert our callback command */
@@ -1778,9 +1869,9 @@ MySound_CallBack(SndChannelPtr theChannel, SndCommand * theCallBackCmd)
 		{
 			int i;
 			tpSoundSamp pS =
-				(tpSoundSamp)perChanInfoPtr->soundHeader.samplePtr;
+				(tpSoundSamp)datp->soundHeader.samplePtr;
 
-			for (i = perChanInfoPtr->soundHeader.numFrames; --i >= 0; )
+			for (i = datp->soundHeader.numFrames; --i >= 0; )
 			{
 				fprintf(stderr, "%d\n", *pS++);
 			}
@@ -1790,55 +1881,51 @@ MySound_CallBack(SndChannelPtr theChannel, SndCommand * theCallBackCmd)
 		/* Play the next buffer */
 		playCmd.cmd = bufferCmd;
 		playCmd.param1 = 0;
-		playCmd.param2 = (long)&(perChanInfoPtr->soundHeader);
+		playCmd.param2 = (long)&(datp->soundHeader);
 		InsertSndDoCommand (theChannel, &playCmd);
+
+		datp->lastv = v1;
 	}
 }
 
-
-LOCALVAR PerChanInfo TheperChanInfoR;
+LOCALVAR MySoundR cur_audio;
 
 LOCALVAR SndCallBackUPP gCarbonSndPlayDoubleBufferCallBackUPP = NULL;
 
 LOCALVAR SndChannelPtr sndChannel = NULL; /* our sound channel */
 
-LOCALPROC MySound_BeginPlaying(void)
-{
-#if DbgLog_SoundStuff
-	fprintf(stderr, "MySound_BeginPlaying\n");
-#endif
-
-	if (NULL != sndChannel) {
-		SndCommand callBack;
-
-		callBack.cmd = callBackCmd;
-		callBack.param1 = 0; /* unused */
-		callBack.param2 = (long)&TheperChanInfoR;
-
-		sndChannel->callBack = gCarbonSndPlayDoubleBufferCallBackUPP;
-
-		(void) SndDoCommand (sndChannel, &callBack, true);
-	}
-}
-
 LOCALPROC MySound_Start(void)
 {
-	if (NULL == sndChannel) {
+	if (NULL == sndChannel)
 #if HaveCPUfamM68K
-		if (HaveSndMngrAvail())
+	if (HaveSndMngrAvail())
 #endif
-		{
-			SndChannelPtr  chan = NULL;
+	{
+		SndCommand callBack;
+		SndChannelPtr chan = NULL;
 
-			MySound_Start0();
+		cur_audio.wantplaying = falseblnr;
+		cur_audio.StartingBlocks = falseblnr;
 
-			SndNewChannel(&chan, sampledSynth, initMono, nil);
-			if (chan != NULL) {
-				sndChannel = chan;
+		MySound_Start0();
 
-				TheperChanInfoR.PlayingBuffBlock = falseblnr;
-				TheperChanInfoR.lastv = kCenterSound;
-			}
+		SndNewChannel(&chan, sampledSynth, initMono, nil);
+		if (NULL != chan) {
+			sndChannel = chan;
+
+			cur_audio.PlayingBuffBlock = falseblnr;
+			cur_audio.lastv = kCenterSound;
+			cur_audio.StartingBlocks = trueblnr;
+			cur_audio.wantplaying = trueblnr;
+
+			callBack.cmd = callBackCmd;
+			callBack.param1 = 0; /* unused */
+			callBack.param2 = (long)&cur_audio;
+
+			sndChannel->callBack =
+				gCarbonSndPlayDoubleBufferCallBackUPP;
+
+			(void) SndDoCommand (sndChannel, &callBack, true);
 		}
 	}
 }
@@ -1848,246 +1935,146 @@ LOCALPROC MySound_Start(void)
 
 LOCALPROC MySound_Stop(void)
 {
-	if (sndChannel != NULL) {
-#if 1
-/*
-		this may not be necessary, but try to clean up
-		in case it might help prevent problems.
-*/
-		SCStatus r;
-		blnr busy = falseblnr;
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_Stop");
+#endif
 
-		wantplaying = falseblnr;
-		do {
-			r.scChannelBusy = falseblnr; /* what is this for? */
-			if (noErr == SndChannelStatus(sndChannel,
-				sizeof(SCStatus), &r))
-			{
-				busy = r.scChannelBusy;
-			}
-			if (busy) {
-				/*
-					give time back, particularly important
-					if got here on a suspend event.
-				*/
-				EventRecord theEvent;
+	if (NULL != sndChannel) {
+		ui4r retry_limit = 50; /* half of a second */
+		SCStatus r;
+
+		cur_audio.wantplaying = falseblnr;
+#if dbglog_SoundStuff
+		dbglog_writeln("cleared wantplaying");
+#endif
+
+label_retry:
+		r.scChannelBusy = falseblnr; /* what is this for? */
+		if (noErr != SndChannelStatus(sndChannel,
+			sizeof(SCStatus), &r))
+		{
+			/* fail */
+		} else
+		if ((! r.scChannelBusy) && (kCenterSound == cur_audio.lastv)) {
+			/* done */
+
+			/*
+				observed reporting not busy unexpectedly,
+				so also check lastv.
+			*/
+		} else
+		if (0 == --retry_limit) {
+#if dbglog_SoundStuff
+			dbglog_writeln("retry limit reached");
+#endif
+			/*
+				don't trust SndChannelStatus, make
+				sure don't get in infinite loop.
+			*/
+
+			/* done */
+		} else
+		{
+			/*
+				give time back, particularly important
+				if got here on a suspend event.
+			*/
+			EventRecord theEvent;
+
+#if dbglog_SoundStuff
+			dbglog_writeln("busy, so sleep");
+#endif
 
 #if HaveCPUfamM68K
-				if (! HaveWaitNextEventAvail()) {
-					(void) GetNextEvent(IgnorableEventMask, &theEvent);
-				} else
+			if (! HaveWaitNextEventAvail()) {
+				(void) GetNextEvent(IgnorableEventMask, &theEvent);
+			} else
 #endif
-				{
-					(void) WaitNextEvent(IgnorableEventMask,
-						&theEvent, 1, NULL);
-				}
+			{
+				(void) WaitNextEvent(IgnorableEventMask,
+					&theEvent, 1, NULL);
 			}
-		} while (busy);
-#endif
+			goto label_retry;
+		}
+
 		SndDisposeChannel(sndChannel, true);
 		sndChannel = NULL;
 	}
+
+#if dbglog_SoundStuff
+	dbglog_writeln("leave MySound_Stop");
+#endif
 }
+
+#define SOUND_SAMPLERATE rate22khz
+	/* = 0x56EE8BA3 = (7833600 * 2 / 704) << 16 */
 
 LOCALFUNC blnr MySound_Init(void)
 {
-	gCarbonSndPlayDoubleBufferCallBackUPP =
-		NewSndCallBackUPP(MySound_CallBack);
-	if (gCarbonSndPlayDoubleBufferCallBackUPP != NULL) {
-		TheperChanInfoR.dbhBufferPtr = TheSoundBuffer;
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_Init");
+#endif
 
-		TheperChanInfoR.CurPlayOffset = &ThePlayOffset;
-		TheperChanInfoR.CurFillOffset = &TheFillOffset;
-		TheperChanInfoR.MinFilledSoundBuffs = &MinFilledSoundBuffs;
-		TheperChanInfoR.wantplaying = &wantplaying;
+	cur_audio.fTheSoundBuffer = TheSoundBuffer;
 
-		/* Init basic per channel information */
-		TheperChanInfoR.soundHeader.sampleRate = SOUND_SAMPLERATE;
-			/* sample rate */
-		TheperChanInfoR.soundHeader.numChannels = 1; /* one channel */
-		TheperChanInfoR.soundHeader.loopStart = 0;
-		TheperChanInfoR.soundHeader.loopEnd = 0;
-		TheperChanInfoR.soundHeader.encode = cmpSH /* extSH */;
-		TheperChanInfoR.soundHeader.baseFrequency = kMiddleC;
-		TheperChanInfoR.soundHeader.numFrames =
-			(unsigned long)kOneBuffLen;
-		/* TheperChanInfoR.soundHeader.AIFFSampleRate = 0; */
-			/* unused */
-		TheperChanInfoR.soundHeader.markerChunk = nil;
-		TheperChanInfoR.soundHeader.futureUse2 = 0;
-		TheperChanInfoR.soundHeader.stateVars = nil;
-		TheperChanInfoR.soundHeader.leftOverSamples = nil;
-		TheperChanInfoR.soundHeader.compressionID = 0;
-			/* no compression */
-		TheperChanInfoR.soundHeader.packetSize = 0;
-			/* no compression */
-		TheperChanInfoR.soundHeader.snthID = 0;
-		TheperChanInfoR.soundHeader.sampleSize =
-			(1 << kLn2SoundSampSz); /* 8 or 16 bits per sample */
-		TheperChanInfoR.soundHeader.sampleArea[0] = 0;
+	cur_audio.fPlayOffset = &ThePlayOffset;
+	cur_audio.fFillOffset = &TheFillOffset;
+	cur_audio.fMinFilledSoundBuffs = &MinFilledSoundBuffs;
+	cur_audio.wantplaying = falseblnr;
+
+	/* Init basic per channel information */
+	cur_audio.soundHeader.sampleRate = SOUND_SAMPLERATE;
+		/* sample rate */
+	cur_audio.soundHeader.numChannels = 1; /* one channel */
+	cur_audio.soundHeader.loopStart = 0;
+	cur_audio.soundHeader.loopEnd = 0;
+	cur_audio.soundHeader.encode = cmpSH /* extSH */;
+	cur_audio.soundHeader.baseFrequency = kMiddleC;
+	cur_audio.soundHeader.numFrames =
+		(unsigned long)kOneBuffLen;
+	/* cur_audio.soundHeader.AIFFSampleRate = 0; */
+		/* unused */
+	cur_audio.soundHeader.markerChunk = nil;
+	cur_audio.soundHeader.futureUse2 = 0;
+	cur_audio.soundHeader.stateVars = nil;
+	cur_audio.soundHeader.leftOverSamples = nil;
+	cur_audio.soundHeader.compressionID = 0;
+		/* no compression */
+	cur_audio.soundHeader.packetSize = 0;
+		/* no compression */
+	cur_audio.soundHeader.snthID = 0;
+	cur_audio.soundHeader.sampleSize = (1 << kLn2SoundSampSz);
+		/* 8 or 16 bits per sample */
+	cur_audio.soundHeader.sampleArea[0] = 0;
 #if 3 == kLn2SoundSampSz
-		TheperChanInfoR.soundHeader.format = kSoundNotCompressed;
+	cur_audio.soundHeader.format = kSoundNotCompressed;
 #elif 4 == kLn2SoundSampSz
-		TheperChanInfoR.soundHeader.format = k16BitNativeEndianFormat;
+	cur_audio.soundHeader.format = k16BitNativeEndianFormat;
 #else
 #error "unsupported kLn2SoundSampSz"
 #endif
-		TheperChanInfoR.soundHeader.samplePtr = (Ptr)TheSoundBuffer;
+	cur_audio.soundHeader.samplePtr = (Ptr)TheSoundBuffer;
+
+	gCarbonSndPlayDoubleBufferCallBackUPP =
+		NewSndCallBackUPP(MySound_CallBack);
+	if (gCarbonSndPlayDoubleBufferCallBackUPP != NULL) {
+
+		MySound_Start();
+			/*
+				This should be taken care of by LeaveSpeedStopped,
+				but since takes a while to get going properly,
+				start early.
+			*/
 
 		return trueblnr;
 	}
 	return falseblnr;
 }
 
-
-LOCALPROC MySound_WroteABlock(void)
-{
-#if MySoundRecenterSilence || (4 == kLn2SoundSampSz)
-	ui4b PrevWriteOffset = TheWriteOffset - kOneBuffLen;
-	tpSoundSamp p = TheSoundBuffer + (PrevWriteOffset & kAllBuffMask);
-#endif
-
-#if MySoundRecenterSilence
-	int i;
-	tpSoundSamp p0;
-	trSoundSamp lastv = LastSample;
-	blnr GotSilentBlock = trueblnr;
-
-	p0 = p;
-	for (i = kOneBuffLen; --i >= 0; ) {
-		trSoundSamp v = *p++;
-		if (v != lastv) {
-			LastSample = *(p0 + kOneBuffLen - 1);
-			GotSilentBlock = falseblnr;
-			goto label_done;
-		}
-	}
-label_done:
-	p = p0;
-
-	if (GotSilentBlock) {
-		if ((! wantplaying) && (PrevWriteOffset == ThePlayOffset)) {
-			TheWriteOffset = PrevWriteOffset;
-			return; /* forget this block */
-		}
-		++SilentBlockCounter;
-#if DbgLog_SoundStuff
-		fprintf(stderr, "GotSilentBlock %d\n", SilentBlockCounter);
-#endif
-		if (SilentBlockCounter >= SilentBlockThreshold) {
-			trSoundSamp NewModSample;
-
-			if (SilentBlockThreshold == SilentBlockCounter) {
-				LastModSample = LastSample;
-			} else {
-				SilentBlockCounter = SilentBlockThreshold;
-					/* prevent overflow */
-			}
-#if 3 == kLn2SoundSampSz
-			if (LastModSample > kCenterSound) {
-				NewModSample = LastModSample - 1;
-			} else if (LastModSample < kCenterSound) {
-				NewModSample = LastModSample + 1;
-			} else {
-				NewModSample = kCenterSound;
-			}
-#elif 4 == kLn2SoundSampSz
-			if (LastModSample > kCenterSound + 0x0100) {
-				NewModSample = LastModSample - 0x0100;
-			} else if (LastModSample < kCenterSound - 0x0100) {
-				NewModSample = LastModSample + 0x0100;
-			} else {
-				NewModSample = kCenterSound;
-			}
-#else
-#error "unsupported kLn2SoundSampSz"
-#endif
-#if DbgLog_SoundStuff
-			fprintf(stderr, "LastModSample %d\n", LastModSample);
-#endif
-			RampSound(p, LastModSample, NewModSample);
-			LastModSample = NewModSample;
-		}
-	} else {
-		if (SilentBlockCounter >= SilentBlockThreshold) {
-			tpSoundSamp pramp;
-			ui4b TotLen = TheWriteOffset
-				- ThePlayOffset;
-			ui4b TotBuffs = TotLen >> kLnOneBuffLen;
-
-			if (TotBuffs >= 3) {
-				pramp = TheSoundBuffer
-					+ ((PrevWriteOffset - kOneBuffLen) & kAllBuffMask);
-			} else {
-				pramp = p;
-				p = TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
-				MyMoveBytes((anyp)pramp, (anyp)p, kOneBuffSz);
-				TheWriteOffset += kOneBuffLen;
-			}
-#if DbgLog_SoundStuff
-			fprintf(stderr, "LastModSample %d\n", LastModSample);
-			fprintf(stderr, "LastSample %d\n", LastSample);
-#endif
-			RampSound(pramp, LastModSample, LastSample);
-			ConvertSoundBlockToNative(pramp);
-		}
-		SilentBlockCounter = 0;
-	}
-#endif
-
-	ConvertSoundBlockToNative(p);
-
-	if (wantplaying) {
-		TheFillOffset = TheWriteOffset;
-	} else if (((TheWriteOffset - ThePlayOffset) >> kLnOneBuffLen) < 12)
-	{
-		/* just wait */
-	} else {
-		TheFillOffset = TheWriteOffset;
-		wantplaying = trueblnr;
-		MySound_BeginPlaying();
-	}
-
-#if DbgLog_SoundBuffStats
-	{
-		ui4b ToPlayLen = TheFillOffset
-			- ThePlayOffset;
-		ui4b ToPlayBuffs = ToPlayLen >> kLnOneBuffLen;
-
-		if (ToPlayBuffs > MaxFilledSoundBuffs) {
-			MaxFilledSoundBuffs = ToPlayBuffs;
-		}
-	}
-#endif
-}
-
 GLOBALPROC MySound_EndWrite(ui4r actL)
 {
-	TheWriteOffset += actL;
-
-	if (0 == (TheWriteOffset & kOneBuffMask)) {
-		/* just finished a block */
-
-		MySound_WroteABlock();
+	if (MySound_EndWrite0(actL)) {
 	}
-}
-
-GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
-{
-	ui4b ToFillLen = kAllBuffLen - (TheWriteOffset - ThePlayOffset);
-	ui4b WriteBuffContig =
-		kOneBuffLen - (TheWriteOffset & kOneBuffMask);
-
-	if (WriteBuffContig < n) {
-		n = WriteBuffContig;
-	}
-	if (ToFillLen < n) {
-		/* overwrite previous buffer */
-		TheWriteOffset -= kOneBuffLen;
-	}
-
-	*actL = n;
-	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
 }
 
 LOCALPROC MySound_SecondNotify(void)
@@ -4603,7 +4590,7 @@ LOCALPROC CheckForSavedTasks(void)
 	}
 
 #if EnableMagnify || VarFullScreen
-	if (! (gTrueBackgroundFlag || ADialogIsUp)) {
+	if (! (gTrueBackgroundFlag)) {
 		if (0
 #if EnableMagnify
 			|| (UseMagnify != WantMagnify)
@@ -4626,7 +4613,7 @@ LOCALPROC CheckForSavedTasks(void)
 #if VarFullScreen
 		UseFullScreen &&
 #endif
-		! (gTrueBackgroundFlag || ADialogIsUp || CurSpeedStopped)))
+		! (gTrueBackgroundFlag || CurSpeedStopped)))
 	{
 		GrabMachine = ! GrabMachine;
 		AdjustMachineGrab();
@@ -4642,9 +4629,7 @@ LOCALPROC CheckForSavedTasks(void)
 		ScreenChangedAll();
 	}
 
-	MyDrawChangesAndClear();
-
-	if (gTrueBackgroundFlag || ADialogIsUp) {
+	if (gTrueBackgroundFlag) {
 		/*
 			dialog during drag and drop hangs if in background
 				and don't want recursive dialogs
@@ -4675,7 +4660,7 @@ LOCALPROC CheckForSavedTasks(void)
 	}
 
 	if (HaveCursorHidden != (WantCursorHidden
-		&& ! (gTrueBackgroundFlag || ADialogIsUp || CurSpeedStopped)))
+		&& ! (gTrueBackgroundFlag || CurSpeedStopped)))
 	{
 		HaveCursorHidden = ! HaveCursorHidden;
 		if (HaveCursorHidden) {
@@ -4686,83 +4671,10 @@ LOCALPROC CheckForSavedTasks(void)
 	}
 }
 
-LOCALVAR ui5b OnTrueTime = 0;
-	/*
-		The time slice we are currently dealing
-		with, in the same units as TrueEmulatedTime.
-	*/
-
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
 	UpdateTrueEmulatedTime();
 	return TrueEmulatedTime == OnTrueTime;
-}
-
-#include "PROGMAIN.h"
-
-LOCALPROC RunEmulatedTicksToTrueTime(void)
-{
-	/*
-		The general idea is to call DoEmulateOneTick
-		once per tick.
-
-		But if emulation is lagging, we'll try to
-		catch up by calling DoEmulateOneTick multiple
-		times, unless we're too far behind, in
-		which case we forget it.
-
-		If emulating one tick takes longer than
-		a tick we don't want to sit here
-		forever. So the maximum number of calls
-		to DoEmulateOneTick is determined at
-		the beginning, rather than just
-		calling DoEmulateOneTick until
-		CurEmulatedTime >= TrueEmulatedTime.
-	*/
-
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-#if MySoundEnabled
-			MySound_SecondNotify();
-#endif
-		}
-
-		if (! (gBackgroundFlag || ADialogIsUp)) {
-			CheckMouseState();
-		}
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-
-#if EnableMouseMotion && MayFullScreen
-		if (HaveMouseMotion) {
-			AutoScrollScreen();
-		}
-#endif
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
 }
 
 #define CheckItem CheckMenuItem
@@ -5104,14 +5016,27 @@ LOCALPROC CheckForSystemEvents(void)
 	}
 }
 
-LOCALPROC RunOnEndOfSixtieth(void)
+GLOBALPROC WaitForNextTick(void)
 {
+label_retry:
+	CheckForSystemEvents();
+	CheckForSavedTasks();
+	if (ForceMacOff) {
+		return;
+	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		WaitForTheNextEvent();
+		goto label_retry;
+	}
+
 	/*
 		Wait until the end of the current
 		tick, then emulate the next tick.
 	*/
 
-	while (ExtraTimeNotOver()) {
+	if (ExtraTimeNotOver()) {
 #if HaveCPUfamM68K
 		if (HaveWaitNextEventAvail())
 #endif
@@ -5125,29 +5050,27 @@ LOCALPROC RunOnEndOfSixtieth(void)
 #endif
 			}
 		}
+		goto label_retry;
+	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+	}
+
+	if (! (gBackgroundFlag)) {
+		CheckMouseState();
 	}
 
 	OnTrueTime = TrueEmulatedTime;
-	RunEmulatedTicksToTrueTime();
+
+#if dbglog_TimeStuff
+	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
+#endif
 }
 
-LOCALPROC MainEventLoop(void)
-{
-	for (; ; ) {
-		CheckForSystemEvents();
-		CheckForSavedTasks();
-		if (ForceMacOff) {
-			return;
-		}
-
-		if (CurSpeedStopped) {
-			WaitForTheNextEvent();
-		} else {
-			DoEmulateExtraTime();
-			RunOnEndOfSixtieth();
-		}
-	}
-}
+#include "PROGMAIN.h"
 
 LOCALPROC AppendMenuCStr(MenuHandle menu, char *s)
 {
@@ -5333,7 +5256,6 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (ActvCodeInit())
 #endif
 	if (InitLocationDat())
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -5402,7 +5324,7 @@ main(void)
 {
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
-		MainEventLoop();
+		ProgramMain();
 	}
 	UnInitOSGLU();
 

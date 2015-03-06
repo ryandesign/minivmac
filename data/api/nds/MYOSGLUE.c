@@ -46,8 +46,6 @@ GLOBALPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 
 LOCALVAR volatile int VBlankCounter = 0;
 LOCALVAR volatile int HBlankCounter = 0;
-LOCALVAR volatile int FramesDrawn = 0;
-LOCALVAR volatile int FPS = 0;
 LOCALVAR volatile unsigned int TimerBaseMSec = 0;
 LOCALVAR Keyboard* DSKeyboard = NULL;
 LOCALVAR volatile int LastKeyboardKey = NOKEY;
@@ -514,6 +512,16 @@ LOCALPROC MyDrawChangesAndClear(void)
 	}
 }
 
+GLOBALPROC DoneWithDrawingForTick(void)
+{
+#if 0 && EnableMouseMotion && MayFullScreen
+	if (HaveMouseMotion) {
+		AutoScrollScreen();
+	}
+#endif
+	MyDrawChangesAndClear();
+}
+
 /* --- mouse --- */
 
 /* cursor state */
@@ -720,7 +728,6 @@ LOCALPROC DS_HandleKeyboard(void)
 /* --- time, date, location --- */
 
 LOCALVAR ui5b TrueEmulatedTime = 0;
-LOCALVAR ui5b CurEmulatedTime = 0;
 
 #include "DATE2SEC.h"
 
@@ -977,13 +984,9 @@ LOCALPROC CheckForSavedTasks(void)
 		NeedWholeScreenDraw = falseblnr;
 		ScreenChangedAll();
 	}
-
-	MyDrawChangesAndClear();
 }
 
 /* --- main program flow --- */
-
-LOCALVAR ui5b OnTrueTime = 0;
 
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
@@ -991,62 +994,31 @@ GLOBALFUNC blnr ExtraTimeNotOver(void)
 	return TrueEmulatedTime == OnTrueTime;
 }
 
-/* --- platform independent code can be thought of as going here --- */
-
-#include "PROGMAIN.h"
-
-LOCALPROC RunEmulatedTicksToTrueTime(void)
+LOCALPROC WaitForTheNextEvent(void)
 {
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-#if MySoundEnabled
-			MySound_SecondNotify();
-#endif
-		}
-
-		CheckMouseState();
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-		FramesDrawn++;
-
-#if 0 && EnableMouseMotion && MayFullScreen
-		if (HaveMouseMotion) {
-			AutoScrollScreen();
-		}
-#endif
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			/* lagging, catch up */
-
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				FramesDrawn++;
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
 }
 
-LOCALPROC RunOnEndOfSixtieth(void)
+LOCALPROC CheckForSystemEvents(void)
 {
-	while (ExtraTimeNotOver()) {
+	DS_HandleKeyboard();
+}
+
+GLOBALPROC WaitForNextTick(void)
+{
+label_retry:
+	CheckForSystemEvents();
+	CheckForSavedTasks();
+	if (ForceMacOff) {
+		return;
+	}
+
+	if (CurSpeedStopped) {
+		MyDrawChangesAndClear();
+		WaitForTheNextEvent();
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
 		si5b TimeDiff = GetTimeDiff();
 		if (TimeDiff < 0) {
 			/*
@@ -1063,46 +1035,18 @@ LOCALPROC RunOnEndOfSixtieth(void)
 				(void) nanosleep(&rqt, &rmt);
 			*/
 		}
+		goto label_retry;
 	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+	}
+
+	CheckMouseState();
 
 	OnTrueTime = TrueEmulatedTime;
-	RunEmulatedTicksToTrueTime();
-}
-
-LOCALPROC WaitForTheNextEvent(void)
-{
-}
-
-LOCALPROC CheckForSystemEvents(void)
-{
-	DS_HandleKeyboard();
-}
-
-LOCALPROC MainEventLoop(void)
-{
-	iprintf("Entering MainEventLoop...\n");
-
-	for (; ; ) {
-		CheckForSystemEvents();
-		CheckForSavedTasks();
-		if (ForceMacOff) {
-			return;
-		}
-
-		if (CurSpeedStopped) {
-			WaitForTheNextEvent();
-		} else {
-			DoEmulateExtraTime();
-			RunOnEndOfSixtieth();
-		}
-
-		/*
-			iprintf("\x1b[1;0H");
-			iprintf("FPS: %d    ", FPS);
-		*/
-	}
-
-	iprintf("Leaving MainEventLoop...\n");
 }
 
 /*
@@ -1178,8 +1122,6 @@ LOCALPROC DS_VBlank_IRQ(void)
 	KeysHeld = keysHeld();
 
 	if (++VBlankCounter == 60) {
-		FPS = FramesDrawn;
-		FramesDrawn = 0;
 		VBlankCounter = 0;
 	}
 
@@ -1295,6 +1237,10 @@ LOCALPROC DS_ClearVRAM(void)
 	vramDefault();
 }
 
+/* --- platform independent code can be thought of as going here --- */
+
+#include "PROGMAIN.h"
+
 LOCALPROC ReserveAllocAll(void)
 {
 #if dbglog_HAVE
@@ -1371,7 +1317,6 @@ LOCALFUNC blnr InitOSGLU(void)
 #endif
 	if (Screen_Init())
 	if (KC2MKCInit())
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -1407,7 +1352,11 @@ int main(int argc, char **argv)
 	ZapOSGLUVars();
 
 	if (InitOSGLU()) {
-		MainEventLoop();
+		iprintf("Entering ProgramMain...\n");
+
+		ProgramMain();
+
+		iprintf("Leaving ProgramMain...\n");
 	}
 
 	UnInitOSGLU();

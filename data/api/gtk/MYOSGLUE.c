@@ -346,6 +346,11 @@ LOCALPROC MyDrawChangesAndClear(void)
 	}
 }
 
+GLOBALPROC DoneWithDrawingForTick(void)
+{
+	MyDrawChangesAndClear();
+}
+
 /* --- mouse --- */
 
 LOCALVAR blnr HaveCursorHidden = falseblnr;
@@ -762,7 +767,6 @@ LOCALPROC DoKeyCode(guint keycode, blnr down)
 /* --- time, date, location --- */
 
 LOCALVAR ui5b TrueEmulatedTime = 0;
-LOCALVAR ui5b CurEmulatedTime = 0;
 
 #include "DATE2SEC.h"
 
@@ -1170,8 +1174,6 @@ LOCALPROC CheckForSavedTasks(void)
 		ScreenChangedAll();
 	}
 
-	MyDrawChangesAndClear();
-
 	if (HaveCursorHidden != (WantCursorHidden && CaughtMouse
 		&& ! (gTrueBackgroundFlag || ADialogIsUp || CurSpeedStopped)))
 	{
@@ -1235,69 +1237,10 @@ LOCALFUNC blnr ScanCommandLine(void)
 
 /* --- main program flow --- */
 
-LOCALVAR ui5b OnTrueTime = 0;
-
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
 	UpdateTrueEmulatedTime();
 	return TrueEmulatedTime == OnTrueTime;
-}
-
-#include "PROGMAIN.h"
-
-LOCALPROC RunEmulatedTicksToTrueTime(void)
-{
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-		}
-
-		if ((! gBackgroundFlag || ADialogIsUp)
-			&& (! CaughtMouse)
-			)
-		{
-			CheckMouseState();
-		}
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
-}
-
-LOCALPROC RunOnEndOfSixtieth(void)
-{
-	while (ExtraTimeNotOver()) {
-		si5b TimeDiff = GetTimeDiff();
-		if (TimeDiff < 0) {
-			g_usleep(- TimeDiff);
-		}
-	}
-
-	OnTrueTime = TrueEmulatedTime;
-	RunEmulatedTicksToTrueTime();
 }
 
 LOCALPROC WaitForTheNextEvent(void)
@@ -1317,24 +1260,52 @@ LOCALPROC CheckForSystemEvents(void)
 #endif
 }
 
+GLOBALPROC WaitForNextTick(void)
+{
+label_retry:
+	CheckForSystemEvents();
+	CheckForSavedTasks();
+	if (ForceMacOff) {
+		return;
+	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		WaitForTheNextEvent();
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
+		si5b TimeDiff = GetTimeDiff();
+		if (TimeDiff < 0) {
+			g_usleep(- TimeDiff);
+		}
+		goto label_retry;
+	}
+
+	if (CheckDateTime()) {
+	}
+
+	if ((! gBackgroundFlag || ADialogIsUp)
+		&& (! CaughtMouse)
+		)
+	{
+		CheckMouseState();
+	}
+
+	OnTrueTime = TrueEmulatedTime;
+}
+
+#include "PROGMAIN.h"
+
 static gboolean
-MainEventLoop(gpointer data)
+MainEventLoop0(gpointer data)
 {
 	(void) data;
-	fprintf(stderr, "hello from MainEventLoop\n");
-	for (; ; ) {
-		CheckForSystemEvents();
-		CheckForSavedTasks();
-		if (ForceMacOff) {
-			goto Label_01;
-		}
-
-		if (CurSpeedStopped) {
-			WaitForTheNextEvent();
-		} else {
-			DoEmulateExtraTime();
-			RunOnEndOfSixtieth();
-		}
+	fprintf(stderr, "hello from MainEventLoop0\n");
+	ProgramMain();
+	if (ForceMacOff) {
+		goto Label_01;
 	}
 #if 0
 	while (! gtk_main_iteration_do(FALSE)) {
@@ -1345,7 +1316,7 @@ MainEventLoop(gpointer data)
 	}
 #endif
 Label_01:
-	fprintf(stderr, "leaving MainEventLoop\n");
+	fprintf(stderr, "leaving MainEventLoop0\n");
 
 	gtk_main_quit();
 
@@ -1584,7 +1555,6 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (InitLocationDat())
 	/* if (ReCreateMainWindow()) */
 	if (KC2MKCInit())
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -1758,7 +1728,7 @@ int main(int argc, char *argv[])
 
 	gdk_window_set_cursor(window->window, blank_cursor);
 
-	g_idle_add(MainEventLoop, NULL);
+	g_idle_add(MainEventLoop0, NULL);
 
 	my_argc = argc;
 	my_argv = argv;

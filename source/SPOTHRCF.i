@@ -588,6 +588,11 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteHexByteToOutput(cur_CaretBlinkTime);
 	WriteEndDestFileLn();
 
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define SpeakerVol 0x");
+	WriteHexByteToOutput(cur_SpeakerVol);
+	WriteEndDestFileLn();
+
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
 

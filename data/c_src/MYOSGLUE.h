@@ -158,6 +158,8 @@ EXPORTFUNC tMacErr HTCEexport(tPbuf i);
 EXPORTFUNC tMacErr HTCEimport(tPbuf *r);
 #endif
 
+EXPORTVAR(ui5b, OnTrueTime);
+
 EXPORTVAR(ui5b, CurMacDateInSeconds)
 EXPORTVAR(ui5b, CurMacLatitude)
 EXPORTVAR(ui5b, CurMacLongitude)
@@ -192,8 +194,11 @@ EXPORTVAR(ui4r, CLUT_greens[CLUT_size])
 EXPORTVAR(ui4r, CLUT_blues[CLUT_size])
 #endif
 
-EXPORTPROC Screen_OutputFrame(ui3p screencurrentbuff);
+EXPORTVAR(blnr, EmVideoDisable);
+EXPORTVAR(si3b, EmLagTime);
 
+EXPORTPROC Screen_OutputFrame(ui3p screencurrentbuff);
+EXPORTPROC DoneWithDrawingForTick(void);
 
 EXPORTVAR(blnr, ForceMacOff)
 
@@ -262,6 +267,8 @@ EXPORTVAR(ui5r, LT_RxBuffSz);
 EXPORTPROC LT_ReceivePacket(void);
 
 #endif
+
+EXPORTPROC WaitForNextTick(void);
 
 #define MyEvtQElKindKey 0
 #define MyEvtQElKindMouseButton 1

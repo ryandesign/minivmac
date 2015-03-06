@@ -269,7 +269,7 @@ LOCALPROC WriteMSVCTargetName0(void)
 	WriteStrAppAbbrev();
 	WriteCStrToDestFile(" - ");
 	WriteMSVCTargetName00();
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteMSVCdbgLevelName();
 }
 
@@ -297,7 +297,7 @@ LOCALPROC WriteMSVCQuotedProp(char *p, char *s)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# PROP ");
 	WriteCStrToDestFile(p);
-	WriteCStrToDestFile(" ");
+	strmo_writeSpace();
 	WriteQuoteToDestFile();
 	WriteCStrToDestFile(s);
 	WriteQuoteToDestFile();

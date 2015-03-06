@@ -23,7 +23,7 @@
 #define kMajorVersion "3"
 #define kMinorVersion "4"
 #define kMinorSubVersion "0"
-#define kStrCopyrightYear "2014"
+#define kStrCopyrightYear "2015"
 #define kMacCreatorSig "MnvM"
 #define kBundleIdentifier "com.gryphel.minivmac"
 #define kShortDescription "miniature Macintosh emulator"

@@ -87,6 +87,8 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 			WriteDestFileLn("#include <mach/mach_interface.h>");
 			WriteDestFileLn("#include <mach/mach_port.h>");
 #endif
+			WriteDestFileLn("#include <unistd.h>");
+				/* for nanosleep */
 
 			if (WantLocalTalk) {
 				WriteOSXLocalTalkCNFGRAPI();

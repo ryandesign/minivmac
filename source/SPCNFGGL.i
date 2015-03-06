@@ -23,11 +23,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteCompCondBool("MySoundRecenterSilence", falseblnr);
 
-	if (gbk_sndapi_ddsp == gbo_sndapi) {
-		WriteDestFileLn("#define kLn2SoundSampSz 4");
-	} else {
-		WriteDestFileLn("#define kLn2SoundSampSz 3");
-	}
+	WriteDefineUimr("kLn2SoundSampSz", cur_SoundSampSz);
 
 	WriteBlankLineToDestFile();
 
@@ -39,10 +35,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteBlankLineToDestFile();
 
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define NumDrives ");
-	WriteUnsignedToOutput(cur_numdrives);
-	WriteEndDestFileLn();
+	WriteDefineUimr("NumDrives", cur_numdrives);
 
 	WriteCompCondBool("IncludeSonyRawMode", (! WantMinExtn)
 		&& (gbk_apifam_nds != gbo_apifam));
@@ -61,20 +54,9 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteBlankLineToDestFile();
 
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define vMacScreenHeight ");
-	WriteUnsignedToOutput(cur_vres);
-	WriteEndDestFileLn();
-
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define vMacScreenWidth ");
-	WriteUnsignedToOutput(cur_hres);
-	WriteEndDestFileLn();
-
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define vMacScreenDepth ");
-	WriteUnsignedToOutput(cur_ScrnDpth);
-	WriteEndDestFileLn();
+	WriteDefineUimr("vMacScreenHeight", cur_vres);
+	WriteDefineUimr("vMacScreenWidth", cur_hres);
+	WriteDefineUimr("vMacScreenDepth", cur_ScrnDpth);
 
 
 	WriteBlankLineToDestFile();
@@ -93,10 +75,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 			&& (gbk_apifam_gtk != gbo_apifam)
 			&& (gbk_apifam_nds != gbo_apifam));
 
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define NumPbufs ");
-	WriteUnsignedToOutput(4);
-	WriteEndDestFileLn();
+	WriteDefineUimr("NumPbufs", 4);
 
 
 	WriteBlankLineToDestFile();

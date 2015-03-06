@@ -97,18 +97,22 @@ LOCALFUNC tMacErr ChildPath(char *x, char *y, char **r)
 #if UseActvFile || IncludeSonyNew
 LOCALFUNC tMacErr FindOrMakeChild(char *x, char *y, char **r)
 {
-	tMacErr err = mnvm_miscErr;
+	tMacErr err;
 	struct stat folder_info;
 	char *r0;
 
 	if (mnvm_noErr == (err = ChildPath(x, y, &r0))) {
 		if (0 != stat(r0, &folder_info)) {
-			if (0 == mkdir(r0, S_IRWXU)) {
+			if (0 != mkdir(r0, S_IRWXU)) {
+				err = mnvm_miscErr;
+			} else {
 				*r = r0;
 				err = mnvm_noErr;
 			}
 		} else {
-			if (S_ISDIR(folder_info.st_mode)) {
+			if (! S_ISDIR(folder_info.st_mode)) {
+				err = mnvm_miscErr;
+			} else {
 				*r = r0;
 				err = mnvm_noErr;
 			}
@@ -960,20 +964,37 @@ LOCALFUNC tMacErr LoadMacRomFrom(char *path)
 
 LOCALFUNC tMacErr FindUserHomeFolder(char **r)
 {
-	tMacErr err = mnvm_fnfErr;
-	char *s = getenv("HOME");
-
+	tMacErr err;
+	char *s;
 #if 0
-	if (NULL == s) {
-		struct passwd *user = getpwuid(getuid());
-		if (user != NULL) {
-			s = user->pw_dir;
-		}
+	struct passwd *user;
+#endif
+
+	if (NULL != (s = getenv("HOME"))) {
+		*r = s;
+		err = mnvm_noErr;
+	} else
+#if 0
+	if ((NULL != (user = getpwuid(getuid())))
+		&& (NULL != (s = user->pw_dir)))
+	{
+		/*
+			From getpwuid man page:
+			"An application that wants to determine its user's
+			home directory should inspect the value of HOME
+			(rather than the value getpwuid(getuid())->pw_dir)
+			since this allows the user to modify their notion of
+			"the home directory" during a login session."
+
+			But it is possible for HOME to not be set.
+			Some source say to use getpwuid in that case.
+		*/
+		*r = s;
+		err = mnvm_noErr;
 	} else
 #endif
 	{
-		*r = s;
-		err = mnvm_noErr;
+		err = mnvm_fnfErr;
 	}
 
 	return err;
@@ -1035,10 +1056,10 @@ LOCALFUNC blnr LoadMacRom(void)
 
 	if ((NULL == rom_path)
 		|| (mnvm_fnfErr == (err = LoadMacRomFrom(rom_path))))
-	if (mnvm_fnfErr == (err = LoadMacRomFromHome()))
 #if CanGetAppPath
 	if (mnvm_fnfErr == (err = LoadMacRomFromAppPar()))
 #endif
+	if (mnvm_fnfErr == (err = LoadMacRomFromHome()))
 	if (mnvm_fnfErr == (err = LoadMacRomFrom(RomFileName)))
 	{
 	}
@@ -2284,8 +2305,9 @@ LOCALPROC DisconnectKeyCodes3(void)
 
 /* --- time, date, location --- */
 
+#define dbglog_TimeStuff (0 && dbglog_HAVE)
+
 LOCALVAR ui5b TrueEmulatedTime = 0;
-LOCALVAR ui5b CurEmulatedTime = 0;
 
 #include "DATE2SEC.h"
 
@@ -2365,10 +2387,15 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 
 	TimeDiff = GetTimeDiff();
 	if (TimeDiff >= 0) {
-		if (TimeDiff > 4 * MyInvTimeStep) {
+		if (TimeDiff > 16 * MyInvTimeStep) {
 			/* emulation interrupted, forget it */
 			++TrueEmulatedTime;
 			InitNextTime();
+
+#if dbglog_TimeStuff
+			dbglog_writelnNum("emulation interrupted",
+				TrueEmulatedTime);
+#endif
 		} else {
 			do {
 				++TrueEmulatedTime;
@@ -2376,8 +2403,12 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 				TimeDiff -= TicksPerSecond;
 			} while (TimeDiff >= 0);
 		}
-	} else if (TimeDiff < - 2 * MyInvTimeStep) {
+	} else if (TimeDiff < - 16 * MyInvTimeStep) {
 		/* clock goofed if ever get here, reset */
+#if dbglog_TimeStuff
+		dbglog_writeln("clock set back");
+#endif
+
 		InitNextTime();
 	}
 }
@@ -2426,6 +2457,9 @@ LOCALFUNC blnr InitLocationDat(void)
 #define kAllBuffMask (kAllBuffLen - 1)
 #define dbhBufferSize (kAllBuffSz + kOneBuffSz)
 
+#define dbglog_SoundStuff (0 && dbglog_HAVE)
+#define dbglog_SoundBuffStats (0 && dbglog_HAVE)
+
 LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
 LOCALVAR ui4b ThePlayOffset;
 LOCALVAR ui4b TheFillOffset;
@@ -2452,6 +2486,9 @@ GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
 	}
 	if (ToFillLen < n) {
 		/* overwrite previous buffer */
+#if dbglog_SoundStuff
+		dbglog_writeln("sound buffer over flow");
+#endif
 		TheWriteOffset -= kOneBuffLen;
 	}
 
@@ -2481,9 +2518,15 @@ LOCALFUNC blnr MySound_EndWrite0(ui4r actL)
 LOCALPROC MySound_SecondNotify0(void)
 {
 	if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
-		++CurEmulatedTime;
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too high");
+#endif
+		IncrNextTime();
 	} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
-		--CurEmulatedTime;
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too low");
+#endif
+		++TrueEmulatedTime;
 	}
 	MinFilledSoundBuffs = kSoundBuffers;
 }
@@ -4271,8 +4314,6 @@ LOCALPROC CheckForSavedTasks(void)
 		ScreenChangedAll();
 	}
 
-	MyDrawChangesAndClear();
-
 	if (HaveCursorHidden != (WantCursorHidden
 		&& ! (gTrueBackgroundFlag || CurSpeedStopped)))
 	{
@@ -4360,88 +4401,21 @@ label_retry:
 
 /* --- main program flow --- */
 
-LOCALVAR ui5b OnTrueTime = 0;
+GLOBALPROC DoneWithDrawingForTick(void)
+{
+#if EnableMouseMotion && MayFullScreen
+	if (HaveMouseMotion) {
+		AutoScrollScreen();
+	}
+#endif
+	MyDrawChangesAndClear();
+	XFlush(x_display);
+}
 
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
 	UpdateTrueEmulatedTime();
 	return TrueEmulatedTime == OnTrueTime;
-}
-
-/* --- platform independent code can be thought of as going here --- */
-
-#include "PROGMAIN.h"
-
-LOCALPROC RunEmulatedTicksToTrueTime(void)
-{
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-#if MySoundEnabled
-			MySound_SecondNotify();
-#endif
-		}
-
-		if ((! gBackgroundFlag)
-#if UseMotionEvents
-			&& (! CaughtMouse)
-#endif
-			)
-		{
-			CheckMouseState();
-		}
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-
-#if EnableMouseMotion && MayFullScreen
-		if (HaveMouseMotion) {
-			AutoScrollScreen();
-		}
-#endif
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			/* lagging, catch up */
-
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
-}
-
-LOCALPROC RunOnEndOfSixtieth(void)
-{
-	while (ExtraTimeNotOver()) {
-		struct timespec rqt;
-		struct timespec rmt;
-
-		si5b TimeDiff = GetTimeDiff();
-		if (TimeDiff < 0) {
-			rqt.tv_sec = 0;
-			rqt.tv_nsec = (- TimeDiff) * 1000;
-			(void) nanosleep(&rqt, &rmt);
-		}
-	}
-
-	OnTrueTime = TrueEmulatedTime;
-	RunEmulatedTicksToTrueTime();
 }
 
 LOCALPROC WaitForTheNextEvent(void)
@@ -4461,26 +4435,61 @@ LOCALPROC CheckForSystemEvents(void)
 	{
 		WaitForTheNextEvent();
 	}
-	XFlush(x_display);
 }
 
-LOCALPROC MainEventLoop(void)
+GLOBALPROC WaitForNextTick(void)
 {
-	for (; ; ) {
-		CheckForSystemEvents();
-		CheckForSavedTasks();
-		if (ForceMacOff) {
-			return;
-		}
-
-		if (CurSpeedStopped) {
-			WaitForTheNextEvent();
-		} else {
-			DoEmulateExtraTime();
-			RunOnEndOfSixtieth();
-		}
+label_retry:
+	CheckForSystemEvents();
+	CheckForSavedTasks();
+	if (ForceMacOff) {
+		return;
 	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		WaitForTheNextEvent();
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
+		struct timespec rqt;
+		struct timespec rmt;
+
+		si5b TimeDiff = GetTimeDiff();
+		if (TimeDiff < 0) {
+			rqt.tv_sec = 0;
+			rqt.tv_nsec = (- TimeDiff) * 1000;
+			(void) nanosleep(&rqt, &rmt);
+		}
+		goto label_retry;
+	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+	}
+
+	if ((! gBackgroundFlag)
+#if UseMotionEvents
+		&& (! CaughtMouse)
+#endif
+		)
+	{
+		CheckMouseState();
+	}
+
+	OnTrueTime = TrueEmulatedTime;
+
+#if dbglog_TimeStuff
+	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
+#endif
 }
+
+/* --- platform independent code can be thought of as going here --- */
+
+#include "PROGMAIN.h"
 
 LOCALPROC ZapOSGLUVars(void)
 {
@@ -4752,7 +4761,6 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (Screen_Init())
 	if (CreateMainWindow())
 	if (KC2MKCInit())
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -4831,7 +4839,7 @@ int main(int argc, char **argv)
 
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
-		MainEventLoop();
+		ProgramMain();
 	}
 	UnInitOSGLU();
 

@@ -851,6 +851,16 @@ LOCALPROC MyDrawChangesAndClear(void)
 	}
 }
 
+GLOBALPROC DoneWithDrawingForTick(void)
+{
+#if EnableMouseMotion && MayFullScreen
+	if (HaveMouseMotion) {
+		AutoScrollScreen();
+	}
+#endif
+	MyDrawChangesAndClear();
+}
+
 /* --- mouse --- */
 
 /* cursor hiding */
@@ -1140,8 +1150,9 @@ LOCALPROC DisconnectKeyCodes3(void)
 
 /* --- time, date, location --- */
 
+#define dbglog_TimeStuff (0 && dbglog_HAVE)
+
 LOCALVAR ui5b TrueEmulatedTime = 0;
-LOCALVAR ui5b CurEmulatedTime = 0;
 
 #define MyInvTimeDivPow 16
 #define MyInvTimeDiv (1 << MyInvTimeDivPow)
@@ -1184,10 +1195,15 @@ LOCALFUNC blnr UpdateTrueEmulatedTime(void)
 		TimeDiff = (LatestTime - NextIntTime);
 			/* this should work even when time wraps */
 		if (TimeDiff >= 0) {
-			if (TimeDiff > 64) {
+			if (TimeDiff > 256) {
 				/* emulation interrupted, forget it */
 				++TrueEmulatedTime;
 				InitNextTime();
+
+#if dbglog_TimeStuff
+				dbglog_writelnNum("emulation interrupted",
+					TrueEmulatedTime);
+#endif
 			} else {
 				do {
 					++TrueEmulatedTime;
@@ -1197,7 +1213,10 @@ LOCALFUNC blnr UpdateTrueEmulatedTime(void)
 			}
 			return trueblnr;
 		} else {
-			if (TimeDiff < -20) {
+			if (TimeDiff < -256) {
+#if dbglog_TimeStuff
+				dbglog_writeln("clock set back");
+#endif
 				/* clock goofed if ever get here, reset */
 				InitNextTime();
 			}
@@ -1259,19 +1278,32 @@ LOCALFUNC blnr InitLocationDat(void)
 #define kAllBuffMask (kAllBuffLen - 1)
 #define dbhBufferSize (kAllBuffSz + kOneBuffSz)
 
+#define dbglog_SoundStuff (0 && dbglog_HAVE)
+#define dbglog_SoundBuffStats (0 && dbglog_HAVE)
+
 LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
-LOCALVAR ui4b ThePlayOffset;
-LOCALVAR ui4b TheFillOffset;
+volatile static ui4b ThePlayOffset;
+volatile static ui4b TheFillOffset;
+volatile static ui4b MinFilledSoundBuffs;
+#if dbglog_SoundBuffStats
+LOCALVAR ui4b MaxFilledSoundBuffs;
+#endif
 LOCALVAR ui4b TheWriteOffset;
-LOCALVAR ui4b MinFilledSoundBuffs;
+
+LOCALPROC MySound_Init0(void)
+{
+	ThePlayOffset = 0;
+	TheFillOffset = 0;
+	TheWriteOffset = 0;
+}
 
 LOCALPROC MySound_Start0(void)
 {
 	/* Reset variables */
-	ThePlayOffset = 0;
-	TheFillOffset = 0;
-	TheWriteOffset = 0;
 	MinFilledSoundBuffs = kSoundBuffers + 1;
+#if dbglog_SoundBuffStats
+	MaxFilledSoundBuffs = 0;
+#endif
 }
 
 GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
@@ -1285,11 +1317,55 @@ GLOBALFUNC tpSoundSamp MySound_BeginWrite(ui4r n, ui4r *actL)
 	}
 	if (ToFillLen < n) {
 		/* overwrite previous buffer */
+#if dbglog_SoundStuff
+		dbglog_writeln("sound buffer over flow");
+#endif
 		TheWriteOffset -= kOneBuffLen;
 	}
 
 	*actL = n;
 	return TheSoundBuffer + (TheWriteOffset & kAllBuffMask);
+}
+
+#if 4 == kLn2SoundSampSz
+LOCALPROC ConvertSoundBlockToNative(tpSoundSamp p)
+{
+	int i;
+
+	for (i = kOneBuffLen; --i >= 0; ) {
+		*p++ -= 0x8000;
+	}
+}
+#else
+#define ConvertSoundBlockToNative(p)
+#endif
+
+LOCALPROC MySound_WroteABlock(void)
+{
+#if (4 == kLn2SoundSampSz)
+	ui4b PrevWriteOffset = TheWriteOffset - kOneBuffLen;
+	tpSoundSamp p = TheSoundBuffer + (PrevWriteOffset & kAllBuffMask);
+#endif
+
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_WroteABlock");
+#endif
+
+	ConvertSoundBlockToNative(p);
+
+	TheFillOffset = TheWriteOffset;
+
+#if dbglog_SoundBuffStats
+	{
+		ui4b ToPlayLen = TheFillOffset
+			- ThePlayOffset;
+		ui4b ToPlayBuffs = ToPlayLen >> kLnOneBuffLen;
+
+		if (ToPlayBuffs > MaxFilledSoundBuffs) {
+			MaxFilledSoundBuffs = ToPlayBuffs;
+		}
+	}
+#endif
 }
 
 LOCALFUNC blnr MySound_EndWrite0(ui4r actL)
@@ -1303,7 +1379,7 @@ LOCALFUNC blnr MySound_EndWrite0(ui4r actL)
 	} else {
 		/* just finished a block */
 
-		TheFillOffset = TheWriteOffset;
+		MySound_WroteABlock();
 
 		v = trueblnr;
 	}
@@ -1315,113 +1391,263 @@ LOCALPROC MySound_SecondNotify0(void)
 {
 	if (MinFilledSoundBuffs <= kSoundBuffers) {
 		if (MinFilledSoundBuffs > DesiredMinFilledSoundBuffs) {
-			/* fprintf(stderr, "MinFilledSoundBuffs too high\n"); */
-			++CurEmulatedTime;
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too high");
+#endif
+			IncrNextTime();
 		} else if (MinFilledSoundBuffs < DesiredMinFilledSoundBuffs) {
-			/* fprintf(stderr, "MinFilledSoundBuffs too low\n"); */
-			--CurEmulatedTime;
+#if dbglog_SoundStuff
+			dbglog_writeln("MinFilledSoundBuffs too low");
+#endif
+			++TrueEmulatedTime;
 		}
+#if dbglog_SoundBuffStats
+		dbglog_writelnNum("MinFilledSoundBuffs",
+			MinFilledSoundBuffs);
+		dbglog_writelnNum("MaxFilledSoundBuffs",
+			MaxFilledSoundBuffs);
+		MaxFilledSoundBuffs = 0;
+#endif
 		MinFilledSoundBuffs = kSoundBuffers + 1;
 	}
 }
 
-#define SOUND_SAMPLERATE 22255 /* = round(7833600 * 2 / 704) */
+typedef ui4r trSoundTemp;
 
-LOCALVAR blnr HaveSoundOut = falseblnr;
-LOCALVAR blnr HaveStartedPlaying = falseblnr;
+#define kCenterTempSound 0x8000
 
-LOCALPROC MySound_Start(void)
+#define AudioStepVal 0x0040
+
+#if 3 == kLn2SoundSampSz
+#define ConvertTempSoundSampleFromNative(v) ((v) << 8)
+#elif 4 == kLn2SoundSampSz
+#define ConvertTempSoundSampleFromNative(v) ((v) + kCenterSound)
+#else
+#error "unsupported kLn2SoundSampSz"
+#endif
+
+#if 3 == kLn2SoundSampSz
+#define ConvertTempSoundSampleToNative(v) ((v) >> 8)
+#elif 4 == kLn2SoundSampSz
+#define ConvertTempSoundSampleToNative(v) ((v) - kCenterSound)
+#else
+#error "unsupported kLn2SoundSampSz"
+#endif
+
+LOCALPROC SoundRampTo(trSoundTemp *last_val, trSoundTemp dst_val,
+	tpSoundSamp *stream, int *len)
 {
-	if (HaveSoundOut) {
-		MySound_Start0();
-		SDL_PauseAudio(0);
+	trSoundTemp diff;
+	tpSoundSamp p = *stream;
+	int n = *len;
+	trSoundTemp v1 = *last_val;
+
+	while ((v1 != dst_val) && (0 != n)) {
+		if (v1 > dst_val) {
+			diff = v1 - dst_val;
+			if (diff > AudioStepVal) {
+				v1 -= AudioStepVal;
+			} else {
+				v1 = dst_val;
+			}
+		} else {
+			diff = dst_val - v1;
+			if (diff > AudioStepVal) {
+				v1 += AudioStepVal;
+			} else {
+				v1 = dst_val;
+			}
+		}
+
+		--n;
+		*p++ = ConvertTempSoundSampleToNative(v1);
 	}
+
+	*stream = p;
+	*len = n;
+	*last_val = v1;
 }
 
-LOCALPROC MySound_Stop(void)
-{
-	if (HaveSoundOut) {
-		SDL_PauseAudio(1);
-		HaveStartedPlaying = falseblnr;
-	}
-}
+struct MySoundR {
+	tpSoundSamp fTheSoundBuffer;
+	volatile ui4b (*fPlayOffset);
+	volatile ui4b (*fFillOffset);
+	volatile ui4b (*fMinFilledSoundBuffs);
+
+	volatile trSoundTemp lastv;
+
+	blnr wantplaying;
+	blnr HaveStartedPlaying;
+};
+typedef struct MySoundR MySoundR;
 
 static void my_audio_callback(void *udata, Uint8 *stream, int len)
 {
+	ui4b ToPlayLen;
+	ui4b FilledSoundBuffs;
 	int i;
+	MySoundR *datp = (MySoundR *)udata;
+	tpSoundSamp CurSoundBuffer = datp->fTheSoundBuffer;
+	ui4b CurPlayOffset = *datp->fPlayOffset;
+	trSoundTemp v0 = datp->lastv;
+	trSoundTemp v1 = v0;
+	tpSoundSamp dst = (tpSoundSamp)stream;
+
+#if kLn2SoundSampSz > 3
+	len >>= (kLn2SoundSampSz - 3);
+#endif
+
+#if dbglog_SoundStuff
+	dbglog_writeln("Enter my_audio_callback");
+	dbglog_writelnNum("len", len);
+#endif
 
 label_retry:
-	{
-		ui4b ToPlayLen = TheFillOffset - ThePlayOffset;
-		ui4b FilledSoundBuffs = ToPlayLen >> kLnOneBuffLen;
+	ToPlayLen = *datp->fFillOffset - CurPlayOffset;
+	FilledSoundBuffs = ToPlayLen >> kLnOneBuffLen;
 
-		if (! HaveStartedPlaying) {
-			if ((ToPlayLen >> kLnOneBuffLen) < 12) {
-				ToPlayLen = 0;
-			} else {
-				HaveStartedPlaying = trueblnr;
+	if (! datp->wantplaying) {
+#if dbglog_SoundStuff
+		dbglog_writeln("playing end transistion");
+#endif
+
+		SoundRampTo(&v1, kCenterTempSound, &dst, &len);
+
+		ToPlayLen = 0;
+	} else if (! datp->HaveStartedPlaying) {
+#if dbglog_SoundStuff
+		dbglog_writeln("playing start block");
+#endif
+
+		if ((ToPlayLen >> kLnOneBuffLen) < 8) {
+			ToPlayLen = 0;
+		} else {
+			tpSoundSamp p = datp->fTheSoundBuffer
+				+ (CurPlayOffset & kAllBuffMask);
+			trSoundTemp v2 = ConvertTempSoundSampleFromNative(*p);
+
+#if dbglog_SoundStuff
+			dbglog_writeln("have enough samples to start");
+#endif
+
+			SoundRampTo(&v1, v2, &dst, &len);
+
+			if (v1 == v2) {
+#if dbglog_SoundStuff
+				dbglog_writeln("finished start transition");
+#endif
+
+				datp->HaveStartedPlaying = trueblnr;
 			}
 		}
+	}
 
-		if (0 == len) {
+	if (0 == len) {
+		/* done */
+
+		if (FilledSoundBuffs < *datp->fMinFilledSoundBuffs) {
+			*datp->fMinFilledSoundBuffs = FilledSoundBuffs;
+		}
+	} else if (0 == ToPlayLen) {
+
+#if dbglog_SoundStuff
+		dbglog_writeln("under run");
+#endif
+
+		for (i = 0; i < len; ++i) {
+			*dst++ = ConvertTempSoundSampleToNative(v1);
+		}
+		*datp->fMinFilledSoundBuffs = 0;
+	} else {
+		ui4b PlayBuffContig = kAllBuffLen
+			- (CurPlayOffset & kAllBuffMask);
+		tpSoundSamp p = CurSoundBuffer
+			+ (CurPlayOffset & kAllBuffMask);
+
+		if (ToPlayLen > PlayBuffContig) {
+			ToPlayLen = PlayBuffContig;
+		}
+		if (ToPlayLen > len) {
+			ToPlayLen = len;
+		}
+
+		for (i = 0; i < ToPlayLen; ++i) {
+			*dst++ = *p++;
+		}
+		v1 = ConvertTempSoundSampleFromNative(p[-1]);
+
+		CurPlayOffset += ToPlayLen;
+		len -= ToPlayLen;
+
+		*datp->fPlayOffset = CurPlayOffset;
+
+		goto label_retry;
+	}
+
+	datp->lastv = v1;
+}
+
+LOCALVAR MySoundR cur_audio;
+
+LOCALVAR blnr HaveSoundOut = falseblnr;
+
+LOCALPROC MySound_Stop(void)
+{
+#if dbglog_SoundStuff
+	dbglog_writeln("enter MySound_Stop");
+#endif
+
+	if (cur_audio.wantplaying && HaveSoundOut) {
+		ui4r retry_limit = 50; /* half of a second */
+
+		cur_audio.wantplaying = falseblnr;
+
+label_retry:
+		if (kCenterTempSound == cur_audio.lastv) {
+#if dbglog_SoundStuff
+			dbglog_writeln("reached kCenterTempSound");
+#endif
+
 			/* done */
+		} else if (0 == --retry_limit) {
+#if dbglog_SoundStuff
+			dbglog_writeln("retry limit reached");
+#endif
+			/* done */
+		} else
+		{
+			/*
+				give time back, particularly important
+				if got here on a suspend event.
+			*/
 
-			if (FilledSoundBuffs < MinFilledSoundBuffs) {
-				MinFilledSoundBuffs = FilledSoundBuffs;
-			}
-		} else if (ToPlayLen == 0) {
-			/* under run */
+#if dbglog_SoundStuff
+			dbglog_writeln("busy, so sleep");
+#endif
 
-			/* fprintf(stderr, "under run\n"); */
-
-			for (i = 0; i < len; ++i) {
-				*stream++ = 0x80;
-			}
-			MinFilledSoundBuffs = 0;
-		} else {
-			ui4b PlayBuffContig = kAllBuffLen
-				- (ThePlayOffset & kAllBuffMask);
-			tpSoundSamp p = TheSoundBuffer
-				+ (ThePlayOffset & kAllBuffMask);
-
-			if (ToPlayLen > PlayBuffContig) {
-				ToPlayLen = PlayBuffContig;
-			}
-			if (ToPlayLen > len) {
-				ToPlayLen = len;
-			}
-
-			for (i = 0; i < ToPlayLen; ++i) {
-				*stream++ = *p++;
-			}
-
-			ThePlayOffset += ToPlayLen;
-			len -= ToPlayLen;
+			(void) SDL_Delay(10);
 
 			goto label_retry;
 		}
+
+		SDL_PauseAudio(1);
 	}
+
+#if dbglog_SoundStuff
+	dbglog_writeln("leave MySound_Stop");
+#endif
 }
 
-LOCALFUNC blnr MySound_Init(void)
+LOCALPROC MySound_Start(void)
 {
-	SDL_AudioSpec desired;
+	if ((! cur_audio.wantplaying) && HaveSoundOut) {
+		MySound_Start0();
+		cur_audio.lastv = kCenterTempSound;
+		cur_audio.HaveStartedPlaying = falseblnr;
+		cur_audio.wantplaying = trueblnr;
 
-	desired.freq = SOUND_SAMPLERATE;
-	desired.format = AUDIO_U8;
-	desired.channels = 1;
-	desired.samples = 1024;
-	desired.callback = my_audio_callback;
-	desired.userdata = NULL;
-
-	/* Open the audio device */
-	if (SDL_OpenAudio(&desired, NULL) < 0) {
-		fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
-	} else {
-		HaveSoundOut = trueblnr;
+		SDL_PauseAudio(0);
 	}
-
-	return trueblnr; /* keep going, even if no sound */
 }
 
 LOCALPROC MySound_UnInit(void)
@@ -1429,6 +1655,52 @@ LOCALPROC MySound_UnInit(void)
 	if (HaveSoundOut) {
 		SDL_CloseAudio();
 	}
+}
+
+#define SOUND_SAMPLERATE 22255 /* = round(7833600 * 2 / 704) */
+
+LOCALFUNC blnr MySound_Init(void)
+{
+	SDL_AudioSpec desired;
+
+	MySound_Init0();
+
+	cur_audio.fTheSoundBuffer = TheSoundBuffer;
+	cur_audio.fPlayOffset = &ThePlayOffset;
+	cur_audio.fFillOffset = &TheFillOffset;
+	cur_audio.fMinFilledSoundBuffs = &MinFilledSoundBuffs;
+	cur_audio.wantplaying = falseblnr;
+
+	desired.freq = SOUND_SAMPLERATE;
+
+#if 3 == kLn2SoundSampSz
+	desired.format = AUDIO_U8;
+#elif 4 == kLn2SoundSampSz
+	desired.format = AUDIO_S16SYS;
+#else
+#error "unsupported audio format"
+#endif
+
+	desired.channels = 1;
+	desired.samples = 1024;
+	desired.callback = my_audio_callback;
+	desired.userdata = (void *)&cur_audio;
+
+	/* Open the audio device */
+	if (SDL_OpenAudio(&desired, NULL) < 0) {
+		fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
+	} else {
+		HaveSoundOut = trueblnr;
+
+		MySound_Start();
+			/*
+				This should be taken care of by LeaveSpeedStopped,
+				but since takes a while to get going properly,
+				start early.
+			*/
+	}
+
+	return trueblnr; /* keep going, even if no sound */
 }
 
 GLOBALPROC MySound_EndWrite(ui4r actL)
@@ -1848,8 +2120,6 @@ LOCALPROC CheckForSavedTasks(void)
 		ScreenChangedAll();
 	}
 
-	MyDrawChangesAndClear();
-
 	if (HaveCursorHidden != (WantCursorHidden
 		&& ! (gTrueBackgroundFlag || CurSpeedStopped)))
 	{
@@ -1892,81 +2162,10 @@ label_retry:
 
 /* --- main program flow --- */
 
-LOCALVAR ui5b OnTrueTime = 0;
-
 GLOBALFUNC blnr ExtraTimeNotOver(void)
 {
 	UpdateTrueEmulatedTime();
 	return TrueEmulatedTime == OnTrueTime;
-}
-
-/* --- platform independent code can be thought of as going here --- */
-
-#include "PROGMAIN.h"
-
-LOCALPROC RunEmulatedTicksToTrueTime(void)
-{
-	si3b n = OnTrueTime - CurEmulatedTime;
-
-	if (n > 0) {
-		if (CheckDateTime()) {
-#if MySoundEnabled
-			MySound_SecondNotify();
-#endif
-		}
-
-		if ((! gBackgroundFlag)
-#if UseMotionEvents
-			&& (! CaughtMouse)
-#endif
-			)
-		{
-			CheckMouseState();
-		}
-
-#if EnableMouseMotion && MayFullScreen
-		if (HaveMouseMotion) {
-			AutoScrollScreen();
-		}
-#endif
-
-		DoEmulateOneTick();
-		++CurEmulatedTime;
-
-		MyDrawChangesAndClear();
-
-		if (n > 8) {
-			/* emulation not fast enough */
-			n = 8;
-			CurEmulatedTime = OnTrueTime - n;
-		}
-
-		if (ExtraTimeNotOver() && (--n > 0)) {
-			/* lagging, catch up */
-
-			EmVideoDisable = trueblnr;
-
-			do {
-				DoEmulateOneTick();
-				++CurEmulatedTime;
-			} while (ExtraTimeNotOver()
-				&& (--n > 0));
-
-			EmVideoDisable = falseblnr;
-		}
-
-		EmLagTime = n;
-	}
-}
-
-LOCALPROC RunOnEndOfSixtieth(void)
-{
-	while (ExtraTimeNotOver()) {
-		(void) SDL_Delay(NextIntTime - LastTime);
-	}
-
-	OnTrueTime = TrueEmulatedTime;
-	RunEmulatedTicksToTrueTime();
 }
 
 LOCALPROC WaitForTheNextEvent(void)
@@ -1988,23 +2187,52 @@ LOCALPROC CheckForSystemEvents(void)
 	}
 }
 
-LOCALPROC MainEventLoop(void)
+GLOBALPROC WaitForNextTick(void)
 {
-	for (; ; ) {
-		CheckForSystemEvents();
-		CheckForSavedTasks();
-		if (ForceMacOff) {
-			return;
-		}
+label_retry:
+	CheckForSystemEvents();
+	CheckForSavedTasks();
 
-		if (CurSpeedStopped) {
-			WaitForTheNextEvent();
-		} else {
-			DoEmulateExtraTime();
-			RunOnEndOfSixtieth();
-		}
+	if (ForceMacOff) {
+		return;
 	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		WaitForTheNextEvent();
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
+		(void) SDL_Delay(NextIntTime - LastTime);
+		goto label_retry;
+	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+	}
+
+	if ((! gBackgroundFlag)
+#if UseMotionEvents
+		&& (! CaughtMouse)
+#endif
+		)
+	{
+		CheckMouseState();
+	}
+
+	OnTrueTime = TrueEmulatedTime;
+
+#if dbglog_TimeStuff
+	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
+#endif
 }
+
+/* --- platform independent code can be thought of as going here --- */
+
+#include "PROGMAIN.h"
 
 LOCALPROC ZapOSGLUVars(void)
 {
@@ -2082,7 +2310,6 @@ LOCALFUNC blnr InitOSGLU(void)
 #endif
 	if (Screen_Init())
 	if (CreateMainWindow())
-	if (InitEmulation())
 	{
 		return trueblnr;
 	}
@@ -2130,7 +2357,7 @@ int main(int argc, char **argv)
 
 	ZapOSGLUVars();
 	if (InitOSGLU()) {
-		MainEventLoop();
+		ProgramMain();
 	}
 	UnInitOSGLU();
 

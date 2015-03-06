@@ -58,10 +58,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 	WriteEndDestFileLn();
 
 	if (DbgLogHAVE) {
-		WriteBgnDestFileLn();
-		WriteCStrToDestFile("#define dbglog_buflnsz ");
-		WriteUnsignedToOutput(dbglog_buflnsz);
-		WriteEndDestFileLn();
+		WriteDefineUimr("dbglog_buflnsz", dbglog_buflnsz);
 	}
 
 	if (gbk_targfam_wnce == gbo_targfam) {
@@ -90,10 +87,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 
 	WriteCompCondBool("EnableMagnify", 1 != cur_MagFctr);
 	if (1 != cur_MagFctr) {
-		WriteBgnDestFileLn();
-		WriteCStrToDestFile("#define MyWindowScale ");
-		WriteUnsignedToOutput(cur_MagFctr);
-		WriteEndDestFileLn();
+		WriteDefineUimr("MyWindowScale", cur_MagFctr);
 	}
 
 	WriteCompCondBool("WantInitRunInBackground", WantInitBackground);
@@ -144,7 +138,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 			WriteBgnDestFileLn();
 			WriteCStrToDestFile("#define KeyCon");
 			WriteUnsignedToOutput(i);
-			WriteCStrToDestFile(" ");
+			strmo_writeSpace();
 			WriteUnsignedToOutput(KeyCon[i]);
 			WriteEndDestFileLn();
 		}
