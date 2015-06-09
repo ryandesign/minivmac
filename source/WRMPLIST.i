@@ -139,7 +139,7 @@ LOCALPROC WriteInfoPList(MyProc p)
 		"localhost/System/Library/DTDs/PropertyList.dtd\">");
 	WriteDestFileLn("<plist version=\"0.9\">");
 #else
-	if ((cur_ide == gbk_ide_xcd) && (ide_vers >= 3100)) {
+	if ((gbk_ide_xcd == cur_ide) && (ide_vers >= 3100)) {
 		WriteDestFileLn(
 			"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\""
 			" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">");
@@ -267,7 +267,7 @@ LOCALFUNC tMyErr WritePListData(void)
 {
 	tMyErr err;
 
-	if (cur_ide == gbk_ide_mw8) {
+	if (gbk_ide_mw8 == cur_ide) {
 		err = WriteADestFile(&SrcDirR, "main", ".plc",
 			WriteMainPLCData);
 	} else

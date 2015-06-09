@@ -97,7 +97,7 @@ LOCALPROC WriteDevCProjectFile(void)
 
 	WriteDestFileLn("IncludeVersionInfo=0");
 	WriteDestFileLn("CompilerSet=0");
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("CompilerSettings=000000000000000100");
 		WriteDestFileLn(
 			"Compiler= -Wall -Wstrict-prototypes"

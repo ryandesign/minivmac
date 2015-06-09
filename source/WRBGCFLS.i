@@ -24,7 +24,7 @@
 LOCALPROC WriteXCDcallgcc(void)
 {
 #if 0
-	if ((cur_ide == gbk_ide_xcd) && (ide_vers >= 2100)
+	if ((gbk_ide_xcd == cur_ide) && (ide_vers >= 2100)
 		&& (ide_vers < 2200))
 	{
 		/*
@@ -35,7 +35,7 @@ LOCALPROC WriteXCDcallgcc(void)
 			included but not installed by default.
 		*/
 		WriteCStrToDestFile("export MACOSX_DEPLOYMENT_TARGET=10.");
-		if (gbo_cpufam == gbk_cpufam_ppc) {
+		if (gbk_cpufam_ppc == gbo_cpufam) {
 			WriteCStrToDestFile("1");
 		} else {
 			WriteCStrToDestFile("4");
@@ -49,11 +49,11 @@ LOCALPROC WriteXCDcallgcc(void)
 
 LOCALPROC WriteBgcCompileAsmLinkCommonOptions(void)
 {
-	if (cur_ide == gbk_ide_xcd) {
+	if (gbk_ide_xcd == cur_ide) {
 		if (ide_vers >= 2100) {
-			if (gbo_cpufam == gbk_cpufam_x86) {
+			if (gbk_cpufam_x86 == gbo_cpufam) {
 				WriteCStrToDestFile(" -arch i386");
-			} else if (gbo_cpufam == gbk_cpufam_x64) {
+			} else if (gbk_cpufam_x64 == gbo_cpufam) {
 				WriteCStrToDestFile(" -arch x86_64");
 			} else {
 				WriteCStrToDestFile(" -arch ppc");
@@ -61,7 +61,7 @@ LOCALPROC WriteBgcCompileAsmLinkCommonOptions(void)
 		}
 	}
 	if (gbk_targfam_oind == gbo_targfam) {
-		if (gbo_cpufam == gbk_cpufam_x64) {
+		if (gbk_cpufam_x64 == gbo_cpufam) {
 			WriteCStrToDestFile(" -m64");
 		}
 	} else if (gbk_targfam_lnds == gbo_targfam) {
@@ -71,12 +71,12 @@ LOCALPROC WriteBgcCompileAsmLinkCommonOptions(void)
 
 LOCALPROC WriteBgcCompileLinkCommonOptions(void)
 {
-	if ((cur_ide == gbk_ide_xcd)
+	if ((gbk_ide_xcd == cur_ide)
 		&& ((gbk_apifam_osx == gbo_apifam)
 			|| (gbk_apifam_cco == gbo_apifam)))
 	{
 		if (ide_vers >= 2200) {
-			if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile(" -mmacosx-version-min=10.1");
 			} else {
 				WriteCStrToDestFile(" -mmacosx-version-min=10.4");
@@ -91,7 +91,7 @@ LOCALPROC WriteBgcCompileLinkCommonOptions(void)
 			}
 		}
 	}
-	if (gbo_dbg != gbk_dbg_off) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile(" -g");
 	}
 }
@@ -103,16 +103,16 @@ LOCALPROC WriteBgcCOptions(void)
 	if (gbk_apifam_nds != gbo_apifam) {
 		WriteCStrToDestFile(" -Wundef -Wstrict-prototypes");
 	}
-	if (cur_ide == gbk_ide_cyg) {
+	if (gbk_ide_cyg == cur_ide) {
 		if (gbk_targfam_cygw != gbo_targfam) {
 			WriteCStrToDestFile(" -mno-cygwin");
 		}
 	}
-	if (cur_ide == gbk_ide_xcd) {
+	if (gbk_ide_xcd == cur_ide) {
 		WriteCStrToDestFile(" -mdynamic-no-pic -fpascal-strings");
 #if UseAlignMac68k
-		if ((gbo_cpufam == gbk_cpufam_68k)
-			|| (gbo_cpufam == gbk_cpufam_ppc))
+		if ((gbk_cpufam_68k == gbo_cpufam)
+			|| (gbk_cpufam_ppc == gbo_cpufam))
 		{
 			WriteCStrToDestFile(" -malign-mac68k");
 		}
@@ -129,7 +129,7 @@ LOCALPROC WriteBgcCOptions(void)
 	if (gbk_apifam_nds == gbo_apifam) {
 		WriteCStrToDestFile(" -march=armv5te -mtune=arm946e-s");
 	}
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		/* WriteCStrToDestFile(" -O3"); */
 		if (gbk_targfam_lnds == gbo_targfam) {
 			WriteCStrToDestFile(" -O2");
@@ -281,7 +281,7 @@ LOCALPROC WriteBashGccMakeFile(void)
 				WritePathArgInMakeCmnd(WriteMainRsrcObjPath);
 				WriteCStrToDestFile(
 					" -mwindows -lwinmm -lole32 -luuid");
-				if (cur_ide == gbk_ide_cyg) {
+				if (gbk_ide_cyg == cur_ide) {
 					WriteCStrToDestFile(" -mno-cygwin");
 				}
 			} else if (gbk_apifam_gtk == gbo_apifam) {
@@ -300,6 +300,7 @@ LOCALPROC WriteBashGccMakeFile(void)
 				if (gbk_targfam_slrs == gbo_targfam) {
 					WriteCStrToDestFile(" -lposix4");
 				}
+#if MayUseSound
 				if (gbk_sndapi_alsa == gbo_sndapi) {
 					WriteCStrToDestFile(" -ldl");
 #if 0
@@ -312,6 +313,7 @@ LOCALPROC WriteBashGccMakeFile(void)
 						WriteCStrToDestFile(" -lossaudio");
 					}
 				}
+#endif
 #if 0
 				WriteCStrToDestFile(" -lXext");
 #endif
@@ -336,7 +338,7 @@ LOCALPROC WriteBashGccMakeFile(void)
 			WriteBgcCompileLinkCommonOptions();
 			WriteEndDestFileLn();
 		--DestFileIndent;
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			switch (cur_ide) {
 				case gbk_ide_bgc:
 					if ((gbk_targfam_minx == gbo_targfam)

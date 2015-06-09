@@ -129,7 +129,7 @@ LOCALPROC WriteDocTypeIncludeIconFile(void)
 LOCALPROC WriteMacResConfigContents(void)
 {
 	WriteBlankLineToDestFile();
-	if (cur_ide == gbk_ide_mw8) {
+	if (gbk_ide_mw8 == cur_ide) {
 		if (gbk_targfam_mach == gbo_targfam) {
 			WriteDestFileLn("#include <Carbon/Carbon.r>");
 		} else {
@@ -137,9 +137,9 @@ LOCALPROC WriteMacResConfigContents(void)
 			WriteQuotedInclude("Icons.r");
 		}
 	} else
-	if ((cur_ide == gbk_ide_bgc) || (cur_ide == gbk_ide_xcd)) {
+	if ((gbk_ide_bgc == cur_ide) || (gbk_ide_xcd == cur_ide)) {
 		WriteQuotedInclude("Carbon.r");
-	} else if (cur_ide == gbk_ide_mpw) {
+	} else if (gbk_ide_mpw == cur_ide) {
 		WriteQuotedInclude("Types.r");
 		WriteQuotedInclude("Icons.r");
 	}
@@ -223,7 +223,7 @@ LOCALPROC WriteMacResConfigContents(void)
 		WriteEndResResource();
 #endif
 
-		if (cur_ide != gbk_ide_mw8) {
+		if (gbk_ide_mw8 != cur_ide) {
 			WriteBlankLineToDestFile();
 			WriteDestFileLn("resource 'SIZE' (-1) {");
 			++DestFileIndent;

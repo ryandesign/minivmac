@@ -1115,7 +1115,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 			strmo_writeSpace();
 			WriteMakeVar("mk_COptions");
 			if (UseAPI) {
-				if (gbo_apifam == gbk_apifam_xwn) {
+				if (gbk_apifam_xwn == gbo_apifam) {
 #if 0
 					if (gbk_targfam_fbsd == gbo_targfam) {
 						WriteCStrToDestFile(" -I/usr/local/include");
@@ -1129,7 +1129,7 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 						*/
 					}
 #endif
-					if ((cur_ide == gbk_ide_xcd)
+					if ((gbk_ide_xcd == cur_ide)
 						|| (gbk_targfam_fbsd == gbo_targfam)
 						|| (gbk_targfam_obsd == gbo_targfam)
 						|| (gbk_targfam_oind == gbo_targfam))

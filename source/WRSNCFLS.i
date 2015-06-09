@@ -22,7 +22,7 @@
 static void WriteSncCOptions(void)
 {
 	WriteCStrToDestFile(" -c -v -fd -xstrconst");
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		WriteCStrToDestFile(" -xO4 -xspace -Qn");
 	} else {
 		WriteCStrToDestFile(" -g");
@@ -65,7 +65,7 @@ LOCALPROC WriteSncMakeFile(void)
 	++DestFileIndent;
 		WriteBgnDestFileLn();
 		WriteCStrToDestFile("cc");
-		if (gbo_dbg != gbk_dbg_on) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteCStrToDestFile(" -s -Qn -mr");
 		}
 		WriteCStrToDestFile(" \\");
@@ -90,8 +90,8 @@ LOCALPROC WriteSncMakeFile(void)
 			WriteEndDestFileLn();
 			WriteDestFileLn("$(ObjFiles)");
 		--DestFileIndent;
-		if (gbo_dbg == gbk_dbg_off) {
-			if (cur_ide == gbk_ide_xcd) {
+		if (gbk_dbg_on != gbo_dbg) {
+			if (gbk_ide_xcd == cur_ide) {
 				WriteBgnDestFileLn();
 				WriteCStrToDestFile("strip -u -r \"");
 				Write_machobinpath_ToDestFile();

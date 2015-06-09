@@ -21,56 +21,6 @@
 
 /* --- list of source files --- */
 
-static void DoAllExtraHeaders(tDoOneExtraHeader p)
-{
-	p(kDepDirCnfg, "CNFGGLOB.h");
-	p(kDepDirCnfg, "CNFGRAPI.h");
-	p(kDepDirCSrc, "SYSDEPNS.h");
-	p(kDepDirCSrc, "INTLCHAR.h");
-	p(kDepDirCSrc, "DATE2SEC.h");
-	p(kDepDirCSrc, "ENDIANAC.h");
-	p(kDepDirCSrc, "COMOSGLU.h");
-	p(kDepDirLang, "STRCONST.h");
-	if (gbk_sndapi_none != gbo_sndapi) {
-		p(kDepDirSndA, "SOUNDGLU.h");
-	}
-	if (WantAltKeysMode) {
-		p(kDepDirCSrc, "ALTKEYSM.h");
-	}
-	p(kDepDirCSrc, "CONTROLM.h");
-	p(kDepDirCnfg, "EMCONFIG.h");
-	if (UseAsm68k) {
-		p(kDepDirCnfg, "CNFGRASM.i");
-	}
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		p(kDepDirCSrc, "FPMATHEM.h");
-		p(kDepDirCSrc, "FPCPEMDV.h");
-	}
-	if (NeedScrnHack) {
-		p(kDepDirCSrc, "SCRNHACK.h");
-	}
-	if (cur_mdl >= gbk_mdl_SE) {
-		p(kDepDirCSrc, "ADBSHARE.h");
-	}
-	if (WantActvCode) {
-		p(kDepDirCSrc, "ACTVCODE.h");
-	}
-	if (WantLocalTalk) {
-		p(kDepDirCSrc, "BPFILTER.h");
-	}
-	if ((gbk_apifam_osx == gbo_apifam)
-		|| (gbk_apifam_mac == gbo_apifam)
-		|| (gbk_apifam_cco == gbo_apifam)
-		|| (gbk_apifam_xwn == gbo_apifam)
-		|| (gbk_apifam_sdl == gbo_apifam))
-	{
-		p(kDepDirCSrc, "SCRNMAPR.h");
-		if (cur_ScrnDpth != 0) {
-			p(kDepDirCSrc, "SCRNTRNS.h");
-		}
-	}
-}
-
 static void DoMYOSGLUEdepends(tDoOneDepends p)
 {
 	p(kDepDirCSrc, "COMOSGLU.h");
@@ -83,20 +33,71 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 
 static void DoAllSrcFiles(tDoOneCFile p)
 {
+	p("CNFGGLOB", kDepDirCnfg, kCSrcFlgmNoSource, nullpr);
+	p("CNFGRAPI", kDepDirCnfg, kCSrcFlgmNoSource, nullpr);
+	p("SYSDEPNS", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("INTLCHAR", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("DATE2SEC", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("ENDIANAC", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("COMOSGLU", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("STRCONST", kDepDirLang, kCSrcFlgmNoSource, nullpr);
+	if (gbk_sndapi_none != gbo_sndapi) {
+		p("SOUNDGLU", kDepDirSndA, kCSrcFlgmNoSource, nullpr);
+	}
+	if (WantAltKeysMode) {
+		p("ALTKEYSM", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	}
+	p("CONTROLM", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("EMCONFIG", kDepDirCnfg, kCSrcFlgmNoSource, nullpr);
+#if 0
+	if (UseAsm68k) {
+		p("CNFGRASM", kDepDirCnfg, kCSrcFlgmNoSource, nullpr);
+		/* this is a ".i" file, not a C language ".h" file */
+	}
+#endif
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		p("FPMATHEM", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+		p("FPCPEMDV", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	}
+	if (NeedScrnHack) {
+		p("SCRNHACK", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	}
+	if (cur_mdl >= gbk_mdl_SE) {
+		p("ADBSHARE", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	}
+	if (WantActvCode) {
+		p("ACTVCODE", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	}
+	if (WantLocalTalk) {
+		p("BPFILTER", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	}
+	if ((gbk_apifam_osx == gbo_apifam)
+		|| (gbk_apifam_mac == gbo_apifam)
+		|| (gbk_apifam_cco == gbo_apifam)
+		|| (gbk_apifam_xwn == gbo_apifam)
+		|| (gbk_apifam_sdl == gbo_apifam))
+	{
+		p("SCRNMAPR", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+		if (cur_ScrnDpth != 0) {
+			p("SCRNTRNS", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+		}
+	}
+
 	if ((gbk_asm_none != cur_asm)
 		&& (gbk_targ_ndsa == cur_targ))
 	{
-		p("FB1BPP2I", kCSrcFlgmAsmAvail, nullpr);
+		p("FB1BPP2I", kDepDirCSrc, kCSrcFlgmAsmAvail, nullpr);
 	}
-	p("MYOSGLUE", kCSrcFlgmUseAPI,
+	p("MYOSGLUE", kDepDirCSrc, kCSrcFlgmUseAPI
+		| ((gbk_apifam_cco == gbo_apifam) ? kCSrcFlgmOjbc : 0),
 		DoMYOSGLUEdepends);
-	p("GLOBGLUE", kCSrcFlgmNone, nullpr);
-	p("M68KITAB", kCSrcFlgmNone, nullpr);
+	p("GLOBGLUE", kDepDirCSrc, kCSrcFlgmNone, nullpr);
+	p("M68KITAB", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	if (WantDisasm) {
-		p("DISAM68K", kCSrcFlgmNone, nullpr);
+		p("DISAM68K", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	}
 
-	p("MINEM68K", kCSrcFlgmSortFirst
+	p("MINEM68K", kDepDirCSrc, kCSrcFlgmSortFirst
 		| (UseAsm68k ? kCSrcFlgmAsmAvail : 0),
 		nullpr);
 		/*
@@ -108,38 +109,38 @@ static void DoAllSrcFiles(tDoOneCFile p)
 			randomly, on how code is aligned.
 		*/
 
-	p("VIAEMDEV", kCSrcFlgmNone, nullpr);
+	p("VIAEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	if (EmVIA2) {
-		p("VIA2EMDV", kCSrcFlgmNone, nullpr);
+		p("VIA2EMDV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	}
-	p("IWMEMDEV", kCSrcFlgmNone, nullpr);
-	p("SCCEMDEV", kCSrcFlgmNone, nullpr);
+	p("IWMEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
+	p("SCCEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	if (EmRTC) {
-		p("RTCEMDEV", kCSrcFlgmNone, nullpr);
+		p("RTCEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	}
-	p("ROMEMDEV", kCSrcFlgmNone, nullpr);
-	p("SCSIEMDV", kCSrcFlgmNone, nullpr);
-	p("SONYEMDV", kCSrcFlgmNone, nullpr);
-	p("SCRNEMDV", kCSrcFlgmNone, nullpr);
+	p("ROMEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
+	p("SCSIEMDV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
+	p("SONYEMDV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
+	p("SCRNEMDV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	if (EmVidCard) {
-		p("VIDEMDEV", kCSrcFlgmNone, nullpr);
+		p("VIDEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	}
 	if (EmClassicKbrd) {
-		p("KBRDEMDV", kCSrcFlgmNone, nullpr);
+		p("KBRDEMDV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	} else if (EmPMU) {
-		p("PMUEMDEV", kCSrcFlgmNone, nullpr);
+		p("PMUEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	} else {
-		p("ADBEMDEV", kCSrcFlgmNone, nullpr);
+		p("ADBEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	}
 	if (EmASC) {
-		p("ASCEMDEV", kCSrcFlgmNone, nullpr);
+		p("ASCEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	} else {
 		if ((gbk_mdl_PB100 != cur_mdl) && MySoundEnabled) {
-			p("SNDEMDEV", kCSrcFlgmNone, nullpr);
+			p("SNDEMDEV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 		}
 	}
-	p("MOUSEMDV", kCSrcFlgmNone, nullpr);
-	p("PROGMAIN", kCSrcFlgmNone, nullpr);
+	p("MOUSEMDV", kDepDirCSrc, kCSrcFlgmNone, nullpr);
+	p("PROGMAIN", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 }
 
 /* --- list of document types --- */

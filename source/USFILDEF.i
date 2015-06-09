@@ -37,10 +37,13 @@ typedef struct DoSrcFile_r DoSrcFile_r;
 
 #define DoSrcFile_gd() ((DoSrcFile_r *)(pDt))
 
-LOCALPROC DoAllSrcFilesWithSetupProc(
-	char *s, long Flgm, tDoDependsForC depends)
+LOCALPROC DoASrcFileWithSetupProc(
+	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
-	if (noErr == DoSrcFile_gd()->err) {
+#pragma unused(DepDir)
+	if (noErr == DoSrcFile_gd()->err)
+	if (0 == (Flgm & kCSrcFlgmNoSource))
+	{
 		DoSrcFile_gd()->s = s;
 		DoSrcFile_gd()->Flgm = Flgm;
 		DoSrcFile_gd()->depends = depends;
@@ -61,7 +64,7 @@ LOCALFUNC tMyErr DoAllSrcFilesWithSetup(MyProc p)
 	pDt = (MyPtr)&r;
 
 	FileCounter = 0;
-	DoAllSrcFiles(DoAllSrcFilesWithSetupProc);
+	DoAllSrcFiles(DoASrcFileWithSetupProc);
 
 	pDt = r.SavepDt;
 
@@ -69,22 +72,26 @@ LOCALFUNC tMyErr DoAllSrcFilesWithSetup(MyProc p)
 }
 
 LOCALPROC DoAllSrcFilesSortWithSetup1(
-	char *s, long Flgm, tDoDependsForC depends)
+	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
 	if (0 != (Flgm & kCSrcFlgmSortFirst)) {
-		DoAllSrcFilesWithSetupProc(s, Flgm, depends);
+		DoASrcFileWithSetupProc(s, DepDir, Flgm, depends);
 	} else {
-		++FileCounter;
+		if (0 == (Flgm & kCSrcFlgmNoSource)) {
+			++FileCounter;
+		}
 	}
 }
 
 LOCALPROC DoAllSrcFilesSortWithSetup2(
-	char *s, long Flgm, tDoDependsForC depends)
+	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
 	if (0 == (Flgm & kCSrcFlgmSortFirst)) {
-		DoAllSrcFilesWithSetupProc(s, Flgm, depends);
+		DoASrcFileWithSetupProc(s, DepDir, Flgm, depends);
 	} else {
-		++FileCounter;
+		if (0 == (Flgm & kCSrcFlgmNoSource)) {
+			++FileCounter;
+		}
 	}
 }
 
@@ -114,7 +121,7 @@ LOCALFUNC char * GetSrcFileFileXtns(void)
 	blnr IsAsmFile = HaveAsm
 		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
 #endif
-	blnr UseAPI = ((DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
+	blnr UseObjc = ((DoSrcFile_gd()->Flgm & kCSrcFlgmOjbc) != 0);
 
 #if AsmSupported
 	if (IsAsmFile) {
@@ -122,7 +129,7 @@ LOCALFUNC char * GetSrcFileFileXtns(void)
 	} else
 #endif
 	{
-		if (UseAPI && (gbk_apifam_cco == gbo_apifam)) {
+		if (UseObjc) {
 			s = ".m";
 		} else {
 			s = ".c";
@@ -190,10 +197,14 @@ typedef struct DoXtraHdr_r DoXtraHdr_r;
 
 #define DoXtraHdr_gd() ((DoXtraHdr_r *)(pDt))
 
-LOCALPROC DoAllExtraHeaders2WithSetupProc(int DepDir,
-	char *s)
+LOCALPROC DoAllExtraHeaders2WithSetupProc(
+	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
-	if (noErr == DoXtraHdr_gd()->err) {
+#pragma unused(depends)
+	if (noErr == DoXtraHdr_gd()->err)
+	if (0 == (Flgm & kCSrcFlgmNoHeader))
+	if (0 != (Flgm & kCSrcFlgmNoSource))
+	{
 		DoXtraHdr_gd()->DepDir = DepDir;
 		DoXtraHdr_gd()->s = s;
 
@@ -213,7 +224,7 @@ LOCALFUNC tMyErr DoAllExtraHeaders2WithSetup(MyProc p)
 	pDt = (MyPtr)&r;
 
 	FileCounter = 0;
-	DoAllExtraHeaders(DoAllExtraHeaders2WithSetupProc);
+	DoAllSrcFiles(DoAllExtraHeaders2WithSetupProc);
 
 	pDt = r.SavepDt;
 
@@ -223,6 +234,7 @@ LOCALFUNC tMyErr DoAllExtraHeaders2WithSetup(MyProc p)
 LOCALPROC WriteExtraHeaderFileName(void)
 {
 	WriteCStrToDestFile(DoXtraHdr_gd()->s);
+	WriteCStrToDestFile(".h");
 }
 
 LOCALPROC WriteExtraHeaderFilePath(void)

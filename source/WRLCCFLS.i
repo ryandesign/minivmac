@@ -172,7 +172,7 @@ LOCALPROC WriteLccW32clMakeFile(void)
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("mk_COptions= -c");
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		WriteCStrToDestFile(" -O");
 	} else {
 		WriteCStrToDestFile(" -g4");
@@ -212,7 +212,7 @@ LOCALPROC WriteLccW32clMakeFile(void)
 	++DestFileIndent;
 		WriteBgnDestFileLn();
 		WriteCStrToDestFile("lcclnk.exe");
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteCStrToDestFile(" -s");
 		}
 		WriteCStrToDestFile(" -subsystem windows -o ");

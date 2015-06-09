@@ -220,6 +220,8 @@ LOCALPROC Sony_Install(void)
 #include "SCRNHACK.h"
 	}
 #endif
+
+	(void) pto; /* avoid warning about unused */
 }
 #endif
 

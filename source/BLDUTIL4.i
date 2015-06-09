@@ -137,11 +137,11 @@ LOCALFUNC tMyErr WriteMakeOutputDirectories(void)
 	if (noErr == (err = rConverTextInThingXtn(&BaseDirR,
 		&OutputDirR, "COPYING", ".txt")))
 	{
-		if ((cur_ide == gbk_ide_xcd) && (! UseCmndLine)) {
+		if ((gbk_ide_xcd == cur_ide) && (! UseCmndLine)) {
 			err = MakeSubDirectory_v2(&ProjDirR, &OutputDirR,
 				vStrAppAbbrev,
 				(ide_vers >= 2100) ? ".xcodeproj" : ".pbproj");
-		} else if (cur_ide != gbk_ide_mw8) {
+		} else if (gbk_ide_mw8 != cur_ide) {
 			if (noErr == (err = MakeSubDirectory_v2(&ObjDirR,
 				&OutputDirR, obj_d_name, "")))
 			{
@@ -717,10 +717,11 @@ LOCALPROC DoSrcFileAddToSrcDir(void)
 		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
 #endif
 	blnr IsAltFile = ((DoSrcFile_gd()->Flgm & kCSrcFlgmAltSrc) != 0);
+	blnr NoHeader = ((DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader) != 0);
 	blnr UseAPI = ((DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
 
-	if (noErr == (err = rConverTextInThingXtn(&C_srcDirR,
-			&SrcDirR, DoSrcFile_gd()->s, ".h")))
+	if (NoHeader || (noErr == (err = rConverTextInThingXtn(&C_srcDirR,
+			&SrcDirR, DoSrcFile_gd()->s, ".h"))))
 	{
 		if (IsAltFile) {
 			if (noErr == (err = rConverTextInThingXtn(&AltSrcDirR,
@@ -755,7 +756,7 @@ LOCALPROC DoSrcFileAddToSrcDir(void)
 		} else
 		{
 			if (noErr == (err = rConverTextInThingXtn(&C_srcDirR,
-				&SrcDirR, DoSrcFile_gd()->s, ".c")))
+				&SrcDirR, DoSrcFile_gd()->s, GetSrcFileFileXtns())))
 			{
 			}
 		}
@@ -771,17 +772,17 @@ LOCALPROC DoExtraHeaderFileAddToSrcDir(void)
 	switch (DoXtraHdr_gd()->DepDir) {
 		case kDepDirCSrc:
 			err = rConverTextInThingXtn(&C_srcDirR,
-				&SrcDirR, DoXtraHdr_gd()->s, "");
+				&SrcDirR, DoXtraHdr_gd()->s, ".h");
 			break;
 #if AsmSupported
 		case kDepDirASrc:
 			err = rConverTextInThingXtn(&A_srcDirR,
-				&SrcDirR, DoXtraHdr_gd()->s, "");
+				&SrcDirR, DoXtraHdr_gd()->s, ".h");
 			break;
 #endif
 		case kDepDirPlat:
 			err = rConverTextInThingXtn(&PlatDirR,
-				&SrcDirR, DoXtraHdr_gd()->s, "");
+				&SrcDirR, DoXtraHdr_gd()->s, ".h");
 			break;
 		case kDepDirLang:
 			{
@@ -794,10 +795,11 @@ LOCALPROC DoExtraHeaderFileAddToSrcDir(void)
 					&LanguageDirR, GetLangName(gbo_lang), "")))
 				{
 					err = rConverTextInThingXtn(&LangDirR,
-						&SrcDirR, DoXtraHdr_gd()->s, "");
+						&SrcDirR, DoXtraHdr_gd()->s, ".h");
 				}
 			}
 			break;
+#if MayUseSound
 		case kDepDirSndA:
 			{
 				MyDir_R SoundDirR;
@@ -809,10 +811,11 @@ LOCALPROC DoExtraHeaderFileAddToSrcDir(void)
 					&SoundDirR, GetSndApiName(gbo_sndapi), "")))
 				{
 					err = rConverTextInThingXtn(&SndDirR,
-						&SrcDirR, DoXtraHdr_gd()->s, "");
+						&SrcDirR, DoXtraHdr_gd()->s, ".h");
 				}
 			}
 			break;
+#endif
 		case kDepDirCnfg:
 			break;
 	}

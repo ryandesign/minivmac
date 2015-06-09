@@ -304,7 +304,7 @@ LOCALPROC CallImportedProcMacro(void)
 	WriteBlankLineToDestFile();
 	++DestFileIndent;
 	WriteBgnDestFileLn();
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		WriteCStrToDestFile("bl");
 	} else {
 		WriteCStrToDestFile("call");
@@ -486,7 +486,7 @@ LOCALPROC WriteAGlobalLabelMacro(void)
 	} else {
 		WriteBlankLineToDestFile();
 
-		if (gbo_cpufam == gbk_cpufam_ppc) {
+		if (gbk_cpufam_ppc == gbo_cpufam) {
 #if 0
 			if (5 == align) {
 				WriteAsmAlignPow2(5);
@@ -538,7 +538,7 @@ LOCALFUNC char * MacroPListRegV(uimr i)
 
 LOCALPROC WriteLoadVarAddrMacro(void)
 {
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		WriteBeginMacro("my_load_loc_var_addr", 2, MacroPListRegV);
 
 		++DestFileIndent;
@@ -609,7 +609,7 @@ LOCALPROC WriteLoadVarAddrMacro(void)
 LOCALPROC WriteALocalLabel(uimr i)
 {
 	WriteBgnDestFileLn();
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		WriteCStrToDestFile(".");
 	}
 	WriteMacroParam(i);
@@ -643,7 +643,7 @@ LOCALPROC WriteDsptchTabBeginMacro(void)
 				WriteDestFileLn("\t.section\t.rodata");
 				break;
 		}
-		if (gbo_cpufam == gbk_cpufam_ppc) {
+		if (gbk_cpufam_ppc == gbo_cpufam) {
 			WriteAsmAlignPow2(2);
 		} else {
 			WriteAsmAlignPow2(6);
@@ -708,7 +708,7 @@ LOCALFUNC char * MacroPListRegSD(uimr i)
 
 LOCALPROC DeclareFieldOffsetMacro(void)
 {
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		WriteBeginMacro("my_dispatch_offset", 2, MacroPListRegSD);
 
 		if (gbk_asm_mpwppc == cur_asm) {
@@ -753,7 +753,7 @@ LOCALPROC WriteCodeBeginMacro(void)
 
 		WriteDestFileLn("\t.text");
 		WriteBlankLineToDestFile();
-		if (gbo_cpufam == gbk_cpufam_ppc) {
+		if (gbk_cpufam_ppc == gbo_cpufam) {
 			WriteAsmAlignPow2(5);
 		} else {
 			WriteAsmAlignPow2(6);
@@ -873,13 +873,13 @@ LOCALPROC WriteEndLocalData(void)
 		case gbk_asm_xcdx86:
 			WriteBlankLineToDestFile();
 			WriteBgnDestFileLn();
-			if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile("\t.lcomm\t.b2regs9999, ");
 			} else {
 				WriteCStrToDestFile("\t.lcomm\t_regs, ");
 			}
 			WriteUnsignedToOutput(FieldOffsetCounter);
-			if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile(", 4");
 			} else {
 				WriteCStrToDestFile(", 6");
@@ -900,13 +900,13 @@ LOCALPROC WriteEndLocalData(void)
 					WriteDestFileLn("\t.section .bss");
 					break;
 			}
-			if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteAsmAlignPow2(4);
 			} else {
 				WriteAsmAlignPow2(6);
 			}
 			WriteBgnDestFileLn();
-			if (gbo_cpufam == gbk_cpufam_ppc) {
+			if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile("\t.comm\t.b2regs9999, ");
 			} else {
 				WriteCStrToDestFile("\t.comm\t_regs, ");
@@ -1007,7 +1007,7 @@ LOCALPROC DeclareFieldByte(char *s, char *record)
 		WriteCStrToDestFile(s);
 		WriteCStrToDestFile(", ");
 		WriteUnsignedToOutput(FieldOffsetCounter);
-		if (gbo_cpufam == gbk_cpufam_ppc) {
+		if (gbk_cpufam_ppc == gbo_cpufam) {
 			FieldOffsetCounter += 2;
 		} else {
 			FieldOffsetCounter += 1;
@@ -1065,7 +1065,7 @@ LOCALPROC DeclareFieldOfSize(char *s, char *record, uimr n)
 
 LOCALPROC WriteAsmRegisterUse(void)
 {
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		WriteBlankLineToDestFile();
 		WriteBlankLineToDestFile();
 		WriteNormalAsmComment("---- register usage -----------");
@@ -1138,7 +1138,7 @@ LOCALPROC WriteAsmLocalData(void)
 	DeclareFieldLong("fReg_A5", "b2regs9999");
 	DeclareFieldLong("fReg_A6", "b2regs9999");
 	DeclareFieldLong("fReg_A7", "b2regs9999");
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		DeclareFieldLong("fReg_usp", "b2regs9999");
 		DeclareFieldLong("fReg_isp", "b2regs9999");
 		DeclareFieldLong("fReg_pc", "b2regs9999");
@@ -1213,7 +1213,7 @@ LOCALPROC WriteAsmLocalData(void)
 	DeclareFieldLong("fReg_MATCex_usebase", "b2regs9999");
 	DeclareFieldLong("fHeadATTel", "b2regs9999");
 	DeclareFieldLong("fReg_ResidualCycles", "b2regs9999");
-	if (gbo_cpufam == gbk_cpufam_ppc) {
+	if (gbk_cpufam_ppc == gbo_cpufam) {
 		DeclareFieldWord("fReg_fakeword", "b2regs9999");
 		DeclareFieldOfSize("fReg_Pad3", "b2regs9999", 38);
 	} else {

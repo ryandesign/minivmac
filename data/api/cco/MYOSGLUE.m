@@ -56,6 +56,7 @@ typedef struct __CFError * CFErrorRef;
 #if MAC_OS_X_VERSION_10_6 > MAC_OS_X_VERSION_MAX_ALLOWED
 
 @protocol NSWindowDelegate <NSObject> @end
+@protocol NSApplicationDelegate <NSObject> @end
 
 #endif
 
@@ -437,29 +438,33 @@ LOCALFUNC blnr MacRomanFileNameToNSString(tPbuf i,
 		NSData *d;
 		ui3b *p0 = (ui3b *)Buffer;
 		ui3b *p1 = (ui3b *)p;
-		int j;
 
-		for (j = L; --j >= 0; ) {
-			ui3b x = *p0++;
-			if (x < 32) {
-				x = '-';
-			} else if (x >= 128) {
-			} else {
-				switch (x) {
-					case '/':
-					case '<':
-					case '>':
-					case '|':
-					case ':':
-						x = '-';
-					default:
-						break;
+		if (L > 0) {
+			ui5b j = L;
+
+			do {
+				ui3b x = *p0++;
+				if (x < 32) {
+					x = '-';
+				} else if (x >= 128) {
+				} else {
+					switch (x) {
+						case '/':
+						case '<':
+						case '>':
+						case '|':
+						case ':':
+							x = '-';
+						default:
+							break;
+					}
 				}
+				*p1++ = x;
+			} while (--j > 0);
+
+			if ('.' == p[0]) {
+				p[0] = '-';
 			}
-			*p1++ = x;
-		}
-		if ('.' == p[0]) {
-			p[0] = '-';
 		}
 
 #if 0
@@ -605,6 +610,9 @@ LOCALFUNC NSString *MyResolveAlias(NSString *filePath,
 					fileExistsAtPath: resolvedPath isDirectory: &isDir])
 				{
 					*targetIsFolder = isDir;
+				} else
+				{
+					*targetIsFolder = FALSE;
 				}
 
 				[resolvedPath autorelease];
@@ -2793,7 +2801,8 @@ LOCALPROC CheckSavedMacMsg(void)
 		NSString *quitMsg0 =
 			NSStringCreateFromSubstCStr(kStrCmdQuit, falseblnr);
 
-		(void) NSRunAlertPanel(briefMsg0, longMsg0, quitMsg0, nil, nil);
+		(void) NSRunAlertPanel(briefMsg0, @"%@", quitMsg0, nil, nil,
+			longMsg0);
 
 		SavedBriefMsg = nullpr;
 	}
@@ -3269,9 +3278,6 @@ LOCALVAR NSPoint WinPositionWins[kNumMagStates];
 
 LOCALFUNC blnr CreateMainWindow(void)
 {
-#if MayNotFullScreen
-	int WinIndx;
-#endif
 #if UseCGContextDrawImage
 	CGColorSpaceRef cgColorspace;
 #endif
@@ -3378,6 +3384,8 @@ LOCALFUNC blnr CreateMainWindow(void)
 #endif
 #if MayNotFullScreen
 	{
+		int WinIndx;
+
 #if EnableMagnify
 		if (UseMagnify) {
 			WinIndx = kMagStateMagnifgy;
@@ -3404,11 +3412,9 @@ LOCALFUNC blnr CreateMainWindow(void)
 
 		style = NSTitledWindowMask
 			| NSMiniaturizableWindowMask | NSClosableWindowMask;
-	}
-#endif
 
-#if MayNotFullScreen
-	CurWinIndx = WinIndx;
+		CurWinIndx = WinIndx;
+	}
 #endif
 
 	/* Manually create a window, avoids having a nib file resource */
@@ -4200,7 +4206,6 @@ GLOBALPROC WaitForNextTick(void)
 	int i;
 	NSEvent *event;
 	NSAutoreleasePool *pool;
-	blnr SawSomeThing = falseblnr;
 
 	pool = [[NSAutoreleasePool alloc] init];
 
@@ -4222,7 +4227,6 @@ label_retry:
 			inMode: NSDefaultRunLoopMode
 			dequeue: YES])))
 	{
-		SawSomeThing = trueblnr;
 		ProcessOneSystemEvent(event);
 		TheUntil = TheDistantPast;
 	}
@@ -4259,7 +4263,7 @@ label_retry:
 				struct timespec rmt;
 
 				rqt.tv_sec = 0;
-				rqt.tv_nsec = inTimeout / kEventDurationNanosecond;
+				rqt.tv_nsec = inTimeout * 1000000000.0;
 				(void) nanosleep(&rqt, &rmt);
 			}
 			TheUntil = TheDistantPast;
@@ -4316,7 +4320,7 @@ LOCALPROC setupWorkingDirectory(void)
 	[MyDataPath retain];
 }
 
-@interface MyClassApplicationDelegate : NSObject
+@interface MyClassApplicationDelegate : NSObject <NSApplicationDelegate>
 @end
 
 @implementation MyClassApplicationDelegate
@@ -4380,15 +4384,19 @@ LOCALVAR MyClassApplicationDelegate *MyApplicationDelegate = nil;
 
 LOCALFUNC blnr InitCocoaStuff(void)
 {
-	[NSApplication sharedApplication];
+	NSApplication *MyNSApp = [NSApplication sharedApplication];
+		/*
+			in Xcode 6.2, MyNSApp isn't the same as NSApp,
+			breaks NSApp setDelegate
+		*/
 
 	MyMenuSetup();
 
 	MyApplicationDelegate = [[MyClassApplicationDelegate alloc] init];
-	[NSApp setDelegate: MyApplicationDelegate];
+	[MyNSApp setDelegate: MyApplicationDelegate];
 
 #if 0
-	[NSApp finishLaunching];
+	[MyNSApp finishLaunching];
 #endif
 		/*
 			If use finishLaunching, after
@@ -4401,7 +4409,7 @@ LOCALFUNC blnr InitCocoaStuff(void)
 			technique. Was another solution found?
 		*/
 
-	[NSApp run];
+	[MyNSApp run];
 		/*
 			our applicationDidFinishLaunching forces
 			immediate halt.

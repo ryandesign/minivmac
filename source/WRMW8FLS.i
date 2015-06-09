@@ -232,7 +232,7 @@ static void DoSrcFileMW8AddFile(void)
 		WriteXMLtagBeginProcValEndLine("PATH", WriteSrcFileFileName);
 		WriteXMLtagBeginValEndLine("PATHFORMAT", "MacOS");
 		WriteXMLtagBeginValEndLine("FILEKIND", "Text");
-		if (gbo_dbg == gbk_dbg_on) {
+		if (gbk_dbg_on == gbo_dbg) {
 			WriteXMLtagBeginValEndLine("FILEFLAGS", "Debug");
 		} else {
 			WriteXMLtagBeginValEndLine("FILEFLAGS", "");
@@ -451,10 +451,10 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			WriteEndXMLtagLine("SETTING");
 			WriteBlankLineToDestFile();
 			WriteMWSettingsPanelComment("Target Settings");
-			if (cur_targ == gbk_targ_wx86) {
+			if (gbk_targ_wx86 == cur_targ) {
 				WriteXMLtagSettingNameVal("Linker",
 					"Win32 x86 Linker");
-			} else if (cur_targ == gbk_targ_mach) {
+			} else if (gbk_targ_mach == cur_targ) {
 				WriteXMLtagSettingNameVal("Linker",
 					"MacOS X PPC Linker");
 			} else {
@@ -483,7 +483,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			WriteXMLtagSettingNameVal("MWFrontEnd_C_checkprotos", "1");
 			WriteXMLtagSettingNameVal("MWFrontEnd_C_enableexceptions",
 				"0");
-			if ((gbo_dbg == gbk_dbg_on)
+			if ((gbk_dbg_on == gbo_dbg)
 				|| (gbk_targfam_mswn == gbo_targfam))
 			{
 				/* inlining seems to give bad code for x86 version */
@@ -494,7 +494,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 					"0");
 			}
 			WriteXMLtagSettingNameVal("MWFrontEnd_C_useRTTI", "0");
-			if (gbo_dbg == gbk_dbg_on) {
+			if (gbk_dbg_on == gbo_dbg) {
 				WriteXMLtagSettingNameVal("MWFrontEnd_C_autoinline",
 					"0");
 			} else {
@@ -522,18 +522,18 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			WriteBlankLineToDestFile();
 			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteMWSettingsPanelComment("x86 CodeGen");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWCodeGen_X86_intrinsics", "0");
 				} else {
 					WriteXMLtagSettingNameVal(
 						"MWCodeGen_X86_intrinsics", "1");
 				}
-			} else if (cur_targ == gbk_targ_mach) {
+			} else if (gbk_targ_mach == cur_targ) {
 				WriteMWSettingsPanelComment("PPC CodeGen Mach-O");
 				WriteXMLtagSettingNameVal(
 					"MWCodeGen_MachO_structalignment", "PPC");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWCodeGen_MachO_peephole", "0");
 					WriteXMLtagSettingNameVal(
@@ -546,7 +546,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 				}
 			} else {
 				WriteMWSettingsPanelComment("PPC CodeGen");
-				if (gbo_dbg != gbk_dbg_off) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWCodeGen_PPC_tracebacktables", "Inline");
 				} else {
@@ -555,7 +555,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 				}
 				WriteXMLtagSettingNameVal(
 					"MWCodeGen_PPC_vectortocdata", "0");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWCodeGen_PPC_peephole", "0");
 					WriteXMLtagSettingNameVal(
@@ -571,7 +571,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			WriteBlankLineToDestFile();
 			if (gbk_targfam_mswn == gbo_targfam) {
 				WriteMWSettingsPanelComment("x86 Global Optimizer");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"GlobalOptimizer_X86_optimizationlevel",
 						"Level0");
@@ -591,7 +591,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 					work around what is probably bug
 					in windows version of mw8
 				*/
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"GlobalOptimizer_X86__optimizationlevel",
 						"Level0");
@@ -604,7 +604,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 					"GlobalOptimizer_X86__optfor", "Size");
 			} else {
 				WriteMWSettingsPanelComment("PPC Global Optimizer");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"GlobalOptimizer_PPC_optimizationlevel",
 						"Level0");
@@ -622,7 +622,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 				WriteMWSettingsPanelComment("x86 Linker");
 				WriteXMLtagSettingNameVal(
 					"MWLinker_X86_subsystem", "WinGUI");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWLinker_X86_linkdebug", "true");
 				} else {
@@ -631,9 +631,9 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 				}
 				WriteXMLtagSettingNameVal(
 					"MWLinker_X86_usedefaultlibs", "false");
-			} else if (cur_targ == gbk_targ_mach) {
+			} else if (gbk_targ_mach == cur_targ) {
 				WriteMWSettingsPanelComment("PPC Mac OS X Linker");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWLinker_MacOSX_linksym", "1");
 				} else {
@@ -644,13 +644,13 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 					"MWLinker_MacOSX_symfullpath", "1");
 				WriteXMLtagSettingNameVal(
 					"MWLinker_MacOSX_permitmultdefs", "0");
-				if (gbo_dbg == gbk_dbg_off) {
+				if (gbk_dbg_on != gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWLinker_MacOSX_strip_debug_symbols", "1");
 				}
 			} else {
 				WriteMWSettingsPanelComment("PPC Linker");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagSettingNameVal(
 						"MWLinker_PPC_linksym", "1");
 				} else {

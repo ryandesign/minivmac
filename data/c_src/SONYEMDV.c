@@ -914,7 +914,9 @@ LOCALFUNC tMacErr Sony_Mount(CPTR p)
 	tDrive i = data & 0x0000FFFF;
 	CPTR dvl = DriveVarsLocation(i);
 
-	if (get_vm_byte(dvl + kDiskInPlace) == 0x00) {
+	if (0 == dvl) {
+		result = mnvm_nsDrvErr;
+	} else if (get_vm_byte(dvl + kDiskInPlace) == 0x00) {
 		ui5b L = ImageDataSize[i] >> 9; /* block count */
 
 		if ((L == 800)
@@ -1021,10 +1023,9 @@ LOCALFUNC tMacErr Sony_Prime(CPTR p)
 	CPTR DeviceCtl = get_vm_long(p + ExtnDat_params + 4);
 	tDrive Drive_No = get_vm_word(ParamBlk + kioVRefNum) - 1;
 	ui4r IOTrap = get_vm_word(ParamBlk + kioTrap);
-	ui4r PosMode = get_vm_word(ParamBlk + kioPosMode);
 	CPTR dvl = DriveVarsLocation(Drive_No);
 
-	if (dvl == 0) {
+	if (0 == dvl) {
 		result = mnvm_nsDrvErr;
 	} else if (0xA002 != (IOTrap & 0xF0FE)) {
 		/* not read (0xA002) or write (0xA003) */
@@ -1049,6 +1050,9 @@ LOCALFUNC tMacErr Sony_Prime(CPTR p)
 			}
 		}
 
+#if 0
+		ui4r PosMode = get_vm_word(ParamBlk + kioPosMode);
+
 		if (0 != (PosMode & 64)) {
 #if ExtraAbnormalReports
 			/*
@@ -1061,7 +1065,6 @@ LOCALFUNC tMacErr Sony_Prime(CPTR p)
 			PosMode &= ~ 64;
 		}
 
-#if 0
 		/*
 			Don't use the following code, because
 			according to Apple's Technical Note FL24
@@ -1179,7 +1182,7 @@ LOCALFUNC tMacErr Sony_Control(CPTR p)
 		tDrive Drive_No = get_vm_word(ParamBlk + kioVRefNum) - 1;
 		CPTR dvl = DriveVarsLocation(Drive_No);
 
-		if (dvl == 0) {
+		if (0 == dvl) {
 			result = mnvm_nsDrvErr;
 		} else if (get_vm_byte(dvl + kDiskInPlace) == 0) {
 			result = mnvm_offLinErr;

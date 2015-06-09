@@ -45,8 +45,8 @@ enum {
 	APBospcBuildStyle,
 
 	APBoclsSrcRf,
-	APBoclsHdr, /* only if cur_ide == gbk_ide_xcd */
-	APBoclsInc, /* only if cur_ide == gbk_ide_xcd */
+	APBoclsHdr, /* only if gbk_ide_xcd == cur_ide */
+	APBoclsInc, /* only if gbk_ide_xcd == cur_ide */
 	APBoclsIcnsRf,
 	APBoclsFramRf,
 	APBospcLibStdcRf,
@@ -61,8 +61,8 @@ enum {
 	APBospcLibraries,
 	APBospcProducts,
 	APBospcMainGroup,
-	APBospcSrcHeaders, /* only if cur_ide == gbk_ide_xcd */
-	APBospcIncludes, /* only if cur_ide == gbk_ide_xcd */
+	APBospcSrcHeaders, /* only if gbk_ide_xcd == cur_ide */
+	APBospcIncludes, /* only if gbk_ide_xcd == cur_ide */
 
 	APBospcTarget,
 	APBospcRoot,
@@ -73,10 +73,10 @@ enum {
 
 	APBospcLangDummyRf,
 
-	APBospcNatCnfg, /* only if cur_ide == gbk_ide_xcd */
-	APBospcPrjCnfg, /* only if cur_ide == gbk_ide_xcd */
-	APBospcLstNatCnfg, /* only if cur_ide == gbk_ide_xcd */
-	APBospcLstPrjCnfg, /* only if cur_ide == gbk_ide_xcd */
+	APBospcNatCnfg, /* only if gbk_ide_xcd == cur_ide */
+	APBospcPrjCnfg, /* only if gbk_ide_xcd == cur_ide */
+	APBospcLstNatCnfg, /* only if gbk_ide_xcd == cur_ide */
+	APBospcLstPrjCnfg, /* only if gbk_ide_xcd == cur_ide */
 
 	kNumAPBocls
 };
@@ -402,9 +402,9 @@ LOCALPROC WriteSrcFileAPBXCDtype(void)
 	} else
 #endif
 	{
-		blnr UseAPI = ((DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
+		blnr UseObjc = ((DoSrcFile_gd()->Flgm & kCSrcFlgmOjbc) != 0);
 
-		if (UseAPI && (gbk_apifam_cco == gbo_apifam)) {
+		if (UseObjc) {
 			s = "sourcecode.c.objc";
 		} else {
 			s = "sourcecode.c.c";
@@ -1037,9 +1037,14 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 
 	if (ide_vers >= 2100) {
 		/* if (CrossCompile) */ {
-			if (gbo_cpufam == gbk_cpufam_x86) {
+			if (gbk_cpufam_x86 == gbo_cpufam) {
 				WriteDestFileLn("ARCHS = i386;");
-			} else if (gbo_cpufam == gbk_cpufam_x64) {
+				/*
+					may be preferred in later versions:
+					WriteDestFileLn(
+						"ARCHS = \"$(ARCHS_STANDARD_32_BIT)\";");
+				*/
+			} else if (gbk_cpufam_x64 == gbo_cpufam) {
 				WriteDestFileLn("ARCHS = x86_64;");
 			} else {
 				WriteDestFileLn("ARCHS = ppc;");
@@ -1058,19 +1063,19 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 	if (ide_vers >= 2200) { /*^*/
 		WriteDestFileLn("COPY_PHASE_STRIP = NO;");
 	} else {
-		if (gbo_dbg != gbk_dbg_on) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteDestFileLn("COPY_PHASE_STRIP = YES;");
 		} else {
 			WriteDestFileLn("COPY_PHASE_STRIP = NO;");
 		}
 	}
 	if (ide_vers >= 1500) {
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteDestFileLn("DEPLOYMENT_POSTPROCESSING = YES;");
 		}
 	}
 	if (ide_vers < 1500) {
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteDestFileLn("DEBUGGING_SYMBOLS = NO;");
 		}
 	}
@@ -1087,7 +1092,7 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		WriteDestFileLn("GCC_ENABLE_FIX_AND_CONTINUE = NO;");
 	}
 	if (ide_vers >= 1000) {
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteDestFileLn("GCC_GENERATE_DEBUGGING_SYMBOLS = NO;");
 		}
 	}
@@ -1095,7 +1100,7 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		WriteDestFileLn("GCC_MODEL_TUNING = \"\";");
 	}
 	if (ide_vers >= 1000) {
-		if (gbo_dbg == gbk_dbg_on) {
+		if (gbk_dbg_on == gbo_dbg) {
 			WriteDestFileLn("GCC_OPTIMIZATION_LEVEL = 0;");
 		} else {
 			WriteDestFileLn("GCC_OPTIMIZATION_LEVEL = s;");
@@ -1132,7 +1137,7 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		WriteAPBQuotedField("LIBRARY_SEARCH_PATHS", "");
 	}
 	if (ide_vers >= 2100) {
-		if (gbo_cpufam == gbk_cpufam_ppc) {
+		if (gbk_cpufam_ppc == gbo_cpufam) {
 			WriteDestFileLn("MACOSX_DEPLOYMENT_TARGET = 10.1;");
 		} else {
 			WriteDestFileLn("MACOSX_DEPLOYMENT_TARGET = 10.4;");
@@ -1144,8 +1149,8 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		}
 	}
 #if UseAlignMac68k
-	if ((gbo_cpufam == gbk_cpufam_68k)
-		|| (gbo_cpufam == gbk_cpufam_ppc))
+	if ((gbk_cpufam_68k == gbo_cpufam)
+		|| (gbk_cpufam_ppc == gbo_cpufam))
 	{
 		WriteDestFileLn("OTHER_CFLAGS = \"-malign-mac68k\";");
 	}
@@ -1188,7 +1193,7 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		WriteAPBQuotedField("SECTORDER_FLAGS", "");
 	}
 	if (ide_vers >= 2200) {
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteDestFileLn("SEPARATE_STRIP = YES;");
 			WriteDestFileLn("STRIPFLAGS = \"-u -r\";");
 			WriteDestFileLn("STRIP_INSTALLED_PRODUCT = YES;");
@@ -1797,7 +1802,13 @@ LOCALPROC WriteXCDProjectFile(void)
 			if (ide_vers >= 4300) {
 				WriteDestFileLn("attributes = {");
 				++DestFileIndent;
-					WriteDestFileLn("LastUpgradeCheck = 0430;");
+					WriteBgnDestFileLn();
+					WriteCStrToDestFile("LastUpgradeCheck = ");
+					strmo_writeChar('0' + ((ide_vers / 10000) % 10));
+					strmo_writeChar('0' + ((ide_vers / 1000) % 10));
+					strmo_writeChar('0' + ((ide_vers / 100) % 10));
+					WriteCStrToDestFile("0;");
+					WriteEndDestFileLn();
 				--DestFileIndent;
 				WriteDestFileLn("};");
 			}

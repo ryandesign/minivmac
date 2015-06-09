@@ -27,6 +27,10 @@
 #define AsmSupported 1
 #endif
 
+#ifndef MayUseSound
+#define MayUseSound 1
+#endif
+
 #ifndef UseOpenGLinOSX
 #define UseOpenGLinOSX 0
 #endif
@@ -1549,39 +1553,39 @@ LOCALPROC ChooseAssembler(void)
 		cur_asm = gbk_asm_none;
 		if (! WantNoAsm) {
 			if (gbk_cpufam_ppc == gbo_cpufam) {
-				if (cur_ide == gbk_ide_mpw) {
+				if (gbk_ide_mpw == cur_ide) {
 					cur_asm = gbk_asm_mpwppc;
-				} else if (cur_ide == gbk_ide_mw8) {
+				} else if (gbk_ide_mw8 == cur_ide) {
 					if (gbk_targfam_mach != gbo_targfam) {
 						cur_asm = gbk_asm_mw8ppc;
 					}
-				} else if (cur_ide == gbk_ide_xcd) {
+				} else if (gbk_ide_xcd == cur_ide) {
 					if (UseCmndLine || (ide_vers >= 1500)) {
 						cur_asm = gbk_asm_xcdppc;
 					}
-				} else if (cur_ide == gbk_ide_bgc) {
+				} else if (gbk_ide_bgc == cur_ide) {
 					cur_asm = gbk_asm_bgcppc;
 				}
 			} else if (gbk_cpufam_x86 == gbo_cpufam) {
-				if (cur_ide == gbk_ide_xcd) {
+				if (gbk_ide_xcd == cur_ide) {
 					cur_asm = gbk_asm_xcdx86;
-				} else if (cur_ide == gbk_ide_bgc) {
+				} else if (gbk_ide_bgc == cur_ide) {
 					cur_asm = gbk_asm_bgcx86;
-				} else if (cur_ide == gbk_ide_cyg) {
+				} else if (gbk_ide_cyg == cur_ide) {
 					cur_asm = gbk_asm_bgcx86;
-				} else if (cur_ide == gbk_ide_mgw) {
+				} else if (gbk_ide_mgw == cur_ide) {
 					cur_asm = gbk_asm_dvcx86;
-				} else if (cur_ide == gbk_ide_dvc) {
+				} else if (gbk_ide_dvc == cur_ide) {
 					if (UseCmndLine) {
 						cur_asm = gbk_asm_dvcx86;
 					}
 				}
 			} else if (gbk_cpufam_arm == gbo_cpufam) {
-				if (cur_ide == gbk_ide_dkp) {
+				if (gbk_ide_dkp == cur_ide) {
 					cur_asm = gbk_asm_bgcarm;
 				}
 			} else if (gbk_cpufam_68k == gbo_cpufam) {
-				if (cur_ide == gbk_ide_mpw) {
+				if (gbk_ide_mpw == cur_ide) {
 					cur_asm = gbk_asm_mpw68k;
 				}
 			}

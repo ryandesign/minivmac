@@ -52,7 +52,7 @@
 
 #define My_CSIDL_APPDATA 0x001a
 
-typedef HRESULT (WINAPI *SHGetSpecialFolderPathProcPtr) (
+typedef BOOL (WINAPI *SHGetSpecialFolderPathProcPtr) (
 	HWND hwndOwner,
 	LPTSTR lpszPath,
 	int nFolder,
@@ -4450,7 +4450,7 @@ LOCALFUNC blnr MyResolveShortcut(LPTSTR FilePath, blnr *directory)
 					if (SUCCEEDED(hres)) {
 						/* Get the path to the link target. */
 						hres = psl->lpVtbl->GetPath(psl, szGotPath,
-							MAX_PATH, (WIN32_FIND_DATA *)&wfd,
+							MAX_PATH, &wfd,
 							SLGP_SHORTPATH);
 						if (SUCCEEDED(hres)) {
 							/*

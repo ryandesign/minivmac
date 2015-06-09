@@ -89,35 +89,35 @@ LOCALPROC DoSrcFileMPWMakeObjects(void)
 
 static void WriteMPWCOptions(blnr fast)
 {
-	if (gbo_cpufam == gbk_cpufam_68k) {
+	if (gbk_cpufam_68k == gbo_cpufam) {
 		WriteCStrToDestFile(" -proto strict -w 17 -align mac68k -b");
-		if (cur_targ == gbk_targ_mfpu) {
+		if (gbk_targ_mfpu == cur_targ) {
 			WriteCStrToDestFile(" -mc68020 -mc68881 -elems881");
 		}
-		if (gbo_dbg == gbk_dbg_off) {
+		if (gbk_dbg_on != gbo_dbg) {
 			WriteCStrToDestFile(" -mbg off");
 		}
 		WriteCStrToDestFile(" -model farCode");
-	} else if (gbo_cpufam == gbk_cpufam_ppc) {
+	} else if (gbk_cpufam_ppc == gbo_cpufam) {
 		WriteCStrToDestFile(" -proto strict -w 17");
-		if (gbo_dbg != gbk_dbg_off) {
+		if (gbk_dbg_on == gbo_dbg) {
 			WriteCStrToDestFile(" -traceback");
 		}
 #if UseAlignMac68k
 		WriteCStrToDestFile(" -align mac68k");
 #endif
 	}
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		if (fast) {
-			if (gbo_cpufam == gbk_cpufam_68k) {
+			if (gbk_cpufam_68k == gbo_cpufam) {
 				WriteCStrToDestFile(" -opt speed");
-			} else if (gbo_cpufam == gbk_cpufam_ppc) {
+			} else if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile(" -opt speed");
 			}
 		} else {
-			if (gbo_cpufam == gbk_cpufam_68k) {
+			if (gbk_cpufam_68k == gbo_cpufam) {
 				WriteCStrToDestFile(" -opt space");
-			} else if (gbo_cpufam == gbk_cpufam_ppc) {
+			} else if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile(" -opt size");
 				/* this may not be reliable? */
 			}
@@ -148,7 +148,7 @@ LOCALPROC WriteMPWMakeFile(void)
 	WriteBlankLineToDestFile();
 #if AsmSupported
 	if (HaveAsm) {
-		if (gbo_cpufam == gbk_cpufam_68k) {
+		if (gbk_cpufam_68k == gbo_cpufam) {
 			WriteDestFileLn("mk_AOptions = -wb -model far");
 		} else {
 			WriteDestFileLn("mk_AOptions = ");
@@ -170,7 +170,7 @@ LOCALPROC WriteMPWMakeFile(void)
 
 	WriteBlankLineToDestFile();
 
-	if (gbo_cpufam == gbk_cpufam_68k) {
+	if (gbk_cpufam_68k == gbo_cpufam) {
 		WriteMakeRule(WriteLongGlueObjPath,
 			DoLongGlueMakeCompileDeps,
 			DoLongGlueMakeCompileBody);
@@ -203,7 +203,7 @@ LOCALPROC WriteMPWMakeFile(void)
 	} else {
 		WriteMakeDependFile(WriteMainRsrcObjPath);
 	}
-	if (gbo_cpufam == gbk_cpufam_68k) {
+	if (gbk_cpufam_68k == gbo_cpufam) {
 		WritePathArgInMakeCmnd(WriteLongGlueObjPath);
 	}
 	WriteEndDestFileLn();
@@ -219,19 +219,19 @@ LOCALPROC WriteMPWMakeFile(void)
 		}
 
 		WriteBgnDestFileLn();
-			if (gbo_cpufam == gbk_cpufam_68k) {
+			if (gbk_cpufam_68k == gbo_cpufam) {
 				WriteCStrToDestFile("Link");
-				if (gbo_dbg == gbk_dbg_off) {
+				if (gbk_dbg_on != gbo_dbg) {
 					WriteCStrToDestFile(" -rn");
 				}
 				WriteCStrToDestFile(
 					" -model far -sg Main"
 					"=STDCLIB,SANELIB,CSANELib,SADEV,STDIO");
-			} else if (gbo_cpufam == gbk_cpufam_ppc) {
+			} else if (gbk_cpufam_ppc == gbo_cpufam) {
 				WriteCStrToDestFile("PPCLink");
 			}
 
-			if (cur_targ == gbk_targ_carb) {
+			if (gbk_targ_carb == cur_targ) {
 				WriteCStrToDestFile(" -m main");
 			}
 			WriteCStrToDestFile(" -t APPL -c ");
@@ -243,7 +243,7 @@ LOCALPROC WriteMPWMakeFile(void)
 
 			WriteDestFileLn("{ObjFiles} \266");
 
-			if (cur_targ == gbk_targ_carb) {
+			if (gbk_targ_carb == cur_targ) {
 				WriteDestFileLn("\"{SharedLibraries}CarbonLib\" \266");
 #if UseOpenGLinOSX
 				WriteDestFileLn(
@@ -252,7 +252,7 @@ LOCALPROC WriteMPWMakeFile(void)
 				WriteDestFileLn("\"{PPCLibraries}PPCToolLibs.o\" \266");
 				WriteDestFileLn("\"{PPCLibraries}PPCCRuntime.o\" \266");
 				WriteDestFileLn("\"{SharedLibraries}StdCLib\" \266");
-			} else if (cur_targ == gbk_targ_mppc) {
+			} else if (gbk_targ_mppc == cur_targ) {
 				WriteDestFileLn("\"{PPCLibraries}PPCToolLibs.o\" \266");
 				WriteDestFileLn("\"{PPCLibraries}PPCCRuntime.o\" \266");
 				WriteDestFileLn("\"{PPCLibraries}StdCRuntime.o\" \266");
@@ -272,12 +272,12 @@ LOCALPROC WriteMPWMakeFile(void)
 				WriteDestFileLn("\"{SharedLibraries}DragLib\" \266");
 				WriteDestFileLn("-weaklib WindowsLib \266");
 				WriteDestFileLn("\"{SharedLibraries}WindowsLib\" \266");
-			} else if (cur_targ == gbk_targ_m68k) {
+			} else if (gbk_targ_m68k == cur_targ) {
 				WriteDestFileLn("\"{Libraries}Interface.o\" \266");
 				WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 				WriteDestFileLn("\"{Libraries}MacRuntime.o\" \266");
 				/* WriteDestFileLn("\"{Libraries}MathLib.o\" \266"); */
-			} else if (cur_targ == gbk_targ_mfpu) {
+			} else if (gbk_targ_mfpu == cur_targ) {
 				WriteDestFileLn("\"{Libraries}Interface.o\" \266");
 				WriteDestFileLn("\"{Libraries}Navigation.o\" \266");
 				WriteDestFileLn("\"{Libraries}MacRuntime.o\" \266");
@@ -285,7 +285,7 @@ LOCALPROC WriteMPWMakeFile(void)
 					WriteDestFileLn("\"{Libraries}MathLib881.o\" \266");
 				*/
 			}
-			if (gbo_cpufam == gbk_cpufam_68k) {
+			if (gbk_cpufam_68k == gbo_cpufam) {
 				WriteBgnDestFileLn();
 				WriteQuoteToDestFile();
 				WriteLongGlueObjPath();
@@ -335,7 +335,7 @@ LOCALFUNC tMyErr WriteMPWSpecificFiles(void)
 {
 	tMyErr err;
 
-	if ((gbo_cpufam != gbk_cpufam_68k) ||
+	if ((gbk_cpufam_68k != gbo_cpufam) ||
 		(noErr == (err = WriteADestFile(&SrcDirR, "LONGGLUE", ".S",
 			WriteLONGGLUEContents)))
 		)

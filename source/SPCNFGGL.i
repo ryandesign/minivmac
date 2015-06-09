@@ -28,7 +28,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBlankLineToDestFile();
 
 #if 0 /* not used currently */
-	WriteCompCondBool("Debug", gbo_dbg != gbk_dbg_off);
+	WriteCompCondBool("Debug", gbk_dbg_off != gbo_dbg);
 #endif
 
 	WriteCompCondBool("dbglog_HAVE", DbgLogHAVE);

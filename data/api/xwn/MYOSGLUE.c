@@ -987,7 +987,7 @@ LOCALFUNC tMacErr FindUserHomeFolder(char **r)
 			"the home directory" during a login session."
 
 			But it is possible for HOME to not be set.
-			Some source say to use getpwuid in that case.
+			Some sources say to use getpwuid in that case.
 		*/
 		*r = s;
 		err = mnvm_noErr;

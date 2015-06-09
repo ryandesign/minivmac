@@ -26,13 +26,12 @@
 #endif
 #define kDepDirSndA 5
 
-typedef void (*tDoOneExtraHeader)(int DepDir, char *s);
-
 typedef void (*tDoOneDepends)(int DepDir, char *s);
 
 typedef void (*tDoDependsForC)(tDoOneDepends p);
 
-typedef void (*tDoOneCFile)(char *s, long Flgm, tDoDependsForC depends);
+typedef void (*tDoOneCFile)(char *s, int DepDir, long Flgm,
+	tDoDependsForC depends);
 
 typedef void (*tWriteOneExtension)(char *s);
 
@@ -48,9 +47,15 @@ typedef void (*tWriteOneDocType)(
 #define kCSrcFlagAltSrc 1
 #define kCSrcFlagUseAPI 2
 #define kCSrcFlagSortFirst 3
+#define kCSrcFlagNoSource 4
+#define kCSrcFlagNoHeader 5
+#define kCSrcFlagOjbc 6
 
 #define kCSrcFlgmNone 0
 #define kCSrcFlgmAsmAvail (1 << kCSrcFlagAsmAvail)
 #define kCSrcFlgmAltSrc (1 << kCSrcFlagAltSrc)
 #define kCSrcFlgmUseAPI (1 << kCSrcFlagUseAPI)
 #define kCSrcFlgmSortFirst (1 << kCSrcFlagSortFirst)
+#define kCSrcFlgmNoSource (1 << kCSrcFlagNoSource)
+#define kCSrcFlgmNoHeader (1 << kCSrcFlagNoHeader)
+#define kCSrcFlgmOjbc (1 << kCSrcFlagOjbc)

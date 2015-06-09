@@ -150,7 +150,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 	WriteBlankLineToDestFile();
 
 	WriteCompCondBool("NeedIntlChars",
-		(gbo_lang != gbk_lang_eng) || NeedIntl);
+		(gbk_lang_eng != gbo_lang) || NeedIntl);
 	if (gbk_apifam_win == gbo_apifam) {
 		WriteCompCondBool("ItnlKyBdFix", ItnlKyBdFix);
 	}

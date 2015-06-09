@@ -57,7 +57,7 @@ static void DoSrcFilePLCAddFile(void)
 LOCALPROC WritePLC_CCFLAGS(void)
 {
 	WriteCStrToDestFile(" -Tx86-coff");
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile(" -Zi");
 	}
 	WriteCStrToDestFile(" -Ob1 -fp:precise -W1 -Gd -Ze");
@@ -65,7 +65,7 @@ LOCALPROC WritePLC_CCFLAGS(void)
 
 LOCALPROC WritePLC_LINKFLAGS(void)
 {
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile(" -debug -debugtype:cv");
 	}
 	WriteCStrToDestFile(" -subsystem:windows -machine:x86");

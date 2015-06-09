@@ -32,7 +32,7 @@ LOCALPROC WriteCLexeFlags(void)
 {
 	blnr WinCE = (gbk_targfam_wnce == gbo_targfam);
 	WriteCStrToDestFile("/nologo");
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		/* Optimizations : Disabled */
 		WriteCStrToDestFile(" /Od");
 	} else {
@@ -54,7 +54,7 @@ LOCALPROC WriteCLexeFlags(void)
 		WriteMSVCQuotedDefine("WIN32");
 		WriteMSVCQuotedDefine("_WINDOWS");
 	}
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteMSVCQuotedDefine("_DEBUG");
 	} else {
 		WriteMSVCQuotedDefine("NDEBUG");
@@ -68,7 +68,7 @@ LOCALPROC WriteCLexeFlags(void)
 		}
 	}
 
-	if ((gbo_dbg == gbk_dbg_on) && (gbk_targ_wx86 == cur_targ)) {
+	if ((gbk_dbg_on == gbo_dbg) && (gbk_targ_wx86 == cur_targ)) {
 		WriteCStrToDestFile(" /Gm"); /* minimal rebuild */
 	}
 
@@ -81,7 +81,7 @@ LOCALPROC WriteCLexeFlags(void)
 		}
 	}
 
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		if (ide_vers >= 7000) {
 			WriteCStrToDestFile(" /RTC1");
 		} else {
@@ -93,7 +93,7 @@ LOCALPROC WriteCLexeFlags(void)
 
 	if (WinCE) {
 		if (gbk_cpufam_arm == gbo_cpufam) {
-			if (gbo_dbg == gbk_dbg_on) {
+			if (gbk_dbg_on == gbo_dbg) {
 				WriteCStrToDestFile(" /M$(CECrtMTDebug)");
 			} else {
 				WriteCStrToDestFile(" /MC");
@@ -104,7 +104,7 @@ LOCALPROC WriteCLexeFlags(void)
 			x86. why not?
 		*/
 	} else {
-		if (gbo_dbg == gbk_dbg_on) {
+		if (gbk_dbg_on == gbo_dbg) {
 			if ((ide_vers >= 8000)
 				|| (gbk_cpufam_x64 == gbo_cpufam))
 			{
@@ -149,7 +149,7 @@ LOCALPROC WriteCLexeFlags(void)
 		WriteCStrToDestFile(" /Gy");
 	}
 
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		/* Debug Information Format */
 		if (WinCE || (gbk_targ_wx64 == cur_targ)) {
 			WriteCStrToDestFile(" /Zi");
@@ -165,7 +165,7 @@ LOCALPROC WriteRCexeFlags(void)
 
 	WriteCStrToDestFile("/l 0x409 /d ");
 	WriteQuoteToDestFile();
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile("_DEBUG");
 	} else {
 		WriteCStrToDestFile("NDEBUG");
@@ -313,7 +313,7 @@ LOCALPROC DoSrcFileMSVCAddFile(void)
 	WriteSrcFileFilePath();
 	WriteEndDestFileLn();
 #if 0
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		if (fast) {
 			WriteDestFileLn("# ADD CPP /O2 /Ob2");
 		}
@@ -541,7 +541,7 @@ LOCALPROC WriteMSVCProjectFile(void)
 	WriteMSVCQuotedProp("BASE Target_Dir", "");
 
 	WriteDestFileLn("# PROP Use_MFC 0");
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("# PROP Use_Debug_Libraries 1");
 	} else {
 		WriteDestFileLn("# PROP Use_Debug_Libraries 0");
@@ -569,7 +569,7 @@ LOCALPROC WriteMSVCProjectFile(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# ADD MTL /nologo /D ");
 	WriteQuoteToDestFile();
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile("_DEBUG");
 	} else {
 		WriteCStrToDestFile("NDEBUG");
@@ -620,7 +620,7 @@ LOCALPROC WriteMSVCProjectFile(void)
 		WriteCStrToDestFile("windows");
 	}
 
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile(" /debug");
 	} else {
 		WriteCStrToDestFile(" /incremental:no");
@@ -649,7 +649,7 @@ LOCALPROC WriteMSVCProjectFile(void)
 				" $(CEx86Corelibc) /nodefaultlib:\"OLDNAMES.lib\"");
 		}
 	}
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteCStrToDestFile(" /pdbtype:sept");
 	}
 	WriteEndDestFileLn();
@@ -748,7 +748,7 @@ LOCALPROC WriteMSVCXMLConfigurationProps(void)
 	WriteXMLQuotedProp("IntermediateDirectory", Write_obj_d_ToDestFile);
 	WriteDestFileLn("ConfigurationType=\"1\"");
 	WriteDestFileLn("CharacterSet=\"2\"");
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		WriteDestFileLn("WholeProgramOptimization=\"0\"");
 	}
 }
@@ -772,7 +772,7 @@ LOCALPROC WriteMSVCToolConfig(char *s, MyProc p)
 
 LOCALPROC WriteMSVCCompilerToolConfig(void)
 {
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("Optimization=\"0\"");
 		WriteDestFileLn(
 			"PreprocessorDefinitions=\"WIN32;_DEBUG;_WINDOWS\"");
@@ -787,7 +787,7 @@ LOCALPROC WriteMSVCCompilerToolConfig(void)
 		WriteDestFileLn("StringPooling=\"true\"");
 	}
 	WriteDestFileLn("ExceptionHandling=\"0\"");
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("BasicRuntimeChecks=\"3\"");
 		if (ide_vers >= 8000) {
 			WriteDestFileLn("RuntimeLibrary=\"1\"");
@@ -812,7 +812,7 @@ LOCALPROC WriteMSVCCompilerToolConfig(void)
 	if (ide_vers < 9000) {
 		WriteDestFileLn("Detect64BitPortabilityProblems=\"true\"");
 	}
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("DebugInformationFormat=\"4\"");
 	} else {
 		WriteDestFileLn("DebugInformationFormat=\"0\"");
@@ -824,7 +824,7 @@ LOCALPROC WriteMSVCLinkerToolConfig(void)
 {
 	WriteDestFileLn("AdditionalDependencies=\"winmm.lib\"");
 	WriteXMLQuotedProp("OutputFile", WriteAppNamePath);
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("LinkIncremental=\"2\"");
 	} else {
 		WriteDestFileLn("LinkIncremental=\"1\"");
@@ -832,13 +832,13 @@ LOCALPROC WriteMSVCLinkerToolConfig(void)
 	if (ide_vers >= 8000) {
 		WriteDestFileLn("GenerateManifest=\"false\"");
 	}
-	if (gbo_dbg == gbk_dbg_on) {
+	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("GenerateDebugInformation=\"true\"");
 	} else {
 		WriteDestFileLn("GenerateDebugInformation=\"false\"");
 	}
 	WriteDestFileLn("SubSystem=\"2\"");
-	if (gbo_dbg != gbk_dbg_on) {
+	if (gbk_dbg_on != gbo_dbg) {
 		WriteDestFileLn("OptimizeReferences=\"2\"");
 		WriteDestFileLn("EnableCOMDATFolding=\"2\"");
 	}
@@ -1037,7 +1037,18 @@ LOCALPROC WriteMSVCXMLSolutionFile(void)
 		WriteDestFileLn("\357\273\277"); /* UTF-8 byte-order mark */
 	}
 
-	if (ide_vers >= 10000) {
+	if (ide_vers >= 11000) {
+		WriteDestFileLn(
+			"Microsoft Visual Studio Solution File,"
+			" Format Version 12.00");
+		if (ide_vers >= 14000) {
+			WriteDestFileLn("# Visual Studio 14");
+		} else if (ide_vers >= 12000) {
+			WriteDestFileLn("# Visual Studio 2013");
+		} else {
+			WriteDestFileLn("# Visual Studio 2012");
+		}
+	} else if (ide_vers >= 10000) {
 		WriteDestFileLn(
 			"Microsoft Visual Studio Solution File,"
 			" Format Version 11.00");
@@ -1337,7 +1348,7 @@ LOCALPROC WriteNMakeMakeFile(void)
 			} else {
 				WriteCStrToDestFile(" /subsystem:windows");
 			}
-			if (gbo_dbg == gbk_dbg_on) {
+			if (gbk_dbg_on == gbo_dbg) {
 				WriteCStrToDestFile(" /debug");
 			} else {
 				WriteCStrToDestFile(" /incremental:no");
@@ -1489,9 +1500,24 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 {
 	WriteCStrToDestFile("\357\273\277"); /* UTF-8 byte-order mark */
 	WriteDestFileLn("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-	WriteDestFileLn(
-		"<Project DefaultTargets=\"Build\" ToolsVersion=\"4.0\" xmlns="
-		"\"http://schemas.microsoft.com/developer/msbuild/2003\">");
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile(
+		"<Project DefaultTargets=\"Build\"");
+	if (ide_vers >= 14000) {
+		WriteCStrToDestFile(
+			" ToolsVersion=\"14.0\"");
+	} else if (ide_vers >= 12000) {
+		WriteCStrToDestFile(
+			" ToolsVersion=\"12.0\"");
+	} else {
+		WriteCStrToDestFile(
+			" ToolsVersion=\"4.0\"");
+	}
+	WriteCStrToDestFile(
+		" xmlns="
+		"\"http://schemas.microsoft.com/developer/msbuild/2003\">"
+		);
+	WriteEndDestFileLn();
 	++DestFileIndent;
 		WriteDestFileLn("<ItemGroup Label=\"ProjectConfigurations\">");
 		++DestFileIndent;
@@ -1532,9 +1558,21 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 		++DestFileIndent;
 			WriteXMLtagBeginValEndLine("ConfigurationType",
 				"Application");
-			if (gbo_dbg != gbk_dbg_on) {
+			if (gbk_dbg_on != gbo_dbg) {
 				WriteXMLtagBeginValEndLine("WholeProgramOptimization",
 					"false");
+			}
+			if (ide_vers >= 11000) {
+				if (ide_vers >= 14000) {
+					WriteXMLtagBeginValEndLine("PlatformToolset",
+						"v140");
+				} else if (ide_vers >= 12000) {
+					WriteXMLtagBeginValEndLine("PlatformToolset",
+						"v120");
+				} else {
+					WriteXMLtagBeginValEndLine("PlatformToolset",
+						"v110");
+				}
 			}
 			WriteXMLtagBeginValEndLine("CharacterSet", "MultiByte");
 		--DestFileIndent;
@@ -1576,7 +1614,7 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 			WriteXMLtagBeginProcValEndLine("OutDir", WriteMSVC10OutDir);
 			WriteXMLtagBeginProcValEndLine("IntDir", WriteMSVC10IntDir);
 
-			if (gbo_dbg == gbk_dbg_on) {
+			if (gbk_dbg_on == gbo_dbg) {
 				WriteXMLtagBeginValEndLine("LinkIncremental", "true");
 			} else {
 				WriteXMLtagBeginValEndLine("LinkIncremental", "false");
@@ -1596,7 +1634,7 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 				WriteXMLtagBeginValEndLine("WarningLevel", "Level4");
 				WriteXMLtagBeginValEndLine("PrecompiledHeader",
 					"NotUsing");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagBeginValEndLine("Optimization",
 						"Disabled");
 					WriteDestFileLn("<PreprocessorDefinitions>"
@@ -1649,14 +1687,14 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 
 			WriteBeginXMLtagLine("Link");
 				WriteXMLtagBeginValEndLine("SubSystem", "Windows");
-				if (gbo_dbg == gbk_dbg_on) {
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteXMLtagBeginValEndLine(
 						"GenerateDebugInformation", "true");
 				} else {
 					WriteXMLtagBeginValEndLine(
 						"GenerateDebugInformation", "false");
 				}
-				if (gbo_dbg != gbk_dbg_on) {
+				if (gbk_dbg_on != gbo_dbg) {
 					WriteXMLtagBeginValEndLine("EnableCOMDATFolding",
 						"true");
 					WriteXMLtagBeginValEndLine("OptimizeReferences",

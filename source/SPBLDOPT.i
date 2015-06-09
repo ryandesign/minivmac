@@ -80,7 +80,7 @@ LOCALFUNC char * GetModelName(int i)
 
 LOCALPROC ChooseModel(void)
 {
-	if (cur_mdl == kListOptionAuto) {
+	if (kListOptionAuto == cur_mdl) {
 		cur_mdl = gbk_mdl_Plus;
 	}
 }
@@ -149,7 +149,7 @@ LOCALFUNC char * GetMemSizName(int i)
 
 LOCALFUNC tMyErr ChooseMemSiz(void)
 {
-	if (cur_msz == kListOptionAuto) {
+	if (kListOptionAuto == cur_msz) {
 		switch (cur_mdl) {
 			case gbk_mdl_128K:
 				cur_msz = gbk_msz_128K;
@@ -314,12 +314,12 @@ LOCALFUNC tMyErr TryAsSoundOptionNot(void)
 LOCALPROC ChooseSoundEnabled(void)
 {
 	if (nanblnr == MySoundEnabled) {
-		MySoundEnabled = ((gbo_apifam == gbk_apifam_mac)
-			|| (gbo_apifam == gbk_apifam_osx)
-			|| (gbo_apifam == gbk_apifam_win)
-			|| (gbo_apifam == gbk_apifam_sdl)
-			|| (gbo_apifam == gbk_apifam_cco)
-			|| ((gbo_apifam == gbk_apifam_xwn)
+		MySoundEnabled = ((gbk_apifam_mac == gbo_apifam)
+			|| (gbk_apifam_osx == gbo_apifam)
+			|| (gbk_apifam_win == gbo_apifam)
+			|| (gbk_apifam_sdl == gbo_apifam)
+			|| (gbk_apifam_cco == gbo_apifam)
+			|| ((gbk_apifam_xwn == gbo_apifam)
 				&& ((gbo_targfam == gbk_targfam_linx)
 					|| (gbo_targfam == gbk_targfam_fbsd)
 					|| (gbo_targfam == gbk_targfam_nbsd))))
@@ -377,7 +377,7 @@ LOCALFUNC tMyErr ChooseSndApiOption(void)
 	if (kListOptionAuto == gbo_sndapi) {
 		if (! MySoundEnabled) {
 			gbo_sndapi = gbk_sndapi_none;
-		} else if (gbo_apifam != gbk_apifam_xwn) {
+		} else if (gbk_apifam_xwn != gbo_apifam) {
 			gbo_sndapi = gbk_sndapi_none;
 		} else if (gbo_targfam == gbk_targfam_linx) {
 			gbo_sndapi = gbk_sndapi_alsa;
@@ -649,7 +649,7 @@ LOCALFUNC char * GetInitSpeedName(int i)
 
 LOCALPROC ChooseInitSpeed(void)
 {
-	if (CurInitSpeed == kListOptionAuto) {
+	if (kListOptionAuto == CurInitSpeed) {
 		if ((gbk_mdl_II == cur_mdl)
 			|| (gbk_mdl_IIx == cur_mdl))
 		{
@@ -1022,7 +1022,7 @@ LOCALFUNC tMyErr ChooseScreenVSync(void)
 	if (nanblnr == WantScreenVSync) {
 		WantScreenVSync = falseblnr;
 	} else {
-		if (WantScreenVSync && (gbo_apifam != gbk_apifam_osx)) {
+		if (WantScreenVSync && (gbk_apifam_osx != gbo_apifam)) {
 			ReportParseFailure(
 				"-vsync is so far only implemented for OS X");
 			err = kMyErrReported;
@@ -1067,7 +1067,7 @@ LOCALFUNC tMyErr ChooseVidMemSize(void)
 {
 	tMyErr err;
 
-	EmVidCard = (cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx);
+	EmVidCard = (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl);
 
 	VidMemSize = (((cur_hres * cur_vres) << cur_ScrnDpth) + 7) >> 3;
 
@@ -1125,7 +1125,7 @@ LOCALPROC ChooseMiscEmHardware(void)
 		EmRTC = trueblnr;
 		EmPMU = falseblnr;
 	} else if ((cur_mdl <= gbk_mdl_Classic)
-		|| (cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx))
+		|| (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl))
 	{
 		EmADB = trueblnr;
 		EmRTC = trueblnr;
@@ -1136,9 +1136,9 @@ LOCALPROC ChooseMiscEmHardware(void)
 		EmPMU = trueblnr;
 	}
 
-	EmVIA2 = (cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx);
-	EmASC = (cur_mdl == gbk_mdl_PB100) || (cur_mdl == gbk_mdl_II)
-		|| (cur_mdl == gbk_mdl_IIx);
+	EmVIA2 = (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl);
+	EmASC = (gbk_mdl_PB100 == cur_mdl) || (gbk_mdl_II == cur_mdl)
+		|| (gbk_mdl_IIx == cur_mdl);
 }
 
 /* option: Want Disassembly */
@@ -1409,8 +1409,8 @@ LOCALPROC ChooseUseAsm68k(void)
 {
 	UseAsm68k = (gbk_asm_none != cur_asm)
 		&& (em_cpu_vers == 0) && (timingacc < 2)
-		&& ((gbo_cpufam == gbk_cpufam_x86)
-			|| (gbo_cpufam == gbk_cpufam_ppc))
+		&& ((gbk_cpufam_x86 == gbo_cpufam)
+			|| (gbk_cpufam_ppc == gbo_cpufam))
 		&& (! WantDisasm);
 }
 
@@ -1437,7 +1437,7 @@ LOCALFUNC tMyErr ChooseCaretBlinkTime(void)
 
 	err = noErr;
 	if (! have_CaretBlinkTime) {
-		if ((cur_mdl == gbk_mdl_II) || (cur_mdl == gbk_mdl_IIx)) {
+		if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
 			cur_CaretBlinkTime = 8;
 		} else {
 			cur_CaretBlinkTime = 3;
