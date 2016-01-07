@@ -92,14 +92,6 @@ LOCALVAR ui5b LastRealDate;
 #define AlarmOn 0
 #endif
 
-#ifndef DoubleClickTime /* in 5,8,12 */
-#if (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)
-#define DoubleClickTime 8
-#else
-#define DoubleClickTime 5
-#endif
-#endif
-
 #ifndef DiskCacheSz /* in 1,2,3,4,6,8,12 */
 /* actual cache size is DiskCacheSz * 32k */
 #if (CurEmMd == kEmMd_II) || (CurEmMd == kEmMd_IIx)

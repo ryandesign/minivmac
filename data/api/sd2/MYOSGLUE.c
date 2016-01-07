@@ -1,7 +1,7 @@
 /*
 	MYOSGLUE.c
 
-	Copyright (C) 2012 Paul C. Pratt
+	Copyright (C) 2012 Paul C. Pratt, Manuel Alfayate
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 */
 
 /*
-	MY Operating System GLUE. (for SDL Library)
+	MY Operating System GLUE. (for SDL 2.0 Library)
 
 	All operating system dependent code for the
 	SDL Library should go here.
@@ -404,6 +404,11 @@ LOCALFUNC blnr LoadMacRom(void)
 
 /* --- video out --- */
 
+#if MayFullScreen
+LOCALVAR int hOffset;
+LOCALVAR int vOffset;
+#endif
+
 #if VarFullScreen
 LOCALVAR blnr UseFullScreen = (WantInitFullScreen != 0);
 #endif
@@ -423,7 +428,10 @@ LOCALVAR blnr CurSpeedStopped = trueblnr;
 #endif
 
 
-LOCALVAR SDL_Surface *my_surface = nullpr;
+LOCALVAR SDL_Window *my_main_wind = NULL;
+LOCALVAR SDL_Renderer *my_renderer = NULL;
+LOCALVAR SDL_Texture *my_texture = NULL;
+LOCALVAR SDL_PixelFormat *my_format = NULL;
 
 LOCALVAR ui3p ScalingBuff = nullpr;
 
@@ -568,10 +576,75 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 	Uint32 CLUT_pixel[CLUT_size];
 #endif
 	Uint32 BWLUT_pixel[2];
-	ui5r top2 = top;
-	ui5r left2 = left;
-	ui5r bottom2 = bottom;
-	ui5r right2 = right;
+	ui5r top2;
+	ui5r left2;
+	ui5r bottom2;
+	ui5r right2;
+	void *pixels;
+	int pitch;
+	SDL_Rect src_rect;
+	SDL_Rect dst_rect;
+	int XDest;
+	int YDest;
+
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		if (top < ViewVStart) {
+			top = ViewVStart;
+		}
+		if (left < ViewHStart) {
+			left = ViewHStart;
+		}
+		if (bottom > ViewVStart + ViewVSize) {
+			bottom = ViewVStart + ViewVSize;
+		}
+		if (right > ViewHStart + ViewHSize) {
+			right = ViewHStart + ViewHSize;
+		}
+
+		if ((top >= bottom) || (left >= right)) {
+			goto label_exit;
+		}
+	}
+#endif
+
+	XDest = left;
+	YDest = top;
+
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		XDest -= ViewHStart;
+		YDest -= ViewVStart;
+	}
+#endif
+
+#if EnableMagnify
+	if (UseMagnify) {
+		XDest *= MyWindowScale;
+		YDest *= MyWindowScale;
+	}
+#endif
+
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		XDest += hOffset;
+		YDest += vOffset;
+	}
+#endif
+
+	top2 = top;
+	left2 = left;
+	bottom2 = bottom;
+	right2 = right;
 
 #if EnableMagnify
 	if (UseMagnify) {
@@ -582,15 +655,13 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 	}
 #endif
 
-	if (SDL_MUSTLOCK(my_surface)) {
-		if (SDL_LockSurface(my_surface) < 0) {
-			return;
-		}
+	if (0 != SDL_LockTexture(my_texture, NULL, &pixels, &pitch)) {
+		return;
 	}
 
 	{
 
-	int bpp = my_surface->format->BytesPerPixel;
+	int bpp = my_format->BytesPerPixel;
 	ui5r ExpectedPitch = vMacScreenWidth * bpp;
 
 #if EnableMagnify
@@ -603,7 +674,7 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 	if (UseColorMode) {
 #if vMacScreenDepth < 4
 		for (i = 0; i < CLUT_size; ++i) {
-			CLUT_pixel[i] = SDL_MapRGB(my_surface->format,
+			CLUT_pixel[i] = SDL_MapRGB(my_format,
 				CLUT_reds[i] >> 8,
 				CLUT_greens[i] >> 8,
 				CLUT_blues[i] >> 8);
@@ -612,14 +683,14 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 	} else
 #endif
 	{
-		BWLUT_pixel[1] = SDL_MapRGB(my_surface->format, 0, 0, 0);
+		BWLUT_pixel[1] = SDL_MapRGB(my_format, 0, 0, 0);
 			/* black */
-		BWLUT_pixel[0] = SDL_MapRGB(my_surface->format, 255, 255, 255);
+		BWLUT_pixel[0] = SDL_MapRGB(my_format, 255, 255, 255);
 			/* white */
 	}
 
 	if ((0 == ((bpp - 1) & bpp)) /* a power of 2 */
-		&& (my_surface->pitch == ExpectedPitch)
+		&& (pitch == ExpectedPitch)
 #if (vMacScreenDepth > 3)
 		&& ! UseColorMode
 #endif
@@ -677,7 +748,7 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 			}
 		}
 
-		ScalingBuff = (ui3p)my_surface->pixels;
+		ScalingBuff = (ui3p)pixels;
 
 #if (0 != vMacScreenDepth) && (vMacScreenDepth < 4)
 		if (UseColorMode) {
@@ -757,8 +828,8 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 			for (j = left2; j < right2; ++j) {
 				int i0 = i;
 				int j0 = j;
-				Uint8 *bufp = (Uint8 *)my_surface->pixels
-					+ i * my_surface->pitch + j * bpp;
+				Uint8 *bufp = (Uint8 *)pixels
+					+ i * pitch + j * bpp;
 
 #if EnableMagnify
 				if (UseMagnify) {
@@ -783,7 +854,7 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 					p = the_data + ((i0 * vMacScreenWidth + j0) << 1);
 					{
 						ui4r t0 = do_get_mem_word(p);
-						pixel = SDL_MapRGB(my_surface->format,
+						pixel = SDL_MapRGB(my_format,
 							((t0 & 0x7C00) >> 7)
 								| ((t0 & 0x7000) >> 12),
 							((t0 & 0x03E0) >> 2)
@@ -793,7 +864,7 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 					}
 #elif 5 == vMacScreenDepth
 					p = the_data + ((i0 * vMacScreenWidth + j0) << 2);
-					pixel = SDL_MapRGB(my_surface->format,
+					pixel = SDL_MapRGB(my_format,
 						p[1],
 						p[2],
 						p[3]);
@@ -834,12 +905,26 @@ LOCALPROC HaveChangedScreenBuff(ui4r top, ui4r left,
 
 	}
 
-	if (SDL_MUSTLOCK(my_surface)) {
-		SDL_UnlockSurface(my_surface);
-	}
+	SDL_UnlockTexture(my_texture);
 
-	SDL_UpdateRect(my_surface, left2, top2,
-		right2 - left2, bottom2 - top2);
+	src_rect.x = left2;
+	src_rect.y = top2;
+	src_rect.w = right2 - left2;
+	src_rect.h = bottom2 - top2;
+
+	dst_rect.x = XDest;
+	dst_rect.y = YDest;
+	dst_rect.w = right2 - left2;
+	dst_rect.h = bottom2 - top2;
+
+	/* SDL_RenderClear(my_renderer); */
+	SDL_RenderCopy(my_renderer, my_texture, &src_rect, &dst_rect);
+	SDL_RenderPresent(my_renderer);
+
+#if MayFullScreen
+label_exit:
+	;
+#endif
 }
 
 LOCALPROC MyDrawChangesAndClear(void)
@@ -878,8 +963,21 @@ LOCALPROC ForceShowCursor(void)
 
 /* cursor moving */
 
+#define HaveWorkingWarp 1
+
+#if HaveWorkingWarp
 LOCALFUNC blnr MyMoveMouse(si4b h, si4b v)
 {
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		h -= ViewHStart;
+		v -= ViewVStart;
+	}
+#endif
+
 #if EnableMagnify
 	if (UseMagnify) {
 		h *= MyWindowScale;
@@ -887,10 +985,21 @@ LOCALFUNC blnr MyMoveMouse(si4b h, si4b v)
 	}
 #endif
 
-	SDL_WarpMouse(h, v);
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		h += hOffset;
+		v += vOffset;
+	}
+#endif
+
+	SDL_WarpMouseInWindow(my_main_wind, h, v);
 
 	return trueblnr;
 }
+#endif
 
 /* cursor state */
 
@@ -898,10 +1007,30 @@ LOCALPROC MousePositionNotify(int NewMousePosh, int NewMousePosv)
 {
 	blnr ShouldHaveCursorHidden = trueblnr;
 
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		NewMousePosh -= hOffset;
+		NewMousePosv -= vOffset;
+	}
+#endif
+
 #if EnableMagnify
 	if (UseMagnify) {
 		NewMousePosh /= MyWindowScale;
 		NewMousePosv /= MyWindowScale;
+	}
+#endif
+
+#if VarFullScreen
+	if (UseFullScreen)
+#endif
+#if MayFullScreen
+	{
+		NewMousePosh += ViewHStart;
+		NewMousePosv += ViewVStart;
 	}
 #endif
 
@@ -949,6 +1078,29 @@ LOCALPROC MousePositionNotify(int NewMousePosh, int NewMousePosv)
 	WantCursorHidden = ShouldHaveCursorHidden;
 }
 
+#if EnableMouseMotion && MayFullScreen && ! HaveWorkingWarp
+LOCALPROC MousePositionNotifyRelative(int deltah, int deltav)
+{
+	blnr ShouldHaveCursorHidden = trueblnr;
+
+#if EnableMagnify
+	if (UseMagnify) {
+		/*
+			This is not really right. If only move one pixel
+			each time, emulated mouse doesn't move at all.
+		*/
+		deltah /= MyWindowScale;
+		deltav /= MyWindowScale;
+	}
+#endif
+
+	MyMousePositionSetDelta(deltah,
+		deltav);
+
+	WantCursorHidden = ShouldHaveCursorHidden;
+}
+#endif
+
 LOCALPROC CheckMouseState(void)
 {
 	/*
@@ -964,156 +1116,145 @@ LOCALPROC CheckMouseState(void)
 
 /* --- keyboard input --- */
 
-LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
+LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
 {
 	int v = -1;
 
 	switch (i) {
-		case SDLK_BACKSPACE: v = MKC_BackSpace; break;
-		case SDLK_TAB: v = MKC_Tab; break;
-		case SDLK_CLEAR: v = MKC_Clear; break;
-		case SDLK_RETURN: v = MKC_Return; break;
-		case SDLK_PAUSE: v = MKC_Pause; break;
-		case SDLK_ESCAPE: v = MKC_Escape; break;
-		case SDLK_SPACE: v = MKC_Space; break;
-		case SDLK_EXCLAIM: /* ? */ break;
-		case SDLK_QUOTEDBL: /* ? */ break;
-		case SDLK_HASH: /* ? */ break;
-		case SDLK_DOLLAR: /* ? */ break;
-		case SDLK_AMPERSAND: /* ? */ break;
-		case SDLK_QUOTE: v = MKC_SingleQuote; break;
-		case SDLK_LEFTPAREN: /* ? */ break;
-		case SDLK_RIGHTPAREN: /* ? */ break;
-		case SDLK_ASTERISK: /* ? */ break;
-		case SDLK_PLUS: /* ? */ break;
-		case SDLK_COMMA: v = MKC_Comma; break;
-		case SDLK_MINUS: v = MKC_Minus; break;
-		case SDLK_PERIOD: v = MKC_Period; break;
-		case SDLK_SLASH: v = MKC_Slash; break;
-		case SDLK_0: v = MKC_0; break;
-		case SDLK_1: v = MKC_1; break;
-		case SDLK_2: v = MKC_2; break;
-		case SDLK_3: v = MKC_3; break;
-		case SDLK_4: v = MKC_4; break;
-		case SDLK_5: v = MKC_5; break;
-		case SDLK_6: v = MKC_6; break;
-		case SDLK_7: v = MKC_7; break;
-		case SDLK_8: v = MKC_8; break;
-		case SDLK_9: v = MKC_9; break;
-		case SDLK_COLON: /* ? */ break;
-		case SDLK_SEMICOLON: v = MKC_SemiColon; break;
-		case SDLK_LESS: /* ? */ break;
-		case SDLK_EQUALS: v = MKC_Equal; break;
-		case SDLK_GREATER: /* ? */ break;
-		case SDLK_QUESTION: /* ? */ break;
-		case SDLK_AT: /* ? */ break;
+		case SDL_SCANCODE_BACKSPACE: v = MKC_BackSpace; break;
+		case SDL_SCANCODE_TAB: v = MKC_Tab; break;
+		case SDL_SCANCODE_CLEAR: v = MKC_Clear; break;
+		case SDL_SCANCODE_RETURN: v = MKC_Return; break;
+		case SDL_SCANCODE_PAUSE: v = MKC_Pause; break;
+		case SDL_SCANCODE_ESCAPE: v = MKC_Escape; break;
+		case SDL_SCANCODE_SPACE: v = MKC_Space; break;
+		case SDL_SCANCODE_APOSTROPHE: v = MKC_SingleQuote; break;
+		case SDL_SCANCODE_COMMA: v = MKC_Comma; break;
+		case SDL_SCANCODE_MINUS: v = MKC_Minus; break;
+		case SDL_SCANCODE_PERIOD: v = MKC_Period; break;
+		case SDL_SCANCODE_SLASH: v = MKC_Slash; break;
+		case SDL_SCANCODE_0: v = MKC_0; break;
+		case SDL_SCANCODE_1: v = MKC_1; break;
+		case SDL_SCANCODE_2: v = MKC_2; break;
+		case SDL_SCANCODE_3: v = MKC_3; break;
+		case SDL_SCANCODE_4: v = MKC_4; break;
+		case SDL_SCANCODE_5: v = MKC_5; break;
+		case SDL_SCANCODE_6: v = MKC_6; break;
+		case SDL_SCANCODE_7: v = MKC_7; break;
+		case SDL_SCANCODE_8: v = MKC_8; break;
+		case SDL_SCANCODE_9: v = MKC_9; break;
+		case SDL_SCANCODE_SEMICOLON: v = MKC_SemiColon; break;
+		case SDL_SCANCODE_EQUALS: v = MKC_Equal; break;
 
-		case SDLK_LEFTBRACKET: v = MKC_LeftBracket; break;
-		case SDLK_BACKSLASH: v = MKC_BackSlash; break;
-		case SDLK_RIGHTBRACKET: v = MKC_RightBracket; break;
-		case SDLK_CARET: /* ? */ break;
-		case SDLK_UNDERSCORE: /* ? */ break;
-		case SDLK_BACKQUOTE: v = MKC_Grave; break;
+		case SDL_SCANCODE_LEFTBRACKET: v = MKC_LeftBracket; break;
+		case SDL_SCANCODE_BACKSLASH: v = MKC_BackSlash; break;
+		case SDL_SCANCODE_RIGHTBRACKET: v = MKC_RightBracket; break;
+		case SDL_SCANCODE_GRAVE: v = MKC_Grave; break;
 
-		case SDLK_a: v = MKC_A; break;
-		case SDLK_b: v = MKC_B; break;
-		case SDLK_c: v = MKC_C; break;
-		case SDLK_d: v = MKC_D; break;
-		case SDLK_e: v = MKC_E; break;
-		case SDLK_f: v = MKC_F; break;
-		case SDLK_g: v = MKC_G; break;
-		case SDLK_h: v = MKC_H; break;
-		case SDLK_i: v = MKC_I; break;
-		case SDLK_j: v = MKC_J; break;
-		case SDLK_k: v = MKC_K; break;
-		case SDLK_l: v = MKC_L; break;
-		case SDLK_m: v = MKC_M; break;
-		case SDLK_n: v = MKC_N; break;
-		case SDLK_o: v = MKC_O; break;
-		case SDLK_p: v = MKC_P; break;
-		case SDLK_q: v = MKC_Q; break;
-		case SDLK_r: v = MKC_R; break;
-		case SDLK_s: v = MKC_S; break;
-		case SDLK_t: v = MKC_T; break;
-		case SDLK_u: v = MKC_U; break;
-		case SDLK_v: v = MKC_V; break;
-		case SDLK_w: v = MKC_W; break;
-		case SDLK_x: v = MKC_X; break;
-		case SDLK_y: v = MKC_Y; break;
-		case SDLK_z: v = MKC_Z; break;
+		case SDL_SCANCODE_A: v = MKC_A; break;
+		case SDL_SCANCODE_B: v = MKC_B; break;
+		case SDL_SCANCODE_C: v = MKC_C; break;
+		case SDL_SCANCODE_D: v = MKC_D; break;
+		case SDL_SCANCODE_E: v = MKC_E; break;
+		case SDL_SCANCODE_F: v = MKC_F; break;
+		case SDL_SCANCODE_G: v = MKC_G; break;
+		case SDL_SCANCODE_H: v = MKC_H; break;
+		case SDL_SCANCODE_I: v = MKC_I; break;
+		case SDL_SCANCODE_J: v = MKC_J; break;
+		case SDL_SCANCODE_K: v = MKC_K; break;
+		case SDL_SCANCODE_L: v = MKC_L; break;
+		case SDL_SCANCODE_M: v = MKC_M; break;
+		case SDL_SCANCODE_N: v = MKC_N; break;
+		case SDL_SCANCODE_O: v = MKC_O; break;
+		case SDL_SCANCODE_P: v = MKC_P; break;
+		case SDL_SCANCODE_Q: v = MKC_Q; break;
+		case SDL_SCANCODE_R: v = MKC_R; break;
+		case SDL_SCANCODE_S: v = MKC_S; break;
+		case SDL_SCANCODE_T: v = MKC_T; break;
+		case SDL_SCANCODE_U: v = MKC_U; break;
+		case SDL_SCANCODE_V: v = MKC_V; break;
+		case SDL_SCANCODE_W: v = MKC_W; break;
+		case SDL_SCANCODE_X: v = MKC_X; break;
+		case SDL_SCANCODE_Y: v = MKC_Y; break;
+		case SDL_SCANCODE_Z: v = MKC_Z; break;
 
-		case SDLK_KP0: v = MKC_KP0; break;
-		case SDLK_KP1: v = MKC_KP1; break;
-		case SDLK_KP2: v = MKC_KP2; break;
-		case SDLK_KP3: v = MKC_KP3; break;
-		case SDLK_KP4: v = MKC_KP4; break;
-		case SDLK_KP5: v = MKC_KP5; break;
-		case SDLK_KP6: v = MKC_KP6; break;
-		case SDLK_KP7: v = MKC_KP7; break;
-		case SDLK_KP8: v = MKC_KP8; break;
-		case SDLK_KP9: v = MKC_KP9; break;
+		case SDL_SCANCODE_KP_0: v = MKC_KP0; break;
+		case SDL_SCANCODE_KP_1: v = MKC_KP1; break;
+		case SDL_SCANCODE_KP_2: v = MKC_KP2; break;
+		case SDL_SCANCODE_KP_3: v = MKC_KP3; break;
+		case SDL_SCANCODE_KP_4: v = MKC_KP4; break;
+		case SDL_SCANCODE_KP_5: v = MKC_KP5; break;
+		case SDL_SCANCODE_KP_6: v = MKC_KP6; break;
+		case SDL_SCANCODE_KP_7: v = MKC_KP7; break;
+		case SDL_SCANCODE_KP_8: v = MKC_KP8; break;
+		case SDL_SCANCODE_KP_9: v = MKC_KP9; break;
 
-		case SDLK_KP_PERIOD: v = MKC_Decimal; break;
-		case SDLK_KP_DIVIDE: v = MKC_KPDevide; break;
-		case SDLK_KP_MULTIPLY: v = MKC_KPMultiply; break;
-		case SDLK_KP_MINUS: v = MKC_KPSubtract; break;
-		case SDLK_KP_PLUS: v = MKC_KPAdd; break;
-		case SDLK_KP_ENTER: v = MKC_Enter; break;
-		case SDLK_KP_EQUALS: v = MKC_KPEqual; break;
+		case SDL_SCANCODE_KP_PERIOD: v = MKC_Decimal; break;
+		case SDL_SCANCODE_KP_DIVIDE: v = MKC_KPDevide; break;
+		case SDL_SCANCODE_KP_MULTIPLY: v = MKC_KPMultiply; break;
+		case SDL_SCANCODE_KP_MINUS: v = MKC_KPSubtract; break;
+		case SDL_SCANCODE_KP_PLUS: v = MKC_KPAdd; break;
+		case SDL_SCANCODE_KP_ENTER: v = MKC_Enter; break;
+		case SDL_SCANCODE_KP_EQUALS: v = MKC_KPEqual; break;
 
-		case SDLK_UP: v = MKC_Up; break;
-		case SDLK_DOWN: v = MKC_Down; break;
-		case SDLK_RIGHT: v = MKC_Right; break;
-		case SDLK_LEFT: v = MKC_Left; break;
-		case SDLK_INSERT: v = MKC_Help; break;
-		case SDLK_HOME: v = MKC_Home; break;
-		case SDLK_END: v = MKC_End; break;
-		case SDLK_PAGEUP: v = MKC_PageUp; break;
-		case SDLK_PAGEDOWN: v = MKC_PageDown; break;
+		case SDL_SCANCODE_UP: v = MKC_Up; break;
+		case SDL_SCANCODE_DOWN: v = MKC_Down; break;
+		case SDL_SCANCODE_RIGHT: v = MKC_Right; break;
+		case SDL_SCANCODE_LEFT: v = MKC_Left; break;
+		case SDL_SCANCODE_INSERT: v = MKC_Help; break;
+		case SDL_SCANCODE_HOME: v = MKC_Home; break;
+		case SDL_SCANCODE_END: v = MKC_End; break;
+		case SDL_SCANCODE_PAGEUP: v = MKC_PageUp; break;
+		case SDL_SCANCODE_PAGEDOWN: v = MKC_PageDown; break;
 
-		case SDLK_F1: v = MKC_F1; break;
-		case SDLK_F2: v = MKC_F2; break;
-		case SDLK_F3: v = MKC_F3; break;
-		case SDLK_F4: v = MKC_F4; break;
-		case SDLK_F5: v = MKC_F5; break;
-		case SDLK_F6: v = MKC_F6; break;
-		case SDLK_F7: v = MKC_F7; break;
-		case SDLK_F8: v = MKC_F8; break;
-		case SDLK_F9: v = MKC_F9; break;
-		case SDLK_F10: v = MKC_F10; break;
-		case SDLK_F11: v = MKC_F11; break;
-		case SDLK_F12: v = MKC_F12; break;
+		case SDL_SCANCODE_F1: v = MKC_F1; break;
+		case SDL_SCANCODE_F2: v = MKC_F2; break;
+		case SDL_SCANCODE_F3: v = MKC_F3; break;
+		case SDL_SCANCODE_F4: v = MKC_F4; break;
+		case SDL_SCANCODE_F5: v = MKC_F5; break;
+		case SDL_SCANCODE_F6: v = MKC_F6; break;
+		case SDL_SCANCODE_F7: v = MKC_F7; break;
+		case SDL_SCANCODE_F8: v = MKC_F8; break;
+		case SDL_SCANCODE_F9: v = MKC_F9; break;
+		case SDL_SCANCODE_F10: v = MKC_F10; break;
+		case SDL_SCANCODE_F11: v = MKC_F11; break;
+		case SDL_SCANCODE_F12: v = MKC_F12; break;
 
-		case SDLK_F13: /* ? */ break;
-		case SDLK_F14: /* ? */ break;
-		case SDLK_F15: /* ? */ break;
+		case SDL_SCANCODE_NUMLOCKCLEAR: v = MKC_ForwardDel; break;
+		case SDL_SCANCODE_CAPSLOCK: v = MKC_CapsLock; break;
+		case SDL_SCANCODE_SCROLLLOCK: v = MKC_ScrollLock; break;
+		case SDL_SCANCODE_RSHIFT: v = MKC_Shift; break;
+		case SDL_SCANCODE_LSHIFT: v = MKC_Shift; break;
+		case SDL_SCANCODE_RCTRL: v = MKC_Control; break;
+		case SDL_SCANCODE_LCTRL: v = MKC_Control; break;
+		case SDL_SCANCODE_RALT: v = MKC_Option; break;
+		case SDL_SCANCODE_LALT: v = MKC_Option; break;
+		case SDL_SCANCODE_RGUI: v = MKC_Command; break;
+		case SDL_SCANCODE_LGUI: v = MKC_Command; break;
+		/* case SDLK_LSUPER: v = MKC_Option; break; */
+		/* case SDLK_RSUPER: v = MKC_Option; break; */
 
-		case SDLK_NUMLOCK: v = MKC_ForwardDel; break;
-		case SDLK_CAPSLOCK: v = MKC_CapsLock; break;
-		case SDLK_SCROLLOCK: v = MKC_ScrollLock; break;
-		case SDLK_RSHIFT: v = MKC_Shift; break;
-		case SDLK_LSHIFT: v = MKC_Shift; break;
-		case SDLK_RCTRL: v = MKC_Control; break;
-		case SDLK_LCTRL: v = MKC_Control; break;
-		case SDLK_RALT: v = MKC_Command; break;
-		case SDLK_LALT: v = MKC_Command; break;
-		case SDLK_RMETA: v = MKC_Command; break;
-		case SDLK_LMETA: v = MKC_Command; break;
-		case SDLK_LSUPER: v = MKC_Option; break;
-		case SDLK_RSUPER: v = MKC_Option; break;
+		case SDL_SCANCODE_HELP: v = MKC_Help; break;
+		case SDL_SCANCODE_PRINTSCREEN: v = MKC_Print; break;
 
-		case SDLK_MODE: /* ? */ break;
-		case SDLK_COMPOSE: /* ? */ break;
+		case SDL_SCANCODE_UNDO: v = MKC_F1; break;
+		case SDL_SCANCODE_CUT: v = MKC_F2; break;
+		case SDL_SCANCODE_COPY: v = MKC_F3; break;
+		case SDL_SCANCODE_PASTE: v = MKC_F4; break;
 
-		case SDLK_HELP: v = MKC_Help; break;
-		case SDLK_PRINT: v = MKC_Print; break;
+		case SDL_SCANCODE_AC_HOME: v = MKC_Home; break;
 
-		case SDLK_SYSREQ: /* ? */ break;
-		case SDLK_BREAK: /* ? */ break;
-		case SDLK_MENU: /* ? */ break;
-		case SDLK_POWER: /* ? */ break;
-		case SDLK_EURO: /* ? */ break;
-		case SDLK_UNDO: /* ? */ break;
+		case SDL_SCANCODE_KP_A: v = MKC_A; break;
+		case SDL_SCANCODE_KP_B: v = MKC_B; break;
+		case SDL_SCANCODE_KP_C: v = MKC_C; break;
+		case SDL_SCANCODE_KP_D: v = MKC_D; break;
+		case SDL_SCANCODE_KP_E: v = MKC_E; break;
+		case SDL_SCANCODE_KP_F: v = MKC_F; break;
+
+		case SDL_SCANCODE_KP_BACKSPACE: v = MKC_BackSpace; break;
+		case SDL_SCANCODE_KP_CLEAR: v = MKC_Clear; break;
+		case SDL_SCANCODE_KP_COMMA: v = MKC_Comma; break;
+		case SDL_SCANCODE_KP_DECIMAL: v = MKC_Decimal; break;
 
 		default:
 			break;
@@ -1122,9 +1263,9 @@ LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
 	return v;
 }
 
-LOCALPROC DoKeyCode(SDL_keysym *r, blnr down)
+LOCALPROC DoKeyCode(SDL_Keysym *r, blnr down)
 {
-	int v = SDLKey2MacKeyCode(r->sym);
+	int v = SDLScan2MacKeyCode(r->scancode);
 	if (v >= 0) {
 		Keyboard_UpdateKeyMap2(v, down);
 	}
@@ -1754,34 +1895,57 @@ LOCALPROC HandleTheEvent(SDL_Event *event)
 		case SDL_QUIT:
 			RequestMacOff = trueblnr;
 			break;
-		case SDL_ACTIVEEVENT:
-			switch (event->active.state) {
-				case SDL_APPINPUTFOCUS:
-					gTrueBackgroundFlag = (0 == event->active.gain);
-#if 0 && UseMotionEvents
-					if (! gTrueBackgroundFlag) {
-						CheckMouseState();
-					}
-#endif
+		case SDL_WINDOWEVENT:
+			switch (event->window.event) {
+				case SDL_WINDOWEVENT_FOCUS_GAINED:
+					gTrueBackgroundFlag = 0;
 					break;
-				case SDL_APPMOUSEFOCUS:
-					CaughtMouse = (0 != event->active.gain);
+				case SDL_WINDOWEVENT_FOCUS_LOST:
+					gTrueBackgroundFlag = 1;
+					break;
+				case SDL_WINDOWEVENT_ENTER:
+					CaughtMouse = 1;
+					break;
+				case SDL_WINDOWEVENT_LEAVE:
+					CaughtMouse = 0;
 					break;
 			}
 			break;
 		case SDL_MOUSEMOTION:
-			MousePositionNotify(
-				event->motion.x, event->motion.y);
+#if EnableMouseMotion && MayFullScreen && ! HaveWorkingWarp
+			if (HaveMouseMotion) {
+				MousePositionNotifyRelative(
+					event->motion.xrel, event->motion.yrel);
+			} else
+#endif
+			{
+				MousePositionNotify(
+					event->motion.x, event->motion.y);
+			}
 			break;
 		case SDL_MOUSEBUTTONDOWN:
 			/* any mouse button, we don't care which */
-			MousePositionNotify(
-				event->button.x, event->button.y);
+#if EnableMouseMotion && MayFullScreen && ! HaveWorkingWarp
+			if (HaveMouseMotion) {
+				/* ignore position */
+			} else
+#endif
+			{
+				MousePositionNotify(
+					event->button.x, event->button.y);
+			}
 			MyMouseButtonSet(trueblnr);
 			break;
 		case SDL_MOUSEBUTTONUP:
-			MousePositionNotify(
-				event->button.x, event->button.y);
+#if EnableMouseMotion && MayFullScreen && ! HaveWorkingWarp
+			if (HaveMouseMotion) {
+				/* ignore position */
+			} else
+#endif
+			{
+				MousePositionNotify(
+					event->button.x, event->button.y);
+			}
 			MyMouseButtonSet(falseblnr);
 			break;
 		case SDL_KEYDOWN:
@@ -1832,7 +1996,6 @@ LOCALFUNC blnr Screen_Init(void)
 	{
 		fprintf(stderr, "Unable to init SDL: %s\n", SDL_GetError());
 	} else {
-		SDL_WM_SetCaption(kStrAppName, NULL);
 		v = trueblnr;
 	}
 
@@ -1846,9 +2009,11 @@ LOCALVAR blnr GrabMachine = falseblnr;
 #if MayFullScreen
 LOCALPROC GrabTheMachine(void)
 {
-	(void) SDL_WM_GrabInput(SDL_GRAB_ON);
+	SDL_SetWindowGrab(my_main_wind, SDL_TRUE);
 
 #if EnableMouseMotion
+
+#if HaveWorkingWarp
 	/*
 		if magnification changes, need to reset,
 		even if HaveMouseMotion already true
@@ -1860,7 +2025,13 @@ LOCALPROC GrabTheMachine(void)
 		SavedMouseV = ViewVStart + (ViewVSize / 2);
 		HaveMouseMotion = trueblnr;
 	}
+#else
+	if (0 == SDL_SetRelativeMouseMode(SDL_ENABLE)) {
+		HaveMouseMotion = trueblnr;
+	}
 #endif
+
+#endif /* EnableMouseMotion */
 }
 #endif
 
@@ -1868,17 +2039,24 @@ LOCALPROC GrabTheMachine(void)
 LOCALPROC UngrabMachine(void)
 {
 #if EnableMouseMotion
+
 	if (HaveMouseMotion) {
+#if HaveWorkingWarp
 		(void) MyMoveMouse(CurMouseH, CurMouseV);
-		HaveMouseMotion = falseblnr;
-	}
+#else
+		SDL_SetRelativeMouseMode(SDL_DISABLE);
 #endif
 
-	(void) SDL_WM_GrabInput(SDL_GRAB_OFF);
+		HaveMouseMotion = falseblnr;
+	}
+
+#endif /* EnableMouseMotion */
+
+	SDL_SetWindowGrab(my_main_wind, SDL_FALSE);
 }
 #endif
 
-#if EnableMouseMotion && MayFullScreen
+#if EnableMouseMotion && MayFullScreen && HaveWorkingWarp
 LOCALPROC MyMouseConstrain(void)
 {
 	si4b shiftdh;
@@ -1908,11 +2086,30 @@ LOCALPROC MyMouseConstrain(void)
 }
 #endif
 
+enum {
+	kMagStateNormal,
+#if EnableMagnify
+	kMagStateMagnifgy,
+#endif
+	kNumMagStates
+};
+
+#define kMagStateAuto kNumMagStates
+
+#if MayNotFullScreen
+LOCALVAR int CurWinIndx;
+LOCALVAR blnr HavePositionWins[kNumMagStates];
+LOCALVAR int WinPositionsX[kNumMagStates];
+LOCALVAR int WinPositionsY[kNumMagStates];
+#endif
+
 LOCALFUNC blnr CreateMainWindow(void)
 {
+	int NewWindowX;
+	int NewWindowY;
 	int NewWindowHeight = vMacScreenHeight;
 	int NewWindowWidth = vMacScreenWidth;
-	Uint32 flags = SDL_SWSURFACE;
+	Uint32 flags = 0;
 	blnr v = falseblnr;
 
 #if EnableMagnify && 1
@@ -1927,38 +2124,300 @@ LOCALFUNC blnr CreateMainWindow(void)
 #endif
 #if MayFullScreen
 	{
-		flags |= SDL_FULLSCREEN;
+		/*
+			We don't want physical screen mode to be changed in modern
+			displays, so we pass this _DESKTOP flag.
+		*/
+		flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+
+		NewWindowX = SDL_WINDOWPOS_UNDEFINED;
+		NewWindowY = SDL_WINDOWPOS_UNDEFINED;
+	}
+#endif
+#if VarFullScreen
+	else
+#endif
+#if MayNotFullScreen
+	{
+		int WinIndx;
+
+#if EnableMagnify
+		if (UseMagnify) {
+			WinIndx = kMagStateMagnifgy;
+		} else
+#endif
+		{
+			WinIndx = kMagStateNormal;
+		}
+
+		if (! HavePositionWins[WinIndx]) {
+			NewWindowX = SDL_WINDOWPOS_CENTERED;
+			NewWindowY = SDL_WINDOWPOS_CENTERED;
+		} else {
+			NewWindowX = WinPositionsX[WinIndx];
+			NewWindowY = WinPositionsY[WinIndx];
+		}
+
+		CurWinIndx = WinIndx;
 	}
 #endif
 
-	ViewHStart = 0;
-	ViewVStart = 0;
-	ViewHSize = vMacScreenWidth;
-	ViewVSize = vMacScreenHeight;
-
-	my_surface = SDL_SetVideoMode(NewWindowWidth, NewWindowHeight,
-#if 0 != vMacScreenDepth
-		32,
-#else
-		/* 32 */ /* 24 */ /* 16 */ 8,
+#if 0
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 #endif
-		flags);
-	if (NULL == my_surface) {
-		fprintf(stderr, "SDL_SetVideoMode fails: %s\n",
+
+	if (NULL == (my_main_wind = SDL_CreateWindow(
+		kStrAppName, NewWindowX, NewWindowY,
+		NewWindowWidth, NewWindowHeight,
+		flags)))
+	{
+		fprintf(stderr, "SDL_CreateWindow fails: %s\n",
 			SDL_GetError());
-	} else {
+	} else
+	if (NULL == (my_renderer = SDL_CreateRenderer(
+		my_main_wind, -1,
+		0 /* SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC */
+			/*
+				SDL_RENDERER_ACCELERATED not needed
+				"no flags gives priority to available
+				SDL_RENDERER_ACCELERATED renderers"
+			*/
+			/* would rather not require vsync */
+		)))
+	{
+		fprintf(stderr, "SDL_CreateRenderer fails: %s\n",
+			SDL_GetError());
+	} else
+	if (NULL == (my_texture = SDL_CreateTexture(
+		my_renderer,
+		SDL_PIXELFORMAT_ARGB8888,
+		SDL_TEXTUREACCESS_STREAMING,
+		NewWindowWidth, NewWindowHeight)))
+	{
+		fprintf(stderr, "SDL_CreateTexture fails: %s\n",
+			SDL_GetError());
+	} else
+	if (NULL == (my_format = SDL_AllocFormat(SDL_PIXELFORMAT_ARGB8888)))
+	{
+		fprintf(stderr, "SDL_AllocFormat fails: %s\n",
+			SDL_GetError());
+	} else
+	{
+		SDL_RenderClear(my_renderer);
+
+#if 0
+		SDL_DisplayMode info;
+
+		if (0 != SDL_GetCurrentDisplayMode(0, &info)) {
+			fprintf(stderr, "SDL_GetCurrentDisplayMode fails: %s\n",
+				SDL_GetError());
+
+			return falseblnr;
+		}
+#endif
+
+#if VarFullScreen
+		if (UseFullScreen)
+#endif
+#if MayFullScreen
+		{
+			int wr;
+			int hr;
+
+			SDL_GL_GetDrawableSize(my_main_wind, &wr, &hr);
+
+			ViewHSize = wr;
+			ViewVSize = hr;
+#if EnableMagnify
+			if (UseMagnify) {
+				ViewHSize /= MyWindowScale;
+				ViewVSize /= MyWindowScale;
+			}
+#endif
+			if (ViewHSize >= vMacScreenWidth) {
+				ViewHStart = 0;
+				ViewHSize = vMacScreenWidth;
+			} else {
+				ViewHSize &= ~ 1;
+			}
+			if (ViewVSize >= vMacScreenHeight) {
+				ViewVStart = 0;
+				ViewVSize = vMacScreenHeight;
+			} else {
+				ViewVSize &= ~ 1;
+			}
+
+			if (wr > NewWindowWidth) {
+				hOffset = (wr - NewWindowWidth) / 2;
+			} else {
+				hOffset = 0;
+			}
+			if (hr > NewWindowHeight) {
+				vOffset = (hr - NewWindowHeight) / 2;
+			} else {
+				vOffset = 0;
+			}
+		}
+#endif
+
 #if 0 != vMacScreenDepth
 		ColorModeWorks = trueblnr;
 #endif
+
 		v = trueblnr;
 	}
 
 	return v;
 }
 
+LOCALPROC CloseMainWindow(void)
+{
+	if (NULL != my_format) {
+		SDL_FreeFormat(my_format);
+		my_format = NULL;
+	}
+
+	if (NULL != my_texture) {
+		SDL_DestroyTexture(my_texture);
+		my_texture = NULL;
+	}
+
+	if (NULL != my_renderer) {
+		SDL_DestroyRenderer(my_renderer);
+		my_renderer = NULL;
+	}
+
+	if (NULL != my_main_wind) {
+		SDL_DestroyWindow(my_main_wind);
+		my_main_wind = NULL;
+	}
+}
+
+LOCALPROC ZapMyWState(void)
+{
+	my_main_wind = NULL;
+	my_renderer = NULL;
+	my_texture = NULL;
+	my_format = NULL;
+}
+
+struct MyWState {
+#if MayFullScreen
+	ui4r f_ViewHSize;
+	ui4r f_ViewVSize;
+	ui4r f_ViewHStart;
+	ui4r f_ViewVStart;
+	int f_hOffset;
+	int f_vOffset;
+#endif
+#if VarFullScreen
+	blnr f_UseFullScreen;
+#endif
+#if EnableMagnify
+	blnr f_UseMagnify;
+#endif
+#if MayNotFullScreen
+	int f_CurWinIndx;
+#endif
+	SDL_Window *f_my_main_wind;
+	SDL_Renderer *f_my_renderer;
+	SDL_Texture *f_my_texture;
+	SDL_PixelFormat *f_my_format;
+};
+typedef struct MyWState MyWState;
+
+LOCALPROC GetMyWState(MyWState *r)
+{
+#if MayFullScreen
+	r->f_ViewHSize = ViewHSize;
+	r->f_ViewVSize = ViewVSize;
+	r->f_ViewHStart = ViewHStart;
+	r->f_ViewVStart = ViewVStart;
+	r->f_hOffset = hOffset;
+	r->f_vOffset = vOffset;
+#endif
+#if VarFullScreen
+	r->f_UseFullScreen = UseFullScreen;
+#endif
+#if EnableMagnify
+	r->f_UseMagnify = UseMagnify;
+#endif
+#if MayNotFullScreen
+	r->f_CurWinIndx = CurWinIndx;
+#endif
+	r->f_my_main_wind = my_main_wind;
+	r->f_my_renderer = my_renderer;
+	r->f_my_texture = my_texture;
+	r->f_my_format = my_format;
+}
+
+LOCALPROC SetMyWState(MyWState *r)
+{
+#if MayFullScreen
+	ViewHSize = r->f_ViewHSize;
+	ViewVSize = r->f_ViewVSize;
+	ViewHStart = r->f_ViewHStart;
+	ViewVStart = r->f_ViewVStart;
+	hOffset = r->f_hOffset;
+	vOffset = r->f_vOffset;
+#endif
+#if VarFullScreen
+	UseFullScreen = r->f_UseFullScreen;
+#endif
+#if EnableMagnify
+	UseMagnify = r->f_UseMagnify;
+#endif
+#if MayNotFullScreen
+	CurWinIndx = r->f_CurWinIndx;
+#endif
+	my_main_wind = r->f_my_main_wind;
+	my_renderer = r->f_my_renderer;
+	my_texture = r->f_my_texture;
+	my_format = r->f_my_format;
+}
+
+#if VarFullScreen && EnableMagnify
+enum {
+	kWinStateWindowed,
+#if EnableMagnify
+	kWinStateFullScreen,
+#endif
+	kNumWinStates
+};
+#endif
+
+#if VarFullScreen && EnableMagnify
+LOCALVAR int WinMagStates[kNumWinStates];
+#endif
+
 #if EnableMagnify || VarFullScreen
 LOCALFUNC blnr ReCreateMainWindow(void)
 {
+	MyWState old_state;
+	MyWState new_state;
+#if HaveWorkingWarp
+	blnr HadCursorHidden = HaveCursorHidden;
+#endif
+	int OldWinState =
+		UseFullScreen ? kWinStateFullScreen : kWinStateWindowed;
+	int OldMagState =
+		UseMagnify ? kMagStateMagnifgy : kMagStateNormal;
+
+	WinMagStates[OldWinState] =
+		OldMagState;
+
+#if VarFullScreen
+	if (! UseFullScreen)
+#endif
+#if MayNotFullScreen
+	{
+		SDL_GetWindowPosition(my_main_wind,
+			&WinPositionsX[CurWinIndx],
+			&WinPositionsY[CurWinIndx]);
+		HavePositionWins[CurWinIndx] = trueblnr;
+	}
+#endif
+
 	ForceShowCursor(); /* hide/show cursor api is per window */
 
 #if MayFullScreen
@@ -1968,6 +2427,10 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	}
 #endif
 
+	GetMyWState(&old_state);
+
+	ZapMyWState();
+
 #if EnableMagnify
 	UseMagnify = WantMagnify;
 #endif
@@ -1975,10 +2438,29 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	UseFullScreen = WantFullScreen;
 #endif
 
-	(void) CreateMainWindow();
+	if (! CreateMainWindow()) {
+		CloseMainWindow();
+		SetMyWState(&old_state);
 
-	if (HaveCursorHidden) {
-		(void) MyMoveMouse(CurMouseH, CurMouseV);
+		/* avoid retry */
+#if VarFullScreen
+		WantFullScreen = UseFullScreen;
+#endif
+#if EnableMagnify
+		WantMagnify = UseMagnify;
+#endif
+
+	} else {
+		GetMyWState(&new_state);
+		SetMyWState(&old_state);
+		CloseMainWindow();
+		SetMyWState(&new_state);
+
+#if HaveWorkingWarp
+		if (HadCursorHidden) {
+			(void) MyMoveMouse(CurMouseH, CurMouseV);
+		}
+#endif
 	}
 
 	return trueblnr;
@@ -1987,6 +2469,24 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 
 LOCALPROC ZapWinStateVars(void)
 {
+#if MayNotFullScreen
+	{
+		int i;
+
+		for (i = 0; i < kNumMagStates; ++i) {
+			HavePositionWins[i] = falseblnr;
+		}
+	}
+#endif
+#if VarFullScreen && EnableMagnify
+	{
+		int i;
+
+		for (i = 0; i < kNumWinStates; ++i) {
+			WinMagStates[i] = kMagStateAuto;
+		}
+	}
+#endif
 }
 
 #if VarFullScreen
@@ -2037,7 +2537,7 @@ LOCALPROC CheckForSavedTasks(void)
 		MyEvtQTryRecoverFromFull();
 	}
 
-#if EnableMouseMotion && MayFullScreen
+#if EnableMouseMotion && MayFullScreen && HaveWorkingWarp
 	if (HaveMouseMotion) {
 		MyMouseConstrain();
 	}
@@ -2346,6 +2846,8 @@ LOCALPROC UnInitOSGLU(void)
 	UnallocMyMemory();
 
 	CheckSavedMacMsg();
+
+	CloseMainWindow();
 
 	SDL_Quit();
 }

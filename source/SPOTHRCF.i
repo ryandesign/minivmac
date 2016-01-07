@@ -572,6 +572,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteCompCondBool("IncludeExtnHostTextClipExchange",
 		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
 		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_sd2 != gbo_apifam)
 		&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteBlankLineToDestFile();
@@ -591,6 +592,12 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define SpeakerVol 0x");
 	WriteHexByteToOutput(cur_SpeakerVol);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define DoubleClickTime ");
+	WriteCStrToDestFile("0x");
+	WriteHexByteToOutput(cur_DoubleClickTime);
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();

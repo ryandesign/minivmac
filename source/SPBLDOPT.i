@@ -318,6 +318,7 @@ LOCALPROC ChooseSoundEnabled(void)
 			|| (gbk_apifam_osx == gbo_apifam)
 			|| (gbk_apifam_win == gbo_apifam)
 			|| (gbk_apifam_sdl == gbo_apifam)
+			|| (gbk_apifam_sd2 == gbo_apifam)
 			|| (gbk_apifam_cco == gbo_apifam)
 			|| ((gbk_apifam_xwn == gbo_apifam)
 				&& ((gbo_targfam == gbk_targfam_linx)
@@ -1302,7 +1303,7 @@ LOCALPROC ChooseRomSize(void)
 	}
 }
 
-/* option: screen depth */
+/* option: sound sample size */
 
 LOCALVAR uimr cur_SoundSampSz;
 LOCALVAR blnr have_SoundSampSz;
@@ -1496,6 +1497,47 @@ LOCALFUNC tMyErr ChooseSpeakerVol(void)
 	return err;
 }
 
+/* option: Parameter RAM DoubleClickTime */
+	/* usually in 5 (Fast), 8 (Medium), 12 (Slow) */
+
+LOCALVAR uimr cur_DoubleClickTime;
+LOCALVAR blnr have_DoubleClickTime;
+
+LOCALPROC ResetDoubleClickTimeOption(void)
+{
+	have_DoubleClickTime = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsDoubleClickTimeOptionNot(void)
+{
+	return NumberTryAsOptionNot("-dct",
+		(long *)&cur_DoubleClickTime, &have_DoubleClickTime);
+}
+
+LOCALFUNC tMyErr ChooseDoubleClickTime(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_DoubleClickTime) {
+		if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+			cur_DoubleClickTime = 8;
+		} else {
+			cur_DoubleClickTime = 5;
+		}
+
+		have_DoubleClickTime = trueblnr;
+	} else {
+		if ((cur_DoubleClickTime <= 0) || (cur_DoubleClickTime > 15)) {
+			ReportParseFailure(
+				"-dct must be a number between 1 and 15");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -1533,6 +1575,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetItnlKyBdFixOption();
 	ResetCaretBlinkTimeOption();
 	ResetSpeakerVolOption();
+	ResetDoubleClickTimeOption();
 	ResetSoundSampSzOption();
 }
 
@@ -1573,6 +1616,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsItnlKyBdFixNot()))
 	if (kMyErrNoMatch == (err = TryAsCaretBlinkTimeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSpeakerVolOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsDoubleClickTimeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSoundSampSzOptionNot()))
 	{
 	}
@@ -1601,6 +1645,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseItnlKyBdFix()))
 	if (noErr == (err = ChooseCaretBlinkTime()))
 	if (noErr == (err = ChooseSpeakerVol()))
+	if (noErr == (err = ChooseDoubleClickTime()))
 	if (noErr == (err = ChooseSoundSampSz()))
 	{
 		ChooseEmCpuVers();

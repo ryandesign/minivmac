@@ -293,6 +293,13 @@ LOCALPROC WriteBashGccMakeFile(void)
 				} else {
 					WriteCStrToDestFile(" -lSDL");
 				}
+			} else if (gbk_apifam_sd2 == gbo_apifam) {
+				if (gbk_targfam_mach == gbo_targfam) {
+					WriteCStrToDestFile(
+						" -Wl,-framework,Cocoa,-framework,SDL2");
+				} else {
+					WriteCStrToDestFile(" -lSDL2");
+				}
 			} else  if (gbk_apifam_nds == gbo_apifam) {
 				WriteCStrToDestFile(" -L$(DEVKITPRO)/libnds/lib");
 				WriteCStrToDestFile(" -lfilesystem -lfat -lnds9");

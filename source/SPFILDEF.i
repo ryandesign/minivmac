@@ -75,7 +75,8 @@ static void DoAllSrcFiles(tDoOneCFile p)
 		|| (gbk_apifam_mac == gbo_apifam)
 		|| (gbk_apifam_cco == gbo_apifam)
 		|| (gbk_apifam_xwn == gbo_apifam)
-		|| (gbk_apifam_sdl == gbo_apifam))
+		|| (gbk_apifam_sdl == gbo_apifam)
+		|| (gbk_apifam_sd2 == gbo_apifam))
 	{
 		p("SCRNMAPR", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
 		if (cur_ScrnDpth != 0) {

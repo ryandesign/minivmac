@@ -42,14 +42,17 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteCompCondBool("IncludeSonyGetName",
 		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
 		&& (gbk_apifam_nds != gbo_apifam)
-		&& (gbk_apifam_sdl != gbo_apifam));
+		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_sd2 != gbo_apifam));
 	WriteCompCondBool("IncludeSonyNew",
 		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
 		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_sd2 != gbo_apifam)
 		&& (gbk_apifam_nds != gbo_apifam));
 	WriteCompCondBool("IncludeSonyNameNew",
 		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
 		&& (gbk_apifam_sdl != gbo_apifam)
+		&& (gbk_apifam_sd2 != gbo_apifam)
 		&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteBlankLineToDestFile();
@@ -88,6 +91,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 		((! WantMinExtn) || WantActvCode)
 			&& (gbk_apifam_gtk != gbo_apifam)
 			&& (gbk_apifam_sdl != gbo_apifam)
+			&& (gbk_apifam_sd2 != gbo_apifam)
 			&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteDestFileLn("#define EnableAutoSlow 1");

@@ -3285,7 +3285,7 @@ LOCALFUNC blnr CreateMainWindow(void)
 	NSRect MainScrnBounds;
 	NSRect AllScrnBounds;
 	NSRect NewWinRect;
-	NSPoint topleftPos;
+	NSPoint botleftPos;
 	int NewWindowHeight = vMacScreenHeight;
 	int NewWindowWidth = vMacScreenWidth;
 	blnr v = falseblnr;
@@ -3322,17 +3322,17 @@ LOCALFUNC blnr CreateMainWindow(void)
 	}
 #endif
 
-	topleftPos.x = MainScrnBounds.origin.x
+	botleftPos.x = MainScrnBounds.origin.x
 		+ floor((MainScrnBounds.size.width
 			- NewWindowWidth) / 2);
-	topleftPos.y = MainScrnBounds.origin.y
+	botleftPos.y = MainScrnBounds.origin.y
 		+ floor((MainScrnBounds.size.height
 			- NewWindowHeight) / 2);
-	if (topleftPos.x < MainScrnBounds.origin.x) {
-		topleftPos.x = MainScrnBounds.origin.x;
+	if (botleftPos.x < MainScrnBounds.origin.x) {
+		botleftPos.x = MainScrnBounds.origin.x;
 	}
-	if (topleftPos.y < MainScrnBounds.origin.y) {
-		topleftPos.y = MainScrnBounds.origin.y;
+	if (botleftPos.y < MainScrnBounds.origin.y) {
+		botleftPos.y = MainScrnBounds.origin.y;
 	}
 
 #if VarFullScreen
@@ -3369,12 +3369,14 @@ LOCALFUNC blnr CreateMainWindow(void)
 #endif
 #if MayFullScreen
 	{
-		hOffset = topleftPos.x - AllScrnBounds.origin.x;
-		vOffset = topleftPos.y - AllScrnBounds.origin.y;
+		hOffset = botleftPos.x - AllScrnBounds.origin.x;
+		/* vOffset = botleftPos.y - AllScrnBounds.origin.y; */
 
 		NewWinRect = AllScrnBounds;
 		GLhOffset = hOffset;
-		GLvOffset = AllScrnBounds.size.height - vOffset;
+		GLvOffset = /* AllScrnBounds.size.height - vOffset */
+			NewWindowHeight + (botleftPos.y - AllScrnBounds.origin.y);
+		vOffset = AllScrnBounds.size.height - GLvOffset;
 
 		style = NSBorderlessWindowMask;
 	}
@@ -3396,10 +3398,10 @@ LOCALFUNC blnr CreateMainWindow(void)
 		}
 
 		if (! HavePositionWins[WinIndx]) {
-			WinPositionWins[WinIndx].x = topleftPos.x;
-			WinPositionWins[WinIndx].y = topleftPos.y;
+			WinPositionWins[WinIndx].x = botleftPos.x;
+			WinPositionWins[WinIndx].y = botleftPos.y;
 			HavePositionWins[WinIndx] = trueblnr;
-			NewWinRect = NSMakeRect(topleftPos.x, topleftPos.y,
+			NewWinRect = NSMakeRect(botleftPos.x, botleftPos.y,
 				NewWindowWidth, NewWindowHeight);
 		} else {
 			NewWinRect = NSMakeRect(WinPositionWins[WinIndx].x,

@@ -1148,6 +1148,11 @@ LOCALPROC WriteCompileC(MyProc psrc, MyProc pobj, blnr UseAPI)
 						WriteCStrToDestFile(" -I/usr/local/include/"
 							" -D_GNU_SOURCE=1 -D_THREAD_SAFE");
 					}
+				} else if (gbk_apifam_sd2 == gbo_apifam) {
+					if (gbk_targfam_mach == gbo_targfam) {
+						WriteCStrToDestFile(
+							" -D_GNU_SOURCE=1 -D_THREAD_SAFE");
+					}
 				} else if (gbk_apifam_nds == gbo_apifam) {
 					WriteCStrToDestFile(
 						" -I$(DEVKITPRO)/libnds/include");
