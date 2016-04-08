@@ -584,8 +584,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteDestFileLn("#define Sony_VerifyChecksums 0");
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define CaretBlinkTime ");
-	WriteCStrToDestFile("0x");
+	WriteCStrToDestFile("#define CaretBlinkTime 0x");
 	WriteHexByteToOutput(cur_CaretBlinkTime);
 	WriteEndDestFileLn();
 
@@ -595,9 +594,23 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteEndDestFileLn();
 
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define DoubleClickTime ");
-	WriteCStrToDestFile("0x");
+	WriteCStrToDestFile("#define DoubleClickTime 0x");
 	WriteHexByteToOutput(cur_DoubleClickTime);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define MenuBlink 0x");
+	WriteHexByteToOutput(cur_MenuBlink);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define AutoKeyThresh 0x");
+	WriteHexByteToOutput(cur_AutoKeyThresh);
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define AutoKeyRate 0x");
+	WriteHexByteToOutput(cur_AutoKeyRate);
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();

@@ -1538,6 +1538,117 @@ LOCALFUNC tMyErr ChooseDoubleClickTime(void)
 	return err;
 }
 
+/* option: Parameter RAM MenuBlink */
+	/* in 0..3 */
+
+LOCALVAR uimr cur_MenuBlink;
+LOCALVAR blnr have_MenuBlink;
+
+LOCALPROC ResetMenuBlinkOption(void)
+{
+	have_MenuBlink = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsMenuBlinkOptionNot(void)
+{
+	return NumberTryAsOptionNot("-mnb",
+		(long *)&cur_MenuBlink, &have_MenuBlink);
+}
+
+LOCALFUNC tMyErr ChooseMenuBlink(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_MenuBlink) {
+		cur_MenuBlink = 3;
+
+		have_MenuBlink = trueblnr;
+	} else {
+		if ((cur_MenuBlink < 0) || (cur_MenuBlink > 3)) {
+			ReportParseFailure(
+				"-mnb must be a number between 0 and 3");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
+/* option: Parameter RAM AutoKeyThresh */
+	/* usually in 0 (Off), A (Long), 6, 4, 3 (Short) */
+
+LOCALVAR uimr cur_AutoKeyThresh;
+LOCALVAR blnr have_AutoKeyThresh;
+
+LOCALPROC ResetAutoKeyThreshOption(void)
+{
+	have_AutoKeyThresh = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsAutoKeyThreshOptionNot(void)
+{
+	return NumberTryAsOptionNot("-kyt",
+		(long *)&cur_AutoKeyThresh, &have_AutoKeyThresh);
+}
+
+LOCALFUNC tMyErr ChooseAutoKeyThresh(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_AutoKeyThresh) {
+		cur_AutoKeyThresh = 6;
+
+		have_AutoKeyThresh = trueblnr;
+	} else {
+		if ((cur_AutoKeyThresh < 0) || (cur_AutoKeyThresh > 15)) {
+			ReportParseFailure(
+				"-kyt must be a number between 0 and 15");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
+/* option: Parameter RAM AutoKeyRate */
+	/* usually in 0 (Slow), 6, 4, 3, 1 (Fast) */
+
+LOCALVAR uimr cur_AutoKeyRate;
+LOCALVAR blnr have_AutoKeyRate;
+
+LOCALPROC ResetAutoKeyRateOption(void)
+{
+	have_AutoKeyRate = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsAutoKeyRateOptionNot(void)
+{
+	return NumberTryAsOptionNot("-kyr",
+		(long *)&cur_AutoKeyRate, &have_AutoKeyRate);
+}
+
+LOCALFUNC tMyErr ChooseAutoKeyRate(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_AutoKeyRate) {
+		cur_AutoKeyRate = 3;
+
+		have_AutoKeyRate = trueblnr;
+	} else {
+		if ((cur_AutoKeyRate < 0) || (cur_AutoKeyRate > 15)) {
+			ReportParseFailure(
+				"-kyr must be a number between 0 and 15");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -1576,6 +1687,9 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetCaretBlinkTimeOption();
 	ResetSpeakerVolOption();
 	ResetDoubleClickTimeOption();
+	ResetMenuBlinkOption();
+	ResetAutoKeyThreshOption();
+	ResetAutoKeyRateOption();
 	ResetSoundSampSzOption();
 }
 
@@ -1617,6 +1731,9 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsCaretBlinkTimeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSpeakerVolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsDoubleClickTimeOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsMenuBlinkOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsAutoKeyThreshOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsAutoKeyRateOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSoundSampSzOptionNot()))
 	{
 	}
@@ -1646,6 +1763,9 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseCaretBlinkTime()))
 	if (noErr == (err = ChooseSpeakerVol()))
 	if (noErr == (err = ChooseDoubleClickTime()))
+	if (noErr == (err = ChooseMenuBlink()))
+	if (noErr == (err = ChooseAutoKeyThresh()))
+	if (noErr == (err = ChooseAutoKeyRate()))
 	if (noErr == (err = ChooseSoundSampSz()))
 	{
 		ChooseEmCpuVers();

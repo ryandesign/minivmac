@@ -101,10 +101,6 @@ LOCALVAR ui5b LastRealDate;
 #endif
 #endif
 
-#ifndef MenuBlink /* in 0..3 */
-#define MenuBlink 3
-#endif
-
 #ifndef StartUpDisk /* in 0..1 */
 #define StartUpDisk 0
 #endif
@@ -115,14 +111,6 @@ LOCALVAR ui5b LastRealDate;
 
 #ifndef MouseScalingOn /* in 0..1 */
 #define MouseScalingOn 0
-#endif
-
-#ifndef AutoKeyThresh /* in 0,3,4,6,A */
-#define AutoKeyThresh 6
-#endif
-
-#ifndef AutoKeyRate /* in 0,6,4,3,1 */
-#define AutoKeyRate 3
 #endif
 
 #define prb_fontHi 0
