@@ -1649,6 +1649,27 @@ LOCALFUNC tMyErr ChooseAutoKeyRate(void)
 	return err;
 }
 
+/* option: Demo Message */
+
+LOCALVAR blnr WantDemoMsg;
+
+LOCALPROC ResetDemoMsg(void)
+{
+	WantDemoMsg = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsDemoMsgNot(void)
+{
+	return BooleanTryAsOptionNot("-dmo", &WantDemoMsg);
+}
+
+LOCALPROC ChooseDemoMsg(void)
+{
+	if (nanblnr == WantDemoMsg) {
+		WantDemoMsg = falseblnr;
+	}
+}
+
 /* ------ */
 
 LOCALPROC SPResetCommandLineParameters(void)
@@ -1678,6 +1699,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetSonyWantChecksumsUpdated();
 	ResetSonySupportDC42();
 	ResetActvCode();
+	ResetDemoMsg();
 	ResetWantDisasm();
 	ResetDbgLogHAVE();
 	ResetTimingAccuracyOption();
@@ -1722,6 +1744,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsSonyWantChecksumsUpdatedNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportDC42Not()))
 	if (kMyErrNoMatch == (err = TryAsActvCodeNot()))
+	if (kMyErrNoMatch == (err = TryAsDemoMsgNot()))
 	if (kMyErrNoMatch == (err = TryAsWantDisasmNot()))
 	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsTimingAccuracyOptionNot()))
@@ -1778,6 +1801,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 		ChooseSonySupportTags();
 		ChooseSonyWantChecksumsUpdated();
 		ChooseSonySupportDC42();
+		ChooseDemoMsg();
 		ChooseWantDisasm();
 		ChooseDbgLogHAVE();
 		ChooseTimingAccuracy();

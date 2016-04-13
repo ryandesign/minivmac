@@ -812,7 +812,7 @@ enum {
 #endif
 
 #ifndef NeedCell2MacAsciiMap
-#if UseActvCode
+#if UseActvCode || EnableDemoMsg
 #define NeedCell2MacAsciiMap 1
 #else
 #define NeedCell2MacAsciiMap 0

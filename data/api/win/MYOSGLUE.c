@@ -5807,6 +5807,9 @@ label_retry:
 #if MySoundEnabled
 		MySound_SecondNotify();
 #endif
+#if EnableDemoMsg
+		DemoModeSecondNotify();
+#endif
 	}
 
 	if (! (gBackgroundFlag)) {

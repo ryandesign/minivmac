@@ -25,6 +25,9 @@
 #endif
 
 enum {
+#if EnableDemoMsg
+	SpclModeDemo,
+#endif
 #if EnableAltKeysMode
 	SpclModeAltKeyText,
 #endif
@@ -270,12 +273,22 @@ LOCALPROC DrawCellsKeyCommand(char *k, char *s)
 
 typedef void (*SpclModeBody) (void);
 
-LOCALPROC DrawSpclMode0(char *Title, SpclModeBody Body)
+LOCALPROC DrawSpclMode00(
+#if EnableDemoMsg
+	unsigned int vOff,
+#endif
+	char *Title, SpclModeBody Body)
 {
 	int i;
 	int k;
 
-	CurCellv0 = ControlBoxv0 + 0;
+	CurCellv0 = ControlBoxv0 +
+#if EnableDemoMsg
+		vOff
+#else
+		0
+#endif
+		;
 	DrawCell(ControlBoxh0 + 0, CurCellv0, kCellUpperLeft);
 	k = kCellIcon00;
 	for (i = hStart; i < hStart + 4; ++i) {
@@ -313,6 +326,12 @@ LOCALPROC DrawSpclMode0(char *Title, SpclModeBody Body)
 
 	DrawCellsBottomLine();
 }
+
+#if EnableDemoMsg
+#define DrawSpclMode0(Title, Body) DrawSpclMode00(0, Title, Body)
+#else
+#define DrawSpclMode0 DrawSpclMode00
+#endif
 
 #if EnableAltKeysMode
 #include "ALTKEYSM.h"
@@ -422,7 +441,7 @@ enum {
 #endif
 	kCntrlMsgAbout,
 	kCntrlMsgHelp,
-#if UseActvCode
+#if UseActvCode || EnableDemoMsg
 	kCntrlMsgRegStrCopied,
 #endif
 
@@ -469,6 +488,25 @@ FORWARDPROC ToggleWantFullScreen(void);
 #endif
 #if UseActvCode
 FORWARDPROC CopyRegistrationStr(void);
+#elif EnableDemoMsg
+LOCALPROC CopyRegistrationStr(void)
+{
+	ui3b ps[ClStrMaxLength];
+	int i;
+	int L;
+	tPbuf j;
+
+	ClStrFromSubstCStr(&L, ps, "^v");
+
+	for (i = 0; i < L; ++i) {
+		ps[i] = Cell2MacAsciiMap[ps[i]];
+	}
+
+	if (mnvm_noErr == PbufNew(L, &j)) {
+		PbufTransfer(ps, j, 0, L, trueblnr);
+		HTCEexport(j);
+	}
+}
 #endif
 
 LOCALPROC DoControlModeKey(int key)
@@ -530,7 +568,7 @@ LOCALPROC DoControlModeKey(int key)
 					ControlMessage = kCntrlMsgFullScreen;
 					break;
 #endif
-#if UseActvCode
+#if UseActvCode || EnableDemoMsg
 				case MKC_P:
 					CopyRegistrationStr();
 					ControlMessage = kCntrlMsgRegStrCopied;
@@ -764,6 +802,10 @@ LOCALPROC DrawCellsControlModeBody(void)
 		case kCntrlMsgRegStrCopied:
 			DrawCellsOneLineStr("Registration String copied.");
 			break;
+#elif EnableDemoMsg
+		case kCntrlMsgRegStrCopied:
+			DrawCellsOneLineStr("Variation name copied.");
+			break;
 #endif
 		case kCntrlMsgConfirmResetStart:
 			DrawCellsOneLineStr(kStrConfirmReset);
@@ -815,6 +857,28 @@ LOCALPROC DrawControlMode(void)
 
 #endif /* UseControlKeys */
 
+#if EnableDemoMsg
+
+LOCALPROC DrawCellsDemoBody(void)
+{
+	DrawCellsOneLineStr(kStrHomePage "sponsor/");
+}
+
+LOCALPROC DrawDemoMode(void)
+{
+	DrawSpclMode00((9 * CurMacDateInSeconds) & 0x0F,
+		"Please sponsor this variation! (" kAppVariationStr ")",
+		DrawCellsDemoBody);
+}
+
+LOCALPROC DemoModeSecondNotify(void)
+{
+	NeedWholeScreenDraw = trueblnr;
+	SpecialModeSet(SpclModeDemo);
+}
+
+#endif /* EnableDemoMsg */
+
 #if UseActvCode
 #include "ACTVCODE.h"
 #endif
@@ -837,6 +901,11 @@ LOCALPROC DrawSpclMode(void)
 #if EnableAltKeysMode
 	if (SpecialModeTst(SpclModeAltKeyText)) {
 		DrawAltKeyMode();
+	} else
+#endif
+#if EnableDemoMsg
+	if (SpecialModeTst(SpclModeDemo)) {
+		DrawDemoMode();
 	} else
 #endif
 	{
@@ -928,8 +997,16 @@ LOCALPROC Keyboard_UpdateKeyMap2(int key, blnr down)
 	} else
 #endif
 	if ((0 == SpecialModes)
+#if EnableAltKeysMode || EnableDemoMsg
+			|| (0 == (SpecialModes & ~ (
+				0
 #if EnableAltKeysMode
-			|| (0 == (SpecialModes & ~ (1 << SpclModeAltKeyText)))
+				| (1 << SpclModeAltKeyText)
+#endif
+#if EnableDemoMsg
+				| (1 << SpclModeDemo)
+#endif
+				)))
 #endif
 			|| (MKC_CapsLock == key)
 		)

@@ -1284,6 +1284,9 @@ label_retry:
 	}
 
 	if (CheckDateTime()) {
+#if EnableDemoMsg
+		DemoModeSecondNotify();
+#endif
 	}
 
 	if ((! gBackgroundFlag || ADialogIsUp)

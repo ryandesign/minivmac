@@ -129,6 +129,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		);
 	WriteCompCondBool("UseControlKeys", trueblnr);
 	WriteCompCondBool("UseActvCode", WantActvCode);
+	WriteCompCondBool("EnableDemoMsg", WantDemoMsg);
 
 	if (WantActvCode) {
 		int i;
