@@ -963,7 +963,9 @@ LOCALPROC ForceShowCursor(void)
 
 /* cursor moving */
 
+#ifndef HaveWorkingWarp
 #define HaveWorkingWarp 1
+#endif
 
 #if HaveWorkingWarp
 LOCALFUNC blnr MyMoveMouse(si4b h, si4b v)
@@ -1872,8 +1874,16 @@ LOCALPROC CheckSavedMacMsg(void)
 		NativeStrFromCStr(briefMsg0, SavedBriefMsg);
 		NativeStrFromCStr(longMsg0, SavedLongMsg);
 
-		fprintf(stderr, "%s\n", briefMsg0);
-		fprintf(stderr, "%s\n", longMsg0);
+		if (0 != SDL_ShowSimpleMessageBox(
+			SDL_MESSAGEBOX_ERROR,
+			SavedBriefMsg,
+			SavedLongMsg,
+			my_main_wind
+			))
+		{
+			fprintf(stderr, "%s\n", briefMsg0);
+			fprintf(stderr, "%s\n", longMsg0);
+		}
 
 		SavedBriefMsg = nullpr;
 	}
@@ -1953,6 +1963,15 @@ LOCALPROC HandleTheEvent(SDL_Event *event)
 			break;
 		case SDL_KEYUP:
 			DoKeyCode(&event->key.keysym, falseblnr);
+			break;
+		case SDL_DROPFILE:
+			{
+				char *s = event->drop.file;
+
+				(void) Sony_Insert1(s, falseblnr);
+				SDL_RaiseWindow(my_main_wind);
+				SDL_free(s);
+			}
 			break;
 #if 0
 		case Expose: /* SDL doesn't have an expose event */

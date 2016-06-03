@@ -314,7 +314,7 @@ LOCALFUNC tMyErr TryAsSoundOptionNot(void)
 LOCALPROC ChooseSoundEnabled(void)
 {
 	if (nanblnr == MySoundEnabled) {
-		MySoundEnabled = ((gbk_apifam_mac == gbo_apifam)
+		MySoundEnabled = (gbk_apifam_mac == gbo_apifam)
 			|| (gbk_apifam_osx == gbo_apifam)
 			|| (gbk_apifam_win == gbo_apifam)
 			|| (gbk_apifam_sdl == gbo_apifam)
@@ -323,8 +323,7 @@ LOCALPROC ChooseSoundEnabled(void)
 			|| ((gbk_apifam_xwn == gbo_apifam)
 				&& ((gbo_targfam == gbk_targfam_linx)
 					|| (gbo_targfam == gbk_targfam_fbsd)
-					|| (gbo_targfam == gbk_targfam_nbsd))))
-			&& (gbk_mdl_II != cur_mdl) && (gbk_mdl_IIx != cur_mdl);
+					|| (gbo_targfam == gbk_targfam_nbsd)));
 	}
 }
 

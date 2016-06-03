@@ -2759,25 +2759,18 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	HMENU mb;
 	int DfltWndX;
 	int DfltWndY;
-	int NewWndX;
-	int NewWndY;
-	int XSize;
-	int YSize;
 	int WinIndx;
 	HWND NewMainWindow;
 	HDC NewMainWndDC = NULL;
-#if MayNotFullScreen
-	int XBorder = GetSystemMetrics(SM_CXFIXEDFRAME);
-	int YBorder = GetSystemMetrics(SM_CYFIXEDFRAME);
-	int YCaption = GetSystemMetrics(SM_CYCAPTION);
-	int YMenu = GetSystemMetrics(SM_CYMENU);
-#endif
 	int ScreenX = GetSystemMetrics(SM_CXSCREEN);
 	int ScreenY = GetSystemMetrics(SM_CYSCREEN);
 	short NewWindowHeight = vMacScreenHeight;
 	short NewWindowWidth = vMacScreenWidth;
 	HWND OldMainWindow = MainWnd;
 	HDC OldMainWndDC = MainWndDC;
+	RECT NewWinR;
+	DWORD MyWStyle;
+	DWORD MyWExStyle;
 
 #if VarFullScreen
 	if (! UseFullScreen)
@@ -2794,6 +2787,15 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 
 #if EnableMagnify
 	if (WantMagnify) {
+		WinIndx = kMagStateMagnifgy;
+	} else
+#endif
+	{
+		WinIndx = kMagStateNormal;
+	}
+
+#if EnableMagnify
+	if (WantMagnify) {
 		NewWindowHeight *= MyWindowScale;
 		NewWindowWidth *= MyWindowScale;
 	}
@@ -2804,8 +2806,8 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 #if MayFullScreen
 	{
-		XSize = ScreenX;
-		YSize = ScreenY;
+		MyWStyle = WS_VISIBLE | WS_POPUP;
+		MyWExStyle = WS_EX_TOPMOST;
 
 		hOffset = (ScreenX - NewWindowWidth) / 2;
 		vOffset = (ScreenY - NewWindowHeight) / 2;
@@ -2816,8 +2818,10 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 			vOffset = 0;
 		}
 
-		DfltWndX = 0;
-		DfltWndY = 0;
+		NewWinR.left = 0;
+		NewWinR.top = 0;
+		NewWinR.right = ScreenX;
+		NewWinR.bottom = ScreenY;
 	}
 #endif
 #if VarFullScreen
@@ -2825,11 +2829,12 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 #if MayNotFullScreen
 	{
-		XSize = NewWindowWidth;
-		YSize = NewWindowHeight;
+		MyWStyle = WS_VISIBLE | WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
+			| WS_THICKFRAME | WS_MINIMIZEBOX;
+		MyWExStyle = WS_EX_ACCEPTFILES;
 
-		DfltWndX = (ScreenX - XSize) / 2;
-		DfltWndY = (ScreenY - YSize) / 2;
+		DfltWndX = (ScreenX - NewWindowWidth) / 2;
+		DfltWndY = (ScreenY - NewWindowHeight) / 2;
 
 		if (DfltWndX < 0) {
 			DfltWndX = 0;
@@ -2837,56 +2842,33 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 		if (DfltWndY < 0) {
 			DfltWndY = 0;
 		}
-	}
-#endif
 
-#if EnableMagnify
-	if (WantMagnify) {
-		WinIndx = kMagStateMagnifgy;
-	} else
-#endif
-	{
-		WinIndx = kMagStateNormal;
-	}
-
-#if VarFullScreen
-	if (WantFullScreen)
-#endif
-#if MayFullScreen
-	{
-		NewWndX = DfltWndX;
-		NewWndY = DfltWndX;
-	}
-#endif
-#if VarFullScreen
-	else
-#endif
-#if MayNotFullScreen
-	{
 		if (! HavePositionWins[WinIndx]) {
 			WinPositionWins[WinIndx].x = DfltWndX;
 			WinPositionWins[WinIndx].y = DfltWndY;
 			HavePositionWins[WinIndx] = trueblnr;
 		}
-		NewWndX = WinPositionWins[WinIndx].x;
-		NewWndY = WinPositionWins[WinIndx].y;
 
-		if ((NewWndX + YSize <= 0)
-			|| (NewWndX >= ScreenX)
-			|| (NewWndY - YMenu <= 0)
-			|| (NewWndY - YMenu - YCaption >= ScreenY))
+		NewWinR.left = WinPositionWins[WinIndx].x;
+		NewWinR.top = WinPositionWins[WinIndx].y;
+		NewWinR.right = NewWinR.left + NewWindowWidth;
+		NewWinR.bottom = NewWinR.top + NewWindowHeight;
+
+		(void) AdjustWindowRectEx(&NewWinR, MyWStyle, TRUE, MyWExStyle);
+
+		if ((NewWinR.right <= 0)
+			|| (NewWinR.left >= ScreenX)
+			|| (NewWinR.bottom <= 0)
+			|| (NewWinR.top >= ScreenY))
 		{
-			NewWndX = DfltWndX;
-			NewWndY = DfltWndY;
-			if (NewWndY - YMenu <= 0) {
-				NewWndY = YBorder + YCaption + YMenu;
-			}
-		}
+			NewWinR.left = DfltWndX;
+			NewWinR.top = DfltWndY;
+			NewWinR.right = DfltWndX + NewWindowWidth;
+			NewWinR.bottom = DfltWndY + NewWindowHeight;
 
-		XSize += XBorder + XBorder;
-		YSize += YBorder + YCaption + YMenu + YBorder;
-		NewWndX -= XBorder;
-		NewWndY -= YBorder + YCaption + YMenu;
+			(void) AdjustWindowRectEx(&NewWinR,
+				MyWStyle, TRUE, MyWExStyle);
+		}
 	}
 #endif
 
@@ -2938,39 +2920,13 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 
 		NewMainWindow = CreateWindowEx(
-
-#if VarFullScreen
-			WantFullScreen ?
-#endif
-#if MayFullScreen
-				WS_EX_TOPMOST
-#endif
-#if VarFullScreen
-			:
-#endif
-#if MayNotFullScreen
-				WS_EX_ACCEPTFILES
-#endif
-			,
-
+			MyWExStyle,
 			WndClassName,
 			WndTitle,
-
-#if VarFullScreen
-			WantFullScreen ?
-#endif
-#if MayFullScreen
-				WS_VISIBLE | WS_POPUP
-#endif
-#if VarFullScreen
-			:
-#endif
-#if MayNotFullScreen
-				WS_VISIBLE | WS_SYSMENU | WS_MINIMIZEBOX
-#endif
-				,
-
-			NewWndX, NewWndY, XSize, YSize, NULL,
+			MyWStyle,
+			NewWinR.left, NewWinR.top,
+			NewWinR.right - NewWinR.left, NewWinR.bottom - NewWinR.top,
+			NULL,
 			mb,
 			AppInstance, NULL);
 		if (NewMainWindow == NULL) {
@@ -2991,8 +2947,9 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 	} else {
 		NewMainWndDC = OldMainWndDC;
 		NewMainWindow = OldMainWindow;
-		(void) MoveWindow(NewMainWindow, NewWndX, NewWndY,
-			XSize, YSize, TRUE);
+		(void) MoveWindow(NewMainWindow, NewWinR.left, NewWinR.top,
+			NewWinR.right - NewWinR.left, NewWinR.bottom - NewWinR.top,
+			TRUE);
 	}
 
 #if 0 != vMacScreenDepth
@@ -3000,7 +2957,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #endif
 
 	{
-		RECT r;
+		POINT p;
 
 		/*
 			Find out where the window really went, on
@@ -3008,18 +2965,11 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 			called on CreateWindowEx/MoveWindow, or that
 			the window wasn't put where asked for.
 		*/
-		(void) GetWindowRect(NewMainWindow, &r);
-		WndX = (si4b) r.left;
-		WndY = (si4b) r.top;
-#if VarFullScreen
-		if (! WantFullScreen)
-#endif
-#if MayNotFullScreen
-		{
-			WndX += XBorder;
-			WndY += YBorder + YCaption + YMenu;
-		}
-#endif
+		p.x = 0;
+		p.y = 0;
+		(void) MapWindowPoints(NewMainWindow, NULL, &p, 1);
+		WndX = (si4b)p.x;
+		WndY = (si4b)p.y;
 	}
 
 #if MayFullScreen

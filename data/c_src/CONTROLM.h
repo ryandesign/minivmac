@@ -273,22 +273,12 @@ LOCALPROC DrawCellsKeyCommand(char *k, char *s)
 
 typedef void (*SpclModeBody) (void);
 
-LOCALPROC DrawSpclMode00(
-#if EnableDemoMsg
-	unsigned int vOff,
-#endif
-	char *Title, SpclModeBody Body)
+LOCALPROC DrawSpclMode0(char *Title, SpclModeBody Body)
 {
 	int i;
 	int k;
 
-	CurCellv0 = ControlBoxv0 +
-#if EnableDemoMsg
-		vOff
-#else
-		0
-#endif
-		;
+	CurCellv0 = ControlBoxv0 + 0;
 	DrawCell(ControlBoxh0 + 0, CurCellv0, kCellUpperLeft);
 	k = kCellIcon00;
 	for (i = hStart; i < hStart + 4; ++i) {
@@ -326,12 +316,6 @@ LOCALPROC DrawSpclMode00(
 
 	DrawCellsBottomLine();
 }
-
-#if EnableDemoMsg
-#define DrawSpclMode0(Title, Body) DrawSpclMode00(0, Title, Body)
-#else
-#define DrawSpclMode0 DrawSpclMode00
-#endif
 
 #if EnableAltKeysMode
 #include "ALTKEYSM.h"
@@ -859,16 +843,23 @@ LOCALPROC DrawControlMode(void)
 
 #if EnableDemoMsg
 
-LOCALPROC DrawCellsDemoBody(void)
-{
-	DrawCellsOneLineStr(kStrHomePage "sponsor/");
-}
-
 LOCALPROC DrawDemoMode(void)
 {
-	DrawSpclMode00((9 * CurMacDateInSeconds) & 0x0F,
-		"Please sponsor this variation! (" kAppVariationStr ")",
-		DrawCellsDemoBody);
+	CurCellv0 = ControlBoxv0 + ((9 * CurMacDateInSeconds) & 0x0F);
+	CurCellh0 = ControlBoxh0 + ((15 * CurMacDateInSeconds) & 0x1F);
+
+	DrawCellAdvance(kCellDemo0);
+	DrawCellAdvance(kCellDemo6);
+	DrawCellAdvance(kCellDemo6);
+	DrawCellAdvance(kCellDemo7);
+	DrawCellAdvance(kCellDemo1);
+	DrawCellAdvance(kCellDemo2);
+	DrawCellAdvance(kCellDemo3);
+	DrawCellAdvance(kCellDemo4);
+	DrawCellAdvance(kCellDemo7);
+	DrawCellAdvance(kCellDemo6);
+	DrawCellAdvance(kCellDemo6);
+	DrawCellAdvance(kCellDemo5);
 }
 
 LOCALPROC DemoModeSecondNotify(void)
