@@ -58,6 +58,43 @@ LOCALVAR blnr ASC_Playing = falseblnr;
 IMPORTPROC ASC_interrupt_PulseNtfy(void);
 #endif
 
+LOCALPROC ASC_RecalcStatus(void)
+{
+	if ((1 == SoundReg801) && ASC_Playing) {
+		if (((ui4b)(ASC_FIFO_InA - ASC_FIFO_Out)) >= 0x200) {
+			SoundReg804 &= ~ 0x01;
+		} else {
+			SoundReg804 |= 0x01;
+		}
+		if (((ui4b)(ASC_FIFO_InA - ASC_FIFO_Out)) >= 0x400) {
+			SoundReg804 |= 0x02;
+		} else {
+			SoundReg804 &= ~ 0x02;
+		}
+		if (0 != (SoundReg802 & 2)) {
+			if (((ui4b)(ASC_FIFO_InB - ASC_FIFO_Out)) >= 0x200) {
+				SoundReg804 &= ~ 0x04;
+			} else {
+				SoundReg804 |= 0x04;
+			}
+			if (((ui4b)(ASC_FIFO_InB - ASC_FIFO_Out)) >= 0x400) {
+				SoundReg804 |= 0x08;
+			} else {
+				SoundReg804 &= ~ 0x08;
+			}
+		}
+	}
+}
+
+LOCALPROC ASC_ClearFIFO(void)
+{
+	ASC_FIFO_Out = 0;
+	ASC_FIFO_InA = 0;
+	ASC_FIFO_InB = 0;
+	ASC_Playing = falseblnr;
+	ASC_RecalcStatus();
+}
+
 GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 {
 	if (addr < 0x800) {
@@ -182,6 +219,9 @@ GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 			case 0x801: /* ENABLE */
 				if (WriteMem) {
 					if (1 == Data) {
+						if (1 != SoundReg801) {
+							ASC_ClearFIFO();
+						}
 					} else {
 						if (Data > 2) {
 							ReportAbnormal("ASC - unexpected ENABLE");
@@ -199,10 +239,27 @@ GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				break;
 			case 0x802: /* CONTROL */
 				if (WriteMem) {
-#if 0 /* this happens normally, such as in Lunar Phantom */
+#if 1
 					if (0 != SoundReg801) {
-						ReportAbnormal(
-							"ASC - setting CONTROL while ENABLEd");
+						if (SoundReg802 == Data) {
+							/*
+								this happens normally,
+								such as in Lunar Phantom
+							*/
+						} else {
+							if (1 == SoundReg801) {
+/*
+	happens in dark castle, if play other sound first,
+	such as by changing beep sound in sound control panel.
+*/
+								ASC_ClearFIFO();
+							}
+
+#if 0
+							ReportAbnormal(
+								"ASC - changing CONTROL while ENABLEd");
+#endif
+						}
 					}
 #endif
 					if (0 != (Data & ~ 2)) {
@@ -227,22 +284,23 @@ GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 							"ASC - unexpected FIFO MODE");
 					}
 					if (0 != (Data & 0x80)) {
-						if (0 != (SoundReg804 & 0x80)) {
+						if (0 != (SoundReg803 & 0x80)) {
 							ReportAbnormal(
 								"ASC - set clear FIFO again");
-						} else {
-							ASC_FIFO_Out = 0;
-							ASC_FIFO_InA = 0;
-							ASC_FIFO_InB = 0;
-							SoundReg804 = 0;
-#if 1
-							SoundReg804 |= 0x01;
-							SoundReg804 &= ~ 0x02;
-							SoundReg804 |= 0x04;
-							SoundReg804 &= ~ 0x08;
-							ASC_interrupt_PulseNtfy();
+						} else
+						if (1 != SoundReg801) {
+#if 0 /* happens in system 6, such as with Lunar Phantom */
+							ReportAbnormal(
+								"ASC - clear FIFO when not FIFO mode");
 #endif
-							ASC_Playing = falseblnr;
+						} else
+						{
+							ASC_ClearFIFO();
+							/*
+								ASC_interrupt_PulseNtfy();
+									Doesn't seem to be needed,
+									but doesn't hurt either.
+							*/
 						}
 					}
 					SoundReg803 = Data;
@@ -256,10 +314,12 @@ GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				break;
 			case 0x804:
 				if (WriteMem) {
+#if 0
 					if ((0 != SoundReg804) && (0 != Data)) {
-						/* ReportAbnormal(
-							"ASC - set FIFO IRQ STATUS when not 0"); */
+						ReportAbnormal(
+							"ASC - set FIFO IRQ STATUS when not 0");
 					}
+#endif
 					SoundReg804 = Data;
 					if (0 != SoundReg804) {
 						ASC_interrupt_PulseNtfy();
@@ -276,6 +336,13 @@ GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 #endif
 				} else {
 					Data = SoundReg804;
+#if 0
+					if (1 != SoundReg801) {
+						/* no, ok, part of normal interrupt handling */
+						ReportAbnormal(
+							"ASC - read STATUS when not FIFO");
+					}
+#endif
 					/* SoundReg804 = 0; */
 					SoundReg804 &= ~ 0x01;
 					SoundReg804 &= ~ 0x04;
@@ -349,6 +416,21 @@ GLOBALFUNC ui5b ASC_Access(ui5b Data, blnr WriteMem, CPTR addr)
 				}
 #if ASC_dolog && 1
 				dbglog_AddrAccess("ASC_Access Control (CONTROL)",
+					Data, WriteMem, addr);
+#endif
+				break;
+			case 0x80A: /* ? */
+				if (WriteMem) {
+					ReportAbnormal("ASC - write to 80A");
+				} else {
+					/*
+						happens in system 6, Lunar Phantom,
+							soon after new game.
+					*/
+					Data = 0;
+				}
+#if ASC_dolog && 1
+				dbglog_AddrAccess("ASC_Access Control (80A)",
 					Data, WriteMem, addr);
 #endif
 				break;
