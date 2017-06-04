@@ -764,7 +764,7 @@ GLOBALFUNC tMyErr tarlib_WriteTarFile2_v2(
 	r.SavepDt = pDt;
 	pDt = (MyPtr)&r;
 
-	if (noErr == (err = MyOpenNewFile_v2(dst_d, dst_s,
+	if (noErr == (err = MyOpenNewFile_v3(dst_d, dst_s,
 		'MPS ', 'TEXT', &r.ofd)))
 	{
 		r.CurFileDosPath[0] = (char)0;

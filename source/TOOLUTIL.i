@@ -18,6 +18,7 @@
 */
 
 
+#ifdef Have_FILEUTIL
 GLOBALFUNC tMyErr PathArgToDirName(char *path,
 	MyDir_R *d, ps3p s)
 {
@@ -89,7 +90,9 @@ label_3:
 
 	return err;
 }
+#endif
 
+#ifdef Have_FILEUTIL
 GLOBALFUNC tMyErr PathArgToOldDir(char *path, MyDir_R *d)
 {
 	tMyErr err;
@@ -102,7 +105,9 @@ GLOBALFUNC tMyErr PathArgToOldDir(char *path, MyDir_R *d)
 
 	return err;
 }
+#endif
 
+#ifdef Have_FILEUTIL
 GLOBALFUNC tMyErr PathArgToOldNameDir_v2(char *path,
 	MyDir_R *d, ps3p s)
 {
@@ -115,6 +120,7 @@ GLOBALFUNC tMyErr PathArgToOldNameDir_v2(char *path,
 
 	return err;
 }
+#endif
 
 GLOBALPROC ToolReportAnySavedError_v2(tMyErr err, int argc, char **argv)
 {

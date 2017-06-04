@@ -66,7 +66,7 @@ GLOBALFUNC tMyErr strmo_open_v2(MyDir_R *d, StringPtr s)
 	err = MyFileOpen_v2(d, s,
 			(char)fsWrPerm, &strmo_bufref);
 	if (fnfErr == err) {
-		err = MyOpenNewFile_v2(d, s,
+		err = MyOpenNewFile_v3(d, s,
 			'MPS ', 'TEXT', &strmo_bufref);
 	}
 

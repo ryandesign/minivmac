@@ -295,13 +295,16 @@ GLOBALFUNC tMyErr MyFileSetTypeCreator_v2(MyDir_R *d, StringPtr s,
 	return err;
 }
 
-GLOBALFUNC tMyErr MyOpenNewFile_v2(MyDir_R *d, StringPtr s,
+GLOBALFUNC tMyErr MyOpenNewFile_v3(MyDir_R *d, StringPtr s,
 	OSType creator, OSType fileType,
 	short *refnum)
+/*
+	Deletes old file if already exists.
+*/
 {
 	tMyErr err;
 
-	err = MyCreateFile_v2(d, s);
+	err = MyCreateFileOverWrite_v2(d, s);
 	if (noErr == err) {
 		err = MyFileSetTypeCreator_v2(d, s,
 			creator, fileType);
@@ -628,22 +631,12 @@ GLOBALFUNC tMyErr MyFileGetCatInfo_v2(MyDir_R *d, StringPtr s,
 	return PBGetCatInfoSync(cPB);
 }
 
-GLOBALFUNC tMyErr MyFileExists_v2(MyDir_R *d, StringPtr s,
-	blnr *Exists)
+GLOBALFUNC tMyErr MyFileExists_v3(MyDir_R *d, StringPtr s)
 {
-	tMyErr err;
 	MyPStr NameBuffer;
 	CInfoPBRec cPB;
 
-	err = MyFileGetCatInfo_v2(d, s, NameBuffer, &cPB);
-	if (noErr == err) {
-		*Exists = trueblnr;
-	} else if (fnfErr == err) {
-		*Exists = falseblnr;
-		err = noErr;
-	}
-
-	return err;
+	return MyFileGetCatInfo_v2(d, s, NameBuffer, &cPB);
 }
 
 GLOBALFUNC tMyErr MyCatInfoCopyInfo_v2(CInfoPBRec *cPB,
@@ -874,12 +867,14 @@ GLOBALFUNC tMyErr MyResolveIfAlias(MyDir_R *d, StringPtr s)
 	Boolean isFolder;
 	Boolean isAlias;
 
-	if ((! HaveAliasMgrAvail())
-		|| (0 == PStrLength(s)))
-			/* means the directory, which can't be alias anyway */
-	{
+	if (0 == PStrLength(s)) {
+		/* means the directory, which can't be alias anyway */
 		err = noErr;
-	} else {
+	} else
+	if (! HaveAliasMgrAvail()) {
+		err = MyFileExists_v3(d, s);
+	} else
+	{
 		spec.vRefNum = d->VRefNum;
 		spec.parID = d->DirId;
 		PStrCopy(spec.name, s);
@@ -1010,9 +1005,11 @@ GLOBALFUNC tMyErr CreateOpenNewFile_v2(StringPtr prompt,
 
 	err = MyFilePutNew_v2(prompt, origName, d, s);
 	if (noErr == err) {
-		err = MyOpenNewFile_v2(d, s, creator, fileType, refNum);
+		err = MyOpenNewFile_v3(d, s, creator, fileType, refNum);
 	}
 
 	return err;
 }
 #endif
+
+#define Have_FILEUTIL 1

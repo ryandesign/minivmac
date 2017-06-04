@@ -393,22 +393,12 @@ LOCALPROC DoSrcFileAPBXCDaddFile(void)
 LOCALPROC WriteSrcFileAPBXCDtype(void)
 {
 	char *s;
-#if AsmSupported
-	blnr IsAsmFile = HaveAsm
-		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
+	blnr UseObjc = ((DoSrcFile_gd()->Flgm & kCSrcFlgmOjbc) != 0);
 
-	if (IsAsmFile) {
-		s = "sourcecode.asm";
-	} else
-#endif
-	{
-		blnr UseObjc = ((DoSrcFile_gd()->Flgm & kCSrcFlgmOjbc) != 0);
-
-		if (UseObjc) {
-			s = "sourcecode.c.objc";
-		} else {
-			s = "sourcecode.c.c";
-		}
+	if (UseObjc) {
+		s = "sourcecode.c.objc";
+	} else {
+		s = "sourcecode.c.c";
 	}
 	WriteCStrToDestFile(s);
 }
@@ -1115,9 +1105,6 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		if (ide_vers < 3200) {
 			WriteDestFileLn("GCC_VERSION = 4.0;");
 		}
-#if IgnoreMoreWarnings
-		WriteDestFileLn("GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;");
-#endif
 	}
 	if (ide_vers >= 1000) {
 		WriteDestFileLn("GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;");
@@ -1148,13 +1135,6 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 			WriteAPBQuotedField("OPTIMIZATION_CFLAGS", "-O0");
 		}
 	}
-#if UseAlignMac68k
-	if ((gbk_cpufam_68k == gbo_cpufam)
-		|| (gbk_cpufam_ppc == gbo_cpufam))
-	{
-		WriteDestFileLn("OTHER_CFLAGS = \"-malign-mac68k\";");
-	}
-#endif
 	if (ide_vers < 1500) {
 		WriteAPBQuotedField("OTHER_LDFLAGS", "");
 		WriteAPBQuotedField("OTHER_REZFLAGS", "");
@@ -2056,7 +2036,7 @@ LOCALFUNC tMyErr WriteXCDSpecificFiles(void)
 			if ((! HaveAPBXCD_PlistFile)
 				|| (noErr == (err = WritePListData())))
 			if (noErr == (err = MakeSubDirectory_v2(&LangDirR,
-				&SrcDirR, GetLProjName(gbo_lang), ".lproj")))
+				&CfgDirR, GetLProjName(gbo_lang), ".lproj")))
 			if (noErr == (err = WriteADestFile(&LangDirR,
 				"dummy", ".txt", WriteXCDdummyfile)))
 			{

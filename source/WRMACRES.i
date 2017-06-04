@@ -120,8 +120,7 @@ LOCALPROC WriteDocTypeIncludeIconFile(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#include ");
 	WriteQuoteToDestFile();
-	WriteDocTypeIconShortName();
-	WriteCStrToDestFile("Icon.r");
+	WriteDocTypeIconFileName();
 	WriteQuoteToDestFile();
 	WriteEndDestFileLn();
 }
@@ -137,9 +136,13 @@ LOCALPROC WriteMacResConfigContents(void)
 			WriteQuotedInclude("Icons.r");
 		}
 	} else
-	if ((gbk_ide_bgc == cur_ide) || (gbk_ide_xcd == cur_ide)) {
+	if ((gbk_ide_bgc == cur_ide)
+		|| (gbk_ide_xcd == cur_ide)
+		|| (gbk_ide_mvc == cur_ide))
+	{
 		WriteQuotedInclude("Carbon.r");
-	} else if (gbk_ide_mpw == cur_ide) {
+	} else
+	if (gbk_ide_mpw == cur_ide) {
 		WriteQuotedInclude("Types.r");
 		WriteQuotedInclude("Icons.r");
 	}
@@ -315,6 +318,6 @@ LOCALPROC WriteMacResConfigContents(void)
 LOCALFUNC tMyErr WriteCommonCNFGRSRC(void)
 {
 	/* Resource Configuration file */
-	return WriteADestFile(&SrcDirR,
+	return WriteADestFile(&CfgDirR,
 		"CNFGRSRC", ".h", WriteMacResConfigContents);
 }

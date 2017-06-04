@@ -20,6 +20,8 @@
 /* option: model */
 
 enum {
+	gbk_mdl_Twig43,
+	gbk_mdl_Twiggy,
 	gbk_mdl_128K,
 	gbk_mdl_512Ke,
 	gbk_mdl_Plus,
@@ -44,6 +46,12 @@ LOCALFUNC char * GetModelName(int i)
 	char *s;
 
 	switch (i) {
+		case gbk_mdl_Twig43:
+			s = "Twig43";
+			break;
+		case gbk_mdl_Twiggy:
+			s = "Twiggy";
+			break;
 		case gbk_mdl_128K:
 			s = "128K";
 			break;
@@ -151,6 +159,8 @@ LOCALFUNC tMyErr ChooseMemSiz(void)
 {
 	if (kListOptionAuto == cur_msz) {
 		switch (cur_mdl) {
+			case gbk_mdl_Twig43:
+			case gbk_mdl_Twiggy:
 			case gbk_mdl_128K:
 				cur_msz = gbk_msz_128K;
 				break;
@@ -192,6 +202,7 @@ LOCALFUNC tMyErr TryAsMemSizOptionNot(void)
 LOCALVAR uimr RAMa_Size;
 LOCALVAR uimr RAMb_Size;
 
+#define ln2_msz_64K 16
 #define ln2_msz_128K 17
 #define ln2_msz_256K 18
 #define ln2_msz_512K 19
@@ -207,6 +218,8 @@ LOCALFUNC tMyErr ChooseMemBankSizes(void)
 	RAMb_Size = 0;
 
 	switch (cur_mdl) {
+		case gbk_mdl_Twig43:
+		case gbk_mdl_Twiggy:
 		case gbk_mdl_128K:
 		case gbk_mdl_512Ke:
 			if (cur_msz == gbk_msz_128K) {
@@ -929,6 +942,49 @@ LOCALFUNC tMyErr ChooseScrnDpth(void)
 	return err;
 }
 
+/* option: Want Color Image */
+
+LOCALVAR blnr WantColorImage;
+
+LOCALPROC ResetWantColorImage(void)
+{
+	WantColorImage = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsWantColorImageNot(void)
+{
+	return BooleanTryAsOptionNot("-ci", &WantColorImage);
+}
+
+LOCALFUNC tMyErr ChooseWantColorImage(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (nanblnr == WantColorImage) {
+		/* leave as default */
+		if (gbk_apifam_xwn == gbo_apifam) {
+			WantColorImage = trueblnr;
+		}
+	} else {
+		if (gbk_apifam_xwn != gbo_apifam) {
+			ReportParseFailure(
+				"-ci is only for -api xwn");
+			err = kMyErrReported;
+		} else
+		if ((! WantColorImage) && (cur_ScrnDpth != 0)) {
+			ReportParseFailure(
+				"-ci 0 requires -depth 0");
+			err = kMyErrReported;
+		} else
+		{
+			/* ok */
+		}
+	}
+
+	return err;
+}
+
 /* option: magnification factor */
 
 LOCALVAR uimr cur_MagFctr;
@@ -1032,6 +1088,32 @@ LOCALFUNC tMyErr ChooseScreenVSync(void)
 	return err;
 }
 
+/* option: GrabKeysFullScreen */
+
+LOCALVAR blnr WantGrabKeysFS;
+
+LOCALPROC ResetGrabKeysFS(void)
+{
+	WantGrabKeysFS = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsGrabKeysFSNot(void)
+{
+	return BooleanTryAsOptionNot("-gkf", &WantGrabKeysFS);
+}
+
+LOCALFUNC tMyErr ChooseGrabKeysFS(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (nanblnr == WantGrabKeysFS) {
+		WantGrabKeysFS = trueblnr;
+	}
+
+	return err;
+}
+
 /* ------ */
 
 LOCALVAR blnr NeedScrnHack;
@@ -1049,10 +1131,18 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 			err = kMyErrReported;
 		}
 	}
-	NeedScrnHack = (cur_hres != dflt_hres)
-		|| (cur_vres != dflt_vres);
-	NeedVidMem = NeedScrnHack || (gbk_mdl_PB100 == cur_mdl)
-		|| (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl);
+
+	if ((gbk_mdl_PB100 == cur_mdl)
+		|| (gbk_mdl_II == cur_mdl) 
+		|| (gbk_mdl_IIx == cur_mdl))
+	{
+		NeedScrnHack = falseblnr;
+		NeedVidMem = trueblnr;
+	} else {
+		NeedScrnHack = (cur_hres != dflt_hres)
+			|| (cur_vres != dflt_vres);
+		NeedVidMem = NeedScrnHack;
+	}
 
 	return err;
 }
@@ -1124,13 +1214,15 @@ LOCALPROC ChooseMiscEmHardware(void)
 		EmADB = falseblnr;
 		EmRTC = trueblnr;
 		EmPMU = falseblnr;
-	} else if ((cur_mdl <= gbk_mdl_Classic)
+	} else
+	if ((cur_mdl <= gbk_mdl_Classic)
 		|| (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl))
 	{
 		EmADB = trueblnr;
 		EmRTC = trueblnr;
 		EmPMU = falseblnr;
-	} else {
+	} else
+	{
 		EmADB = falseblnr;
 		EmRTC = falseblnr;
 		EmPMU = trueblnr;
@@ -1274,32 +1366,227 @@ LOCALFUNC tMyErr ChooseItnlKyBdFix(void)
 	return err;
 }
 
-/* ROM size */
+/* option: ROM size */
 
-LOCALVAR uimr RomSize;
+LOCALVAR uimr cur_RomSize;
+LOCALVAR blnr have_RomSize;
 
-LOCALPROC ChooseRomSize(void)
+LOCALPROC ResetRomSizeOption(void)
 {
-	switch (cur_mdl) {
-		case gbk_mdl_128K:
-			RomSize = 0x010000; /* 64 KB */
+	have_RomSize = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsRomSizeOptionNot(void)
+{
+	return NumberTryAsOptionNot("-rsz",
+		(long *)&cur_RomSize, &have_RomSize);
+}
+
+LOCALFUNC tMyErr ChooseRomSize(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (! have_RomSize) {
+		switch (cur_mdl) {
+			case gbk_mdl_Twig43:
+			case gbk_mdl_Twiggy:
+			case gbk_mdl_128K:
+				cur_RomSize = ln2_msz_64K; /* 64 KB */
+				break;
+			case gbk_mdl_512Ke:
+			case gbk_mdl_Plus:
+				cur_RomSize = ln2_msz_128K; /* 128 KB */
+				break;
+			case gbk_mdl_SE:
+			case gbk_mdl_SEFDHD:
+			case gbk_mdl_PB100:
+			case gbk_mdl_II:
+			case gbk_mdl_IIx:
+				cur_RomSize = ln2_msz_256K; /* 256 KB */
+				break;
+			case gbk_mdl_Classic:
+			default:
+				cur_RomSize = ln2_msz_512K; /* 512 KB */
+				break;
+		}
+		have_RomSize = trueblnr;
+	} else {
+		if ((cur_RomSize < 16) || (cur_RomSize > 31)) {
+			ReportParseFailure(
+				"-rsz must be a number between 16 and 31");
+			err = kMyErrReported;
+		}
+	}
+
+	return err;
+}
+
+/* option: Want Check RomCheck Sum */
+
+LOCALVAR blnr WantCheckRomCheckSum;
+
+LOCALPROC ResetCheckRomCheckSum(void)
+{
+	WantCheckRomCheckSum = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsCheckRomCheckSumNot(void)
+{
+	return BooleanTryAsOptionNot("-chr", &WantCheckRomCheckSum);
+}
+
+LOCALPROC ChooseCheckRomCheckSum(void)
+{
+	if (nanblnr == WantCheckRomCheckSum) {
+		WantCheckRomCheckSum = trueblnr;
+	}
+}
+
+/* option: Want Disable Rom Check */
+
+LOCALVAR blnr WantDisableRomCheck;
+
+LOCALPROC ResetDisableRomCheck(void)
+{
+	WantDisableRomCheck = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsDisableRomCheckNot(void)
+{
+	return BooleanTryAsOptionNot("-drc", &WantDisableRomCheck);
+}
+
+LOCALPROC ChooseDisableRomCheck(void)
+{
+	if (nanblnr == WantDisableRomCheck) {
+		WantDisableRomCheck = trueblnr;
+	}
+}
+
+/* option: Want Disable Ram Test */
+
+LOCALVAR blnr WantDisableRamTest;
+
+LOCALPROC ResetDisableRamTest(void)
+{
+	WantDisableRamTest = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsDisableRamTestNot(void)
+{
+	return BooleanTryAsOptionNot("-drt", &WantDisableRamTest);
+}
+
+LOCALPROC ChooseDisableRamTest(void)
+{
+	if (nanblnr == WantDisableRamTest) {
+		WantDisableRamTest = trueblnr;
+	}
+}
+
+/* option: Alternate Happy Mac Icons */
+
+enum {
+	gbk_AHM_none,
+	gbk_AHM_aside,
+	gbk_AHM_cheese,
+	gbk_AHM_evil,
+	gbk_AHM_horror,
+	gbk_AHM_lady_mac,
+	gbk_AHM_moustache,
+	gbk_AHM_nerdy,
+	gbk_AHM_pirate,
+	gbk_AHM_sleepy,
+	gbk_AHM_sly,
+	gbk_AHM_sunglasses,
+	gbk_AHM_surprise,
+	gbk_AHM_tongue,
+	gbk_AHM_yuck,
+	gbk_AHM_zombie,
+
+	kNumAHMs
+};
+
+LOCALVAR int cur_AltHappyMac;
+
+LOCALPROC ResetAltHappyMacOption(void)
+{
+	cur_AltHappyMac = kListOptionAuto;
+}
+
+LOCALFUNC char * GetAltHappyMacName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_AHM_none:
+			s = "none";
 			break;
-		case gbk_mdl_512Ke:
-		case gbk_mdl_Plus:
-			RomSize = 0x020000; /* 128 KB */
+		case gbk_AHM_aside:
+			s = "aside";
 			break;
-		case gbk_mdl_SE:
-		case gbk_mdl_SEFDHD:
-		case gbk_mdl_PB100:
-		case gbk_mdl_II:
-		case gbk_mdl_IIx:
-			RomSize = 0x040000; /* 256 KB */
+		case gbk_AHM_cheese:
+			s = "cheese";
 			break;
-		case gbk_mdl_Classic:
+		case gbk_AHM_evil:
+			s = "evil";
+			break;
+		case gbk_AHM_horror:
+			s = "horror";
+			break;
+		case gbk_AHM_lady_mac:
+			s = "lady_mac";
+			break;
+		case gbk_AHM_moustache:
+			s = "moustache";
+			break;
+		case gbk_AHM_nerdy:
+			s = "nerdy";
+			break;
+		case gbk_AHM_pirate:
+			s = "pirate";
+			break;
+		case gbk_AHM_sleepy:
+			s = "sleepy";
+			break;
+		case gbk_AHM_sly:
+			s = "sly";
+			break;
+		case gbk_AHM_sunglasses:
+			s = "sunglasses";
+			break;
+		case gbk_AHM_surprise:
+			s = "surprise";
+			break;
+		case gbk_AHM_tongue:
+			s = "tongue";
+			break;
+		case gbk_AHM_yuck:
+			s = "yuck";
+			break;
+		case gbk_AHM_zombie:
+			s = "zombie";
+			break;
+
 		default:
-			RomSize = 0x080000; /* 512 KB */
+			s = "(unknown Alt Happy Mac Icon)";
 			break;
 	}
+	return s;
+}
+
+LOCALPROC ChooseAltHappyMac(void)
+{
+	if (kListOptionAuto == cur_AltHappyMac) {
+		cur_AltHappyMac = gbk_AHM_none;
+	}
+}
+
+LOCALFUNC tMyErr TryAsAltHappyMacOptionNot(void)
+{
+	return FindNamedOption("-ahm", kNumAHMs, GetAltHappyMacName,
+		&cur_AltHappyMac);
 }
 
 /* option: sound sample size */
@@ -1399,19 +1686,6 @@ LOCALPROC ChooseTotMemSize(void)
 
 	TotMemSize += 512 * 1024UL;
 		/* for M68KITAB */
-}
-
-/* Use assembly code for 68k emulation */
-
-LOCALVAR blnr UseAsm68k;
-
-LOCALPROC ChooseUseAsm68k(void)
-{
-	UseAsm68k = (gbk_asm_none != cur_asm)
-		&& (em_cpu_vers == 0) && (timingacc < 2)
-		&& ((gbk_cpufam_x86 == gbo_cpufam)
-			|| (gbk_cpufam_ppc == gbo_cpufam))
-		&& (! WantDisasm);
 }
 
 /* option: Parameter RAM CaretBlinkTime */
@@ -1675,6 +1949,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 {
 	ResetModelOption();
 	ResetMemSizOption();
+	ResetRomSizeOption();
 	ResetNumDrivesOption();
 	ResetSoundOption();
 	ResetSndApiOption();
@@ -1692,8 +1967,10 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetHResOption();
 	ResetVResOption();
 	ResetScrnDpthOption();
+	ResetWantColorImage();
 	ResetMagFctrOption();
 	ResetScreenVSync();
+	ResetGrabKeysFS();
 	ResetSonySupportTags();
 	ResetSonyWantChecksumsUpdated();
 	ResetSonySupportDC42();
@@ -1712,6 +1989,10 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetAutoKeyThreshOption();
 	ResetAutoKeyRateOption();
 	ResetSoundSampSzOption();
+	ResetCheckRomCheckSum();
+	ResetDisableRomCheck();
+	ResetDisableRamTest();
+	ResetAltHappyMacOption();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -1720,6 +2001,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 
 	if (kMyErrNoMatch == (err = TryAsModelOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsMemSizOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsRomSizeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsNumDrivesOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSoundOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSndApiOptionNot()))
@@ -1737,8 +2019,10 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsHResOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsVResOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsScrnDpthOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsWantColorImageNot()))
 	if (kMyErrNoMatch == (err = TryAsMagFctrOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
+	if (kMyErrNoMatch == (err = TryAsGrabKeysFSNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportTagsNot()))
 	if (kMyErrNoMatch == (err = TryAsSonyWantChecksumsUpdatedNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportDC42Not()))
@@ -1757,6 +2041,10 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsAutoKeyThreshOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAutoKeyRateOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSoundSampSzOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsCheckRomCheckSumNot()))
+	if (kMyErrNoMatch == (err = TryAsDisableRomCheckNot()))
+	if (kMyErrNoMatch == (err = TryAsDisableRamTestNot()))
+	if (kMyErrNoMatch == (err = TryAsAltHappyMacOptionNot()))
 	{
 	}
 
@@ -1771,13 +2059,16 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	ChooseModel();
 	if (noErr == (err = ChooseMemSiz()))
 	if (noErr == (err = ChooseMemBankSizes()))
+	if (noErr == (err = ChooseRomSize()))
 	if (noErr == (err = ChooseNumDrives()))
 	if (noErr == (err = ChooseHRes()))
 	if (noErr == (err = ChooseVRes()))
 	if (noErr == (err = ChooseScrnDpth()))
 	if (noErr == (err = ChooseMagFctr()))
 	if (noErr == (err = ChooseInitMagnify()))
+	if (noErr == (err = ChooseWantColorImage()))
 	if (noErr == (err = ChooseScreenVSync()))
+	if (noErr == (err = ChooseGrabKeysFS()))
 	if (noErr == (err = ChooseScreenOpts()))
 	if (noErr == (err = ChooseVidMemSize()))
 	if (noErr == (err = ChooseSndApiOption()))
@@ -1804,10 +2095,12 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 		ChooseWantDisasm();
 		ChooseDbgLogHAVE();
 		ChooseTimingAccuracy();
-		ChooseRomSize();
 		ChooseTotMemSize();
-		ChooseUseAsm68k();
 		ChooseMouseMotion();
+		ChooseCheckRomCheckSum();
+		ChooseDisableRomCheck();
+		ChooseDisableRamTest();
+		ChooseAltHappyMac();
 	}
 
 	return err;

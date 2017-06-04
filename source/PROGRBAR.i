@@ -75,12 +75,17 @@ GLOBALFUNC tMyErr ProgressBar_SetTextCStr_v2(char *s)
 	return err;
 }
 
+#ifndef ProgressBarPartWind
+#define ProgressBarPartWind 0
+#endif
+
 LOCALPROC ProgressBar_DrawText(void)
 {
-	RgnHandle SaveRgn;
-	RgnHandle ClippedRgn;
-
 	if (0 != xbh_GetLen(&ProgressBar_curtext)) {
+#if ProgressBarPartWind
+		RgnHandle SaveRgn;
+		RgnHandle ClippedRgn;
+
 		SaveRgn = NewRgn();
 		if (NULL != SaveRgn) {
 			GetClip(SaveRgn);
@@ -89,6 +94,7 @@ LOCALPROC ProgressBar_DrawText(void)
 				RectRgn(ClippedRgn, &ProgressBar_Rect);
 				SectRgn(SaveRgn, ClippedRgn, ClippedRgn);
 				SetClip(ClippedRgn);
+#endif
 
 				MoveTo(ProgressBar_Rect.left + 8,
 					(ProgressBar_Rect.bottom + ProgressBar_Rect.top)
@@ -98,11 +104,13 @@ LOCALPROC ProgressBar_DrawText(void)
 					0, xbh_GetLen(&ProgressBar_curtext));
 				HUnlock(xbh_GetH(&ProgressBar_curtext));
 
+#if ProgressBarPartWind
 				DisposeRgn(ClippedRgn);
 			}
 			SetClip(SaveRgn);
 			DisposeRgn(SaveRgn);
 		}
+#endif
 	}
 }
 

@@ -28,6 +28,7 @@ struct DoSrcFile_r
 	MyPtr SavepDt;
 	char *s;
 	long Flgm;
+	int DepDir;
 	tDoDependsForC depends;
 	tMyErr err;
 	MyProc p;
@@ -37,20 +38,46 @@ typedef struct DoSrcFile_r DoSrcFile_r;
 
 #define DoSrcFile_gd() ((DoSrcFile_r *)(pDt))
 
-LOCALPROC DoASrcFileWithSetupProc(
+LOCALPROC DoASrcFileWithSetupProc0(
 	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
-#pragma unused(DepDir)
 	if (noErr == DoSrcFile_gd()->err)
-	if (0 == (Flgm & kCSrcFlgmNoSource))
 	{
 		DoSrcFile_gd()->s = s;
 		DoSrcFile_gd()->Flgm = Flgm;
+		DoSrcFile_gd()->DepDir = DepDir;
 		DoSrcFile_gd()->depends = depends;
 
 		DoSrcFile_gd()->p();
 
 		++FileCounter;
+	}
+}
+
+LOCALFUNC tMyErr DoAllSrcFilesWithSetup0(MyProc p)
+{
+	DoSrcFile_r r;
+
+	r.SavepDt = pDt;
+	r.p = p;
+	r.err = noErr;
+	pDt = (MyPtr)&r;
+
+	FileCounter = 0;
+	DoAllSrcFiles(DoASrcFileWithSetupProc0);
+
+	pDt = r.SavepDt;
+
+	return r.err;
+}
+
+LOCALPROC DoASrcFileWithSetupProc(
+	char *s, int DepDir, long Flgm, tDoDependsForC depends)
+{
+	if (0 == (Flgm & kCSrcFlgmNoSource))
+	if (0 == (Flgm & kCSrcFlgmSkip))
+	{
+		DoASrcFileWithSetupProc0(s, DepDir, Flgm, depends);
 	}
 }
 
@@ -74,10 +101,12 @@ LOCALFUNC tMyErr DoAllSrcFilesWithSetup(MyProc p)
 LOCALPROC DoAllSrcFilesSortWithSetup1(
 	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
-	if (0 != (Flgm & kCSrcFlgmSortFirst)) {
-		DoASrcFileWithSetupProc(s, DepDir, Flgm, depends);
-	} else {
-		if (0 == (Flgm & kCSrcFlgmNoSource)) {
+	if (0 == (Flgm & kCSrcFlgmNoSource))
+	if (0 == (Flgm & kCSrcFlgmSkip))
+	{
+		if (0 != (Flgm & kCSrcFlgmSortFirst)) {
+			DoASrcFileWithSetupProc0(s, DepDir, Flgm, depends);
+		} else {
 			++FileCounter;
 		}
 	}
@@ -86,10 +115,12 @@ LOCALPROC DoAllSrcFilesSortWithSetup1(
 LOCALPROC DoAllSrcFilesSortWithSetup2(
 	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
-	if (0 == (Flgm & kCSrcFlgmSortFirst)) {
-		DoASrcFileWithSetupProc(s, DepDir, Flgm, depends);
-	} else {
-		if (0 == (Flgm & kCSrcFlgmNoSource)) {
+	if (0 == (Flgm & kCSrcFlgmNoSource))
+	if (0 == (Flgm & kCSrcFlgmSkip))
+	{
+		if (0 == (Flgm & kCSrcFlgmSortFirst)) {
+			DoASrcFileWithSetupProc0(s, DepDir, Flgm, depends);
+		} else {
 			++FileCounter;
 		}
 	}
@@ -117,23 +148,12 @@ LOCALFUNC tMyErr DoAllSrcFilesSortWithSetup(MyProc p)
 LOCALFUNC char * GetSrcFileFileXtns(void)
 {
 	char *s;
-#if AsmSupported
-	blnr IsAsmFile = HaveAsm
-		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
-#endif
 	blnr UseObjc = ((DoSrcFile_gd()->Flgm & kCSrcFlgmOjbc) != 0);
 
-#if AsmSupported
-	if (IsAsmFile) {
-		s = ".S";
-	} else
-#endif
-	{
-		if (UseObjc) {
-			s = ".m";
-		} else {
-			s = ".c";
-		}
+	if (UseObjc) {
+		s = ".m";
+	} else {
+		s = ".c";
 	}
 
 	return s;
@@ -184,39 +204,20 @@ LOCALPROC WriteSrcFileObjPath(void)
 		WriteSrcFileObjName);
 }
 
-struct DoXtraHdr_r
-{
-	MyPtr SavepDt;
-	int DepDir;
-	char *s;
-	tMyErr err;
-	MyProc p;
-};
-
-typedef struct DoXtraHdr_r DoXtraHdr_r;
-
-#define DoXtraHdr_gd() ((DoXtraHdr_r *)(pDt))
-
 LOCALPROC DoAllExtraHeaders2WithSetupProc(
 	char *s, int DepDir, long Flgm, tDoDependsForC depends)
 {
-#pragma unused(depends)
-	if (noErr == DoXtraHdr_gd()->err)
 	if (0 == (Flgm & kCSrcFlgmNoHeader))
 	if (0 != (Flgm & kCSrcFlgmNoSource))
+	if (0 == (Flgm & kCSrcFlgmSkip))
 	{
-		DoXtraHdr_gd()->DepDir = DepDir;
-		DoXtraHdr_gd()->s = s;
-
-		DoXtraHdr_gd()->p();
-
-		++FileCounter;
+		DoASrcFileWithSetupProc0(s, DepDir, Flgm, depends);
 	}
 }
 
 LOCALFUNC tMyErr DoAllExtraHeaders2WithSetup(MyProc p)
 {
-	DoXtraHdr_r r;
+	DoSrcFile_r r;
 
 	r.SavepDt = pDt;
 	r.p = p;
@@ -233,7 +234,7 @@ LOCALFUNC tMyErr DoAllExtraHeaders2WithSetup(MyProc p)
 
 LOCALPROC WriteExtraHeaderFileName(void)
 {
-	WriteCStrToDestFile(DoXtraHdr_gd()->s);
+	WriteCStrToDestFile(DoSrcFile_gd()->s);
 	WriteCStrToDestFile(".h");
 }
 
@@ -277,9 +278,32 @@ LOCALPROC DoAllDocTypesWithSetupProc(char *ShortName,
 	}
 }
 
+LOCALPROC DoAppAndAllDocTypes0(tWriteOneDocType p)
+{
+	p("APP", "APPL", "Application", NULL);
+	DoAllDocTypes(p);
+}
+
+LOCALFUNC tMyErr DoAllDocTypesWithSetup0(MyProc p)
+{
+	DoDocType_r r;
+
+	r.SavepDt = pDt;
+	r.p = p;
+	r.err = noErr;
+	pDt = (MyPtr)&r;
+
+	DocTypeCounter = 0;
+	DoAppAndAllDocTypes0(DoAllDocTypesWithSetupProc);
+
+	pDt = r.SavepDt;
+
+	return r.err;
+}
+
 LOCALPROC DoAppAndAllDocTypes(tWriteOneDocType p)
 {
-	p("App", "APPL", "Application", NULL);
+	p("APP", "APPL", "Application", NULL);
 	if (WantIconMaster) {
 		DoAllDocTypes(p);
 	}
@@ -309,16 +333,19 @@ LOCALPROC WriteDocTypeIconShortName(void)
 
 LOCALPROC WriteDocTypeIconFileName(void)
 {
+	WriteCStrToDestFile("ICON");
 	WriteDocTypeIconShortName();
-	WriteCStrToDestFile("Icon.");
 	switch (gbo_targfam) {
+		case gbk_targfam_cmac:
+			WriteCStrToDestFile("M.r");
+			break;
 		case gbk_targfam_mach:
 		case gbk_targfam_carb:
-			WriteCStrToDestFile("icns");
+			WriteCStrToDestFile("O.icns");
 			break;
 		case gbk_targfam_mswn:
 		case gbk_targfam_wnce:
-			WriteCStrToDestFile("ico");
+			WriteCStrToDestFile("W.ico");
 			break;
 	}
 }
@@ -456,48 +483,34 @@ LOCALPROC WritepDtSrcPath(void)
 	WriteFileInDirToDestFile0(Write_src_d_ToDestFile, WritepDtString);
 }
 
+LOCALPROC WritepDtCfgPath(void)
+{
+	WriteFileInDirToDestFile0(Write_cfg_d_ToDestFile, WritepDtString);
+}
+
 LOCALPROC DoSrcDependsMakeCompile(int DepDir, char *s)
 {
-#pragma unused(DepDir)
 	MyPtr SavepDt = pDt;
 	pDt = (MyPtr)s;
-	WriteMakeDependFile(WritepDtSrcPath);
+	WriteMakeDependFile((kDepDirCnfg == DepDir)
+		? WritepDtCfgPath
+		: WritepDtSrcPath);
 	pDt = SavepDt;
 }
 
 LOCALPROC DoSrcFileMakeCompileDeps(void)
 {
-#if AsmSupported
-	blnr IsAsmFile = HaveAsm
-		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
-#endif
-
 	WriteMakeDependFile(WriteSrcFileFilePath);
 	if (DoSrcFile_gd()->depends != nullpr) {
 		DoSrcFile_gd()->depends(DoSrcDependsMakeCompile);
 	}
-#if AsmSupported
-	if (! IsAsmFile)
-#endif
-	{
-		WriteMakeDependFile(WriteCNFGGLOBPath);
-	}
+	WriteMakeDependFile(WriteCNFGGLOBPath);
 }
 
 LOCALPROC DoSrcFileMakeCompileBody(void)
 {
-#if AsmSupported
-	blnr IsAsmFile = HaveAsm
-		&& ((DoSrcFile_gd()->Flgm & kCSrcFlgmAsmAvail) != 0);
-
-	if (IsAsmFile) {
-		WriteCompileAsm(WriteSrcFileFilePath, WriteSrcFileObjPath);
-	} else
-#endif
-	{
-		WriteCompileC(WriteSrcFileFilePath, WriteSrcFileObjPath,
-			(DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
-	}
+	WriteCompileC(WriteSrcFileFilePath, WriteSrcFileObjPath,
+		(DoSrcFile_gd()->Flgm & kCSrcFlgmUseAPI) != 0);
 }
 
 LOCALPROC DoSrcFileMakeCompile(void)

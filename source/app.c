@@ -34,6 +34,9 @@
 #include "MYMEMORY.i"
 #include "XBUFHAND.i"
 #include "MYFPMATH.i"
+
+#define ProgressBarPartWind 1
+
 #include "PROGRBAR.i"
 
 #define WantRealInputFile 1
@@ -61,6 +64,7 @@
 #pragma segment Body
 
 #define ide_mpw_Supported 1
+#define ide_mvc_Supported 1
 #define ide_bgc_Supported 1
 #define ide_xcd_Supported 1
 #define ide_mw8_Supported 1
@@ -100,6 +104,9 @@
 #if ide_mw8_Supported
 #include "WRMW8FLS.i"
 #endif
+#if ide_mvc_Supported
+#include "WRMVCFLS.i"
+#endif
 #if ide_bgc_Supported
 #include "WRBGCFLS.i"
 #endif
@@ -133,9 +140,6 @@
 #endif
 #ifdef Have_SPCNFGAP
 #include "SPCNFGAP.i"
-#endif
-#if AsmSupported
-#include "SPWROASM.i"
 #endif
 #include "SPOTHRCF.i"
 

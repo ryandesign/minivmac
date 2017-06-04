@@ -477,6 +477,76 @@ LOCALPROC WriteConfigureVIA2(void)
 	WriteDestFileLn("#define VIA2_CA2modesAllowed 0x01");
 }
 
+LOCALPROC WriteAppSTRCONSTcontents(void)
+{
+	char *s;
+
+	switch (gbo_lang) {
+		case gbk_lang_eng:
+			s = "ENG";
+			break;
+		case gbk_lang_fre:
+			s = "FRE";
+			break;
+		case gbk_lang_ita:
+			s = "ITA";
+			break;
+		case gbk_lang_ger:
+			s = "GER";
+			break;
+		case gbk_lang_dut:
+			s = "DUT";
+			break;
+		case gbk_lang_spa:
+			s = "SPA";
+			break;
+		case gbk_lang_pol:
+			s = "POL";
+			break;
+		case gbk_lang_ptb:
+			s = "PTB";
+			break;
+		default:
+			s = "???";
+			break;
+	}
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#include ");
+	WriteQuoteToDestFile();
+	WriteCStrToDestFile("STRCN");
+	WriteCStrToDestFile(s);
+	WriteCStrToDestFile(".h");
+	WriteQuoteToDestFile();
+	WriteEndDestFileLn();
+}
+
+LOCALPROC WriteAppSOUNDGLUcontents(void)
+{
+	char *s;
+
+	switch (gbo_sndapi) {
+		case gbk_sndapi_alsa:
+			s = "ALSA";
+			break;
+		case gbk_sndapi_ddsp:
+			s = "DDSP";
+			break;
+		default:
+			s = "???";
+			break;
+	}
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#include ");
+	WriteQuoteToDestFile();
+	WriteCStrToDestFile("SGLU");
+	WriteCStrToDestFile(s);
+	WriteCStrToDestFile(".h");
+	WriteQuoteToDestFile();
+	WriteEndDestFileLn();
+}
+
 LOCALPROC WriteAppEMCONFIGcontents(void)
 {
 	WriteDestFileLn("/*");
@@ -522,6 +592,33 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteCompCondBool("WantCycByPriOp", timingacc != 0);
 	WriteCompCondBool("WantCloserCyc", timingacc >= 2);
 
+	if (gbk_ide_mvc == cur_ide) {
+		if (gbk_cpufam_x64 == gbo_cpufam) {
+			WriteBlankLineToDestFile();
+			WriteDestFileLn("#define r_pc_p \"r15\"");
+			WriteDestFileLn("#define r_MaxCyclesToGo \"r14\"");
+			WriteDestFileLn("#define r_pc_pHi \"r13\"");
+		}
+
+		if (gbk_cpufam_ppc == gbo_cpufam) {
+			WriteBlankLineToDestFile();
+			WriteDestFileLn("#define r_regs \"r14\"");
+			WriteDestFileLn("#define r_pc_p \"r15\"");
+			WriteDestFileLn("#define r_MaxCyclesToGo \"r16\"");
+			WriteDestFileLn("#define r_pc_pHi \"r17\"");
+		}
+
+		if (gbk_cpufam_arm == gbo_cpufam) {
+			WriteBlankLineToDestFile();
+			WriteDestFileLn("#define r_regs \"r4\"");
+			WriteDestFileLn("#define r_pc_p \"r5\"");
+			if (gbk_targ_wcar != cur_targ) {
+				WriteDestFileLn("#define r_MaxCyclesToGo \"r6\"");
+				WriteDestFileLn("#define r_pc_pHi \"r7\"");
+			}
+		}
+	}
+
 	WriteBlankLineToDestFile();
 
 	WriteBgnDestFileLn();
@@ -542,6 +639,9 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 
 	WriteBlankLineToDestFile();
 
+	if (NeedScrnHack) {
+		WriteCompCondBool("UseLargeScreenHack", NeedScrnHack);
+	}
 	WriteCompCondBool("IncludeVidMem", NeedVidMem);
 	if (NeedVidMem) {
 		WriteBgnDestFileLn();
@@ -572,7 +672,6 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteCompCondBool("IncludeExtnHostTextClipExchange",
 		(! WantMinExtn) && (gbk_apifam_gtk != gbo_apifam)
 		&& (gbk_apifam_sdl != gbo_apifam)
-		&& (gbk_apifam_sd2 != gbo_apifam)
 		&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteBlankLineToDestFile();
@@ -696,6 +795,23 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	}
 	WriteEndDestFileLn();
 
+	if (! WantCheckRomCheckSum) {
+		WriteCompCondBool("CheckRomCheckSum", WantCheckRomCheckSum);
+	}
+	if (! WantDisableRomCheck) {
+		WriteCompCondBool("DisableRomCheck", WantDisableRomCheck);
+	}
+	if (! WantDisableRamTest) {
+		WriteCompCondBool("DisableRamTest", WantDisableRamTest);
+	}
+
+	if (gbk_AHM_none != cur_AltHappyMac) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define CurAltHappyMac kAHM_");
+		WriteCStrToDestFile(GetAltHappyMacName(cur_AltHappyMac));
+		WriteEndDestFileLn();
+	}
+
 	WriteBlankLineToDestFile();
 	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
 		WriteDestFileLn("#define kExtn_Block_Base 0x50F0C000");
@@ -723,15 +839,17 @@ LOCALFUNC tMyErr WriteAppSpecificConfigFiles(void)
 {
 	tMyErr err;
 
-	if (noErr == (err = WriteADestFile(&SrcDirR,
+	if (noErr == (err = WriteADestFile(&CfgDirR,
 		"CNFGGLOB", ".h", WriteAppCNFGGLOBContents)))
-	if (noErr == (err = WriteADestFile(&SrcDirR,
+	if (noErr == (err = WriteADestFile(&CfgDirR,
 		"CNFGRAPI", ".h", WriteAppCNFGRAPIContents)))
-	if (noErr == (err = WriteADestFile(&SrcDirR,
+	if (noErr == (err = WriteADestFile(&CfgDirR,
 		"EMCONFIG", ".h", WriteAppEMCONFIGcontents)))
-#if AsmSupported
-	if (noErr == (err = WriteAppCNFGRASM()))
-#endif
+	if (noErr == (err = WriteADestFile(&CfgDirR,
+		"STRCONST", ".h", WriteAppSTRCONSTcontents)))
+	if ((gbk_sndapi_none == gbo_sndapi) ||
+		(noErr == (err = WriteADestFile(&CfgDirR,
+		"SOUNDGLU", ".h", WriteAppSOUNDGLUcontents))))
 	{
 		/* ok */
 	}

@@ -66,7 +66,10 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 				WriteCheckPreDef("__INTEL__");
 				break;
 		}
-	} else if ((gbk_ide_bgc == cur_ide) || (gbk_ide_xcd == cur_ide)) {
+	} else if ((gbk_ide_bgc == cur_ide)
+		|| (gbk_ide_xcd == cur_ide)
+		|| (gbk_ide_mvc == cur_ide))
+	{
 		switch (gbo_cpufam) {
 			case gbk_cpufam_x86:
 				WriteDestFileLn("#ifdef __x86_64__");
@@ -99,30 +102,20 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 		|| (gbk_cpufam_x64 == gbo_cpufam));
 #endif
 
-	if ((gbk_cpufam_68k == gbo_cpufam)
-		|| (gbk_cpufam_ppc == gbo_cpufam))
-	{
-		WriteDestFileLn("#define BigEndianUnaligned 1");
-		WriteDestFileLn("#define LittleEndianUnaligned 0");
-	} else if ((gbk_cpufam_x86 == gbo_cpufam)
-		|| (gbk_cpufam_x64 == gbo_cpufam))
-	{
-		WriteDestFileLn("#define BigEndianUnaligned 0");
-		WriteDestFileLn("#define LittleEndianUnaligned 1");
-	} else {
-		WriteDestFileLn("#define BigEndianUnaligned 0");
-		WriteDestFileLn("#define LittleEndianUnaligned 0");
-	}
-
 	if (gbk_cpufam_68k == gbo_cpufam) {
 		WriteDestFileLn("#define HaveCPUfamM68K 1");
 	}
 
-	if ((gbk_ide_bgc == cur_ide) || (gbk_ide_xcd == cur_ide)
-		|| (gbk_ide_snc == cur_ide)
+	if ((gbk_ide_bgc == cur_ide)
+		|| (gbk_ide_xcd == cur_ide)
+		|| (gbk_ide_mvc == cur_ide)
 		|| (gbk_ide_cyg == cur_ide)
 		|| (gbk_ide_dkp == cur_ide))
 	{
+		WriteDestFileLn(
+			"#define MayInline inline __attribute__((always_inline))");
+	} else
+	if (gbk_ide_snc == cur_ide) {
 		WriteDestFileLn("#define MayInline inline");
 	} else
 	if (gbk_ide_mw8 == cur_ide) {
@@ -136,10 +129,12 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 		}
 	} else
 	{
-		WriteDestFileLn("#define MayInline");
+		/* WriteDestFileLn("#define MayInline"); */
 	}
 
-	if ((gbk_ide_bgc == cur_ide) || (gbk_ide_xcd == cur_ide)
+	if ((gbk_ide_bgc == cur_ide)
+		|| (gbk_ide_xcd == cur_ide)
+		|| (gbk_ide_mvc == cur_ide)
 		|| (gbk_ide_cyg == cur_ide)
 		|| (gbk_ide_dkp == cur_ide))
 	{
@@ -150,13 +145,60 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 		WriteDestFileLn("#define MayNotInline __declspec(noinline)");
 	} else
 	{
-		WriteDestFileLn("#define MayNotInline");
+		/* WriteDestFileLn("#define MayNotInline"); */
+	}
+
+	if (gbk_ide_mvc == cur_ide) {
+		if ((gbk_cpufam_68k == gbo_cpufam)
+			|| (gbk_cpufam_ppc == gbo_cpufam))
+		{
+			WriteDestFileLn("#define BigEndianUnaligned 1");
+			WriteDestFileLn("#define LittleEndianUnaligned 0");
+		} else if ((gbk_cpufam_x86 == gbo_cpufam)
+			|| (gbk_cpufam_x64 == gbo_cpufam))
+		{
+			WriteDestFileLn("#define BigEndianUnaligned 0");
+			WriteDestFileLn("#define LittleEndianUnaligned 1");
+		} else {
+			WriteDestFileLn("#define BigEndianUnaligned 0");
+			WriteDestFileLn("#define LittleEndianUnaligned 0");
+		}
+
+		if (gbk_cpufam_x86 == gbo_cpufam) {
+			WriteDestFileLn(
+				"#define my_reg_call __attribute__ ((regparm(3)))");
+		}
+
+		if (gbk_cpufam_x86 == gbo_cpufam) {
+			WriteDestFileLn(
+				"#define my_osglu_call __attribute__ "
+					"((force_align_arg_pointer))");
+		}
+
+		WriteDestFileLn("#define my_cond_rare(x) "
+			"(__builtin_expect(x, 0))");
+		WriteDestFileLn("#define Have_ASR 1");
+		if (gbk_cpufam_x64 == gbo_cpufam) {
+			WriteDestFileLn("#define HaveUi6Div 1");
+		}
+		if (gbk_targ_wcar == cur_targ) {
+			WriteDestFileLn("#define HaveUi5to6Mul 0");
+		}
+		if ((gbk_cpufam_x64 == gbo_cpufam)
+			|| (gbk_cpufam_ppc == gbo_cpufam)
+			|| (gbk_cpufam_arm == gbo_cpufam))
+		{
+			WriteDestFileLn("#define HaveGlbReg 1");
+		}
+		WriteDestFileLn(
+			"#define my_align_8 __attribute__ ((aligned (8)))");
 	}
 
 	WriteCompCondBool("SmallGlobals", gbk_cpufam_68k == gbo_cpufam);
 
 	if ((gbk_ide_bgc == cur_ide)
 		|| (gbk_ide_xcd == cur_ide)
+		|| (gbk_ide_mvc == cur_ide)
 		|| (gbk_ide_ccc == cur_ide)
 		|| (gbk_ide_dvc == cur_ide)
 		|| (gbk_ide_mgw == cur_ide)
@@ -211,23 +253,6 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 		WriteDestFileLn("#pragma warning(disable : 4127 4701)");
 	}
 
-#if IgnoreMoreWarnings
-		WriteBlankLineToDestFile();
-		WriteDestFileLn("/* ignore unused code warning */");
-		WriteDestFileLn("#pragma warning(disable : 4505)");
-
-		WriteBlankLineToDestFile();
-		/* C4054: 'type cast' : from function pointer to data pointer */
-		/* C4055: 'type cast' : from data pointer to function pointer */
-		/* C4127: conditional expression is constant */
-		/*
-			C4701: local variable may have been used without having
-			been initialized
-		*/
-		WriteDestFileLn("/* more warnings */");
-		WriteDestFileLn(
-			"#pragma warning(disable : 4054 4055 4127 4701)");
-#endif
 	} else if (gbk_ide_plc == cur_ide) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("#pragma warn(disable: 2135 2137)");
@@ -369,6 +394,29 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("typedef si5b si5r;");
 	WriteDestFileLn("#define si5beqr 1");
+
+	if (gbk_ide_mvc == cur_ide) {
+		if (gbk_cpufam_x86 == gbo_cpufam)
+		{
+			WriteBlankLineToDestFile();
+			WriteDestFileLn("/* for probable register parameters */");
+			WriteDestFileLn("#define ui4rr ui5r");
+			WriteDestFileLn("#define ui3rr ui5r");
+		} else if (gbk_cpufam_x64 == gbo_cpufam) {
+#if 0
+			WriteBlankLineToDestFile();
+			WriteDestFileLn("/* for probable register parameters */");
+			WriteDestFileLn("#define ui4rr unsigned long int");
+			WriteDestFileLn("#define ui3rr unsigned long int");
+#endif
+			WriteDestFileLn("#define si5rr signed long");
+		}
+
+		WriteBlankLineToDestFile();
+		WriteDestFileLn(
+			"#define MySwapUi5r(x) ((ui5r)__builtin_bswap32(x))");
+		WriteDestFileLn("#define HaveMySwapUi5r 1");
+	}
 }
 
 LOCALPROC Write64bitConfig(void)

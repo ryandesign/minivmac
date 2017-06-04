@@ -23,10 +23,6 @@
 #define kStrHomePage "*unknown*"
 #endif
 
-#ifndef AsmSupported
-#define AsmSupported 1
-#endif
-
 #ifndef MayUseSound
 #define MayUseSound 1
 #endif
@@ -39,28 +35,8 @@
 #define UseMachinOSX 0
 #endif
 
-#ifndef OSXplatsep
-#define OSXplatsep 1
-#endif
-
-#ifndef HaveExtraRrscs
-#define HaveExtraRrscs 0
-#endif
-
-#ifndef UseAlignMac68k
-#define UseAlignMac68k 0
-#endif
-
-#ifndef ManualMainRC
-#define ManualMainRC 0
-#endif
-
 #ifndef NeedIntFormatInfo
 #define NeedIntFormatInfo 0
-#endif
-
-#ifndef IgnoreMoreWarnings
-#define IgnoreMoreWarnings 0
 #endif
 
 #ifndef ModPPCi3rTypes
@@ -687,6 +663,7 @@ enum {
 	gbk_ide_cyg, /* Cygwin */
 	gbk_ide_dkp, /* devkitpro */
 	gbk_ide_ccc, /* Generic command line c compiler */
+	gbk_ide_mvc, /* Mini vMac C (a specific version of gcc) */
 	kNumIdes
 };
 
@@ -743,6 +720,9 @@ LOCALFUNC char * GetIdeName(int i)
 			break;
 		case gbk_ide_ccc:
 			s = "ccc";
+			break;
+		case gbk_ide_mvc:
+			s = "mvc";
 			break;
 		default:
 			s = "(unknown IDE)";
@@ -921,7 +901,11 @@ LOCALPROC ChooseAPIFam(void)
 				break;
 			case gbk_targfam_mach:
 			case gbk_targfam_carb:
-				gbo_apifam = gbk_apifam_osx;
+				if (gbk_cpufam_x64 == gbo_cpufam) {
+					gbo_apifam = gbk_apifam_cco;
+				} else {
+					gbo_apifam = gbk_apifam_osx;
+				}
 				break;
 			case gbk_targfam_mswn:
 			case gbk_targfam_wnce:
@@ -1008,6 +992,7 @@ enum {
 	gbk_lang_dut,
 	gbk_lang_spa,
 	gbk_lang_pol,
+	gbk_lang_ptb,
 	kNumLangLevels
 };
 
@@ -1043,6 +1028,9 @@ LOCALFUNC char * GetLangName(int i)
 			break;
 		case gbk_lang_pol:
 			s = "pol";
+			break;
+		case gbk_lang_ptb:
+			s = "ptb";
 			break;
 		default:
 			s = "(unknown Language Level)";
@@ -1083,6 +1071,9 @@ LOCALFUNC char * GetLProjName(int i)
 		case gbk_lang_pol:
 			s = "pl";
 			break;
+		case gbk_lang_ptb:
+			s = "pt_BR";
+			break;
 		default:
 			s = "(unknown Language Level)";
 			break;
@@ -1094,6 +1085,27 @@ LOCALPROC ChooseLangOption(void)
 {
 	if (kListOptionAuto == gbo_lang) {
 		gbo_lang = gbk_lang_eng;
+	}
+}
+
+/* option: export archive */
+
+LOCALVAR blnr WantAllSrc;
+
+LOCALPROC ResetWantAllSrc(void)
+{
+	WantAllSrc = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsWantAllSrcNot(void)
+{
+	return BooleanTryAsOptionNot("-all-src", &WantAllSrc);
+}
+
+LOCALPROC ChooseWantAllSrc(void)
+{
+	if (nanblnr == WantAllSrc) {
+		WantAllSrc = falseblnr;
 	}
 }
 
@@ -1163,6 +1175,7 @@ LOCALPROC ChooseEOL(void)
 				case gbk_ide_xcd:
 				case gbk_ide_snc:
 				case gbk_ide_ccc:
+				case gbk_ide_mvc:
 					cur_eol = gbk_eol_unx;
 					break;
 				case gbk_ide_msv:
@@ -1234,6 +1247,7 @@ LOCALPROC ChooseArc(void)
 			case gbk_ide_xcd:
 			case gbk_ide_snc:
 			case gbk_ide_ccc:
+			case gbk_ide_mvc:
 				cur_arc = gbk_arc_tar;
 				break;
 			case gbk_ide_msv:
@@ -1356,8 +1370,7 @@ LOCALPROC ChooseHaveMacRrscs(void)
 {
 	HaveMacRrscs = (gbk_apifam_mac == gbo_apifam)
 		|| ((gbk_targfam_carb == gbo_targfam)
-			&& ! (gbk_ide_mpw == cur_ide))
-		|| HaveExtraRrscs;
+			&& ! (gbk_ide_mpw == cur_ide));
 }
 
 /* option: Abbrev Name */
@@ -1443,6 +1456,27 @@ LOCALFUNC tMyErr ChooseVariationName(void)
 	return err;
 }
 
+/* option: Configuration Directory */
+
+LOCALVAR blnr WantConfigDir;
+
+LOCALPROC ResetConfigDir(void)
+{
+	WantConfigDir = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsConfigDirNot(void)
+{
+	return BooleanTryAsOptionNot("-cfg", &WantConfigDir);
+}
+
+LOCALPROC ChooseConfigDir(void)
+{
+	if (nanblnr == WantConfigDir) {
+		WantConfigDir = falseblnr;
+	}
+}
+
 /* option: IconMaster */
 
 #ifndef WantIconMasterDflt
@@ -1468,137 +1502,6 @@ LOCALPROC ChooseIconMaster(void)
 	}
 }
 
-/* option: NoAsm */
-
-LOCALVAR blnr WantNoAsm;
-
-LOCALPROC ResetNoAsm(void)
-{
-	WantNoAsm = falseblnr;
-}
-
-LOCALFUNC tMyErr TryAsNoAsmNot(void)
-{
-	return FlagTryAsOptionNot("-no-asm", &WantNoAsm);
-}
-
-/* option: assembler */
-
-#if AsmSupported
-
-enum {
-	gbk_asm_none,
-	gbk_asm_mpwppc,
-	gbk_asm_mw8ppc,
-	gbk_asm_xcdppc,
-	gbk_asm_bgcppc,
-	gbk_asm_xcdx86,
-	gbk_asm_bgcx86,
-	gbk_asm_dvcx86,
-	gbk_asm_mpw68k,
-	gbk_asm_bgcarm,
-	kNumAsms
-};
-
-LOCALVAR int cur_asm;
-
-LOCALPROC ResetAssemblerOption(void)
-{
-	cur_asm = kListOptionAuto;
-}
-
-LOCALFUNC char * GetAssemblerName(int i)
-{
-	char *s;
-
-	switch (i) {
-		case gbk_asm_none:
-			s = "none";
-			break;
-		case gbk_asm_mpwppc:
-			s = "mpwppc";
-			break;
-		case gbk_asm_mw8ppc:
-			s = "mw8ppc";
-			break;
-		case gbk_asm_xcdppc:
-			s = "xcdppc";
-			break;
-		case gbk_asm_bgcppc:
-			s = "bgcppc";
-			break;
-		case gbk_asm_xcdx86:
-			s = "xcdx86";
-			break;
-		case gbk_asm_bgcx86:
-			s = "bgcx86";
-			break;
-		case gbk_asm_dvcx86:
-			s = "dvcx86";
-			break;
-		case gbk_asm_bgcarm:
-			s = "bgcarm";
-			break;
-		default:
-			s = "(unknown Assembler)";
-			break;
-	}
-	return s;
-}
-
-LOCALFUNC tMyErr TryAsAssemblerOptionNot(void)
-{
-	return FindNamedOption("-a", kNumAsms, GetAssemblerName, &cur_asm);
-}
-
-LOCALPROC ChooseAssembler(void)
-{
-	if (kListOptionAuto == cur_asm) {
-		cur_asm = gbk_asm_none;
-		if (! WantNoAsm) {
-			if (gbk_cpufam_ppc == gbo_cpufam) {
-				if (gbk_ide_mpw == cur_ide) {
-					cur_asm = gbk_asm_mpwppc;
-				} else if (gbk_ide_mw8 == cur_ide) {
-					if (gbk_targfam_mach != gbo_targfam) {
-						cur_asm = gbk_asm_mw8ppc;
-					}
-				} else if (gbk_ide_xcd == cur_ide) {
-					if (UseCmndLine || (ide_vers >= 1500)) {
-						cur_asm = gbk_asm_xcdppc;
-					}
-				} else if (gbk_ide_bgc == cur_ide) {
-					cur_asm = gbk_asm_bgcppc;
-				}
-			} else if (gbk_cpufam_x86 == gbo_cpufam) {
-				if (gbk_ide_xcd == cur_ide) {
-					cur_asm = gbk_asm_xcdx86;
-				} else if (gbk_ide_bgc == cur_ide) {
-					cur_asm = gbk_asm_bgcx86;
-				} else if (gbk_ide_cyg == cur_ide) {
-					cur_asm = gbk_asm_bgcx86;
-				} else if (gbk_ide_mgw == cur_ide) {
-					cur_asm = gbk_asm_dvcx86;
-				} else if (gbk_ide_dvc == cur_ide) {
-					if (UseCmndLine) {
-						cur_asm = gbk_asm_dvcx86;
-					}
-				}
-			} else if (gbk_cpufam_arm == gbo_cpufam) {
-				if (gbk_ide_dkp == cur_ide) {
-					cur_asm = gbk_asm_bgcarm;
-				}
-			} else if (gbk_cpufam_68k == gbo_cpufam) {
-				if (gbk_ide_mpw == cur_ide) {
-					cur_asm = gbk_asm_mpw68k;
-				}
-			}
-		}
-	}
-}
-
-#endif
-
 
 /* --- end of default definition of options --- */
 
@@ -1609,6 +1512,7 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetIdeOption();
 	ResetIdeVersOption();
 	ResetCmndLine();
+	ResetWantAllSrc();
 	ResetDbgOption();
 	ResetLangOption();
 	ResetEolOption();
@@ -1620,12 +1524,9 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetSponsorName();
 	ResetAbbrevName();
 	ResetVariationName();
+	ResetConfigDir();
 	ResetIconMaster();
-	ResetNoAsm();
 	ResetAPIFamOption();
-#if AsmSupported
-	ResetAssemblerOption();
-#endif
 }
 
 LOCALFUNC tMyErr TryAsGNOptionNot(void)
@@ -1637,6 +1538,7 @@ LOCALFUNC tMyErr TryAsGNOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsIdeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeVersOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsCmndLineOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsWantAllSrcNot()))
 	if (kMyErrNoMatch == (err = TryAsDbgOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsEolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsWantExportNot()))
@@ -1648,12 +1550,9 @@ LOCALFUNC tMyErr TryAsGNOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsListOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAbbrevNameOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsVariationNameOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsConfigDirNot()))
 	if (kMyErrNoMatch == (err = TryAsIconMasterNot()))
 	if (kMyErrNoMatch == (err = TryAsAPIFamOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsNoAsmNot()))
-#if AsmSupported
-	if (kMyErrNoMatch == (err = TryAsAssemblerOptionNot()))
-#endif
 	{
 	}
 
@@ -1671,6 +1570,7 @@ LOCALFUNC tMyErr AutoChooseGNSettings(void)
 		ChooseIde();
 		ChooseIdeVers();
 		ChooseAPIFam();
+		ChooseWantAllSrc();
 		ChooseDbgOption();
 		ChooseLangOption();
 		ChooseEOL();
@@ -1682,10 +1582,8 @@ LOCALFUNC tMyErr AutoChooseGNSettings(void)
 			ChooseHaveMacRrscs();
 			ChooseAbbrevName();
 			if (noErr == (err = ChooseVariationName())) {
+				ChooseConfigDir();
 				ChooseIconMaster();
-#if AsmSupported
-				ChooseAssembler();
-#endif
 			}
 		}
 	}

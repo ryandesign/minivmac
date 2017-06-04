@@ -41,11 +41,13 @@ static void DoSrcFilePLCAddFile(void)
 
 		WriteBgnDestFileLn();
 		WriteSrcFileFilePath();
-		WriteCStrToDestFile(" \\");
-		WriteEndDestFileLn();
+		if ((DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader) == 0) {
+			WriteCStrToDestFile(" \\");
+			WriteEndDestFileLn();
 
-		WriteBgnDestFileLn();
-		WriteSrcFileHeaderPath();
+			WriteBgnDestFileLn();
+			WriteSrcFileHeaderPath();
+		}
 		WriteEndDestFileLn();
 
 		WriteDestFileLn("$(CC) $(CCFLAGS) \"$!\" -Fo\"$@\"");

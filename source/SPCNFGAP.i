@@ -27,6 +27,12 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define RomFileName \"");
 	switch (cur_mdl) {
+		case gbk_mdl_Twig43:
+			WriteCStrToDestFile("Twig43.ROM");
+			break;
+		case gbk_mdl_Twiggy:
+			WriteCStrToDestFile("Twiggy.ROM");
+			break;
 		case gbk_mdl_128K:
 			WriteCStrToDestFile("Mac128K.ROM");
 			break;
@@ -90,6 +96,10 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WriteDefineUimr("MyWindowScale", cur_MagFctr);
 	}
 
+	if (nanblnr != WantColorImage) {
+		WriteCompCondBool("UseColorImage", WantColorImage);
+	}
+
 	WriteCompCondBool("WantInitRunInBackground", WantInitBackground);
 	WriteCompCondBool("WantInitNotAutoSlow", ! WantInitAutoSlow);
 
@@ -104,6 +114,10 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 
 	if (WantScreenVSync) {
 		WriteDestFileLn("#define UseAGLdoublebuff 1");
+	}
+
+	if (! WantGrabKeysFS) {
+		WriteDestFileLn("#define GrabKeysFullScreen 0");
 	}
 
 	WriteCompCondBool("NeedRequestInsertDisk",

@@ -680,7 +680,7 @@ GLOBALFUNC tMyErr nzplib_WriteFile_v2(
 
 	if (noErr == (err = xbh_Init_v2(0, &r.CurFileDosPath))) {
 		if (noErr == (err = xbh_Init_v2(0, &r.hCentral))) {
-			if (noErr == (err = MyOpenNewFile_v2(dst_d, dst_s,
+			if (noErr == (err = MyOpenNewFile_v3(dst_d, dst_s,
 				'MPS ', 'TEXT', &r.ofd)))
 			{
 				r.CentralCount = 0;

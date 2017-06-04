@@ -108,12 +108,13 @@ GLOBALPROC ui5r2Hex(ui5r v, MyCharR *r)
 LOCALFUNC tMyErr MyDeleteOneIfExists_v2(MyDir_R *d, StringPtr s)
 {
 	tMyErr err;
-	blnr Exists;
 
-	if (noErr == (err = MyFileExists_v2(d, s, &Exists))) {
-		if (Exists) {
-			err = dellib_DeleteOne_v2(d, s);
+	if (noErr != (err = MyFileExists_v3(d, s))) {
+		if (fnfErr == err) {
+			err = noErr;
 		}
+	} else {
+		err = dellib_DeleteOne_v2(d, s);
 	}
 
 	return err;

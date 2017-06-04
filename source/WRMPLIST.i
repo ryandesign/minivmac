@@ -235,7 +235,7 @@ LOCALPROC WriteMyInfoPListContents(void)
 		WritePListKeyString("CFBundleExecutable", vStrAppAbbrev);
 		WritePListKeyProcString("CFBundleGetInfoString",
 			WriteGetInfoString);
-		WritePListKeyString("CFBundleIconFile", "AppIcon.icns");
+		WritePListKeyString("CFBundleIconFile", "ICONAPPO.icns");
 		WritePListKeyProcString("CFBundleIdentifier",
 			WriteTheBundleIdentifier);
 		WritePListKeyString("CFBundleInfoDictionaryVersion", "6.0");
@@ -247,6 +247,10 @@ LOCALPROC WriteMyInfoPListContents(void)
 			Write_MacCreatorSigOrGeneric);
 		WritePListKeyProcString("CFBundleVersion", WriteVersionStr);
 		WritePListKeyString("LSRequiresCarbon", "1");
+		if (gbk_apifam_sd2 == gbo_apifam) {
+			WritePListKeyString("SDL_FILESYSTEM_BASE_DIR_TYPE",
+				"parent");
+		}
 
 	WritePListEndDict();
 }
@@ -268,11 +272,11 @@ LOCALFUNC tMyErr WritePListData(void)
 	tMyErr err;
 
 	if (gbk_ide_mw8 == cur_ide) {
-		err = WriteADestFile(&SrcDirR, "main", ".plc",
+		err = WriteADestFile(&CfgDirR, "main", ".plc",
 			WriteMainPLCData);
 	} else
 	{
-		err = WriteADestFile(&SrcDirR, "Info", ".plist",
+		err = WriteADestFile(&CfgDirR, "Info", ".plist",
 			WriteInfoPListData);
 	}
 

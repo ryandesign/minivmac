@@ -324,13 +324,15 @@ LOCALPROC DoSrcFileMSVCAddFile(void)
 
 LOCALPROC DoSrcFileMSVCAddHeader(void)
 {
-	WriteDestFileLn("# Begin Source File");
-	WriteBlankLineToDestFile();
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("SOURCE=");
-	WriteSrcFileHeaderPath();
-	WriteEndDestFileLn();
-	WriteDestFileLn("# End Source File");
+	if ((DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader) == 0) {
+		WriteDestFileLn("# Begin Source File");
+		WriteBlankLineToDestFile();
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("SOURCE=");
+		WriteSrcFileHeaderPath();
+		WriteEndDestFileLn();
+		WriteDestFileLn("# End Source File");
+	}
 }
 
 LOCALPROC DoExtraHeaderMSVCAdd(void)
@@ -955,7 +957,9 @@ LOCALPROC WriteMSVCXMLHeaderFilesProps(void)
 
 LOCALPROC DoSrcFileMSVCXMLAddHeader(void)
 {
-	DoMSVCXMLAddFile(WriteSrcFileHeaderPath);
+	if ((DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader) == 0) {
+		DoMSVCXMLAddFile(WriteSrcFileHeaderPath);
+	}
 }
 
 LOCALPROC WriteMSVCXMLHeaderFilesBody(void)
@@ -1041,7 +1045,9 @@ LOCALPROC WriteMSVCXMLSolutionFile(void)
 		WriteDestFileLn(
 			"Microsoft Visual Studio Solution File,"
 			" Format Version 12.00");
-		if (ide_vers >= 14000) {
+		if (ide_vers >= 15000) {
+			WriteDestFileLn("# Visual Studio 15");
+		} else if (ide_vers >= 14000) {
 			WriteDestFileLn("# Visual Studio 14");
 		} else if (ide_vers >= 12000) {
 			WriteDestFileLn("# Visual Studio 2013");
@@ -1269,10 +1275,6 @@ LOCALPROC WriteMainRsrcObjMSCbuild(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("rc.exe ");
 	WriteRCexeFlags();
-#if ManualMainRC
-	WriteCStrToDestFile(
-		" /i\"C:/Program Files/Microsoft Platform SDK/Include/mfc/\"");
-#endif
 	WriteCStrToDestFile(" /fo\"");
 	WriteMainRsrcObjPath();
 	WriteCStrToDestFile("\" \"");
@@ -1289,11 +1291,6 @@ LOCALPROC WriteNMakeMakeFile(void)
 	WriteBlankLineToDestFile();
 
 	WriteBgnDestFileLn();
-#if AsmSupported
-	if (HaveAsm) {
-		WriteDestFileLn("mk_AOptions = -c");
-	}
-#endif
 	WriteCStrToDestFile("mk_COptions=");
 	WriteCLexeFlags();
 	WriteCStrToDestFile(" /Fo\"");
@@ -1460,11 +1457,13 @@ LOCALPROC DoSrcFileMSVC10XMLAddFile(void)
 
 LOCALPROC DoSrcFileMSVC10XMLAddHeaderFile(void)
 {
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("<ClInclude Include=\"");
-	WriteSrcFileHeaderPath();
-	WriteCStrToDestFile("\" />");
-	WriteEndDestFileLn();
+	if ((DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader) == 0) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("<ClInclude Include=\"");
+		WriteSrcFileHeaderPath();
+		WriteCStrToDestFile("\" />");
+		WriteEndDestFileLn();
+	}
 }
 
 LOCALPROC DoMSVC10XMLAddAddExtraHeader(void)
@@ -1503,7 +1502,10 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile(
 		"<Project DefaultTargets=\"Build\"");
-	if (ide_vers >= 14000) {
+	if (ide_vers >= 15000) {
+		WriteCStrToDestFile(
+			" ToolsVersion=\"15.0\"");
+	} else if (ide_vers >= 14000) {
 		WriteCStrToDestFile(
 			" ToolsVersion=\"14.0\"");
 	} else if (ide_vers >= 12000) {
@@ -1543,6 +1545,10 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 			WriteXMLtagBeginValEndLine("Keyword", "Win32Proj");
 			WriteXMLtagBeginProcValEndLine("RootNamespace",
 				WriteStrAppAbbrev);
+			if (ide_vers >= 15000) {
+				WriteXMLtagBeginValEndLine(
+					"WindowsTargetPlatformVersion", "10.0.14393.0");
+			}
 		--DestFileIndent;
 		WriteDestFileLn("</PropertyGroup>");
 
@@ -1564,6 +1570,9 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 			}
 			if (ide_vers >= 11000) {
 				if (ide_vers >= 14000) {
+					WriteXMLtagBeginValEndLine("PlatformToolset",
+						"v141");
+				} else if (ide_vers >= 14000) {
 					WriteXMLtagBeginValEndLine("PlatformToolset",
 						"v140");
 				} else if (ide_vers >= 12000) {
@@ -1761,17 +1770,19 @@ LOCALPROC DoSrcFileMSVC10XMLAddClCompile(void)
 
 LOCALPROC DoSrcFileMSVC10XMLAddClInclude(void)
 {
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("<ClInclude Include=\"");
-	WriteSrcFileHeaderPath();
-	WriteCStrToDestFile("\">");
-	WriteEndDestFileLn();
-	++DestFileIndent;
+	if ((DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader) == 0) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("<ClInclude Include=\"");
+		WriteSrcFileHeaderPath();
+		WriteCStrToDestFile("\">");
+		WriteEndDestFileLn();
+		++DestFileIndent;
 
-		WriteDestFileLn("<Filter>Header Files</Filter>");
+			WriteDestFileLn("<Filter>Header Files</Filter>");
 
-	--DestFileIndent;
-	WriteDestFileLn("</ClInclude>");
+		--DestFileIndent;
+		WriteDestFileLn("</ClInclude>");
+	}
 }
 
 LOCALPROC DoExtraHeaderMSVC10XMLAddClInclude(void)

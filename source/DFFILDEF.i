@@ -18,13 +18,7 @@
 */
 
 #define kDepDirCSrc 0
-#define kDepDirPlat 1
-#define kDepDirLang 2
-#define kDepDirCnfg 3
-#if AsmSupported
-#define kDepDirASrc 4
-#endif
-#define kDepDirSndA 5
+#define kDepDirCnfg 1
 
 typedef void (*tDoOneDepends)(int DepDir, char *s);
 
@@ -43,8 +37,11 @@ typedef void (*tWriteOneDocType)(
 	char *LongName,
 	tWriteExtensionList WriteExtensionList);
 
+#if 0
 #define kCSrcFlagAsmAvail 0
 #define kCSrcFlagAltSrc 1
+#endif
+#define kCSrcFlagSkip 1
 #define kCSrcFlagUseAPI 2
 #define kCSrcFlagSortFirst 3
 #define kCSrcFlagNoSource 4
@@ -52,10 +49,16 @@ typedef void (*tWriteOneDocType)(
 #define kCSrcFlagOjbc 6
 
 #define kCSrcFlgmNone 0
-#define kCSrcFlgmAsmAvail (1 << kCSrcFlagAsmAvail)
+#if 0
 #define kCSrcFlgmAltSrc (1 << kCSrcFlagAltSrc)
+#endif
+#define kCSrcFlgmSkip (1 << kCSrcFlagSkip)
 #define kCSrcFlgmUseAPI (1 << kCSrcFlagUseAPI)
 #define kCSrcFlgmSortFirst (1 << kCSrcFlagSortFirst)
 #define kCSrcFlgmNoSource (1 << kCSrcFlagNoSource)
 #define kCSrcFlgmNoHeader (1 << kCSrcFlagNoHeader)
 #define kCSrcFlgmOjbc (1 << kCSrcFlagOjbc)
+
+#define CSrcFlagsUseIf(b) ((b) ? kCSrcFlgmNone : kCSrcFlgmSkip)
+#define CSrcFlagsUseHdrIf(b) (CSrcFlagsUseIf(b) | kCSrcFlgmNoSource)
+#define CSrcFlagsUseSrcIf(b) (CSrcFlagsUseIf(b) | kCSrcFlgmNoHeader)

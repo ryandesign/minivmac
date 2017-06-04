@@ -278,6 +278,23 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		WriteDestFileLn("#include <stdlib.h>");
 		WriteDestFileLn("#include <string.h>");
 	} else if (gbk_apifam_win == gbo_apifam) {
+		if ((gbk_ide_mvc == cur_ide)
+			&& (gbk_targfam_wnce == gbo_targfam))
+		{
+			WriteDestFileLn("#define WIN32 1");
+			WriteDestFileLn("#define _WIN32 1");
+			WriteDestFileLn("#define WINNT 1");
+			WriteDestFileLn("#define UNDER_CE 1");
+			WriteDestFileLn("#define __CEGCC__ 1");
+			WriteDestFileLn("#define __CEGCC32__ 1");
+			WriteDestFileLn("#define __MINGW32__ 1");
+			WriteDestFileLn("#define __MINGW32CE__ 1");
+			WriteDestFileLn("#define __COREDLL__ 1");
+			WriteDestFileLn("#define UNICODE 1");
+			WriteDestFileLn("#define _UNICODE 1");
+			WriteDestFileLn("#define _M_ARM 1");
+			WriteBlankLineToDestFile();
+		}
 		if (gbk_ide_mw8 == cur_ide) {
 			WriteDestFileLn("#include <Win32Headers.h>");
 		} else
@@ -294,6 +311,10 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		if (gbk_targfam_wnce == gbo_targfam) {
 			WriteDestFileLn("#include <aygshell.h>");
 			WriteDestFileLn("#include <commdlg.h>");
+		}
+		if (gbk_ide_mvc == cur_ide) {
+			WriteBlankLineToDestFile();
+			WriteDestFileLn("#define _tWinMain WinMain");
 		}
 		if (gbk_ide_plc == cur_ide) {
 			WriteDestFileLn("#define _MAX_PATH MAX_PATH");

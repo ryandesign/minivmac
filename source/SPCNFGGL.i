@@ -67,7 +67,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define kROM_Size ");
 	WriteCStrToDestFile("0x");
-	WriteHexLongToOutput(RomSize);
+	WriteHexLongToOutput(1UL << cur_RomSize);
 	WriteEndDestFileLn();
 
 
@@ -91,7 +91,6 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 		((! WantMinExtn) || WantActvCode)
 			&& (gbk_apifam_gtk != gbo_apifam)
 			&& (gbk_apifam_sdl != gbo_apifam)
-			&& (gbk_apifam_sd2 != gbo_apifam)
 			&& (gbk_apifam_nds != gbo_apifam));
 
 	WriteDestFileLn("#define EnableAutoSlow 1");

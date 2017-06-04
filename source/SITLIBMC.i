@@ -455,7 +455,7 @@ GLOBALFUNC tMyErr sitlib_WriteFile_v2(
 	r.SavepDt = pDt;
 	pDt = (MyPtr)&r;
 
-	if (noErr == (err = MyOpenNewFile_v2(dst_d, dst_s,
+	if (noErr == (err = MyOpenNewFile_v3(dst_d, dst_s,
 		'SIT!', 'SIT!', &r.ofd)))
 	{
 		if (noErr == (err = MyFileGetCatInfo_v2(src_d, src_s,
