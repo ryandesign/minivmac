@@ -535,7 +535,11 @@ LOCALFUNC tMacErr NSStringToRomanPbuf(NSString *string, tPbuf *r)
 	ui5r L = strlen(s);
 		/* only as of OS X 10.4 */
 #endif
+#if 0
 	NSData *d0 = [string dataUsingEncoding: NSMacOSRomanStringEncoding];
+#endif
+	NSData *d0 = [string dataUsingEncoding: NSMacOSRomanStringEncoding
+		allowLossyConversion: YES];
 	const void *s = [d0 bytes];
 	NSUInteger L = [d0 length];
 
@@ -1627,6 +1631,18 @@ LOCALPROC MousePositionNotify(int NewMousePosh, int NewMousePosv)
 	WantCursorHidden = ShouldHaveCursorHidden;
 }
 
+LOCALPROC CheckMouseState(void)
+{
+	/*
+		incorrect while window is being dragged
+		so only call when needed.
+	*/
+	NSPoint p;
+
+	QZ_GetMouseLocation(&p);
+	MousePositionNotify((int) p.x, (int) p.y);
+}
+
 LOCALVAR blnr gTrueBackgroundFlag = falseblnr;
 
 
@@ -1879,6 +1895,8 @@ LOCALVAR NSTimeInterval NextTickChangeTime;
 
 LOCALVAR ui5b NewMacDateInSeconds;
 
+LOCALVAR blnr EmulationWasInterrupted = falseblnr;
+
 LOCALPROC UpdateTrueEmulatedTime(void)
 {
 	NSTimeInterval TimeDiff;
@@ -1892,6 +1910,7 @@ LOCALPROC UpdateTrueEmulatedTime(void)
 			++TrueEmulatedTime;
 			NextTickChangeTime = LatestTime + MyTickDuration;
 
+			EmulationWasInterrupted = trueblnr;
 #if dbglog_TimeStuff
 			dbglog_writelnNum("emulation interrupted",
 				TrueEmulatedTime);
@@ -2985,14 +3004,25 @@ LOCALPROC My_ShowMenuBar(void)
 
 /* --- event handling for main window --- */
 
+LOCALPROC MyBeginDialog(void)
+{
+	DisconnectKeyCodes3();
+	ForceShowCursor();
+}
+
+LOCALPROC MyEndDialog(void)
+{
+	[MyWindow makeKeyWindow];
+	EmulationWasInterrupted = trueblnr;
+}
+
 LOCALPROC InsertADisk0(void)
 {
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
 
 	[panel setAllowsMultipleSelection: YES];
 
-	DisconnectKeyCodes3();
-	ForceShowCursor();
+	MyBeginDialog();
 
 	if (NSOKButton == [panel runModal]) {
 		int i;
@@ -3006,7 +3036,7 @@ LOCALPROC InsertADisk0(void)
 		}
 	}
 
-	[MyWindow makeKeyWindow];
+	MyEndDialog();
 }
 
 /* --- main window creation and disposal --- */
@@ -3903,13 +3933,7 @@ LOCALPROC LeaveBackground(void)
 {
 	ReconnectKeyCodes3();
 	DisableKeyRepeat();
-
-	{
-		NSPoint p;
-
-		QZ_GetMouseLocation(&p);
-		MousePositionNotify((int) p.x, (int) p.y);
-	}
+	EmulationWasInterrupted = trueblnr;
 }
 
 LOCALPROC EnterBackground(void)
@@ -3948,8 +3972,7 @@ LOCALPROC MakeNewDisk(ui5b L, NSString *drivename)
 	NSInteger result = NSCancelButton;
 	NSSavePanel *panel = [NSSavePanel savePanel];
 
-	DisconnectKeyCodes3();
-	ForceShowCursor();
+	MyBeginDialog();
 
 	if ([panel respondsToSelector:@selector(setNameFieldStringValue:)])
 	{
@@ -3997,7 +4020,7 @@ LOCALPROC MakeNewDisk(ui5b L, NSString *drivename)
 		/* fail */
 	}
 
-	[MyWindow makeKeyWindow];
+	MyEndDialog();
 
 	if (NSOKButton == result) {
 		NSString* filePath = [[panel URL] path];
@@ -4028,12 +4051,6 @@ LOCALPROC CheckForSavedTasks(void)
 		MyEvtQTryRecoverFromFull();
 	}
 
-#if EnableFSMouseMotion
-	if (HaveMouseMotion) {
-		MyMouseConstrain();
-	}
-#endif
-
 	if (RequestMacOff) {
 		RequestMacOff = falseblnr;
 		if (AnyDiskInserted()) {
@@ -4056,6 +4073,20 @@ LOCALPROC CheckForSavedTasks(void)
 			LeaveBackground();
 		}
 	}
+
+	if (EmulationWasInterrupted) {
+		EmulationWasInterrupted = falseblnr;
+
+		if (! gTrueBackgroundFlag) {
+			CheckMouseState();
+		}
+	}
+
+#if EnableFSMouseMotion
+	if (HaveMouseMotion) {
+		MyMouseConstrain();
+	}
+#endif
 
 #if VarFullScreen
 	if (gTrueBackgroundFlag && WantFullScreen) {
@@ -4413,12 +4444,9 @@ label_retry:
 		goto label_retry;
 	}
 
-#if 0 /* incorrect while window is being dragged */
+#if 0
 	if (! gTrueBackgroundFlag) {
-		NSPoint p;
-
-		QZ_GetMouseLocation(&p);
-		MousePositionNotify((int) p.x, (int) p.y);
+		CheckMouseState();
 	}
 #endif
 

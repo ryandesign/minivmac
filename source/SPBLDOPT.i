@@ -1133,7 +1133,7 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 	}
 
 	if ((gbk_mdl_PB100 == cur_mdl)
-		|| (gbk_mdl_II == cur_mdl) 
+		|| (gbk_mdl_II == cur_mdl)
 		|| (gbk_mdl_IIx == cur_mdl))
 	{
 		NeedScrnHack = falseblnr;

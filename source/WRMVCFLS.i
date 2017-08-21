@@ -41,10 +41,7 @@ LOCALPROC WriteMVCCompileAsmLinkCommonOptions(void)
 				break;
 		}
 	}
-}
 
-LOCALPROC WriteMVCLinkOSGlucompileCommonOptions(void)
-{
 	if ((gbk_apifam_osx == gbo_apifam)
 		|| (gbk_apifam_cco == gbo_apifam))
 	{
@@ -57,6 +54,14 @@ LOCALPROC WriteMVCLinkOSGlucompileCommonOptions(void)
 		{
 			WriteCStrToDestFile(" -mmacosx-version-min=10.4");
 		}
+	}
+}
+
+LOCALPROC WriteMVCLinkOSGlucompileCommonOptions(void)
+{
+	if ((gbk_apifam_osx == gbo_apifam)
+		|| (gbk_apifam_cco == gbo_apifam))
+	{
 		WriteCStrToDestFile(" -isysroot");
 		if (ide_vers >= 3200) {
 			WriteCStrToDestFile(" /Developer/SDKs/MacOSX10.6.sdk");
