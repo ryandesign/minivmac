@@ -182,6 +182,11 @@ DebugStr(ConstStr255Param debuggerMsg)
 		0xABFF
 	};
 
+pascal void SysBeep(short duration)
+	= {
+		0xA9C8
+	};
+
 /* from Limits */
 
 #define CHAR_BIT 8
@@ -1571,11 +1576,17 @@ CloseResFile(short refNum)
 		0xA99A
 	};
 
+#define LMGetResErr() (*(SInt16 *)(0x0A60))
+	/* same result as ResError */
+
 pascal OSErr
 ResError(void)
 	= {
 		0xA9AF
 	};
+
+#define LMGetCurMap() (*(SInt16 *)(0x0A5A))
+	/* same result as CurResFile */
 
 pascal short
 CurResFile(void)
@@ -3329,11 +3340,13 @@ TEInsert(
 		0xA9DE
 	};
 
-#define TEGetScrapLength() ((long) * (UInt16 *) 0x0AB0)
-
+#define LMGetTEScrpLength() (* (UInt16 *) 0x0AB0)
 #define LMSetTEScrpLength(v) (* (UInt16 *) 0x0AB0) = (v);
 
 #define LMGetTEScrpHandle() (*(Handle *)(0x0AB4))
+#define LMSetTEScrpHandle(v) (*(Handle *)(0x0AB4)) = (v);
+
+#define TEGetScrapLength() ((long) LMGetTEScrpLength())
 
 static pascal OSErr
 TEFromScrap(void)

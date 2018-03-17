@@ -50,12 +50,12 @@ GLOBALPROC xbh_UnInit(xbh_r *r)
 
 #define xbh_GetLen(r) ((r)->L)
 
-GLOBALFUNC tMyErr xbh_SetLen_v2(xbh_r *r, uimr L)
+GLOBALFUNC tMyErr xbh_SetSize_v2(xbh_r *r, uimr L)
 {
 	tMyErr err = noErr;
 
 	if (L > r->hSize) {
-		err = MyHandleSetLen_v2(r->h, L);
+		err = MyHandleSetSize_v2(r->h, L);
 		if (noErr != err) {
 			goto Label_err;
 		}
@@ -75,7 +75,7 @@ GLOBALFUNC tMyErr xbh_AppendPtr_v2(xbh_r *r, MyPtr p, uimr L)
 	tMyErr err;
 	uimr OldLen = r->L;
 
-	err = xbh_SetLen_v2(r, OldLen + L);
+	err = xbh_SetSize_v2(r, OldLen + L);
 	if (noErr == err) {
 		MyMoveBytes(p, (MyPtr)(*r->h) + OldLen, L);
 	}
@@ -93,7 +93,7 @@ GLOBALFUNC tMyErr xbh_PopToPtr_v2(xbh_r *r, MyPtr p, uimr L)
 		uimr NewLen = OldLen - L;
 		MyMoveBytes((MyPtr)(*r->h) + NewLen, p, L);
 		r->L = NewLen;
-			/* (void) xbh_SetLen_v2(r, NewLen); */
+			/* (void) xbh_SetSize_v2(r, NewLen); */
 		err = noErr;
 	}
 
@@ -106,7 +106,7 @@ GLOBALFUNC tMyErr xbh_AppendHandRange_v2(xbh_r *r, Handle h,
 	tMyErr err;
 	uimr oldL = r->L;
 
-	err = xbh_SetLen_v2(r, oldL + L);
+	err = xbh_SetSize_v2(r, oldL + L);
 	if (noErr == err) {
 		MyMoveBytes((MyPtr)(*h) + offset, (MyPtr)(*r->h) + oldL, L);
 	}
@@ -133,7 +133,7 @@ GLOBALFUNC tMyErr xbh_SetFromPtr(xbh_r *r, MyPtr p, uimr L)
 {
 	tMyErr err;
 
-	err = xbh_SetLen_v2(r, L);
+	err = xbh_SetSize_v2(r, L);
 	if (noErr == err) {
 		MyMoveBytes(p, (MyPtr)*r->h, L);
 	}
@@ -144,4 +144,9 @@ GLOBALFUNC tMyErr xbh_SetFromPtr(xbh_r *r, MyPtr p, uimr L)
 GLOBALFUNC tMyErr xbh_SetFromCStr(xbh_r *r, char *s)
 {
 	return xbh_SetFromPtr(r, (MyPtr)s, CStrLength(s));
+}
+
+GLOBALFUNC tMyErr xbh_SetFromPStr(xbh_r *r, ps3p s)
+{
+	return xbh_SetFromPtr(r, PStrToPtr(s), PStrToSize(s));
 }

@@ -1066,19 +1066,30 @@ LOCALPROC Sony_ResolveInsert(NSString *filePath)
 	}
 }
 
+LOCALFUNC blnr Sony_InsertIth(int i)
+{
+	blnr v;
+
+	if ((i > 9) || ! FirstFreeDisk(nullpr)) {
+		v = falseblnr;
+	} else {
+		char s[] = "disk?.dsk";
+
+		s[4] = '0' + i;
+
+		v = Sony_Insert2(s);
+	}
+
+	return v;
+}
+
 LOCALFUNC blnr LoadInitialImages(void)
 {
 	if (! AnyDiskInserted()) {
-		int n = NumDrives > 9 ? 9 : NumDrives;
 		int i;
-		char s[] = "disk?.dsk";
 
-		for (i = 1; i <= n; ++i) {
-			s[4] = '0' + i;
-			if (! Sony_Insert2(s)) {
-				/* stop on first error (including file not found) */
-				return trueblnr;
-			}
+		for (i = 1; Sony_InsertIth(i); ++i) {
+			/* stop on first error (including file not found) */
 		}
 	}
 
@@ -3906,20 +3917,23 @@ LOCALPROC ToggleWantFullScreen(void)
 		int NewWinState =
 			WantFullScreen ? kWinStateFullScreen : kWinStateWindowed;
 		int NewMagState = WinMagStates[NewWinState];
+
 		WinMagStates[OldWinState] = OldMagState;
 		if (kMagStateAuto != NewMagState) {
 			WantMagnify = (kMagStateMagnifgy == NewMagState);
 		} else {
-			NSRect MainScrnBounds = [[NSScreen mainScreen] frame];
-
 			WantMagnify = falseblnr;
-			if ((MainScrnBounds.size.width
-				>= vMacScreenWidth * MyWindowScale)
-				&& (MainScrnBounds.size.height
-				>= vMacScreenHeight * MyWindowScale)
-				)
-			{
-				WantMagnify = trueblnr;
+			if (WantFullScreen) {
+				NSRect MainScrnBounds = [[NSScreen mainScreen] frame];
+
+				if ((MainScrnBounds.size.width
+						>= vMacScreenWidth * MyWindowScale)
+					&& (MainScrnBounds.size.height
+						>= vMacScreenHeight * MyWindowScale)
+					)
+				{
+					WantMagnify = trueblnr;
+				}
 			}
 		}
 	}
@@ -4192,6 +4206,13 @@ LOCALPROC CheckForSavedTasks(void)
 			InsertADisk0();
 		}
 	}
+
+#if NeedRequestIthDisk
+	if (0 != RequestIthDisk) {
+		Sony_InsertIth(RequestIthDisk);
+		RequestIthDisk = 0;
+	}
+#endif
 
 	if (HaveCursorHidden != (
 #if MayNotFullScreen

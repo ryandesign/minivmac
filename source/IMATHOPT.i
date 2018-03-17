@@ -18,11 +18,52 @@
 */
 
 
+#ifndef WantOptMoveBytes
+#define WantOptMoveBytes 0
+#endif
+
+#if WantOptMoveBytes
+/*
+	avoid trap dispatch overhead for small copies.
+	Worthwhile for programs that use zillions
+	of such.
+*/
+LOCALPROC MyMoveBytes(MyPtr src, MyPtr dst, uimr n)
+{
+	switch (n) {
+		case 15: *dst++ = *src++; /* fall through */
+		case 14: *dst++ = *src++; /* fall through */
+		case 13: *dst++ = *src++; /* fall through */
+		case 12: *dst++ = *src++; /* fall through */
+		case 11: *dst++ = *src++; /* fall through */
+		case 10: *dst++ = *src++; /* fall through */
+		case 9: *dst++ = *src++; /* fall through */
+		case 8: *dst++ = *src++; /* fall through */
+		case 7: *dst++ = *src++; /* fall through */
+		case 6: *dst++ = *src++; /* fall through */
+		case 5: *dst++ = *src++; /* fall through */
+		case 4: *dst++ = *src++; /* fall through */
+		case 3: *dst++ = *src++; /* fall through */
+		case 2: *dst++ = *src++; /* fall through */
+		case 1: *dst   = *src  ; /* fall through */
+		case 0:
+			break;
+		default:
+			BlockMove((void *)(src), (void *)(dst), n);
+			break;
+	}
+}
+#else
+#define MyMoveBytes(src, dst, n) \
+	BlockMove((void *)(src), (void *)(dst), n)
+#endif
+
+
 GLOBALPROC pUi5VecFromConst(ui5p p, uimr n, ui5r x)
 {
-	NuimrForVar i;
+	uimr i;
 
-	for_NuimrTimes(i, n) {
+	for (i = n + 1; 0 != --i; ) {
 		*p++ = x;
 	}
 }

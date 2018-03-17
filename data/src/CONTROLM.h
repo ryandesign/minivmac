@@ -599,6 +599,35 @@ LOCALPROC DoControlModeKey(int key)
 					ControlMessage = kCntrlMsgRegStrCopied;
 					break;
 #endif
+#if NeedRequestIthDisk
+				case MKC_1:
+					RequestIthDisk = 1;
+					break;
+				case MKC_2:
+					RequestIthDisk = 2;
+					break;
+				case MKC_3:
+					RequestIthDisk = 3;
+					break;
+				case MKC_4:
+					RequestIthDisk = 4;
+					break;
+				case MKC_5:
+					RequestIthDisk = 5;
+					break;
+				case MKC_6:
+					RequestIthDisk = 6;
+					break;
+				case MKC_7:
+					RequestIthDisk = 7;
+					break;
+				case MKC_8:
+					RequestIthDisk = 8;
+					break;
+				case MKC_9:
+					RequestIthDisk = 9;
+					break;
+#endif
 			}
 			break;
 		case kCntrlModeConfirmReset:

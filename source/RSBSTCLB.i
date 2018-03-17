@@ -109,9 +109,9 @@ LOCALFUNC tMyErr rsubstchar_DF_v2(CInfoPBRec *cPB, MyDir_R *dst_d,
 				dst_refnum, n)))
 			{
 			}
-			err = CombineErr(err, MyCloseFile_v2(dst_refnum));
+			err = ErrCombine(err, MyCloseFile_v2(dst_refnum));
 		}
-		err = CombineErr(err, MyCloseFile_v2(src_refnum));
+		err = ErrCombine(err, MyCloseFile_v2(src_refnum));
 	}
 
 	return err;

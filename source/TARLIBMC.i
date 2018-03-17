@@ -701,7 +701,7 @@ doGetMore:
 						goto doGetMore;
 					}
 				}
-				err = CombineErr(err,
+				err = ErrCombine(err,
 					MyCloseFile_v2(tarlib_gd()->ifile));
 			}
 		}

@@ -993,6 +993,8 @@ enum {
 	gbk_lang_spa,
 	gbk_lang_pol,
 	gbk_lang_ptb,
+	gbk_lang_cat,
+	gbk_lang_cze,
 	kNumLangLevels
 };
 
@@ -1005,6 +1007,7 @@ LOCALPROC ResetLangOption(void)
 
 LOCALFUNC char * GetLangName(int i)
 {
+	/* ISO 639-2/B */
 	char *s;
 
 	switch (i) {
@@ -1032,6 +1035,12 @@ LOCALFUNC char * GetLangName(int i)
 		case gbk_lang_ptb:
 			s = "ptb";
 			break;
+		case gbk_lang_cat:
+			s = "cat";
+			break;
+		case gbk_lang_cze:
+			s = "cze";
+			break;
 		default:
 			s = "(unknown Language Level)";
 			break;
@@ -1047,6 +1056,9 @@ LOCALFUNC tMyErr TryAsLangOptionNot(void)
 
 LOCALFUNC char * GetLProjName(int i)
 {
+	/*
+		As used in OS X, IETF language tags, except when not
+	*/
 	char *s;
 
 	switch (i) {
@@ -1073,6 +1085,12 @@ LOCALFUNC char * GetLProjName(int i)
 			break;
 		case gbk_lang_ptb:
 			s = "pt_BR";
+			break;
+		case gbk_lang_cat:
+			s = "ca";
+			break;
+		case gbk_lang_cze:
+			s = "cs";
 			break;
 		default:
 			s = "(unknown Language Level)";
@@ -1304,7 +1322,7 @@ LOCALFUNC tMyErr ChooseMaintainerName(void)
 	if (NULL != hMaintainerName) {
 		err = noErr;
 	} else {
-		err = CStr2Hand_v2("unknown", &hMaintainerName);
+		err = MyHandleNewFromCStr(&hMaintainerName, "unknown");
 	}
 
 	return err;
@@ -1331,7 +1349,7 @@ LOCALFUNC tMyErr ChooseHomePage(void)
 	if (NULL != hHomePage) {
 		err = noErr;
 	} else {
-		err = CStr2Hand_v2(kStrHomePage, &hHomePage);
+		err = MyHandleNewFromCStr(&hHomePage, kStrHomePage);
 	}
 
 	return err;
@@ -1444,13 +1462,11 @@ LOCALFUNC tMyErr ChooseVariationName(void)
 		PStrApndCStr(s, kMajorVersion);
 		PStrApndCStr(s, ".");
 		PStrApndCStr(s, kMinorVersion);
-		PStrApndCStr(s, ".");
-		PStrApndCStr(s, kMinorSubVersion);
 		PStrApndCStr(s, "-");
 		/* PStrApndCStr(s, GetIdeName(cur_ide)); */
 		PStrApndCStr(s, GetTargetName(cur_targ));
 		/* PStrApndCStr(s, GetDbgLvlName(gbo_dbg)); */
-		err = PStr2Hand_v2(s, &hVariationName);
+		err = MyHandleNewFromPStr(&hVariationName, s);
 	}
 
 	return err;

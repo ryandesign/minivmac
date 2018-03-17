@@ -183,8 +183,10 @@ LOCALPROC WriteMacResConfigContents(void)
 
 			WriteBgnDestFileLn();
 			WriteCStrToDestFile(kMinorVersion);
+#if 0
 			WriteCStrToDestFile(" * 16 + ");
 			WriteCStrToDestFile(kMinorSubVersion);
+#endif
 			WriteCStrToDestFile(",");
 			WriteEndDestFileLn();
 

@@ -22,6 +22,9 @@
 
 #pragma segment Utilities
 
+#if 0
+#include "DEBUGLOG.i"
+#endif
 #include "POW2UTIL.i"
 #include "IMATHOPT.i"
 #include "STRUTILS.i"
@@ -32,6 +35,7 @@
 #include "SAVEDERR.i"
 #include "FILEUTIL.i"
 #include "MYMEMORY.i"
+#include "HANDUTIL.i"
 #include "XBUFHAND.i"
 #include "MYFPMATH.i"
 
@@ -39,7 +43,10 @@
 
 #include "PROGRBAR.i"
 
+#include "EXTNSLIB.i"
+
 #define WantRealInputFile 1
+#define NewTextCreator 'GrBl'
 
 #if IsAnApp
 #include "CMDARGW1.i"
@@ -52,7 +59,6 @@
 #include "STRMOUTT.i"
 
 #include "FILEHUTL.i"
-#include "EXTNSLIB.i"
 #include "DELLIBMC.i"
 #include "DUPLIBMC.i"
 #include "RINSCAFT.i"
@@ -146,7 +152,89 @@
 #include "BLDUTIL4.i"
 
 #if ! IsAnApp
-#include "CMDARGT2.i"
+int main(int argc, char *argv[])
+{
+	tMyErr err;
+	int return_code = 1;
+
+	if (noErr == (err = MyMemory_Init_v2())) {
+		BeginParseCommandLineArguments(argc, argv);
+
+		err = DoTheCommand();
+
+		if (! ParseArgsFailed) {
+			return_code = 0;
+		}
+	}
+	MyMemory_UnInit();
+
+	ToolReportAnySavedError_v2(err, argc, argv);
+
+	return return_code;
+}
 #else
-#include "CMDARGW2.i"
+
+LOCALPROC ProgramZapVars(void)
+{
+}
+
+LOCALPROC ProgramPreInit(void)
+{
+	OneWindAppPreInit();
+}
+
+LOCALFUNC tMyErr ProgramInit(void)
+{
+#ifdef Have_DEBUGLOG
+	(void) dbglog_open();
+#endif
+
+	return OneWindAppInit_v2();
+}
+
+LOCALPROC ProgramUnInit(void)
+{
+	OneWindAppUnInit();
+#ifdef Have_DEBUGLOG
+	dbglog_close();
+#endif
+}
+
+LOCALPROC ProgramMain(void)
+{
+	tMyErr err;
+
+	(void) ProgressBar_SetStage_v2(
+		"Type build options, then click here", 0);
+	do {
+		MyDocEditable = trueblnr;
+		err = WaitForInput();
+		MyDocEditable = falseblnr;
+
+		if (noErr == err) {
+			if (noErr == ProgressBar_SetStage_v2(
+				"Running, type command-period to abort\311", 0))
+			{
+				BeginParseFromTE();
+				err = DoTheCommand();
+				EndParseFromTE();
+			}
+			(void) ProgressBar_SetStage_v2(
+				"Done, ready for more options\311", 0);
+		}
+		ReportUnhandledErr(err);
+	} while (! ProgramDone);
+}
+
+int main(void)
+{
+	ProgramZapVars();
+	ProgramPreInit();
+	if (kMyErr_noErr == ProgramInit()) {
+		ProgramMain();
+	}
+	ProgramUnInit();
+
+	return 0;
+}
 #endif

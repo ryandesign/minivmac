@@ -57,7 +57,7 @@ GLOBALFUNC tMyErr ExportFromFile2HostFile2_v2(MyDir_R *d, StringPtr s)
 			L, Name)))
 		{
 		}
-		err = CombineErr(err, MyCloseFile_v2(refnum));
+		err = ErrCombine(err, MyCloseFile_v2(refnum));
 	}
 
 	return err;

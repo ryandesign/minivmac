@@ -127,6 +127,11 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		|| (gbk_apifam_osx == gbo_apifam)
 		|| (gbk_apifam_cco == gbo_apifam)
 		);
+
+	if (WantInsertIthDisk) {
+		WriteDestFileLn("#define NeedRequestIthDisk 1");
+	}
+
 	WriteCompCondBool("NeedDoMoreCommandsMsg",
 		(gbk_apifam_gtk == gbo_apifam)
 		|| (gbk_apifam_mac == gbo_apifam)

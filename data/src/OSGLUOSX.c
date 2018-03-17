@@ -1207,10 +1207,6 @@ GLOBALOSGLUFUNC tMacErr HTCEimport(tPbuf *r)
 #endif
 
 
-/* --- platform independent code can be thought of as going here --- */
-
-#include "PROGMAIN.h"
-
 /* --- control mode and internationalization --- */
 
 #include "CONTROLM.h"
@@ -3387,26 +3383,38 @@ LOCALFUNC blnr LoadMacRom(void)
 	return trueblnr; /* keep launching Mini vMac, regardless */
 }
 
-LOCALFUNC blnr LoadInitialImages(void)
+LOCALFUNC blnr Sony_InsertIth(int i)
 {
 	tMacErr err = mnvm_noErr;
-	int n = NumDrives > 9 ? 9 : NumDrives;
-	int i;
-	char s[16] = "disk?.dsk";
 
-	for (i = 1; i <= n; ++i) {
+	if ((i > 9) || ! FirstFreeDisk(nullpr)) {
+		return falseblnr;
+	} else {
+		char s[16] = "disk?.dsk";
+
 		s[4] = '0' + i;
+
 		if (! CheckSavetMacErr(InsertADiskFromNameEtc(&MyDatDirRef, s)))
 		{
 			if (mnvm_fnfErr != err) {
 				ReportStandardOpenDiskError(err);
 			}
 			/* stop on first error (including file not found) */
-			goto label_done;
+			return falseblnr;
 		}
 	}
 
-label_done:
+	return trueblnr;
+}
+
+LOCALFUNC blnr LoadInitialImages(void)
+{
+	int i;
+
+	for (i = 1; Sony_InsertIth(i); ++i) {
+		/* stop on first error (including file not found) */
+	}
+
 	return trueblnr;
 }
 
@@ -4563,6 +4571,7 @@ LOCALPROC ToggleWantFullScreen(void)
 		int NewWinState =
 			WantFullScreen ? kWinStateFullScreen : kWinStateWindowed;
 		int NewMagState = WinMagStates[NewWinState];
+
 		WinMagStates[OldWinState] = OldMagState;
 		if (kMagStateAuto != NewMagState) {
 			WantMagnify = (kMagStateMagnifgy == NewMagState);
@@ -4805,6 +4814,13 @@ LOCALPROC CheckForSavedTasks(void)
 			InsertADisk0();
 		}
 	}
+
+#if NeedRequestIthDisk
+	if (0 != RequestIthDisk) {
+		Sony_InsertIth(RequestIthDisk);
+		RequestIthDisk = 0;
+	}
+#endif
 
 	if (gWeAreActive) {
 		DoNotInBackgroundTasks();
@@ -5191,6 +5207,90 @@ LOCALPROC UnInstallOurEventHandlers(void)
 	}
 }
 
+GLOBALOSGLUPROC WaitForNextTick(void)
+{
+	OSStatus err;
+	EventRef theEvent;
+	ui3r NumChecks;
+	EventTimeout inTimeout;
+	EventTargetRef theTarget = GetEventDispatcherTarget();
+
+	inTimeout = kEventDurationNoWait;
+
+label_retry:
+	NumChecks = 0;
+	while ((NumChecks < 32) && (noErr == (err =
+		ReceiveNextEvent(0, NULL, inTimeout,
+			true, &theEvent))))
+	{
+		(void) SendEventToEventTarget(theEvent, theTarget);
+		ReleaseEvent(theEvent);
+		inTimeout = kEventDurationNoWait;
+		++NumChecks;
+	}
+
+	CheckForSavedTasks();
+
+	if (ForceMacOff) {
+		return;
+	}
+
+	if (CurSpeedStopped) {
+		DoneWithDrawingForTick();
+		inTimeout = kEventDurationForever;
+		goto label_retry;
+	}
+
+	if (ExtraTimeNotOver()) {
+		inTimeout =
+			NextTickChangeTime - GetCurrentEventTime();
+		if (inTimeout > 0.0) {
+#if 1
+			struct timespec rqt;
+			struct timespec rmt;
+
+			rqt.tv_sec = 0;
+			rqt.tv_nsec = inTimeout / kEventDurationNanosecond;
+			(void) nanosleep(&rqt, &rmt);
+			inTimeout = kEventDurationNoWait;
+			goto label_retry;
+#elif 1
+			usleep(inTimeout / kEventDurationMicrosecond);
+			inTimeout = kEventDurationNoWait;
+			goto label_retry;
+#else
+			/*
+				This has higher overhead.
+			*/
+			goto label_retry;
+#endif
+		}
+	}
+
+	if (CheckDateTime()) {
+#if MySoundEnabled
+		MySound_SecondNotify();
+#endif
+#if EnableDemoMsg
+		DemoModeSecondNotify();
+#endif
+	}
+
+	if (gWeAreActive) {
+		CheckMouseState();
+	}
+
+	OnTrueTime = TrueEmulatedTime;
+
+#if dbglog_TimeStuff
+	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
+#endif
+}
+
+/* --- platform independent code can be thought of as going here --- */
+
+#include "PROGMAIN.h"
+
 LOCALPROC ReserveAllocAll(void)
 {
 #if dbglog_HAVE
@@ -5328,86 +5428,6 @@ LOCALPROC ZapOSGLUVars(void)
 {
 	InitDrives();
 	ZapWinStateVars();
-}
-
-GLOBALOSGLUPROC WaitForNextTick(void)
-{
-	OSStatus err;
-	EventRef theEvent;
-	ui3r NumChecks;
-	EventTimeout inTimeout;
-	EventTargetRef theTarget = GetEventDispatcherTarget();
-
-	inTimeout = kEventDurationNoWait;
-
-label_retry:
-	NumChecks = 0;
-	while ((NumChecks < 32) && (noErr == (err =
-		ReceiveNextEvent(0, NULL, inTimeout,
-			true, &theEvent))))
-	{
-		(void) SendEventToEventTarget(theEvent, theTarget);
-		ReleaseEvent(theEvent);
-		inTimeout = kEventDurationNoWait;
-		++NumChecks;
-	}
-
-	CheckForSavedTasks();
-
-	if (ForceMacOff) {
-		return;
-	}
-
-	if (CurSpeedStopped) {
-		DoneWithDrawingForTick();
-		inTimeout = kEventDurationForever;
-		goto label_retry;
-	}
-
-	if (ExtraTimeNotOver()) {
-		inTimeout =
-			NextTickChangeTime - GetCurrentEventTime();
-		if (inTimeout > 0.0) {
-#if 1
-			struct timespec rqt;
-			struct timespec rmt;
-
-			rqt.tv_sec = 0;
-			rqt.tv_nsec = inTimeout / kEventDurationNanosecond;
-			(void) nanosleep(&rqt, &rmt);
-			inTimeout = kEventDurationNoWait;
-			goto label_retry;
-#elif 1
-			usleep(inTimeout / kEventDurationMicrosecond);
-			inTimeout = kEventDurationNoWait;
-			goto label_retry;
-#else
-			/*
-				This has higher overhead.
-			*/
-			goto label_retry;
-#endif
-		}
-	}
-
-	if (CheckDateTime()) {
-#if MySoundEnabled
-		MySound_SecondNotify();
-#endif
-#if EnableDemoMsg
-		DemoModeSecondNotify();
-#endif
-	}
-
-	if (gWeAreActive) {
-		CheckMouseState();
-	}
-
-	OnTrueTime = TrueEmulatedTime;
-
-#if dbglog_TimeStuff
-	dbglog_writelnNum("WaitForNextTick, OnTrueTime", OnTrueTime);
-#endif
 }
 
 /* adapted from Apple "Technical Q&A QA1061" */

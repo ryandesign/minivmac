@@ -545,8 +545,8 @@ GLOBALFUNC tMyErr MyCloseNewFile_v3(short refNum, MyDir_R *d, ps3p s,
 
 	err2 = MyOpenFileUpdtLocation_v3(refNum,
 		d, s, &new_d, new_s);
-	err = CombineErr(err0, err2);
-	err = CombineErr(err, MyCloseFile_v2(refNum));
+	err = ErrCombine(err0, err2);
+	err = ErrCombine(err, MyCloseFile_v2(refNum));
 	if (noErr != err) {
 		if (noErr == err2) {
 			(void) MyDeleteFile_v2(&new_d, new_s);

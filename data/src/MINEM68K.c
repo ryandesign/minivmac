@@ -747,11 +747,68 @@ LOCALVAR const func_pointer_t OpDispatch[kNumIKinds + 1] = {
 	0
 };
 
-LOCALPROC m68k_go_MaxCycles(void)
+#ifndef WantBreakPoint
+#define WantBreakPoint 0
+#endif
+
+#if WantBreakPoint
+
+#define BreakPointAddress 0xD198
+
+LOCALPROC BreakPointAction(void)
+{
+	dbglog_StartLine();
+	dbglog_writeCStr("breakpoint A0=");
+	dbglog_writeHex(m68k_areg(0));
+	dbglog_writeCStr(" A1=");
+	dbglog_writeHex(m68k_areg(1));
+	dbglog_writeReturn();
+}
+
+#endif
+
+LOCALINLINEPROC DecodeNextInstruction(func_pointer_t *d, ui4rr *Cycles,
+	DecOpYR *y)
 {
 	ui5r opcode;
 	DecOpR *p;
 	ui4rr MainClas;
+
+	opcode = nextiword();
+
+	p = &V_regs.disp_table[opcode];
+
+#if WantCloserCyc
+	V_regs.CurDecOp = p;
+#endif
+	MainClas = p->x.MainClas;
+	*Cycles = p->x.Cycles;
+	*y = p->y;
+#if WantDumpTable
+	DumpTable[MainClas] ++;
+#endif
+	*d = OpDispatch[MainClas];
+}
+
+LOCALINLINEPROC UnDecodeNextInstruction(ui4rr Cycles)
+{
+	V_MaxCyclesToGo += Cycles;
+
+	BackupPC();
+
+#if WantDumpTable
+	{
+		ui5r opcode = do_get_mem_word(V_pc_p);
+		DecOpR *p = &V_regs.disp_table[opcode];
+		ui4rr MainClas = p->x.MainClas;
+
+		DumpTable[MainClas] --;
+	}
+#endif
+}
+
+LOCALPROC m68k_go_MaxCycles(void)
+{
 	ui4rr Cycles;
 	DecOpYR y;
 	func_pointer_t d;
@@ -764,37 +821,36 @@ LOCALPROC m68k_go_MaxCycles(void)
 		Needed for trace flag to work.
 	*/
 
-	goto label_enter;
+	DecodeNextInstruction(&d, &Cycles, &y);
+
+	V_MaxCyclesToGo -= Cycles;
 
 	do {
 		V_regs.CurDecOpY = y;
+
+#if WantDisasm || WantBreakPoint
+		{
+			CPTR pc = m68k_getpc() - 2;
+#if WantDisasm
+			DisasmOneOrSave(pc);
+#endif
+#if WantBreakPoint
+			if (BreakPointAddress == pc) {
+				BreakPointAction();
+			}
+#endif
+		}
+#endif
+
 		d();
 
-label_enter:
-
-#if WantDisasm
-		DisasmOneOrSave(m68k_getpc());
-#endif
-
-		opcode = nextiword();
-
-		p = &V_regs.disp_table[opcode];
-
-#if WantCloserCyc
-		V_regs.CurDecOp = p;
-#endif
-		MainClas = p->x.MainClas;
-		Cycles = p->x.Cycles;
-		y = p->y;
-#if WantDumpTable
-		DumpTable[MainClas] ++;
-#endif
-		d = OpDispatch[MainClas];
+		DecodeNextInstruction(&d, &Cycles, &y);
 
 	} while (((si5rr)(V_MaxCyclesToGo -= Cycles)) > 0);
 
-	V_regs.CurDecOpY = y;
-	d();
+	/* abort instruction that have started to decode */
+
+	UnDecodeNextInstruction(Cycles);
 }
 
 FORWARDFUNC ui5r my_reg_call get_byte_ext(CPTR addr);

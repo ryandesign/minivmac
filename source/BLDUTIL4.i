@@ -127,7 +127,7 @@ LOCALFUNC tMyErr WriteMakeOutputDirectories(void)
 	tMyErr err;
 	Str255 s;
 
-	HandToPStr(hVariationName, s);
+	MyHandleToPStr_v2(hVariationName, s);
 	if (noErr == (err = MyHGetDir_v2(&BaseDirR)))
 	if (noErr == (err = FindOutPutDir()))
 	if (noErr == (err = DelMakeNamedDir_v2(&OutputDirR,
@@ -285,7 +285,7 @@ LOCALFUNC tMyErr ArchiveAndExport(void)
 	ui4r version;
 	ui5r features;
 
-	HandToPStr(hVariationName, sarc);
+	MyHandleToPStr_v2(hVariationName, sarc);
 	switch (cur_arc) {
 		case gbk_arc_sit:
 			PStrApndCStr(sarc, ".sit");

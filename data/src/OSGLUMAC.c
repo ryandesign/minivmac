@@ -3749,27 +3749,36 @@ LOCALFUNC blnr LoadMacRom(void)
 	return trueblnr; /* keep launching Mini vMac, regardless */
 }
 
-LOCALFUNC blnr LoadInitialImages(void)
+LOCALFUNC blnr Sony_InsertIth(int i)
 {
-	tMacErr err = mnvm_noErr;
-	int n = NumDrives > 9 ? 9 : NumDrives;
-	int i;
-	Str255 s;
+	if ((i > 9) || ! FirstFreeDisk(nullpr)) {
+		return falseblnr;
+	} else {
+		Str255 s;
+		tMacErr err = mnvm_noErr;
 
-	PStrFromCStr(s, "disk?.dsk");
+		PStrFromCStr(s, "disk?.dsk");
 
-	for (i = 1; i <= n; ++i) {
 		s[5] = '0' + i;
 		if (! CheckSavetMacErr(InsertADiskFromNameEtc(&MyDatDir, s))) {
 			if (mnvm_fnfErr != err) {
 				ReportStandardOpenDiskError(err);
 			}
-			/* stop on first error (including file not found) */
-			goto label_done;
+			return falseblnr;
 		}
+
+		return trueblnr;
+	}
+}
+
+LOCALFUNC blnr LoadInitialImages(void)
+{
+	int i;
+
+	for (i = 1; Sony_InsertIth(i); ++i) {
+		/* stop on first error (including file not found) */
 	}
 
-label_done:
 	return trueblnr;
 }
 
@@ -4733,6 +4742,7 @@ LOCALPROC ToggleWantFullScreen(void)
 		int NewWinState =
 			WantFullScreen ? kWinStateFullScreen : kWinStateWindowed;
 		int NewMagState = WinMagStates[NewWinState];
+
 		WinMagStates[OldWinState] = OldMagState;
 		if (kMagStateAuto != NewMagState) {
 			WantMagnify = (kMagStateMagnifgy == NewMagState);
@@ -4916,6 +4926,13 @@ LOCALPROC CheckForSavedTasks(void)
 			InsertADisk0();
 		}
 	}
+
+#if NeedRequestIthDisk
+	if (0 != RequestIthDisk) {
+		Sony_InsertIth(RequestIthDisk);
+		RequestIthDisk = 0;
+	}
+#endif
 
 	if (HaveCursorHidden != (WantCursorHidden
 		&& ! (gTrueBackgroundFlag || CurSpeedStopped)))

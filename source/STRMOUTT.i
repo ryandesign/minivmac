@@ -46,13 +46,13 @@ GLOBALFUNC tMyErr strmo_close_v2(void)
 				strmo_write0((MyPtr)*strmo_bufh, n);
 			}
 			DisposeHandle(strmo_bufh);
-			err = CombineErr(err, MyOpenFileSetEOF_v2(strmo_bufref,
+			err = ErrCombine(err, MyOpenFileSetEOF_v2(strmo_bufref,
 				strmo_bufpos));
 
 			strmo_bufh = nullpr;
 		}
 
-		err = CombineErr(err, MyCloseFile_v2(strmo_bufref));
+		err = ErrCombine(err, MyCloseFile_v2(strmo_bufref));
 		strmo_bufref = NotAfileRef;
 	}
 

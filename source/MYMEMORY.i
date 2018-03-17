@@ -33,11 +33,12 @@ GLOBALFUNC tMyErr MyHandleNew0_v2(uimr L, Handle *h)
 {
 	tMyErr err;
 	Handle h0 = NewHandle(L);
+
 	*h = h0;
 	if (NULL == h0) {
 		err = ReportMemErr();
 	} else {
-		err = noErr;
+		err = kMyErr_noErr;
 	}
 
 	return err;
@@ -108,13 +109,14 @@ GLOBALPROC TempBuffHEndUse(void)
 	/* HPurge(TempBuffH); */
 }
 
+#if HaveTempBuffH
 GLOBALFUNC tMyErr MyHandleNew_v2(uimr L, Handle *h)
 {
 	/* *h must be set to NULL if fail */
 
-	tMyErr err = MyHandleNew0_v2(L, h);
+	tMyErr err;
 
-	if (noErr == err) {
+	if (noErr == (err = MyHandleNew0_v2(L, h))) {
 		err = GetTempBuffH_v2();
 		if (noErr != err) {
 			DisposeHandle(*h);
@@ -124,8 +126,20 @@ GLOBALFUNC tMyErr MyHandleNew_v2(uimr L, Handle *h)
 
 	return err;
 }
+#else
+#define MyHandleNew_v2 MyHandleNew0_v2
+#endif
 
-GLOBALFUNC tMyErr MyHandleSetLen_v2(Handle h, uimr L)
+#define MyHandle Handle
+
+GLOBALFUNC tMyErr MyHandleDispose_v2(MyHandle h)
+{
+	DisposeHandle(h);
+
+	return kMyErr_noErr;
+}
+
+GLOBALFUNC tMyErr MyHandleSetSize_v2(MyHandle h, uimr L)
 {
 	tMyErr err;
 	uimr oldL = GetHandleSize(h);
@@ -134,112 +148,49 @@ GLOBALFUNC tMyErr MyHandleSetLen_v2(Handle h, uimr L)
 	if (GetHandleSize(h) != L) {
 		err = ReportMemErr();
 	} else {
+#if HaveTempBuffH
 		err = GetTempBuffH_v2();
 		if (noErr != err) {
 			if (oldL < L) {
 				SetHandleSize(h, oldL);
 			}
 		}
+#else
+		err = kMyErr_noErr;
+#endif
 	}
 
-	return err;
+	return ErrReportStack(err, "MyHandleSetSize_v2");
+}
+
+LOCALFUNC tMyErr MyHandleGetSize_v2(MyHandle h, uimr *L)
+{
+	*L = GetHandleSize(h);
+
+	return kMyErr_noErr;
+}
+
+LOCALPROC MyHandleLock(MyHandle h)
+{
+	HLock(h);
+}
+
+LOCALPROC MyHandleUnlock(MyHandle h)
+{
+	HUnlock(h);
+}
+
+LOCALFUNC MyPtr MyHandleP(MyHandle h)
+{
+	return ((MyPtr)*h);
+}
+
+LOCALFUNC MyPtr MyHandleOffsetToPtr(MyHandle h, uimr offset)
+{
+	return ((MyPtr)*h) + offset;
 }
 
 GLOBALFUNC tMyErr MyMemoryCheckSpare(void)
 {
 	return GetTempBuffH_v2();
 }
-
-/* utilities */
-
-LOCALPROC MyNHandleClear(Handle *h)
-{
-	if (*h != nullpr) {
-		DisposeHandle(*h);
-		*h = nullpr;
-	}
-}
-
-LOCALFUNC tMyErr MyNHandleSetLen_v2(Handle *h, uimr L)
-{
-	tMyErr err;
-
-	if (L == 0) {
-		MyNHandleClear(h);
-		err = noErr;
-	} else {
-		if (*h == nullpr) {
-			err = MyHandleNew_v2(L, h);
-		} else {
-			err = MyHandleSetLen_v2(*h, L);
-		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr MyPtrToHandle_v2(MyPtr p, uimr L, Handle *r)
-{
-	tMyErr err;
-	Handle h;
-
-	if (noErr == (err = MyHandleNew_v2(L, &h))) {
-		MyMoveBytes(p, (MyPtr)*h, L);
-		*r = h;
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr HandRangeToHandle_v2(Handle x,
-	uimr offset, uimr L, Handle *r)
-{
-	tMyErr err;
-	Handle h;
-
-	if (noErr == (err = MyHandleNew_v2(L, &h))) {
-		MyMoveBytes(((MyPtr)*x + offset), (MyPtr)*h, L);
-		*r = h;
-	}
-
-	return err;
-}
-
-#ifdef Have_STRUTILS
-LOCALFUNC tMyErr CStr2Hand_v2(char *s, Handle *r)
-{
-	/* on failure *r either set to nullpr or left unchanged */
-	return MyPtrToHandle_v2((MyPtr)s, CStrLength(s), r);
-}
-#endif
-
-#ifdef Have_STRUTILS
-LOCALFUNC tMyErr PStr2Hand_v2(ps3p s, Handle *r)
-{
-	/* on failure *r either set to nullpr or left unchanged */
-	return MyPtrToHandle_v2(PStrToPtr(s), PStrToSize(s), r);
-}
-#endif
-
-#ifdef Have_STRUTILS
-LOCALPROC HandRangeToPStr(Handle x,
-	uimr offset, uimr L, ps3p s)
-{
-	PStrFromPtr(((MyPtr)*x + offset), L, s);
-}
-#endif
-
-#ifdef Have_STRUTILS
-LOCALPROC HandRangeToCStr(Handle x,
-	uimr offset, uimr L, char *s)
-{
-	CStrFromPtr(((MyPtr)*x + offset), L, s);
-}
-#endif
-
-#ifdef Have_STRUTILS
-LOCALPROC HandToPStr(Handle x, ps3p s)
-{
-	HandRangeToPStr(x, 0, GetHandleSize(x), s);
-}
-#endif

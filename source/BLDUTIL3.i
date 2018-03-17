@@ -61,8 +61,6 @@ LOCALPROC WriteVersionStr(void)
 	WriteCStrToDestFile(kMajorVersion);
 	WriteCStrToDestFile(".");
 	WriteCStrToDestFile(kMinorVersion);
-	WriteCStrToDestFile(".");
-	WriteCStrToDestFile(kMinorSubVersion);
 }
 
 LOCALPROC WriteAppVariationStr(void)

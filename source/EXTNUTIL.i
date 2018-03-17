@@ -71,7 +71,7 @@ GLOBALFUNC tMyErr DiskGetName2Pstr_v2(tDrive Drive_No, ps3p s)
 
 	if (noErr == (err = DiskGetName_v2(Drive_No, &Pbuf_No))) {
 		err = Pbuf2PStr_v2(Pbuf_No, s);
-		err = CombineErr(err, PbufDispose_v2(Pbuf_No));
+		err = ErrCombine(err, PbufDispose_v2(Pbuf_No));
 	}
 
 	return err;
@@ -103,10 +103,10 @@ label_retry:
 						}
 					}
 				}
-				err = CombineErr(err, DiskSetRawMode_v2(SaveRawMode));
+				err = ErrCombine(err, DiskSetRawMode_v2(SaveRawMode));
 			}
 		}
-		err = CombineErr(err, DiskSetCallBack_v2(SaveCallBack));
+		err = ErrCombine(err, DiskSetCallBack_v2(SaveCallBack));
 	}
 
 	if (InsertGotOne) {
@@ -176,10 +176,10 @@ label_retry:
 					}
 					Name = NotAPbuf;
 				}
-				err = CombineErr(err, DiskSetRawMode_v2(SaveRawMode));
+				err = ErrCombine(err, DiskSetRawMode_v2(SaveRawMode));
 			}
 		}
-		err = CombineErr(err, DiskSetCallBack_v2(SaveCallBack));
+		err = ErrCombine(err, DiskSetCallBack_v2(SaveCallBack));
 	}
 
 	if (InsertGotOne) {

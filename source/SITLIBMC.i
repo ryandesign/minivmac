@@ -302,7 +302,7 @@ LOCALFUNC tMyErr sitlib_ProcessRF_v2(ui4b *f_crc)
 		{
 			sitlib_gd()->uncomp_tot += n;
 		}
-		err = CombineErr(err, MyCloseFile_v2(src_refnum));
+		err = ErrCombine(err, MyCloseFile_v2(src_refnum));
 	}
 
 	*f_crc = crc;
@@ -327,7 +327,7 @@ LOCALFUNC tMyErr sitlib_ProcessDF_v2(ui4b *f_crc)
 		{
 			sitlib_gd()->uncomp_tot += n;
 		}
-		err = CombineErr(err, MyCloseFile_v2(src_refnum));
+		err = ErrCombine(err, MyCloseFile_v2(src_refnum));
 	}
 
 	*f_crc = crc;

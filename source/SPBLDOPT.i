@@ -1088,6 +1088,29 @@ LOCALFUNC tMyErr ChooseScreenVSync(void)
 	return err;
 }
 
+/* option: Insert Ith Disk Image */
+
+LOCALVAR blnr WantInsertIthDisk;
+
+LOCALPROC ResetInsertIthDisk(void)
+{
+	WantInsertIthDisk = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsInsertIthDisk(void)
+{
+	return BooleanTryAsOptionNot("-iid", &WantInsertIthDisk);
+}
+
+LOCALFUNC tMyErr ChooseInsertIthDisk(void)
+{
+	if (nanblnr == WantInsertIthDisk) {
+		WantInsertIthDisk = falseblnr;
+	}
+
+	return noErr;
+}
+
 /* option: GrabKeysFullScreen */
 
 LOCALVAR blnr WantGrabKeysFS;
@@ -1970,6 +1993,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetWantColorImage();
 	ResetMagFctrOption();
 	ResetScreenVSync();
+	ResetInsertIthDisk();
 	ResetGrabKeysFS();
 	ResetSonySupportTags();
 	ResetSonyWantChecksumsUpdated();
@@ -2022,6 +2046,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsWantColorImageNot()))
 	if (kMyErrNoMatch == (err = TryAsMagFctrOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
+	if (kMyErrNoMatch == (err = TryAsInsertIthDisk()))
 	if (kMyErrNoMatch == (err = TryAsGrabKeysFSNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportTagsNot()))
 	if (kMyErrNoMatch == (err = TryAsSonyWantChecksumsUpdatedNot()))
@@ -2068,6 +2093,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseInitMagnify()))
 	if (noErr == (err = ChooseWantColorImage()))
 	if (noErr == (err = ChooseScreenVSync()))
+	if (noErr == (err = ChooseInsertIthDisk()))
 	if (noErr == (err = ChooseGrabKeysFS()))
 	if (noErr == (err = ChooseScreenOpts()))
 	if (noErr == (err = ChooseVidMemSize()))

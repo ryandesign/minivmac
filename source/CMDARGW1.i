@@ -1,6 +1,6 @@
 /*
 	CMDARGW1.i
-	Copyright (C) 2009 Paul C. Pratt
+	Copyright (C) 2018 Paul C. Pratt
 
 	You can redistribute this file and/or modify it under the terms
 	of version 2 of the GNU General Public License as published by
@@ -57,6 +57,19 @@ GLOBALPROC MyAlertFromCStr(char *s)
 	MyAlertFromPStr(t);
 }
 
+GLOBALPROC ReportUnhandledErr(tMyErr err)
+{
+	if ((kMyErr_noErr == err)
+		|| (kMyErrReported == err)
+		|| (kMyErrUsrCancel == err)
+		|| (kMyErrUsrAbort == err))
+	{
+		/* nothing more needed */
+	} else if (noErr != err) {
+		MyAlertFromCStr(GetTextForSavedSysErr_v2(err));
+	}
+}
+
 LOCALPROC GetVersLongStr(StringPtr s)
 {
 	ui3p p;
@@ -81,7 +94,710 @@ LOCALPROC ShowAboutMessage(void)
 	MyAlertFromIdPStr(rAboutAlert, s);
 }
 
+#define eWrongMachine 1
+#define eSmallSize    2
+#define eNoMemory     3
+#define eNoSpaceCut   4
+#define eNoCut        5
+#define eNoCopy       6
+#define eExceedPaste  7
+#define eNoSpacePaste 8
+#define eNoWindow     9
+#define eExceedChar   10
+#define eNoPaste      11
+
+#define kErrStrings 128 /* error string list */
+
+LOCALPROC AlertUser(short error)
+{
+	Str255 message;
+
+	GetIndString(message, kErrStrings, error);
+	MyAlertFromPStr(message);
+}
+
+LOCALFUNC tMyErr DeskScrapFromHandle(Handle h)
+{
+	tMyErr err;
+
+	if (noErr != (err = ZeroScrap())) {
+		goto l_exit;
+	}
+
+	if (noErr != (err = MyMemoryCheckSpare())) {
+		goto l_exit;
+	}
+
+	HLock(h);
+
+	err = PutScrap(
+			GetHandleSize(h),
+			FOUR_CHAR_CODE('TEXT'),
+			*h);
+
+	HUnlock(h);
+
+l_exit:
+	return err;
+}
+
+LOCALFUNC tMyErr DeskScrapToHand(Handle *h)
+{
+	tMyErr err;
+	long L;
+	SInt32 offset;
+	Handle h0 = nullpr;
+
+	L = GetScrap(NULL,
+		FOUR_CHAR_CODE('TEXT'),
+		&offset);
+	if (L < 0) {
+		err = MyHandleNew_v2(0, &h0);
+	} else {
+		if (noErr == (err = MyHandleNew_v2(L, &h0))) {
+			L = GetScrap(h0,
+				FOUR_CHAR_CODE('TEXT'),
+				&offset);
+			if (L < 0) {
+				err = kMyErrSysUnknown;
+			} else {
+				err = noErr;
+			}
+		}
+	}
+
+	if (noErr == err) {
+		*h = h0;
+	} else {
+		if (nullpr != h0) {
+			DisposeHandle(h0);
+		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr HTCtoHand(Handle *h)
+{
+	tMyErr err;
+	tPbuf Pbuf_No;
+	uimr L;
+	Handle h0 = nullpr;
+
+	if (noErr == (err = HTCImport_v2(&Pbuf_No))) {
+		if (noErr == (err = PBufGetSize_v2(Pbuf_No, &L))) {
+			if (noErr == (err = MyHandleNew_v2(L, &h0))) {
+				HLock(h0);
+				err = PbufTransfer_v2(*h0,
+					Pbuf_No, 0, L, falseblnr);
+				HUnlock(h0);
+			}
+		}
+
+		err = ErrCombine(err, PbufDispose_v2(Pbuf_No));
+	}
+
+	if (noErr == err) {
+		*h = h0;
+	} else {
+		if (nullpr != h0) {
+			DisposeHandle(h0);
+		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr HTCfromHandRange(Handle h, uimr offset, uimr L)
+{
+	tMyErr err;
+	tPbuf Pbuf_No;
+
+	if (noErr != (err = PbufNew_v2(L, &Pbuf_No))) {
+		/* fail */
+	} else {
+		HLock(h);
+
+		err = PbufTransfer_v2(*h + offset,
+			Pbuf_No, 0, L, trueblnr);
+
+		HUnlock(h);
+
+		if (noErr == err) {
+			err = HTCExport_v2(Pbuf_No);
+		}
+
+		if (noErr != PbufDispose_v2(Pbuf_No)) {
+			/* oops */
+		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr SaferTENew(const Rect *destRect, const Rect *viewRect,
+	TEHandle *hTE)
+{
+	tMyErr err;
+	TEHandle hTE0;
+
+	if (noErr == (err = MyMemoryCheckSpare())) {
+		hTE0 = TENew(destRect, viewRect);
+		if (NULL == hTE0) {
+			err = kMyErrSysUnknown;
+		} else {
+			if (noErr == (err = MyMemoryCheckSpare())) {
+				*hTE = hTE0;
+			} else {
+				TEDispose(hTE0);
+			}
+		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr SaferNewControl(WindowPtr theWindow,
+	const Rect *boundsRect, ConstStr255Param title, Boolean visible,
+	short value, short min, short max,
+	short procID, long refCon, ControlRef *theControl)
+{
+	tMyErr err;
+	ControlRef theControl0;
+
+	if (noErr == (err = MyMemoryCheckSpare())) {
+		theControl0 = NewControl(theWindow, boundsRect,
+			title, visible, value, min, max, procID, refCon);
+		if (NULL == theControl0) {
+			err = kMyErrSysUnknown;
+		} else {
+			if (noErr == (err = MyMemoryCheckSpare())) {
+				*theControl = theControl0;
+			} else {
+				DisposeControl(theControl0);
+			}
+		}
+	}
+
+	return err;
+}
+
+
+LOCALVAR TEHandle MyDocTE = NULL;
+LOCALVAR ControlRef MyDocVScroll = NULL;
+
+#define kMaxTELength 32000
+
+#define kCrChar 13
+#define kDelChar 8
+
+static pascal void MyDocTrackAction(ControlRef control,
+	ControlPartCode part)
+{
+	short amount;
+	short NewV;
+	short OldV = GetControlValue(control);
+	short max = GetControlMaximum(control);
+
+	if ((part != 0) && (control == MyDocVScroll)) {
+		/* if it was actually in the control */
+
+		switch (part) {
+			case kControlUpButtonPart:
+			case kControlDownButtonPart: /* one line */
+				amount = (*MyDocTE)->lineHeight;
+				break;
+			case kControlPageUpPart: /* one page */
+			case kControlPageDownPart:
+				amount = ((*MyDocTE)->viewRect.bottom
+					- (*MyDocTE)->viewRect.top);
+				break;
+		}
+
+		if ((part == kControlDownButtonPart)
+			|| (part == kControlPageDownPart))
+		{
+			NewV = OldV + amount;
+		} else {
+			NewV = OldV - amount;
+		}
+
+		if (NewV < 0) {
+			NewV = 0;
+		} else if (NewV > max) {
+			NewV = max;
+		}
+
+		if (NewV != OldV) {
+			SetControlValue(control, NewV);
+			TEScroll(0, OldV - NewV, MyDocTE);
+		}
+	}
+}
+
+LOCALPROC MyDocAdjustTE(void)
+/*
+	Adjust MyDocTE to match state of MyDocVScroll
+*/
+{
+	Rect rView = (*MyDocTE)->viewRect;
+	short curpix = rView.top - (*MyDocTE)->destRect.top;
+	short OldV = GetControlValue(MyDocVScroll);
+
+	if (OldV != curpix) {
+		TEScroll(0, curpix - OldV, MyDocTE);
+	}
+}
+
+LOCALPROC MyDocCheckScrollPosMax(void)
+/*
+	Adjust MyDocVScroll to match state of MyDocTE
+*/
+{
+	short n;
+	short VMax;
+	Rect rView = (*MyDocTE)->viewRect;
+	/* short sheight = rView.bottom - rView.top; */
+	short curpix = rView.top - (*MyDocTE)->destRect.top;
+
+	n = (*MyDocTE)->nLines;
+#if 0
+	if ((*MyDocTE)->teLength > 0) {
+		if (((char *)(*((*MyDocTE)->hText)))[(*MyDocTE)->teLength - 1]
+			== chrCR)
+		{
+			n += 1;
+		}
+	}
+#endif
+	VMax = n * (*MyDocTE)->lineHeight;
+	VMax -= /* sheight */ (*MyDocTE)->lineHeight;
+	if (VMax < 0) {
+		VMax = 0;
+	}
+
+	if (VMax != GetControlMaximum(MyDocVScroll)) {
+		SetControlMaximum(MyDocVScroll, VMax);
+	}
+	if (curpix != GetControlValue(MyDocVScroll)) {
+		SetControlValue(MyDocVScroll, curpix);
+	}
+}
+
+LOCALVAR long LastLoopTick = 0;
+
+static pascal void MyDocClikLoop(void)
+{
+	RgnHandle region;
+	Point curP;
+	short d;
+	long MinD;
+	Rect View = (*MyDocTE)->viewRect;
+	ControlPartCode part = 0;
+
+	GetMouse(&curP);
+
+	if (curP.v > View.bottom) {
+		part = kControlDownButtonPart;
+		d = curP.v - View.bottom;
+	} else if (curP.v < View.top) {
+		part = kControlUpButtonPart;
+		d = View.top - curP.v;
+	}
+
+	if (0 != part) {
+		long CurrentTick = LMGetTicks();
+		unsigned long TickDelta = CurrentTick - LastLoopTick;
+
+		if (d < 4) {
+			MinD = 16;
+		} else if (d < 16) {
+			MinD = 8;
+		} else  if (d < 32) {
+			MinD = 4;
+		} else {
+			MinD = 2;
+		}
+
+		if (TickDelta >= MinD) {
+			LastLoopTick = CurrentTick;
+
+			region = NewRgn();
+			if (NULL != region) {
+				GetClip(region); /* save clip */
+				/* My_GetWindowBounds(MyMainWind, &r); */
+				ClipRect(&qd.thePort->portRect);
+
+				MyDocTrackAction(MyDocVScroll, part);
+
+				SetClip(region); /* restore clip */
+				DisposeRgn(region);
+			}
+		}
+	}
+}
+
+LOCALPROC MyDocScrollToSel(void)
+{
+	short curlinetop;
+	short curlinebot;
+	short ScrollPos;
+	short curpix;
+	short sheight;
+	Rect rView;
+	short i;
+	long dV;
+	short VMax;
+	short s = (*MyDocTE)->selStart;
+
+	i = (*MyDocTE)->nLines - 1;
+	if (i >= 0) {
+		while ((*MyDocTE)->lineStarts[i] > s) {
+			--i;
+		}
+	} else {
+		i = 0;
+	}
+
+	curlinetop = i * (*MyDocTE)->lineHeight;
+	curlinebot = curlinetop + (*MyDocTE)->lineHeight;
+	rView = (*MyDocTE)->viewRect;
+	curpix = rView.top - (*MyDocTE)->destRect.top;
+	sheight = rView.bottom - rView.top;
+
+	VMax = GetControlMaximum(MyDocVScroll);
+
+	if (curlinetop < curpix || curlinebot > curpix + sheight) {
+		ScrollPos = (curlinetop + curlinebot) / 2 - (sheight / 2);
+		if (ScrollPos < 0) {
+			ScrollPos = 0;
+		} else if (ScrollPos > VMax) {
+			ScrollPos = VMax;
+		}
+		dV = curpix - ScrollPos;
+		if (0 != dV) {
+			TEScroll(/*dh*/ 0, dV, MyDocTE);
+			SetControlValue(MyDocVScroll, ScrollPos);
+		}
+	}
+}
+
+LOCALPROC MyDocAfterEditScroll(void)
+{
+	MyDocCheckScrollPosMax();
+	MyDocScrollToSel();
+}
+
+LOCALVAR short MyDocUndoSelStart = 0;
+LOCALVAR short MyDocUndoSelEnd = 0;
+LOCALVAR Handle MyDocUndoH = nullpr;
+
+LOCALFUNC tMyErr MyDocSelToUndoH(void)
+{
+	tMyErr err;
+	Handle texth = (Handle) TEGetText(MyDocTE);
+	short curselstart = (*MyDocTE)->selStart;
+	short curselend = (*MyDocTE)->selEnd;
+	uimr L = curselend - curselstart;
+
+	err = NHandleFromHandPart(&MyDocUndoH,
+		texth, curselstart, L);
+
+	return err;
+}
+
+LOCALFUNC tMyErr MyDocUndoHPrePendSel(void)
+{
+	tMyErr err;
+	Handle texth = (Handle) TEGetText(MyDocTE);
+	short curselstart = (*MyDocTE)->selStart;
+	short curselend = (*MyDocTE)->selEnd;
+	uimr OldL = GetHandleSize(MyDocUndoH);
+	uimr L = curselend - curselstart;
+
+	if (noErr == (err = NHandleSetSize_v2(&MyDocUndoH, OldL + L))) {
+		MyMoveBytes((MyPtr)*MyDocUndoH, ((MyPtr)*MyDocUndoH + L), OldL);
+		MyMoveBytes(((MyPtr)*texth + curselstart),
+			(MyPtr)*MyDocUndoH, L);
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr MyDocPasteHand(Handle h)
+{
+	tMyErr err;
+	blnr UndoSpclCase = falseblnr;
+	short curselstart = (*MyDocTE)->selStart;
+	short curselend = (*MyDocTE)->selEnd;
+	uimr OldL = curselend - curselstart;
+	uimr NewL = (nullpr == h) ? 0 : GetHandleSize(h);
+
+	if (((*MyDocTE)->teLength - OldL + NewL)
+		> kMaxTELength)
+	{
+		AlertUser(eExceedPaste);
+		err = kMyErrReported;
+		goto l_exit;
+	}
+
+	if (noErr != (err = MyMemoryCheckSpare())) {
+		/* fail */
+		AlertUser(eNoSpacePaste);
+		err = kMyErrReported;
+		goto l_exit;
+	}
+
+	if (curselend == MyDocUndoSelEnd) {
+		if (0 != NewL) {
+			if ((1 == NewL) && (0 == OldL)) {
+				/* insert at end of new text */
+				MyDocUndoSelEnd = curselstart + NewL;
+				UndoSpclCase = trueblnr;
+			}
+		} else {
+			if (1 == OldL) {
+				MyDocUndoSelEnd = curselstart;
+				if ((curselstart >= MyDocUndoSelStart))
+				{
+					/* delete from end of new text */
+				} else {
+					/* delete more of old text */
+					MyDocUndoHPrePendSel();
+					MyDocUndoSelStart = MyDocUndoSelEnd;
+				}
+				UndoSpclCase = trueblnr;
+			}
+		}
+	}
+
+	if (! UndoSpclCase) {
+		(void) MyDocSelToUndoH();
+		MyDocUndoSelStart = curselstart;
+		MyDocUndoSelEnd = curselstart + NewL;
+	}
+
+	if (0 == NewL) {
+		TEDelete(MyDocTE);
+	} else
+	{
+#if 0
+		/*
+			would rather not have locked handle
+			while memory may be allocated
+		*/
+
+		TEDelete(MyDocTE);
+		HLock(h);
+		TEInsert(*h, NewL, MyDocTE);
+		HUnlock(h);
+#endif
+
+		UInt16 SaveTEScrpLength = LMGetTEScrpLength();
+		Handle SaveTEScrpHandle = LMGetTEScrpHandle();
+
+		LMSetTEScrpHandle(h);
+		LMSetTEScrpLength(NewL);
+
+		TEPaste(MyDocTE);
+
+		LMSetTEScrpHandle(SaveTEScrpHandle);
+		LMSetTEScrpLength(SaveTEScrpLength);
+	}
+
+	MyDocAfterEditScroll();
+
+l_exit:
+	return err;
+}
+
+LOCALFUNC tMyErr MyDocEditClear(void)
+{
+	return MyDocPasteHand(nullpr);
+}
+
+LOCALPROC MyDocBackSpace(void)
+{
+	short curselstart = (*MyDocTE)->selStart;
+	short curselend = (*MyDocTE)->selEnd;
+
+	if (curselstart != curselend) {
+		(void) MyDocEditClear();
+	} else
+	if (0 == curselstart)
+	{
+		/* ignore */
+	} else
+	{
+		TESetSelect(curselstart - 1, curselend, MyDocTE);
+		(void) MyDocEditClear();
+	}
+}
+
+LOCALVAR Handle MyDocInsertBuff = nullpr;
+
+LOCALPROC MyDocPasteChar(char key)
+{
+	if (noErr == NHandleSetSize_v2(&MyDocInsertBuff, 1)) {
+		(*MyDocInsertBuff)[0] = key;
+		(void) MyDocPasteHand(MyDocInsertBuff);
+	}
+}
+
+LOCALPROC MyDocControlChar(char key)
+{
+	TEKey(key, MyDocTE);
+	MyDocAfterEditScroll();
+}
+
+LOCALFUNC blnr CharIsTypeable(char key)
+{
+	blnr v;
+
+	if (((ui3r)key) >= 0x20) {
+		v = (0x7F != key);
+	} else {
+		v = (0x09 == key) || (0x0D == key);
+	}
+
+	return v;
+}
+
 LOCALVAR blnr AbortRequested = falseblnr;
+LOCALVAR blnr WaitingForInput = falseblnr;
+LOCALVAR blnr MyDocEditable = falseblnr;
+
+LOCALPROC MyDocKeyDown(char key)
+{
+	if (CharIsTypeable(key)) {
+		if (MyDocEditable) {
+			MyDocPasteChar(key);
+		}
+	} else {
+		switch (key) {
+			case 0x08: /* backspace */
+				if (MyDocEditable) {
+					MyDocBackSpace();
+				}
+				break;
+			case 0x1B: /* escape */
+				AbortRequested = trueblnr;
+				break;
+			case 0x1C: /* left arrow */
+			case 0x1D: /* right arrow */
+			case 0x1E: /* up arrow */
+			case 0x1F: /* down arrow */
+				MyDocControlChar(key);
+				break;
+		}
+	}
+}
+
+LOCALPROC MyDocEditUndo(void)
+{
+	Handle h;
+
+	TESetSelect(MyDocUndoSelStart, MyDocUndoSelEnd, MyDocTE);
+
+	h = MyDocUndoH;
+	MyDocUndoH = nullpr;
+	MyDocUndoSelStart = 0;
+	MyDocUndoSelEnd = 0;
+
+	(void) MyDocPasteHand(h);
+
+	if (h != nullpr) {
+		DisposeHandle(h);
+	}
+
+	TESetSelect(MyDocUndoSelStart, MyDocUndoSelEnd, MyDocTE);
+}
+
+LOCALPROC MyDocSelectAll(void)
+{
+	TESetSelect(0, 32767, MyDocTE);
+}
+
+LOCALPROC MyDocSelectEnd(void)
+{
+	TESetSelect(32767, 32767, MyDocTE);
+}
+
+LOCALPROC MyDocReplaceEntireWithHand(Handle h)
+{
+	MyDocSelectAll();
+	(void) MyDocPasteHand(h);
+}
+
+LOCALFUNC tMyErr MyDocSelToHand(Handle *h)
+{
+	tMyErr err;
+	Handle texth = (Handle) TEGetText(MyDocTE);
+	uimr L = (*MyDocTE)->selEnd - (*MyDocTE)->selStart;
+
+	err = MyHandleNewFromHandPart(h, texth,
+		(*MyDocTE)->selStart, L);
+
+	return err;
+}
+
+LOCALFUNC tMyErr MyDocEditCopy(void)
+{
+	tMyErr err;
+	Handle h;
+
+	if (noErr == (err = MyDocSelToHand(&h))) {
+		err = DeskScrapFromHandle(h);
+		DisposeHandle(h);
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr MyDocEditPaste(void)
+{
+	tMyErr err;
+	Handle h;
+
+	if (noErr == (err = DeskScrapToHand(&h))) {
+		err = MyDocPasteHand(h);
+		DisposeHandle(h);
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr MyDocEditHostCopy(void)
+{
+	uimr L = (*MyDocTE)->selEnd - (*MyDocTE)->selStart;
+
+	return HTCfromHandRange(TEGetText(MyDocTE),
+		(*MyDocTE)->selStart, L);
+}
+
+LOCALFUNC tMyErr MyDocEditHostPaste(void)
+{
+	tMyErr err;
+	Handle h;
+
+	if (noErr == (err = HTCtoHand(&h))) {
+		err = MyDocPasteHand(h);
+		DisposeHandle(h);
+	}
+
+	return err;
+}
+
+LOCALPROC MyDocClearAll(void)
+{
+	if (0 != (*MyDocTE)->teLength) {
+		MyDocSelectAll();
+		(void) MyDocEditClear();
+	}
+}
+
+#define My_GetWindowBounds(window, r) \
+	GetPortBounds(GetWindowPort(window), (r))
 
 LOCALVAR WindowRef MyMainWind = NULL;
 
@@ -123,7 +839,7 @@ LOCALFUNC tMyErr Create_input_r_v2(MyDir_R *d, ps3p s, input_r *r)
 	tMyErr err;
 	Handle Name;
 
-	if (noErr == (err = PStr2Hand_v2(s, &Name))) {
+	if (noErr == (err = MyHandleNewFromPStr(&Name, s))) {
 		r->d = *d;
 		r->Name = Name;
 	}
@@ -272,10 +988,24 @@ LOCALPROC DoGetOldFile(void)
 			err = ProcessInputFile_v2(&d, s);
 		}
 
-		(void) CheckSysErr(err);
+		ReportUnhandledErr(err);
 	}
 }
 #endif
+
+GLOBALVAR OSErr SavedSysErr = noErr;
+
+GLOBALPROC vCheckSysErr(OSErr theErr)
+{
+	if (noErr != theErr) {
+		if (noErr == SavedSysErr) {
+#if 0
+			Debugger();
+#endif
+			SavedSysErr = theErr;
+		}
+	}
+}
 
 #if WantRealInputFile
 LOCALFUNC tMyErr MyAppFilesInit_v2(void)
@@ -411,7 +1141,7 @@ label_fail:
 				;
 			}
 		}
-		err = CombineErr(err, AEDisposeDesc(&docList));
+		err = ErrCombine(err, AEDisposeDesc(&docList));
 	}
 
 	vCheckSysErr(err);
@@ -494,9 +1224,6 @@ LOCALFUNC tMyErr InstallAppleEventHandlers(void)
 	return err;
 }
 
-
-#define My_GetWindowBounds(window, r) \
-	GetPortBounds(GetWindowPort(window), (r))
 
 #if WantRealInputFile
 static pascal OSErr GlobalTrackingHandler(short message,
@@ -643,16 +1370,20 @@ LOCALVAR EventRecord curevent;
 #define kAppleAboutItem 1
 
 #define kFileGoItem 1
-#define kFileImportItem 3
-#define kFileExportItem 4
-#define kFileQuitItem 6
+#define kFileAbortItem 2
+#define kFileImportItem 4
+#define kFileExportItem 5
+#define kFileQuitItem 7
 
 #define kEditUndoItem 1
 #define kEditCutItem 3
 #define kEditCopyItem 4
 #define kEditPasteItem 5
 #define kEditClearItem 6
-#define kEditSelectAllItem 8
+#define kEditSelectAllItem 7
+#define kEditHostCutItem 9
+#define kEditHostCopyItem 10
+#define kEditHostPasteItem 11
 
 #define kTextMargin 2
 
@@ -661,13 +1392,6 @@ LOCALVAR EventRecord curevent;
 #define BorderWidth 1
 
 #define kMinDocDim 64
-
-#define kCrChar 13
-#define kDelChar 8
-
-#define kButtonScroll 4
-
-#define kMaxTELength 32000
 
 #define kSysEnvironsVersion 1
 
@@ -680,25 +1404,6 @@ LOCALVAR EventRecord curevent;
 #define kExtremePos (32767 - 1)
 	/* required to address an old region bug */
 
-#define kTESlop 1024
-
-#define eWrongMachine 1
-#define eSmallSize    2
-#define eNoMemory     3
-#define eNoSpaceCut   4
-#define eNoCut        5
-#define eNoCopy       6
-#define eExceedPaste  7
-#define eNoSpacePaste 8
-#define eNoWindow     9
-#define eExceedChar   10
-#define eNoPaste      11
-
-#define kErrStrings 128 /* error string list */
-
-
-LOCALVAR TEHandle MyDocTE = NULL;
-LOCALVAR ControlRef MyDocVScroll = NULL;
 
 
 LOCALVAR Boolean gBackgroundFlag = falseblnr;
@@ -744,53 +1449,6 @@ LOCALFUNC unsigned long GetSleep(void)
 		}
 	}
 	return sleep;
-}
-
-LOCALPROC CommonAction(ControlRef control, short *amount)
-{
-	short value;
-	short max;
-
-	value = GetControlValue(control); /* get current value */
-	max = GetControlMaximum(control); /* and maximum value */
-	*amount = value - *amount;
-	if (*amount < 0) {
-		*amount = 0;
-	} else if (*amount > max) {
-		*amount = max;
-	}
-	SetControlValue(control, *amount);
-	*amount = value - *amount; /* calculate the real change */
-}
-
-static pascal void VActionProc(ControlRef control, ControlPartCode part)
-{
-	short amount;
-	TEPtr te;
-
-	if (part != 0) { /* if it was actually in the control */
-		te = *MyDocTE;
-		switch (part) {
-			case kControlUpButtonPart:
-			case kControlDownButtonPart: /* one line */
-				amount = 1;
-				break;
-			case kControlPageUpPart: /* one page */
-			case kControlPageDownPart:
-				amount = (te->viewRect.bottom - te->viewRect.top)
-					/ te->lineHeight;
-				break;
-		}
-		if ((part == kControlDownButtonPart)
-			|| (part == kControlPageDownPart))
-		{
-			amount = - amount; /* reverse direction for a downer */
-		}
-		CommonAction(control, &amount);
-		if (amount != 0) {
-			TEScroll(0, amount * te->lineHeight, MyDocTE);
-		}
-	}
 }
 
 
@@ -933,133 +1591,22 @@ LOCALPROC MyMainWindowUnInit(void)
 	}
 }
 
-LOCALPROC AlertUser(short error)
-{
-	Str255 message;
-
-	GetIndString(message, kErrStrings, error);
-	MyAlertFromPStr(message);
-}
-
 GLOBALPROC AppReportAnySavedError(void)
 {
 	if ((SavedSysErr != noErr) || AbortRequested) {
 		if (AbortRequested) {
-			MyAlertFromCStr("Aborted!");
-		} else if ((kMyErrReported == SavedSysErr)
-			|| (kMyErrUsrCancel == SavedSysErr))
-		{
-			/* nothing more needed */
-		} else if (SavedSysErr != noErr) {
-			MyAlertFromCStr(GetTextForSavedSysErr_v2(SavedSysErr));
+			MyAlertFromCStr("Aborted");
+		} else {
+			ReportUnhandledErr(SavedSysErr);
 		}
 		SavedSysErr = noErr;
 		AbortRequested = falseblnr;
+#if AutoQuitIfStartUpFile
 		SawStartUpFile = falseblnr;
+#endif
 #if WantRealInputFile
 		ClearInputA();
 #endif
-	}
-}
-
-LOCALPROC AdjustTE(void)
-{
-	TEPtr te;
-
-	te = *MyDocTE;
-	TEScroll(
-		0,
-		(te->viewRect.top - te->destRect.top) -
-			(GetControlValue(MyDocVScroll) *
-			te->lineHeight),
-		MyDocTE);
-}
-
-LOCALPROC AdjustV(Boolean canRedraw)
-{
-	short value;
-	short lines;
-	short max;
-	short oldValue, oldMax;
-	TEPtr te;
-
-	oldValue = GetControlValue(MyDocVScroll);
-	oldMax = GetControlMaximum(MyDocVScroll);
-	te = *MyDocTE; /* point to TERec for convenience */
-
-	lines = te->nLines;
-	/*
-		since nLines is not right if the last character is a return,
-		check for that case
-	*/
-	if (*(*te->hText + te->teLength - 1) == kCrChar) {
-		lines += 1;
-	}
-	max = lines - ((te->viewRect.bottom - te->viewRect.top) /
-		te->lineHeight);
-
-	if (max < 0) {
-		max = 0;
-	}
-	SetControlMaximum(MyDocVScroll, max);
-
-	/*
-		Must deref. after SetControlMaximum since, technically, it
-		could draw and therefore move memory. This is why we do not
-		just do it once at the beginning.
-	*/
-	te = *MyDocTE;
-	value = (te->viewRect.top - te->destRect.top) / te->lineHeight;
-
-	if (value < 0) {
-		value = 0;
-	} else if (value > max) {
-		value = max;
-	}
-
-	SetControlValue(MyDocVScroll, value);
-
-	if (canRedraw || (max != oldMax) || (value != oldValue)) {
-		ShowControl(MyDocVScroll);
-	}
-}
-
-LOCALPROC AdjustScrollValues(Boolean canRedraw)
-{
-	AdjustV(canRedraw);
-}
-
-LOCALPROC AdjustScrollbars(void)
-{
-	/*
-		First, turn visibility of scrollbars off so we won't get
-		unwanted redrawing
-	*/
-	My_SetControlVisibilityFalse(MyDocVScroll); /* turn them off */
-	AdjustScrollValues(falseblnr);
-		/* fool with max and current value */
-	/*
-		Now, restore visibility in case we never had to ShowControl
-		during adjustment
-	*/
-	My_SetControlVisibilityTrue(MyDocVScroll); /* turn them on */
-}
-
-extern pascal void PascalClikLoop(void); /* export to ASM code */
-
-pascal void PascalClikLoop(void)
-{
-	RgnHandle region;
-	Rect r;
-
-	region = NewRgn();
-	if (NULL != region) {
-		GetClip(region); /* save clip */
-		My_GetWindowBounds(MyMainWind, &r);
-		ClipRect(&r);
-		AdjustScrollValues(true); /* pass true for canRedraw */
-		SetClip(region); /* restore clip */
-		DisposeRgn(region);
 	}
 }
 
@@ -1116,73 +1663,160 @@ LOCALPROC AdjustCursor(Point mouse, RgnHandle region)
 	}
 }
 
+LOCALPROC DoActivate(Boolean becomingActive)
+{
+	MyWindRectsR r;
+
+	GetMyWindRects(&r);
+
+	if (becomingActive) {
+#if 1
+		TEActivate(MyDocTE);
+#else
+		/*
+			This doesn't seem to work on Mac 128K with old system.
+
+			since we don't want TEActivate to draw a selection in
+			an area where we're going to erase and redraw, we'll clip
+			out the update region before calling it.
+		*/
+		RgnHandle tempRgn;
+		RgnHandle clipRgn;
+
+		tempRgn = NewRgn();
+		if (NULL != tempRgn) {
+			clipRgn = NewRgn();
+			if (NULL != clipRgn) {
+				GetLocalUpdateRgn(tempRgn);
+					/* get localized update region */
+				GetClip(clipRgn);
+				DiffRgn(clipRgn, tempRgn, tempRgn);
+					/* subtract updateRgn from clipRgn */
+				SetClip(tempRgn);
+
+				TEActivate(MyDocTE);
+
+				SetClip(clipRgn); /* restore the full-blown clipRgn */
+				DisposeRgn(clipRgn);
+			}
+			DisposeRgn(tempRgn);
+		}
+#endif
+
+		/* the controls must be redrawn on activation: */
+		My_SetControlVisibilityTrue(MyDocVScroll);
+		InvalRect(&r.rVScroll);
+
+		InvalRect(&r.rGrow);
+	} else {
+		TEDeactivate(MyDocTE);
+		/* the controls must be hidden on deactivation: */
+		HideControl(MyDocVScroll);
+		/* the growbox should be changed immediately on deactivation: */
+		MyDrawGrowIcon(MyMainWind, &r.rGrow);
+	}
+}
+
+LOCALVAR short MyResFile;
+LOCALVAR blnr MyWindActive = falseblnr;
+
+LOCALPROC FixUpMyState(void)
+/*
+	Repair state after system has
+	done unknown things
+*/
+{
+	blnr b = gBackgroundFlag ? falseblnr
+		: (MyMainWind == FrontWindow());
+
+	if (MyResFile != LMGetCurMap()) {
+		UseResFile(MyResFile);
+	}
+	if (GetWindowPort(MyMainWind) != qd.thePort) {
+		SetPortWindowPort(MyMainWind);
+	}
+	if (b != MyWindActive) {
+		MyWindActive = b;
+		DoActivate(b);
+	}
+}
+
 LOCALPROC DoIdle(void)
 {
-	WindowRef window;
+	FixUpMyState();
 
-	window = FrontWindow();
-	if (window == MyMainWind) {
+	if (MyWindActive) {
 		TEIdle(MyDocTE);
+	}
+}
+
+LOCALVAR blnr MyDocHaveHTC = falseblnr;
+
+
+LOCALPROC EnableDisableMenuItem(
+	MenuRef   theMenu,
+	short     item,
+	blnr v)
+{
+	if (v) {
+		EnableMenuItem(theMenu, item);
+	} else {
+		DisableMenuItem(theMenu, item);
 	}
 }
 
 LOCALPROC DoUpdateMenus(void)
 {
-	WindowRef window;
 	MenuRef menu;
-	long offset;
-	Boolean undo;
+	TEHandle te;
 	Boolean cutCopyClear;
 	Boolean paste;
-	TEHandle te;
+	long offset;
 
-	window = FrontWindow();
+	menu = GetMenuHandle(kFileMenu);
+	EnableDisableMenuItem(menu, kFileGoItem,
+		MyWindActive && WaitingForInput);
+	EnableDisableMenuItem(menu, kFileImportItem,
+		MyWindActive && MyDocEditable);
+
+	if (MyWindActive) {
+		te = MyDocTE;
+		cutCopyClear = ((*te)->selStart < (*te)->selEnd);
+		/*
+			Cut, Copy, and Clear is enabled for app.
+			windows with selections
+		*/
+
+		paste = (GetScrap(nil, 'TEXT', &offset) > 0);
+			/*
+				if there's any text in the clipboard,
+				paste is enabled
+			*/
+	}
 
 	menu = GetMenuHandle(kEditMenu);
-	undo = false;
-	cutCopyClear = false;
-	paste = false;
-	if (IsDAWindow(window)) {
-		undo = true; /* all editing is enabled for DA windows */
-		cutCopyClear = true;
-		paste = true;
-	} else if (window == MyMainWind) {
-		te = MyDocTE;
-		if ((*te)->selStart < (*te)->selEnd) {
-			cutCopyClear = true;
-			/*
-				Cut, Copy, and Clear is enabled for app.
-				windows with selections
-			*/
-		}
-		if (GetScrap(nil, 'TEXT', &offset)) {
-			paste = true;
-				/*
-					if there's any text in the clipboard,
-					paste is enabled
-				*/
-		}
-	}
-	if (undo) {
-		EnableMenuItem(menu, kEditUndoItem);
-	} else {
-		DisableMenuItem(menu, kEditUndoItem);
-	}
-	if (cutCopyClear) {
+	EnableDisableMenuItem(menu, kEditUndoItem,
+		(! MyWindActive) || MyDocEditable);
+	EnableDisableMenuItem(menu, kEditCopyItem,
+		(! MyWindActive) || cutCopyClear);
+	if ((! MyWindActive) || (cutCopyClear && MyDocEditable)) {
 		EnableMenuItem(menu, kEditCutItem);
-		EnableMenuItem(menu, kEditCopyItem);
 		EnableMenuItem(menu, kEditClearItem);
 	} else {
 		DisableMenuItem(menu, kEditCutItem);
-		DisableMenuItem(menu, kEditCopyItem);
 		DisableMenuItem(menu, kEditClearItem);
 	}
-	if (paste) {
-		EnableMenuItem(menu, kEditPasteItem);
-	} else {
-		DisableMenuItem(menu, kEditPasteItem);
-	}
+	EnableDisableMenuItem(menu, kEditPasteItem,
+		(! MyWindActive) || (paste && MyDocEditable));
+
 	EnableMenuItem(menu, kEditSelectAllItem);
+
+	EnableDisableMenuItem(menu, kEditHostCutItem,
+		MyWindActive && cutCopyClear && MyDocHaveHTC && MyDocEditable);
+	EnableDisableMenuItem(menu, kEditHostCopyItem,
+		MyWindActive && cutCopyClear && MyDocHaveHTC);
+	EnableDisableMenuItem(menu, kEditHostPasteItem,
+		MyWindActive && MyDocHaveHTC && MyDocEditable);
 }
 
 LOCALPROC DoQuit(void)
@@ -1193,6 +1827,10 @@ LOCALPROC DoQuit(void)
 	*/
 	ProgramDone = trueblnr;
 }
+
+#ifndef NewTextCreator
+#define NewTextCreator 'R*ch'
+#endif
 
 LOCALPROC DoSaveNewFile(void)
 {
@@ -1209,7 +1847,7 @@ LOCALPROC DoSaveNewFile(void)
 		UpdateProgressBar();
 		err = CreateOpenNewFile_v2((StringPtr)"\pOutput File",
 			(StringPtr)"\p",
-			'GrBl' /* creator (ExportFl) */,
+			NewTextCreator,
 			'TEXT' /* type */,
 			&d, s, &refNum);
 		if (noErr == err) {
@@ -1225,13 +1863,12 @@ LOCALPROC DoSaveNewFile(void)
 		}
 	}
 
-	err = CombineErr(err, ProgressBar_SetStage_v2((noErr == err)
+	err = ErrCombine(err, ProgressBar_SetStage_v2((noErr == err)
 		? "File written."
 			: "Failed to write file.",
 		0));
-	if (kMyErrUsrCancel != err) {
-		(void) CheckSysErr(err);
-	}
+	UpdateProgressBar();
+	ReportUnhandledErr(err);
 }
 
 LOCALPROC DecodeSysMenus(long theMenuItem)
@@ -1240,14 +1877,7 @@ LOCALPROC DecodeSysMenus(long theMenuItem)
 	short menuItem;
 	short daRefNum;
 	Str255 daName;
-	OSErr saveErr;
-	TEHandle te;
-	WindowRef window;
-	Handle aHandle;
-	long oldSize;
-	long newSize;
 
-	window = FrontWindow();
 	menuID = HiWord(theMenuItem); /* use macros for efficiency to... */
 	menuItem = LoWord(theMenuItem);
 		/* get menu item number and menu number */
@@ -1263,16 +1893,19 @@ LOCALPROC DecodeSysMenus(long theMenuItem)
 					GetMenuItemText(GetMenuHandle(kAppleMenu),
 						menuItem, daName);
 					daRefNum = OpenDeskAcc(daName);
+					FixUpMyState();
 					break;
 			}
 			break;
 		case kFileMenu:
 			switch (menuItem) {
 				case kFileGoItem:
-					ParseHandle = (Handle) TEGetText(MyDocTE);
-					ParseRangeStart = 0;
-					ParseRangeStop = (*MyDocTE)->teLength;
-					GoRequested = trueblnr;
+					if (WaitingForInput && ! GoRequested) {
+						GoRequested = trueblnr;
+					}
+					break;
+				case kFileAbortItem:
+					AbortRequested = trueblnr;
 					break;
 				case kFileImportItem:
 #if WantRealInputFile
@@ -1290,92 +1923,50 @@ LOCALPROC DecodeSysMenus(long theMenuItem)
 		case kEditMenu:
 			/* call SystemEdit for DA editing & MultiFinder */
 			if (! SystemEdit(menuItem - 1)) {
-				te = MyDocTE;
 				switch (menuItem) {
+					case kEditUndoItem:
+						MyDocEditUndo();
+						break;
 					case kEditCutItem:
-						if (ZeroScrap() == noErr) {
-#if 0
-	/*
-		not on 64k ROM, our memory managment scheme should take
-		care of this anyway
-	*/
-							long total;
-							long contig;
-							PurgeSpace(&total, &contig);
-							if ((*MyDocTE)->selEnd
-								- (*MyDocTE)->selStart + kTESlop
-								> contig)
-							{
-								AlertUser(eNoSpaceCut);
-							} else
-#endif
-							{
-								TECut(MyDocTE);
-								if (TEToScrap() != noErr) {
-									AlertUser(eNoCut);
-									ZeroScrap();
-								}
-							}
-						}
+						(void) MyDocEditCopy();
+						(void) MyDocEditClear();
 						break;
 					case kEditCopyItem:
-						if (ZeroScrap() == noErr) {
-							TECopy(MyDocTE);
-								/* after copying, export the TE scrap */
-							if (TEToScrap() != noErr) {
-								AlertUser(eNoCopy);
-								ZeroScrap();
-							}
-						}
+						(void) MyDocEditCopy();
+						MyDocScrollToSel();
 						break;
 					case kEditPasteItem:
-						/* import the TE scrap before pasting */
-						if (TEFromScrap() == noErr) {
-							if (TEGetScrapLength()
-								+ ((*MyDocTE)->teLength
-								- ((*MyDocTE)->selEnd
-								- (*MyDocTE)->selStart))
-								> kMaxTELength)
-							{
-								AlertUser(eExceedPaste);
-							} else {
-								aHandle = (Handle) TEGetText(MyDocTE);
-								oldSize = GetHandleSize(aHandle);
-								newSize = oldSize + TEGetScrapLength()
-									+ kTESlop;
-								SetHandleSize(aHandle, newSize);
-								saveErr = MemError();
-								SetHandleSize(aHandle, oldSize);
-								if (saveErr != noErr) {
-									AlertUser(eNoSpacePaste);
-								} else {
-									TEPaste(MyDocTE);
-								}
-							}
-						} else {
-							AlertUser(eNoPaste);
-						}
+						(void) MyDocEditPaste();
 						break;
 					case kEditClearItem:
-						TEDelete(MyDocTE);
+						(void) MyDocEditClear();
 						break;
 					case kEditSelectAllItem:
-						TESetSelect(0, 32767, MyDocTE);
+						MyDocSelectAll();
+						break;
+					case kEditHostCutItem:
+						if (MyDocHaveHTC) {
+							(void) MyDocEditHostCopy();
+							(void) MyDocEditClear();
+						}
+						break;
+					case kEditHostCopyItem:
+						if (MyDocHaveHTC) {
+							(void) MyDocEditHostCopy();
+							MyDocScrollToSel();
+						}
+						break;
+					case kEditHostPasteItem:
+						if (MyDocHaveHTC) {
+							(void) MyDocEditHostPaste();
+						}
 						break;
 				}
-				AdjustScrollbars();
-				AdjustTE();
 			}
 			break;
 	}
 	HiliteMenu(0);
 		/* unhighlight what MenuSelect (or MenuKey) hilited */
-}
-
-static pascal void MyTrackActionProc(ControlRef control,
-	ControlPartCode part)
-{
-	VActionProc(control, part);
 }
 
 LOCALPROC DoContentClick(void)
@@ -1401,16 +1992,20 @@ LOCALPROC DoContentClick(void)
 			/* extend if Shift is down */
 		TEClick(mouse, shiftDown, MyDocTE);
 	} else if (PtInRect(mouse, &r.rProgBar)) {
-#if WantRealInputFile
-		ProgressBar_InvertAll();
-		while (Button()) {
+		if (WaitingForInput && ! GoRequested) {
+			ProgressBar_InvertAll();
+			GoRequested = trueblnr;
+			while (Button()) {
+				GetMouse(&mouse);
+				if (GoRequested != PtInRect(mouse, &r.rProgBar)) {
+					GoRequested = ! GoRequested;
+					ProgressBar_InvertAll();
+				}
+			}
+			if (GoRequested) {
+				ProgressBar_InvertAll();
+			}
 		}
-		ProgressBar_InvertAll();
-		ParseHandle = (Handle) TEGetText(MyDocTE);
-		ParseRangeStart = 0;
-		ParseRangeStop = (*MyDocTE)->teLength;
-		GoRequested = trueblnr;
-#endif
 	} else {
 		part = FindControl(mouse, MyMainWind, &control);
 		switch (part) {
@@ -1418,7 +2013,7 @@ LOCALPROC DoContentClick(void)
 				break;
 			case kControlIndicatorPart:
 				value = GetControlValue(control);
-				part = TrackControl(control, mouse, nil);
+				part = TrackControl(control, mouse, NULL);
 				if (part != 0) {
 					value -= GetControlValue(control);
 					/*
@@ -1426,13 +2021,12 @@ LOCALPROC DoContentClick(void)
 						if value changed, scroll
 					*/
 					if (value != 0) {
-						TEScroll(0, value * (*MyDocTE)->lineHeight,
-							MyDocTE);
+						TEScroll(0, value, MyDocTE);
 					}
 				}
 				break;
 			default: /* they clicked in an arrow, so track & scroll */
-				(void) TrackControl(control, mouse, MyTrackActionProc);
+				(void) TrackControl(control, mouse, MyDocTrackAction);
 				break;
 		}
 	}
@@ -1457,10 +2051,8 @@ LOCALPROC ResizeMyWindow(void)
 	(*MyDocTE)->destRect.right = r.rContent.right;
 	TECalText(MyDocTE);
 
-	AdjustScrollValues(false);
-	/* fool with max and current value */
+	MyDocCheckScrollPosMax();
 
-	AdjustTE();
 	ProgressBar_Move(&r.rProgBar);
 
 	/*
@@ -1516,76 +2108,6 @@ LOCALPROC DoZoomWindow(short which_part)
 	ResizeMyWindow();
 }
 
-LOCALPROC DoKeyDown(void)
-{
-	char key;
-
-	key = curevent.message & charCodeMask;
-	/*
-		we have a char. for our window; see if we are still below
-		TextEdit's limit for the number of characters (but deletes
-		are always rad)
-	*/
-	if (key == kDelChar ||
-		(*MyDocTE)->teLength
-			- ((*MyDocTE)->selEnd - (*MyDocTE)->selStart) + 1
-		< kMaxTELength)
-	{
-		TEKey(key, MyDocTE);
-		AdjustScrollbars();
-		AdjustTE();
-	} else {
-		AlertUser(eExceedChar);
-	}
-}
-
-LOCALPROC DoActivate(Boolean becomingActive)
-{
-	RgnHandle tempRgn;
-	RgnHandle clipRgn;
-	MyWindRectsR r;
-
-	GetMyWindRects(&r);
-
-	if (becomingActive) {
-		/*
-			since we don't want TEActivate to draw a selection in
-			an area where we're going to erase and redraw, we'll clip
-			out the update region before calling it.
-		*/
-		tempRgn = NewRgn();
-		if (NULL != tempRgn) {
-			clipRgn = NewRgn();
-			if (NULL != clipRgn) {
-				GetLocalUpdateRgn(tempRgn);
-					/* get localized update region */
-				GetClip(clipRgn);
-				DiffRgn(clipRgn, tempRgn, tempRgn);
-					/* subtract updateRgn from clipRgn */
-				SetClip(tempRgn);
-
-				TEActivate(MyDocTE);
-
-				SetClip(clipRgn); /* restore the full-blown clipRgn */
-				DisposeRgn(clipRgn);
-			}
-			DisposeRgn(tempRgn);
-		}
-
-		/* the controls must be redrawn on activation: */
-		My_SetControlVisibilityTrue(MyDocVScroll);
-		InvalRect(&r.rVScroll);
-
-		InvalRect(&r.rGrow);
-	} else {
-		TEDeactivate(MyDocTE);
-		/* the controls must be hidden on deactivation: */
-		HideControl(MyDocVScroll);
-		/* the growbox should be changed immediately on deactivation: */
-		MyDrawGrowIcon(MyMainWind, &r.rGrow);
-	}
-}
-
 LOCALVAR WindowRef MacEventWind;
 
 LOCALPROC inMenuBarAction(void)
@@ -1597,6 +2119,7 @@ LOCALPROC inMenuBarAction(void)
 LOCALPROC inSysWindowAction(void)
 {
 	SystemClick(&curevent, MacEventWind);
+	FixUpMyState();
 }
 
 LOCALPROC inContentAction(void)
@@ -1621,6 +2144,7 @@ LOCALPROC inDragAction(void)
 	InsetRect(&r, 4, 4);
 
 	DragWindow(MacEventWind, curevent.where, &r);
+	FixUpMyState();
 }
 
 LOCALPROC inGoAwayAction(void)
@@ -1630,6 +2154,7 @@ LOCALPROC inGoAwayAction(void)
 			DoQuit();
 		} else {
 			CloseAWindow(MacEventWind);
+			FixUpMyState();
 		}
 	}
 }
@@ -1687,18 +2212,26 @@ LOCALPROC ProcessMouseDown(void)
 LOCALPROC ProcessKeyDown(void)
 {
 	/* check for menukey equivalents */
-	char key;
-	key = curevent.message & charCodeMask;
+	ui3r key = curevent.message & charCodeMask;
+
 	if (curevent.modifiers & cmdKey) { /* Command key down */
 		if (curevent.what == keyDown) {
 			DoUpdateMenus();
 				/* enable/disable/check menu items properly */
-			DecodeSysMenus(MenuKey(key));
+
+			if ((0x8D == key) || (0x82 == key)) {
+				/* not working as desired before System 7 */
+				DecodeSysMenus(((ui5r)kEditMenu << 16)
+					| kEditHostCopyItem);
+			} else {
+				DecodeSysMenus(MenuKey(key));
+			}
 		}
 	} else {
 		WindowRef window = FrontWindow();
+
 		if (window == MyMainWind) {
-			DoKeyDown();
+			MyDocKeyDown(key);
 		}
 	}
 }
@@ -1727,10 +2260,13 @@ LOCALPROC ProcessUpdateEvt(void)
 
 LOCALPROC ProcessActivateEvt(void)
 {
+#if 0
 	WindowRef window = (WindowRef) curevent.message;
 	if (window == MyMainWind) {
 		DoActivate((curevent.modifiers & activeFlag) != 0);
 	}
+#endif
+	FixUpMyState();
 }
 
 LOCALPROC ProcessDiskEvt(void)
@@ -1742,6 +2278,7 @@ LOCALPROC ProcessDiskEvt(void)
 		ResumeSystemCursor();
 		(void) DIBadMount(where, curevent.message);
 	}
+	FixUpMyState();
 }
 
 LOCALPROC ProcessHighLevelEvt(void)
@@ -1754,11 +2291,12 @@ LOCALPROC ProcessHighLevelEvt(void)
 		if (errAEEventNotHandled == err) {
 			/* ignore */
 		} else {
-			vCheckSysErr(err);
+			ReportUnhandledErr(err);
 		}
 	} else {
-		vCheckSysErr(errAENotAppleEvent);
+		ReportUnhandledErr(errAENotAppleEvent);
 	}
+	FixUpMyState();
 }
 
 LOCALPROC ProcessMacEvent(void)
@@ -1795,12 +2333,7 @@ LOCALPROC ProcessMacEvent(void)
 				case kSuspendResumeMessage:
 					/* suspend/resume is also an activate/deactivate */
 					gBackgroundFlag = ! TestBit(curevent.message, 0);
-					{
-						WindowRef window = FrontWindow();
-						if (window == MyMainWind) {
-							DoActivate(! gBackgroundFlag);
-						}
-					}
+					FixUpMyState();
 					break;
 			}
 			break;
@@ -1814,69 +2347,23 @@ LOCALFUNC tMyErr SaferNewWindow(Ptr wStorage, const Rect *boundsRect,
 	tMyErr err;
 	WindowPtr w0;
 
-	if (noErr == (err = MyMemoryCheckSpare())) {
-		w0 = NewWindow(wStorage, boundsRect, title,
-			visible, theProc, behind, goAwayFlag, refCon);
-		if (NULL == w0) {
-			err = kMyErrSysUnknown;
+	if (noErr != (err = MyMemoryCheckSpare())) {
+		/* fail */
+	} else
+	if (NULL == (w0 = NewWindow(wStorage, boundsRect, title,
+		visible, theProc, behind, goAwayFlag, refCon)))
+	{
+		err = kMyErrSysUnknown;
+	} else
+	if (noErr != (err = MyMemoryCheckSpare())) {
+		if (NULL == wStorage) {
+			DisposeWindow(w0);
 		} else {
-			if (noErr == (err = MyMemoryCheckSpare())) {
-				*w = w0;
-			} else {
-				if (NULL == wStorage) {
-					DisposeWindow(w0);
-				} else {
-					CloseAWindow(w0);
-				}
-			}
+			CloseWindow(w0);
 		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr SaferTENew(const Rect *destRect, const Rect *viewRect,
-	TEHandle *hTE)
-{
-	tMyErr err;
-	TEHandle hTE0;
-
-	if (noErr == (err = MyMemoryCheckSpare())) {
-		hTE0 = TENew(destRect, viewRect);
-		if (NULL == hTE0) {
-			err = kMyErrSysUnknown;
-		} else {
-			if (noErr == (err = MyMemoryCheckSpare())) {
-				*hTE = hTE0;
-			} else {
-				TEDispose(hTE0);
-			}
-		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr SaferNewControl(WindowPtr theWindow,
-	const Rect *boundsRect, ConstStr255Param title, Boolean visible,
-	short value, short min, short max,
-	short procID, long refCon, ControlRef *theControl)
-{
-	tMyErr err;
-	ControlRef theControl0;
-
-	if (noErr == (err = MyMemoryCheckSpare())) {
-		theControl0 = NewControl(theWindow, boundsRect,
-			title, visible, value, min, max, procID, refCon);
-		if (NULL == theControl0) {
-			err = kMyErrSysUnknown;
-		} else {
-			if (noErr == (err = MyMemoryCheckSpare())) {
-				*theControl = theControl0;
-			} else {
-				DisposeControl(theControl0);
-			}
-		}
+	} else
+	{
+		*w = w0;
 	}
 
 	return err;
@@ -1919,15 +2406,17 @@ LOCALFUNC tMyErr MyMainWindowInit(void)
 		if (noErr == (err = SaferTENew(
 			&destRect, &r.rContent, &MyDocTE)))
 		{
+#if 0
 #if Support64kROM
 			if (! Have64kROM())
 #endif
 			{
 				TEAutoView(true, MyDocTE);
 			}
+#endif
 			p = (ui5b *)&AsmClikLoop[1];
 			*p++ = (ui5b)(*MyDocTE)->clickLoop;
-			*p = (ui5b)PascalClikLoop;
+			*p = (ui5b)MyDocClikLoop;
 			if (NULL == (*MyDocTE)->clickLoop) {
 				(*MyDocTE)->clickLoop = (TEClickLoopUPP)&AsmClikLoop[8];
 			} else {
@@ -1946,12 +2435,7 @@ LOCALFUNC tMyErr MyMainWindowInit(void)
 		if (noErr == err)
 		{
 			/* good? - adjust & draw the controls, draw the window */
-			/*
-				false to AdjustScrollValues means musn't redraw;
-				technically, of course, the window is hidden so it
-				wouldn't matter whether we called ShowControl or not.
-			*/
-			AdjustScrollValues(false);
+			MyDocCheckScrollPosMax();
 			ShowWindow(MyMainWind);
 		}
 	}
@@ -1989,12 +2473,12 @@ LOCALFUNC tMyErr MyMenusInit(void)
 }
 
 
-LOCALFUNC tMyErr MyFileRead2Hand(MyDir_R *d, StringPtr s, Handle *r)
+LOCALFUNC tMyErr MyFileRead2Hand(MyDir_R *d, StringPtr s, MyHandle *r)
 {
 	tMyErr err;
 	short refNum;
 	uimr n;
-	Handle h = nullpr;
+	MyHandle h = nullpr;
 
 	if (noErr == (err = MyOpenOldFileRead_v2(d, s, &refNum))) {
 		if (noErr == (err = MyOpenFileGetEOF_v2(refNum, &n))) {
@@ -2002,18 +2486,17 @@ LOCALFUNC tMyErr MyFileRead2Hand(MyDir_R *d, StringPtr s, Handle *r)
 				HLock(h);
 				err = MyReadBytes_v2(refNum, *h, n);
 				HUnlock(h);
-
-				if (noErr == err) {
-					*r = h;
-					h = nullpr;
-				}
 			}
 		}
-		err = CombineErr(err, MyCloseFile_v2(refNum));
+		err = ErrCombine(err, MyCloseFile_v2(refNum));
 	}
 
-	if (nullpr != h) {
-		DisposeHandle(h);
+	if (noErr == err) {
+		*r = h;
+	} else {
+		if (nullpr != h) {
+			(void) MyHandleDispose_v2(h);
+		}
 	}
 
 	return err;
@@ -2026,7 +2509,6 @@ LOCALPROC MyDoNextEvents(blnr busy)
 
 	cursorRgn = NewRgn();
 		/* we'll pass WNE an empty region the 1st time thru */
-	UpdateProgressBar();
 	do {
 		if (HaveWaitNextEventAvail()) {
 			gotEvent = WaitNextEvent(everyEvent, &curevent,
@@ -2051,49 +2533,121 @@ LOCALPROC MyDoNextEvents(blnr busy)
 	DisposeRgn(cursorRgn);
 }
 
-LOCALPROC WaitForInput(void)
+LOCALVAR long LastCheckTick;
+LOCALVAR long LastBusyTogTick;
+LOCALVAR long LastCheckEventTick;
+
+LOCALFUNC tMyErr WaitForInput(void)
 {
+	tMyErr err;
 	input_r InputCur;
+
+	WaitingForInput = trueblnr;
+	ProgressBar_WantBusyMark = falseblnr;
+
+	UpdateProgressBar();
 
 	do {
 		AppReportAnySavedError();
-		if (PopFromInputA(&InputCur)) {
-			tMyErr err;
+		if (MyDocEditable && PopFromInputA(&InputCur)) {
 			Str255 s;
-			Handle h = nullpr;
+			Handle h;
 
-			HandToPStr(InputCur.Name, s);
-			if (noErr == (err = MyFileRead2Hand(&InputCur.d, s, &h))) {
-				TESetSelect(0, 32767, MyDocTE);
-				TEDelete(MyDocTE);
-				HLock(h);
-				TEInsert(*h, GetHandleSize(h), MyDocTE);
-				HUnlock(h);
-				AdjustScrollbars();
-				AdjustTE();
-				ParseHandle = (Handle) TEGetText(MyDocTE);
-				ParseRangeStart = 0;
-				ParseRangeStop = (*MyDocTE)->teLength;
+			(void) MyHandleToPStr_v2(InputCur.Name, s);
+			if (kMyErr_noErr == (err =
+				MyFileRead2Hand(&InputCur.d, s, &h)))
+			{
+				MyDocReplaceEntireWithHand(h);
 				GoRequested = trueblnr;
-			}
 
-			if (nullpr != h) {
 				DisposeHandle(h);
 			}
 
 			DisposeInputR(&InputCur);
 
-			(void) CheckSysErr(err);
+			ReportUnhandledErr(err);
 		} else
-#if AutoQuitIfStartUpFile
-		if (SawStartUpFile) {
-			ProgramDone = trueblnr;
-		} else
-#endif
 		{
 			MyDoNextEvents(falseblnr);
 		}
-	} while ((! ProgramDone) && (! GoRequested));
+	} while ((! ProgramDone) && (! GoRequested) && (! AbortRequested));
+
+	if (! GoRequested) {
+		if (AbortRequested) {
+			AbortRequested = falseblnr;
+		}
+		err = kMyErrUsrCancel;
+	} else
+	{
+		ParseHandle = (Handle) TEGetText(MyDocTE);
+		ParseRangeStart = 0;
+		ParseRangeStop = (*MyDocTE)->teLength;
+
+#if AutoQuitIfStartUpFile
+		if (SawStartUpFile) {
+			ProgramDone = trueblnr;
+		}
+#endif
+
+		GoRequested = falseblnr;
+		err = kMyErr_noErr;
+	}
+
+	WaitingForInput = falseblnr;
+
+	LastCheckTick = LMGetTicks();
+	LastBusyTogTick = LastCheckTick;
+	LastCheckEventTick = LastCheckTick;
+
+	return ErrReportStack(err, "WaitForInput");
+}
+
+LOCALFUNC tMyErr GetEntireInputAsHandle_v2(Handle *r)
+{
+	/* warning : assumes (! The_arg_end) */
+	return MyHandleNewFromHandPart(r, ParseHandle, ParseRangeStart,
+		ParseRangeStop - ParseRangeStart);
+}
+
+LOCALFUNC tMyErr WaitForInputText(char *prompt, MyHandle *h)
+{
+	tMyErr err;
+
+	if (noErr == (err =
+		ProgressBar_SetStage_v2(prompt, 0)))
+	{
+		MyDocEditable = trueblnr;
+		err = WaitForInput();
+		MyDocEditable = falseblnr;
+
+		if (noErr == err) {
+			if (noErr == ProgressBar_SetStage_v2(
+				"Running, type command-period to abort\311", 0))
+			{
+				err = GetEntireInputAsHandle_v2(h);
+			}
+		}
+	}
+
+	return ErrReportStack(err, "WaitForInputText");
+}
+
+LOCALFUNC tMyErr ShowOutPutText(char *prompt, MyHandle h)
+{
+	tMyErr err;
+
+	MyDocReplaceEntireWithHand(h);
+	MyDocSelectAll();
+	MyDocScrollToSel();
+
+	if (noErr == (err =
+		ProgressBar_SetStage_v2(prompt, 0)))
+	{
+		if (noErr == (err = WaitForInput())) {
+		}
+	}
+
+	return ErrReportStack(err, "ShowOutPutText");
 }
 
 LOCALFUNC blnr EventPendingQuickCheck(void)
@@ -2122,41 +2676,44 @@ LOCALFUNC blnr EventPendingQuickCheck(void)
 	return falseblnr;
 }
 
-LOCALVAR long NextCheckTick;
-LOCALVAR long NextCheckEventTick;
-
 LOCALPROC CheckAbort0_v2(void)
 {
 	blnr ShouldGetEvent;
 	long CurrentTick = LMGetTicks();
-	NextCheckTick = CurrentTick + 6;
 
-	if (gBackgroundFlag) {
-		ShouldGetEvent = trueblnr;
+	LastCheckTick = CurrentTick;
+
+	if ((CurrentTick - LastBusyTogTick) >= 12) {
+		ProgressBar_WantBusyMark = ! ProgressBar_WantBusyMark;
+		LastBusyTogTick = CurrentTick;
+	}
+
+	UpdateProgressBar();
+
+	if ((CurrentTick - LastCheckEventTick)
+		>= (gBackgroundFlag ? 6 : 60))
+	{
 		/*
 			while in background, relinquish processor
-			ten times a second
-		*/
-	} else if (CurrentTick > NextCheckEventTick) {
-		ShouldGetEvent = trueblnr;
-		/*
-			while in foreground, relinquish processor
+			ten times a second. while in foreground,
 			once a second at minimum
 		*/
+		ShouldGetEvent = trueblnr;
 	} else {
 		ShouldGetEvent = EventPendingQuickCheck();
 	}
+
 	if (ShouldGetEvent) {
-		NextCheckEventTick = CurrentTick + 60;
+		LastCheckEventTick = CurrentTick;
 		MyDoNextEvents(trueblnr);
-	} else {
-		UpdateProgressBar();
 	}
 }
 
+#define TimeForCheckAbort() ((LMGetTicks() - LastCheckTick) >= 6)
+
 GLOBALFUNC tMyErr CheckAbortRequested(void)
 {
-	if (LMGetTicks() >= NextCheckTick) {
+	if (TimeForCheckAbort()) {
 		CheckAbort0_v2();
 	}
 
@@ -2198,8 +2755,11 @@ GLOBALFUNC tMyErr OneWindAppInit_v2(void)
 	}
 #endif
 
-	NextCheckTick = LMGetTicks();
-	NextCheckEventTick = NextCheckTick;
+	LastCheckTick = LMGetTicks();
+	LastBusyTogTick = LastCheckTick;
+	LastCheckEventTick = LastCheckTick;
+
+	MyResFile = LMGetCurMap();
 
 #if ! Support64kROM
 	if (Have64kROM()) {
@@ -2217,9 +2777,11 @@ GLOBALFUNC tMyErr OneWindAppInit_v2(void)
 		if (noErr == (err = MyMainWindowInit()))
 		{
 #if WantRealInputFile
-			(void) CheckSysErr(MyAppFilesInit_v2());
+			vCheckSysErr(MyAppFilesInit_v2());
 			PrepareForDragging();
 #endif
+
+			MyDocHaveHTC = (noErr == HaveHTCExtenstion_v2());
 		}
 	}
 
@@ -2236,6 +2798,37 @@ LOCALPROC OneWindAppUnInit(void)
 	MyMainWindowUnInit();
 	CloseAllExtraWindows();
 	MyMemory_UnInit();
+}
+
+LOCALVAR MyHandle SyntaxErrH = nullpr;
+LOCALVAR uimr SyntaxErrOffsetA;
+LOCALVAR uimr SyntaxErrOffsetB;
+
+LOCALFUNC tMyErr SetSyntaxErrCStr(char *s,
+	uimr offsetA, uimr offsetB)
+{
+	tMyErr err;
+
+#if DebugCheck
+	dbglog_writeln(s);
+#endif
+	if (noErr == (err = NHandleFromCStr(&SyntaxErrH, s))) {
+		SyntaxErrOffsetA = offsetA;
+		SyntaxErrOffsetB = offsetB;
+		err = kMyErrSyntaxErr;
+	}
+
+	return err;
+}
+
+LOCALPROC ShowSyntaxError(void)
+{
+	MyPStr t;
+
+	TESetSelect(SyntaxErrOffsetA, SyntaxErrOffsetB, MyDocTE);
+	(void) MyHandleToPStr_v2(SyntaxErrH, t);
+	MyAlertFromPStr(t);
+	MyDocScrollToSel();
 }
 
 LOCALVAR uimr ParseCharIndex;
@@ -2372,22 +2965,22 @@ LOCALPROC GetCurArgAsCStr(char *s, uimr MaxN)
 	if (L > MaxN) {
 		L = MaxN;
 	}
-	HandRangeToCStr(ParseHandle, The_arg_range_start,
+	MyHandlePartToCStr(ParseHandle, The_arg_range_start,
 		L, s);
 }
 
 LOCALPROC GetCurArgAsPStr(ps3p s)
 {
 	/* warning : assumes (! The_arg_end) */
-	HandRangeToPStr(ParseHandle, The_arg_range_start,
+	MyHandlePartToPStr(ParseHandle, The_arg_range_start,
 		The_arg_range_size, s);
 }
 
 LOCALFUNC tMyErr GetCurArgAsHandle_v2(Handle *r)
 {
 	/* warning : assumes (! The_arg_end) */
-	return HandRangeToHandle_v2(ParseHandle, The_arg_range_start,
-		The_arg_range_size, r);
+	return MyHandleNewFromHandPart(r,
+		ParseHandle, The_arg_range_start, The_arg_range_size);
 }
 
 LOCALPROC BeginParseFromTE(void)
@@ -2407,6 +3000,6 @@ LOCALPROC EndParseFromTE(void)
 		TESetSelect(The_arg_range_start,
 			The_arg_range_start + The_arg_range_size, MyDocTE);
 	} else {
-		TESetSelect(0, 32767, MyDocTE);
+		MyDocSelectAll();
 	}
 }

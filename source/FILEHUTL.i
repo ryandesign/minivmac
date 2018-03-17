@@ -71,9 +71,9 @@ GLOBALFUNC tMyErr MyCatInfoCopyRF_v2(CInfoPBRec *cPB,
 					dst_refnum, n)))
 				{
 				}
-				err = CombineErr(err, MyCloseFile_v2(dst_refnum));
+				err = ErrCombine(err, MyCloseFile_v2(dst_refnum));
 			}
-			err = CombineErr(err, MyCloseFile_v2(src_refnum));
+			err = ErrCombine(err, MyCloseFile_v2(src_refnum));
 		}
 	}
 
@@ -99,9 +99,9 @@ GLOBALFUNC tMyErr MyCatInfoCopyDF_v2(CInfoPBRec *cPB,
 					dst_refnum, n)))
 				{
 				}
-				err = CombineErr(err, MyCloseFile_v2(dst_refnum));
+				err = ErrCombine(err, MyCloseFile_v2(dst_refnum));
 			}
-			err = CombineErr(err, MyCloseFile_v2(src_refnum));
+			err = ErrCombine(err, MyCloseFile_v2(src_refnum));
 		}
 	}
 

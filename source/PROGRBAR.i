@@ -29,6 +29,9 @@ LOCALVAR blnr ProgressBar_wantnewtext;
 LOCALVAR WindowRef ProgressBar_Wind = NULL;
 LOCALVAR Rect ProgressBar_Rect;
 
+LOCALVAR blnr ProgressBar_DrawBusyMark = falseblnr;
+LOCALVAR blnr ProgressBar_WantBusyMark = falseblnr;
+
 GLOBALFUNC tMyErr ProgressBar_Init_v2(WindowRef w, Rect *r)
 {
 	tMyErr err;
@@ -75,6 +78,18 @@ GLOBALFUNC tMyErr ProgressBar_SetTextCStr_v2(char *s)
 	return err;
 }
 
+GLOBALFUNC tMyErr ProgressBar_SetTextPStr_v2(ps3p s)
+{
+	tMyErr err;
+
+	if (noErr == (err = xbh_SetFromPStr(&ProgressBar_newtext, s)))
+	{
+		ProgressBar_wantnewtext = trueblnr;
+	}
+
+	return err;
+}
+
 #ifndef ProgressBarPartWind
 #define ProgressBarPartWind 0
 #endif
@@ -114,16 +129,12 @@ LOCALPROC ProgressBar_DrawText(void)
 	}
 }
 
-GLOBALPROC UpdateProgressBar(void)
+LOCALFUNC short ProgressBar_FindWidth(void)
 {
-	short OldWidth;
-	blnr wChanged;
-	GrafPtr saveport;
-	Rect tempRect;
+	short v;
 
-	OldWidth = ProgressBarWidth;
 	if (0 == ProgressBarMax) {
-		ProgressBarWidth = 0;
+		v = 0;
 	} else {
 		fp_extended fV;
 		fp_extended fProgressBarMax;
@@ -135,11 +146,25 @@ GLOBALPROC UpdateProgressBar(void)
 			&fw);
 		fp_div(&fProgressBarMax, &fV);
 		fp_mul(&fw, &fV);
-		ProgressBarWidth = fp_toSi5rDown(&fV);
+		v = fp_toSi5rDown(&fV);
 	}
-	wChanged = (ProgressBarWidth != OldWidth);
 
-	if (ProgressBar_wantnewtext || wChanged) {
+	return v;
+}
+
+GLOBALPROC UpdateProgressBar(void)
+{
+	GrafPtr saveport;
+	Rect tempRect;
+	short NewWidth = ProgressBar_FindWidth();
+	blnr wChanged = (NewWidth != ProgressBarWidth);
+	blnr BusyMarkChanged =
+		(ProgressBar_DrawBusyMark != ProgressBar_WantBusyMark);
+
+	if (ProgressBar_wantnewtext
+		|| wChanged
+		|| BusyMarkChanged)
+	{
 		GetPort(&saveport);
 		SetPortWindowPort(ProgressBar_Wind);
 		if (ProgressBar_wantnewtext) {
@@ -150,19 +175,32 @@ GLOBALPROC UpdateProgressBar(void)
 			ProgressBar_SwapText();
 			ProgressBar_DrawText();
 			TextMode(SavetxMode);
+
 			ProgressBar_wantnewtext = falseblnr;
 		}
 		if (wChanged) {
 			tempRect = ProgressBar_Rect;
-			if (ProgressBarWidth < OldWidth) {
-				tempRect.right = tempRect.left + OldWidth;
-				tempRect.left += ProgressBarWidth;
+			if (NewWidth < ProgressBarWidth) {
+				tempRect.right = tempRect.left + ProgressBarWidth;
+				tempRect.left += NewWidth;
 			} else {
 				/* normal case */
-				tempRect.right = tempRect.left + ProgressBarWidth;
-				tempRect.left += OldWidth;
+				tempRect.right = tempRect.left + NewWidth;
+				tempRect.left += ProgressBarWidth;
 			}
 			InvertRect(&tempRect);
+
+			ProgressBarWidth = NewWidth;
+		}
+		if (BusyMarkChanged) {
+			tempRect = ProgressBar_Rect;
+			tempRect.top = tempRect.top + 2;
+			tempRect.bottom = tempRect.bottom - 2;
+			tempRect.left = tempRect.left + 2;
+			tempRect.right = tempRect.left + 2;
+			InvertRect(&tempRect);
+
+			ProgressBar_DrawBusyMark = ProgressBar_WantBusyMark;
 		}
 		SetPort(saveport);
 	}
@@ -184,6 +222,15 @@ GLOBALPROC ProgressBar_Draw(void)
 	if (ProgressBarWidth != 0) {
 		tempRect = ProgressBar_Rect;
 		tempRect.right = tempRect.left + ProgressBarWidth;
+		InvertRect(&tempRect);
+	}
+
+	if (ProgressBar_DrawBusyMark) {
+		tempRect = ProgressBar_Rect;
+		tempRect.top = tempRect.top + 2;
+		tempRect.bottom = tempRect.bottom - 2;
+		tempRect.left = tempRect.left + 2;
+		tempRect.right = tempRect.left + 2;
 		InvertRect(&tempRect);
 	}
 

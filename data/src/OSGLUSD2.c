@@ -454,19 +454,30 @@ LOCALFUNC blnr Sony_Insert2(char *s)
 	return IsOk;
 }
 
+LOCALFUNC blnr Sony_InsertIth(int i)
+{
+	blnr v;
+
+	if ((i > 9) || ! FirstFreeDisk(nullpr)) {
+		v = falseblnr;
+	} else {
+		char s[] = "disk?.dsk";
+
+		s[4] = '0' + i;
+
+		v = Sony_Insert2(s);
+	}
+
+	return v;
+}
+
 LOCALFUNC blnr LoadInitialImages(void)
 {
 	if (! AnyDiskInserted()) {
-		int n = NumDrives > 9 ? 9 : NumDrives;
 		int i;
-		char s[] = "disk?.dsk";
 
-		for (i = 1; i <= n; ++i) {
-			s[4] = '0' + i;
-			if (! Sony_Insert2(s)) {
-				/* stop on first error (including file not found) */
-				return trueblnr;
-			}
+		for (i = 1; Sony_InsertIth(i); ++i) {
+			/* stop on first error (including file not found) */
 		}
 	}
 
@@ -3712,6 +3723,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 #if HaveWorkingWarp
 	blnr HadCursorHidden = HaveCursorHidden;
 #endif
+#if VarFullScreen && EnableMagnify
 	int OldWinState =
 		UseFullScreen ? kWinStateFullScreen : kWinStateWindowed;
 	int OldMagState =
@@ -3719,6 +3731,7 @@ LOCALFUNC blnr ReCreateMainWindow(void)
 
 	WinMagStates[OldWinState] =
 		OldMagState;
+#endif
 
 #if VarFullScreen
 	if (! UseFullScreen)
@@ -3814,10 +3827,10 @@ LOCALPROC ToggleWantFullScreen(void)
 			UseFullScreen ? kWinStateFullScreen : kWinStateWindowed;
 		int OldMagState =
 			UseMagnify ? kMagStateMagnifgy : kMagStateNormal;
-
 		int NewWinState =
 			WantFullScreen ? kWinStateFullScreen : kWinStateWindowed;
 		int NewMagState = WinMagStates[NewWinState];
+
 		WinMagStates[OldWinState] = OldMagState;
 		if (kMagStateAuto != NewMagState) {
 			WantMagnify = (kMagStateMagnifgy == NewMagState);
@@ -3964,6 +3977,13 @@ LOCALPROC CheckForSavedTasks(void)
 		NeedWholeScreenDraw = falseblnr;
 		ScreenChangedAll();
 	}
+
+#if NeedRequestIthDisk
+	if (0 != RequestIthDisk) {
+		Sony_InsertIth(RequestIthDisk);
+		RequestIthDisk = 0;
+	}
+#endif
 
 	if (HaveCursorHidden != (WantCursorHidden
 		&& ! (gTrueBackgroundFlag || CurSpeedStopped)))

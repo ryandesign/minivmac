@@ -448,7 +448,7 @@ LOCALFUNC tMyErr nzplib_ProcessDF_v2(ui5r *crc)
 			n, crc)))
 		{
 		}
-		err = CombineErr(err, MyCloseFile_v2(src_refnum));
+		err = ErrCombine(err, MyCloseFile_v2(src_refnum));
 	}
 
 	return err;
@@ -660,7 +660,7 @@ Label_1:
 		}
 	}
 
-	err = CombineErr(err, xbh_SetLen_v2(&nzplib_gd()->CurFileDosPath,
+	err = ErrCombine(err, xbh_SetSize_v2(&nzplib_gd()->CurFileDosPath,
 		OldDosPathLen));
 
 	return err;

@@ -45,11 +45,12 @@ GLOBALFUNC tMyErr strmi_close_v2(void)
 	strmi_err = noErr;
 
 	if (NotAfileRef != strmi_ref) {
-		err = CombineErr(err, MyCloseFile_v2(strmi_ref));
+		err = ErrCombine(err, MyCloseFile_v2(strmi_ref));
 		strmi_ref = NotAfileRef;
 	}
 
-	MyNHandleClear(&strmi_h);
+	err = ErrCombine(err, NHandleClear_v2(&strmi_h));
+
 	strmi_I = 0;
 	strmi_CL = 0;
 	strmi_CU = 0;

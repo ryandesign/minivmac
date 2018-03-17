@@ -242,18 +242,29 @@ LOCALFUNC blnr Sony_Insert1(char *drivepath, blnr silentfail)
 	return falseblnr;
 }
 
+LOCALFUNC blnr Sony_InsertIth(int i)
+{
+	blnr v;
+
+	if ((i > 9) || ! FirstFreeDisk(nullpr)) {
+		v = falseblnr;
+	} else {
+		char s[] = "disk?.dsk";
+
+		s[4] = '0' + i;
+
+		v = Sony_Insert1(s, trueblnr);
+	}
+
+	return v;
+}
+
 LOCALFUNC blnr LoadInitialImages(void)
 {
-	int n = NumDrives > 9 ? 9 : NumDrives;
 	int i;
-	char s[] = "disk?.dsk";
 
-	for (i = 1; i <= n; ++i) {
-		s[4] = '0' + i;
-		if (! Sony_Insert1(s, trueblnr)) {
-			/* stop on first error (including file not found) */
-			return trueblnr;
-		}
+	for (i = 1; Sony_InsertIth(i); ++i) {
+		/* stop on first error (including file not found) */
 	}
 
 	return trueblnr;
@@ -1192,6 +1203,13 @@ LOCALPROC CheckForSavedTasks(void)
 			InsertADisk0();
 		}
 	}
+
+#if NeedRequestIthDisk
+	if (0 != RequestIthDisk) {
+		Sony_InsertIth(RequestIthDisk);
+		RequestIthDisk = 0;
+	}
+#endif
 }
 
 /* --- command line parsing --- */

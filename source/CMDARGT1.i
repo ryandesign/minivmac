@@ -75,7 +75,7 @@ GLOBALPROC GetCurArgAsPStr(ps3p s)
 GLOBALFUNC tMyErr GetCurArgAsHandle_v2(Handle *r)
 {
 	/* warning : assumes (! The_arg_end) */
-	return CStr2Hand_v2(Cur_args, r);
+	return MyHandleNewFromCStr(r, Cur_args);
 }
 
 GLOBALPROC BeginParseCommandLineArguments(int argc, The_argvt argv)

@@ -183,7 +183,9 @@ LOCALFUNC blnr FirstFreeDisk(tDrive *Drive_No)
 
 	for (i = 0; i < NumDrives; ++i) {
 		if (! vSonyIsInserted(i)) {
-			*Drive_No = i;
+			if (nullpr != Drive_No) {
+				*Drive_No = i;
+			}
 			return trueblnr;
 		}
 	}
