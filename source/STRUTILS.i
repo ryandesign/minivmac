@@ -170,4 +170,43 @@ LOCALPROC ReversePStr(ps3p s)
 	}
 }
 
+LOCALPROC PStrFromUimr(uimr v, ps3p s)
+{
+	MyCharR *p = PStrToMyCharPtr(s);
+	uimr newv;
+
+	do {
+		newv = v / (uimr)10;
+		*p++ = '0' + (v - newv * 10);
+		v = newv;
+	} while (v != 0);
+	s[0] = p - PStrToMyCharPtr(s);
+
+	ReversePStr(s);
+}
+
+LOCALPROC PStrFromNUimr(uimr v, ui3r n, ps3p s)
+{
+	uimr i;
+	uimr newv;
+	MyCharR *p = PStrToMyCharPtr(s);
+
+	s[0] = n;
+	for (i = n + 1; 0 != --i; ) {
+		newv = v / (uimr)10;
+		*p++ = '0' + (v - newv * 10);
+		v = newv;
+	}
+
+	ReversePStr(s);
+}
+
+GLOBALPROC PStrApndNUimr(ps3p r, uimr v, ui3r n)
+{
+	MyPStr t;
+
+	PStrFromNUimr(v, n, t);
+	PStrAppend(r, t);
+}
+
 #define Have_STRUTILS 1

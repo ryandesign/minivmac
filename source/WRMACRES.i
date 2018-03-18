@@ -177,12 +177,12 @@ LOCALPROC WriteMacResConfigContents(void)
 
 		WriteBeginResResource("vers", 1);
 			WriteBgnDestFileLn();
-			WriteCStrToDestFile(kMajorVersion);
+			strmo_writeNUimr(MajorVersion, 2);
 			WriteCStrToDestFile(",");
 			WriteEndDestFileLn();
 
 			WriteBgnDestFileLn();
-			WriteCStrToDestFile(kMinorVersion);
+			strmo_writeNUimr(MinorVersion, 2);
 #if 0
 			WriteCStrToDestFile(" * 16 + ");
 			WriteCStrToDestFile(kMinorSubVersion);

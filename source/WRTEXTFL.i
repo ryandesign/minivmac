@@ -102,19 +102,16 @@ LOCALPROC WriteEndDestFileLn(void)
 
 /* ------- utilities for writing to text files -------- */
 
+#define WriteUnsignedToOutput strmo_writeUimr
+#if 0
 LOCALPROC WriteUnsignedToOutput(uimr v)
 {
-	MyPStr s;
-
-	Uimr2Dec(v, s);
-	strmo_writePStr(s);
-#if 0
 	char s[16];
 
 	sprintf(s, "%u", v);
 	WriteCStrToDestFile(s);
-#endif
 }
+#endif
 
 LOCALPROC WriteHexByteToOutput(unsigned int v)
 {

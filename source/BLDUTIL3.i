@@ -58,9 +58,9 @@ LOCALPROC WriteHomePage(void)
 
 LOCALPROC WriteVersionStr(void)
 {
-	WriteCStrToDestFile(kMajorVersion);
+	strmo_writeNUimr(MajorVersion, 2);
 	WriteCStrToDestFile(".");
-	WriteCStrToDestFile(kMinorVersion);
+	strmo_writeNUimr(MinorVersion, 2);
 }
 
 LOCALPROC WriteAppVariationStr(void)

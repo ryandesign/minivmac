@@ -432,8 +432,12 @@ LOCALVAR int ControlMessage = 0;
 enum {
 	kCntrlModeOff,
 	kCntrlModeBase,
+#if WantEnblCtrlRst
 	kCntrlModeConfirmReset,
+#endif
+#if WantEnblCtrlInt
 	kCntrlModeConfirmInterrupt,
+#endif
 	kCntrlModeConfirmQuit,
 	kCntrlModeSpeedControl,
 
@@ -448,15 +452,21 @@ enum {
 #if VarFullScreen
 	kCntrlMsgFullScreen,
 #endif
+#if WantEnblCtrlRst
 	kCntrlMsgConfirmResetStart,
 	kCntrlMsgHaveReset,
 	kCntrlMsgResetCancelled,
+#endif
+#if WantEnblCtrlInt
 	kCntrlMsgConfirmInterruptStart,
 	kCntrlMsgHaveInterrupted,
 	kCntrlMsgInterruptCancelled,
+#endif
 	kCntrlMsgConfirmQuitStart,
 	kCntrlMsgQuitCancelled,
+#if WantEnblCtrlKtg
 	kCntrlMsgEmCntrl,
+#endif
 	kCntrlMsgSpeedControlStart,
 	kCntrlMsgNewSpeed,
 	kCntrlMsgNewStopped,
@@ -466,7 +476,10 @@ enum {
 #endif
 	kCntrlMsgAbout,
 	kCntrlMsgHelp,
-#if UseActvCode || EnableDemoMsg
+#if IncludePbufs
+	kCntrlMsgOptionsStrCopied,
+#endif
+#if 0 && (UseActvCode || EnableDemoMsg)
 	kCntrlMsgRegStrCopied,
 #endif
 
@@ -511,6 +524,29 @@ LOCALPROC SetSpeedValue(ui3b i)
 #if VarFullScreen
 FORWARDPROC ToggleWantFullScreen(void);
 #endif
+
+#if IncludePbufs
+LOCALPROC CopyOptionsStr(void)
+{
+	ui3b ps[ClStrMaxLength];
+	int i;
+	int L;
+	tPbuf j;
+
+	ClStrFromSubstCStr(&L, ps, kBldOpts);
+
+	for (i = 0; i < L; ++i) {
+		ps[i] = Cell2MacAsciiMap[ps[i]];
+	}
+
+	if (mnvm_noErr == PbufNew(L, &j)) {
+		PbufTransfer(ps, j, 0, L, trueblnr);
+		HTCEexport(j);
+	}
+}
+#endif
+
+#if 0
 #if UseActvCode
 FORWARDPROC CopyRegistrationStr(void);
 #elif EnableDemoMsg
@@ -533,26 +569,33 @@ LOCALPROC CopyRegistrationStr(void)
 	}
 }
 #endif
+#endif
+
 
 LOCALPROC DoControlModeKey(int key)
 {
 	switch (CurControlMode) {
 		case kCntrlModeBase:
 			switch (key) {
+#if WantEnblCtrlKtg
 				case MKC_K:
 					ControlKeyPressed = ! ControlKeyPressed;
 					ControlMessage = kCntrlMsgEmCntrl;
 					Keyboard_UpdateKeyMap1(MKC_Control,
 						ControlKeyPressed);
 					break;
+#endif
 				case MKC_S:
 					CurControlMode = kCntrlModeSpeedControl;
 					ControlMessage = kCntrlMsgSpeedControlStart;
 					break;
+#if WantEnblCtrlInt
 				case MKC_I:
 					CurControlMode = kCntrlModeConfirmInterrupt;
 					ControlMessage = kCntrlMsgConfirmInterruptStart;
 					break;
+#endif
+#if WantEnblCtrlRst
 				case MKC_R:
 					if (! AnyDiskInserted()) {
 						WantMacReset = trueblnr;
@@ -562,6 +605,7 @@ LOCALPROC DoControlModeKey(int key)
 						ControlMessage = kCntrlMsgConfirmResetStart;
 					}
 					break;
+#endif
 				case MKC_Q:
 					if (! AnyDiskInserted()) {
 						ForceMacOff = trueblnr;
@@ -593,7 +637,13 @@ LOCALPROC DoControlModeKey(int key)
 					ControlMessage = kCntrlMsgFullScreen;
 					break;
 #endif
-#if UseActvCode || EnableDemoMsg
+#if IncludePbufs
+				case MKC_P:
+					CopyOptionsStr();
+					ControlMessage = kCntrlMsgOptionsStrCopied;
+					break;
+#endif
+#if 0 && (UseActvCode || EnableDemoMsg)
 				case MKC_P:
 					CopyRegistrationStr();
 					ControlMessage = kCntrlMsgRegStrCopied;
@@ -630,6 +680,7 @@ LOCALPROC DoControlModeKey(int key)
 #endif
 			}
 			break;
+#if WantEnblCtrlRst
 		case kCntrlModeConfirmReset:
 			switch (key) {
 				case MKC_Y:
@@ -647,6 +698,8 @@ LOCALPROC DoControlModeKey(int key)
 					break;
 			}
 			break;
+#endif
+#if WantEnblCtrlInt
 		case kCntrlModeConfirmInterrupt:
 			switch (key) {
 				case MKC_Y:
@@ -664,6 +717,7 @@ LOCALPROC DoControlModeKey(int key)
 					break;
 			}
 			break;
+#endif
 		case kCntrlModeConfirmQuit:
 			switch (key) {
 				case MKC_Y:
@@ -737,12 +791,16 @@ LOCALFUNC char * ControlMode2TitleStr(void)
 	char *s;
 
 	switch (CurControlMode) {
+#if WantEnblCtrlRst
 		case kCntrlModeConfirmReset:
 			s = kStrModeConfirmReset;
 			break;
+#endif
+#if WantEnblCtrlInt
 		case kCntrlModeConfirmInterrupt:
 			s = kStrModeConfirmInterrupt;
 			break;
+#endif
 		case kCntrlModeConfirmQuit:
 			s = kStrModeConfirmQuit;
 			break;
@@ -805,9 +863,15 @@ LOCALPROC DrawCellsControlModeBody(void)
 #if VarFullScreen
 			DrawCellsKeyCommand("F", kStrCmdFullScrnToggle);
 #endif
+#if WantEnblCtrlKtg
 			DrawCellsKeyCommand("K", kStrCmdCtrlKeyToggle);
+#endif
+#if WantEnblCtrlRst
 			DrawCellsKeyCommand("R", kStrCmdReset);
+#endif
+#if WantEnblCtrlInt
 			DrawCellsKeyCommand("I", kStrCmdInterrupt);
+#endif
 			DrawCellsKeyCommand("H", kStrCmdHelp);
 			break;
 		case kCntrlMsgSpeedControlStart:
@@ -852,6 +916,12 @@ LOCALPROC DrawCellsControlModeBody(void)
 			DrawCellsOneLineStr(kStrNewFullScreen);
 			break;
 #endif
+#if IncludePbufs
+		case kCntrlMsgOptionsStrCopied:
+			DrawCellsOneLineStr("Variation options copied.");
+			break;
+#endif
+#if 0
 #if UseActvCode
 		case kCntrlMsgRegStrCopied:
 			DrawCellsOneLineStr("Registration String copied.");
@@ -861,6 +931,8 @@ LOCALPROC DrawCellsControlModeBody(void)
 			DrawCellsOneLineStr("Variation name copied.");
 			break;
 #endif
+#endif
+#if WantEnblCtrlRst
 		case kCntrlMsgConfirmResetStart:
 			DrawCellsOneLineStr(kStrConfirmReset);
 			DrawCellsBlankLine();
@@ -873,6 +945,8 @@ LOCALPROC DrawCellsControlModeBody(void)
 		case kCntrlMsgResetCancelled:
 			DrawCellsOneLineStr(kStrCancelledReset);
 			break;
+#endif
+#if WantEnblCtrlInt
 		case kCntrlMsgConfirmInterruptStart:
 			DrawCellsOneLineStr(kStrConfirmInterrupt);
 			DrawCellsBlankLine();
@@ -885,6 +959,7 @@ LOCALPROC DrawCellsControlModeBody(void)
 		case kCntrlMsgInterruptCancelled:
 			DrawCellsOneLineStr(kStrCancelledInterrupt);
 			break;
+#endif
 		case kCntrlMsgConfirmQuitStart:
 			DrawCellsOneLineStr(kStrConfirmQuit);
 			DrawCellsBlankLine();
@@ -894,9 +969,11 @@ LOCALPROC DrawCellsControlModeBody(void)
 		case kCntrlMsgQuitCancelled:
 			DrawCellsOneLineStr(kStrCancelledQuit);
 			break;
+#if WantEnblCtrlKtg
 		case kCntrlMsgEmCntrl:
 			DrawCellsOneLineStr(kStrNewCntrlKey);
 			break;
+#endif
 		case kCntrlMsgBaseStart:
 		default:
 			DrawCellsOneLineStr(kStrHowToLeaveControl);

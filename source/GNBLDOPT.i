@@ -223,6 +223,77 @@ LOCALFUNC tMyErr NumberTryAsOptionNot(char *s, long *r, blnr *have_r)
 	return err;
 }
 
+LOCALPROC WrtOptNamedOption(char *s, tGetName p, int i, int i0)
+{
+	if (i != i0) {
+		strmo_writeCStr(" ");
+		strmo_writeCStr(s);
+		strmo_writeCStr(" ");
+		strmo_writeCStr(p(i));
+	}
+}
+
+LOCALPROC WrtOptNumberOption(char *s, int i, int i0)
+{
+	if (i != i0) {
+		strmo_writeCStr(" ");
+		strmo_writeCStr(s);
+		strmo_writeCStr(" ");
+		strmo_writeUimr(i);
+	}
+}
+
+LOCALPROC WrtOptBooleanOption(char *s, blnr i, blnr i0)
+{
+	if (i != i0) {
+		strmo_writeCStr(" ");
+		strmo_writeCStr(s);
+		strmo_writeCStr(" ");
+		strmo_writeCStr(i ? "1" : "0");
+	}
+}
+
+LOCALPROC WrtOptFlagOption(char *s, blnr v)
+{
+	if (v) {
+		strmo_writeCStr(" ");
+		strmo_writeCStr(s);
+	}
+}
+
+/* option: Branch */
+
+LOCALVAR uimr Branch;
+LOCALVAR blnr have_Branch;
+
+LOCALPROC ResetBranchOption(void)
+{
+	have_Branch = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsBranchOptionNot(void)
+{
+	return NumberTryAsOptionNot("-br",
+		(long *)&Branch, &have_Branch);
+}
+
+LOCALFUNC tMyErr ChooseBranch(void)
+{
+	if (! have_Branch) {
+		Branch = MajorVersion;
+		have_Branch = trueblnr;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptBranchOption(void)
+{
+	strmo_writeCStr("-br");
+	strmo_writeCStr(" ");
+	strmo_writeUimr(MajorVersion);
+}
+
 /* option: target */
 
 enum {
@@ -415,7 +486,15 @@ LOCALFUNC tMyErr ChooseTarg(void)
 	return err;
 }
 
-/* derived (usually) option: target cpu family */
+LOCALPROC WrtOptTarg(void)
+{
+	strmo_writeCStr(" ");
+	strmo_writeCStr("-t");
+	strmo_writeCStr(" ");
+	strmo_writeCStr(GetTargetName(cur_targ));
+}
+
+/* option: target cpu family */
 
 enum {
 	gbk_cpufam_68k, /* Motorola 680x0 */
@@ -429,6 +508,7 @@ enum {
 	kNumCPUFamilies
 };
 
+LOCALVAR int dfo_cpufam;
 LOCALVAR int gbo_cpufam;
 
 LOCALPROC ResetCPUFamOption(void)
@@ -478,65 +558,74 @@ LOCALFUNC tMyErr TryAsCPUFamOptionNot(void)
 		kNumCPUFamilies, GetCPUFamName, &gbo_cpufam);
 }
 
-LOCALPROC ChooseCPUFam(void)
+LOCALFUNC tMyErr ChooseCPUFam(void)
 {
-	if (kListOptionAuto == gbo_cpufam) {
-		switch (cur_targ) {
-			case gbk_targ_m68k:
-			case gbk_targ_mfpu:
-				gbo_cpufam = gbk_cpufam_68k;
-				break;
-			case gbk_targ_mppc:
-			case gbk_targ_carb:
-			case gbk_targ_mach:
-			case gbk_targ_mx11:
-			case gbk_targ_lppc:
-			case gbk_targ_fbpc:
-				gbo_cpufam = gbk_cpufam_ppc;
-				break;
-			case gbk_targ_wx86:
-			case gbk_targ_wc86:
-			case gbk_targ_lx86:
-			case gbk_targ_sl86:
-			case gbk_targ_fbsd:
-			case gbk_targ_obsd:
-			case gbk_targ_nbsd:
-			case gbk_targ_dbsd:
-			case gbk_targ_oind:
-			case gbk_targ_minx:
-			case gbk_targ_imch:
-			case gbk_targ_mi11:
-			case gbk_targ_cygw:
-				gbo_cpufam = gbk_cpufam_x86;
-				break;
-			case gbk_targ_lspr:
-			case gbk_targ_slrs:
-				gbo_cpufam = gbk_cpufam_spr;
-				break;
-			case gbk_targ_wcar:
-			case gbk_targ_ndsa:
-			case gbk_targ_larm:
-				gbo_cpufam = gbk_cpufam_arm;
-				break;
-			case gbk_targ_mc64:
-			case gbk_targ_lx64:
-			case gbk_targ_wx64:
-			case gbk_targ_fb64:
-			case gbk_targ_ob64:
-			case gbk_targ_nb64:
-			case gbk_targ_db64:
-			case gbk_targ_oi64:
-			case gbk_targ_mx64:
-				gbo_cpufam = gbk_cpufam_x64;
-				break;
-			case gbk_targ_irix:
-				gbo_cpufam = gbk_cpufam_mip;
-				break;
-			case gbk_targ_xgen:
-				gbo_cpufam = gbk_cpufam_gen;
-				break;
-		}
+	switch (cur_targ) {
+		case gbk_targ_m68k:
+		case gbk_targ_mfpu:
+			dfo_cpufam = gbk_cpufam_68k;
+			break;
+		case gbk_targ_mppc:
+		case gbk_targ_carb:
+		case gbk_targ_mach:
+		case gbk_targ_mx11:
+		case gbk_targ_lppc:
+		case gbk_targ_fbpc:
+			dfo_cpufam = gbk_cpufam_ppc;
+			break;
+		case gbk_targ_wx86:
+		case gbk_targ_wc86:
+		case gbk_targ_lx86:
+		case gbk_targ_sl86:
+		case gbk_targ_fbsd:
+		case gbk_targ_obsd:
+		case gbk_targ_nbsd:
+		case gbk_targ_dbsd:
+		case gbk_targ_oind:
+		case gbk_targ_minx:
+		case gbk_targ_imch:
+		case gbk_targ_mi11:
+		case gbk_targ_cygw:
+			dfo_cpufam = gbk_cpufam_x86;
+			break;
+		case gbk_targ_lspr:
+		case gbk_targ_slrs:
+			dfo_cpufam = gbk_cpufam_spr;
+			break;
+		case gbk_targ_wcar:
+		case gbk_targ_ndsa:
+		case gbk_targ_larm:
+			dfo_cpufam = gbk_cpufam_arm;
+			break;
+		case gbk_targ_mc64:
+		case gbk_targ_lx64:
+		case gbk_targ_wx64:
+		case gbk_targ_fb64:
+		case gbk_targ_ob64:
+		case gbk_targ_nb64:
+		case gbk_targ_db64:
+		case gbk_targ_oi64:
+		case gbk_targ_mx64:
+			dfo_cpufam = gbk_cpufam_x64;
+			break;
+		case gbk_targ_irix:
+			dfo_cpufam = gbk_cpufam_mip;
+			break;
+		case gbk_targ_xgen:
+			dfo_cpufam = gbk_cpufam_gen;
+			break;
 	}
+
+	if (kListOptionAuto == gbo_cpufam) {
+		gbo_cpufam = dfo_cpufam;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptCPUFam(void)
+{
+	WrtOptNamedOption("-cpu", GetCPUFamName, gbo_cpufam, dfo_cpufam);
 }
 
 /* derived option: target family */
@@ -565,7 +654,7 @@ enum {
 
 LOCALVAR int gbo_targfam;
 
-LOCALPROC ChooseTargFam(void)
+LOCALFUNC tMyErr ChooseTargFam(void)
 {
 	switch (cur_targ) {
 		case gbk_targ_m68k:
@@ -643,186 +732,8 @@ LOCALPROC ChooseTargFam(void)
 			gbo_targfam = gbk_targfam_xgen;
 			break;
 	}
-}
 
-/* option: ide */
-
-enum {
-	gbk_ide_mpw, /* Macintosh Programmers Workshop */
-	gbk_ide_mw8, /* Metrowerks CodeWarrior */
-	gbk_ide_bgc, /* Gnu tools */
-	gbk_ide_snc, /* Sun tools */
-	gbk_ide_msv, /* Microsoft Visual C++ */
-	gbk_ide_lcc, /* lcc-win32 - Jacob Navia */
-	gbk_ide_dvc, /* Bloodshed Dev-C++ */
-	gbk_ide_xcd, /* Apple XCode */
-		/* previously Apple Project Builder */
-	gbk_ide_dmc, /* Digital Mars Compiler */
-	gbk_ide_plc, /* Pelles C Compiler */
-	gbk_ide_mgw, /* MinGW */
-	gbk_ide_cyg, /* Cygwin */
-	gbk_ide_dkp, /* devkitpro */
-	gbk_ide_ccc, /* Generic command line c compiler */
-	gbk_ide_mvc, /* Mini vMac C (a specific version of gcc) */
-	kNumIdes
-};
-
-LOCALVAR int cur_ide;
-
-LOCALPROC ResetIdeOption(void)
-{
-	cur_ide = kListOptionAuto;
-}
-
-LOCALFUNC char * GetIdeName(int i)
-{
-	char *s;
-
-	switch (i) {
-		case gbk_ide_mpw:
-			s = "mpw";
-			break;
-		case gbk_ide_mw8:
-			s = "mw8";
-			break;
-		case gbk_ide_bgc:
-			s = "bgc";
-			break;
-		case gbk_ide_snc:
-			s = "snc";
-			break;
-		case gbk_ide_msv:
-			s = "msv";
-			break;
-		case gbk_ide_lcc:
-			s = "lcc";
-			break;
-		case gbk_ide_dvc:
-			s = "dvc";
-			break;
-		case gbk_ide_mgw:
-			s = "mgw";
-			break;
-		case gbk_ide_xcd:
-			s = "xcd";
-			break;
-		case gbk_ide_dmc:
-			s = "dmc";
-			break;
-		case gbk_ide_plc:
-			s = "plc";
-			break;
-		case gbk_ide_cyg:
-			s = "cyg";
-			break;
-		case gbk_ide_dkp:
-			s = "dkp";
-			break;
-		case gbk_ide_ccc:
-			s = "ccc";
-			break;
-		case gbk_ide_mvc:
-			s = "mvc";
-			break;
-		default:
-			s = "(unknown IDE)";
-			break;
-	}
-	return s;
-}
-
-LOCALFUNC tMyErr TryAsIdeOptionNot(void)
-{
-	return FindNamedOption("-e", kNumIdes, GetIdeName, &cur_ide);
-}
-
-LOCALPROC ChooseIde(void)
-{
-	if (kListOptionAuto == cur_ide) {
-		switch (gbo_targfam) {
-			case gbk_targfam_cmac:
-			case gbk_targfam_carb:
-				cur_ide = gbk_ide_mpw;
-				break;
-			case gbk_targfam_mach:
-			case gbk_targfam_mx11:
-				cur_ide = gbk_ide_xcd;
-				break;
-			case gbk_targfam_mswn:
-			case gbk_targfam_wnce:
-				cur_ide = gbk_ide_msv;
-				break;
-			case gbk_targfam_linx:
-			case gbk_targfam_slrs:
-			case gbk_targfam_fbsd:
-			case gbk_targfam_obsd:
-			case gbk_targfam_nbsd:
-			case gbk_targfam_dbsd:
-			case gbk_targfam_oind:
-			case gbk_targfam_minx:
-			case gbk_targfam_irix:
-				cur_ide = gbk_ide_bgc;
-				break;
-			case gbk_targfam_cygw:
-				cur_ide = gbk_ide_cyg;
-				break;
-			case gbk_targfam_lnds:
-				cur_ide = gbk_ide_dkp;
-				break;
-			case gbk_targfam_xgen:
-			default:
-				cur_ide = gbk_ide_ccc;
-				break;
-		}
-	}
-}
-
-/* option: ide version */
-
-LOCALVAR uimr ide_vers;
-LOCALVAR blnr have_ide_vers;
-
-LOCALPROC ResetIdeVersOption(void)
-{
-	have_ide_vers = falseblnr;
-}
-
-LOCALFUNC tMyErr TryAsIdeVersOptionNot(void)
-{
-	return NumberTryAsOptionNot("-ev",
-		(long *)&ide_vers, &have_ide_vers);
-}
-
-LOCALPROC ChooseIdeVers(void)
-{
-	if (! have_ide_vers) {
-		switch (cur_ide) {
-			case gbk_ide_xcd:
-				ide_vers = 2410;
-				break;
-			case gbk_ide_msv:
-				ide_vers = 8000;
-				break;
-			default:
-				ide_vers = 1;
-				break;
-		}
-		have_ide_vers = trueblnr;
-	}
-}
-
-/* option: use command line tools */
-
-LOCALVAR blnr UseCmndLine;
-
-LOCALPROC ResetCmndLine(void)
-{
-	UseCmndLine = falseblnr;
-}
-
-LOCALFUNC tMyErr TryAsCmndLineOptionNot(void)
-{
-	return FlagTryAsOptionNot("-cl", &UseCmndLine);
+	return noErr;
 }
 
 /* option: api family */
@@ -841,6 +752,7 @@ enum {
 };
 
 LOCALVAR int gbo_apifam;
+LOCALVAR int dfo_apifam;
 
 LOCALPROC ResetAPIFamOption(void)
 {
@@ -892,44 +804,53 @@ LOCALFUNC tMyErr TryAsAPIFamOptionNot(void)
 		kNumAPIFamilies, GetAPIFamName, &gbo_apifam);
 }
 
-LOCALPROC ChooseAPIFam(void)
+LOCALFUNC tMyErr ChooseAPIFam(void)
 {
-	if (kListOptionAuto == gbo_apifam) {
-		switch (gbo_targfam) {
-			case gbk_targfam_cmac:
-				gbo_apifam = gbk_apifam_mac;
-				break;
-			case gbk_targfam_mach:
-			case gbk_targfam_carb:
-				if (gbk_cpufam_x64 == gbo_cpufam) {
-					gbo_apifam = gbk_apifam_cco;
-				} else {
-					gbo_apifam = gbk_apifam_osx;
-				}
-				break;
-			case gbk_targfam_mswn:
-			case gbk_targfam_wnce:
-				gbo_apifam = gbk_apifam_win;
-				break;
-			case gbk_targfam_linx:
-			case gbk_targfam_slrs:
-			case gbk_targfam_fbsd:
-			case gbk_targfam_obsd:
-			case gbk_targfam_nbsd:
-			case gbk_targfam_dbsd:
-			case gbk_targfam_oind:
-			case gbk_targfam_minx:
-			case gbk_targfam_irix:
-			case gbk_targfam_mx11:
-			case gbk_targfam_cygw:
-			case gbk_targfam_xgen:
-				gbo_apifam = gbk_apifam_xwn;
-				break;
-			case gbk_targfam_lnds:
-				gbo_apifam = gbk_apifam_nds;
-				break;
-		}
+	switch (gbo_targfam) {
+		case gbk_targfam_cmac:
+			dfo_apifam = gbk_apifam_mac;
+			break;
+		case gbk_targfam_mach:
+		case gbk_targfam_carb:
+			if (gbk_cpufam_x64 == gbo_cpufam) {
+				dfo_apifam = gbk_apifam_cco;
+			} else {
+				dfo_apifam = gbk_apifam_osx;
+			}
+			break;
+		case gbk_targfam_mswn:
+		case gbk_targfam_wnce:
+			dfo_apifam = gbk_apifam_win;
+			break;
+		case gbk_targfam_linx:
+		case gbk_targfam_slrs:
+		case gbk_targfam_fbsd:
+		case gbk_targfam_obsd:
+		case gbk_targfam_nbsd:
+		case gbk_targfam_dbsd:
+		case gbk_targfam_oind:
+		case gbk_targfam_minx:
+		case gbk_targfam_irix:
+		case gbk_targfam_mx11:
+		case gbk_targfam_cygw:
+		case gbk_targfam_xgen:
+			dfo_apifam = gbk_apifam_xwn;
+			break;
+		case gbk_targfam_lnds:
+			dfo_apifam = gbk_apifam_nds;
+			break;
 	}
+
+	if (kListOptionAuto == gbo_apifam) {
+		gbo_apifam = dfo_apifam;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptAPIFam(void)
+{
+	WrtOptNamedOption("-api", GetAPIFamName, gbo_apifam, dfo_apifam);
 }
 
 /* option: debug level */
@@ -975,11 +896,18 @@ LOCALFUNC tMyErr TryAsDbgOptionNot(void)
 		kNumDebugLevels, GetDbgLvlName, &gbo_dbg);
 }
 
-LOCALPROC ChooseDbgOption(void)
+LOCALFUNC tMyErr ChooseDbgOption(void)
 {
 	if (kListOptionAuto == gbo_dbg) {
 		gbo_dbg = gbk_dbg_off;
 	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptDbgOption(void)
+{
+	WrtOptNamedOption("-d", GetDbgLvlName, gbo_dbg, gbk_dbg_off);
 }
 
 /* option: language */
@@ -1099,16 +1027,266 @@ LOCALFUNC char * GetLProjName(int i)
 	return s;
 }
 
-LOCALPROC ChooseLangOption(void)
+LOCALFUNC tMyErr ChooseLangOption(void)
 {
 	if (kListOptionAuto == gbo_lang) {
 		gbo_lang = gbk_lang_eng;
 	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptLangOption(void)
+{
+	WrtOptNamedOption("-lang", GetLangName, gbo_lang, gbk_lang_eng);
+}
+
+/* option: IconMaster */
+
+#ifndef WantIconMasterDflt
+#define WantIconMasterDflt falseblnr
+#endif
+
+LOCALVAR blnr WantIconMaster;
+
+LOCALPROC ResetIconMaster(void)
+{
+	WantIconMaster = nanblnr;
+}
+
+LOCALFUNC tMyErr TryAsIconMasterNot(void)
+{
+	return BooleanTryAsOptionNot("-im", &WantIconMaster);
+}
+
+LOCALFUNC tMyErr ChooseIconMaster(void)
+{
+	if (nanblnr == WantIconMaster) {
+		WantIconMaster = WantIconMasterDflt;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptIconMaster(void)
+{
+	WrtOptBooleanOption("-im", WantIconMaster, WantIconMasterDflt);
+}
+
+/* option: ide */
+
+enum {
+	gbk_ide_mpw, /* Macintosh Programmers Workshop */
+	gbk_ide_mw8, /* Metrowerks CodeWarrior */
+	gbk_ide_bgc, /* Gnu tools */
+	gbk_ide_snc, /* Sun tools */
+	gbk_ide_msv, /* Microsoft Visual C++ */
+	gbk_ide_lcc, /* lcc-win32 - Jacob Navia */
+	gbk_ide_dvc, /* Bloodshed Dev-C++ */
+	gbk_ide_xcd, /* Apple XCode */
+		/* previously Apple Project Builder */
+	gbk_ide_dmc, /* Digital Mars Compiler */
+	gbk_ide_plc, /* Pelles C Compiler */
+	gbk_ide_mgw, /* MinGW */
+	gbk_ide_cyg, /* Cygwin */
+	gbk_ide_dkp, /* devkitpro */
+	gbk_ide_ccc, /* Generic command line c compiler */
+	gbk_ide_mvc, /* Mini vMac C (a specific version of gcc) */
+	kNumIdes
+};
+
+LOCALVAR int cur_ide;
+LOCALVAR int dfo_ide;
+
+LOCALPROC ResetIdeOption(void)
+{
+	cur_ide = kListOptionAuto;
+}
+
+LOCALFUNC char * GetIdeName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_ide_mpw:
+			s = "mpw";
+			break;
+		case gbk_ide_mw8:
+			s = "mw8";
+			break;
+		case gbk_ide_bgc:
+			s = "bgc";
+			break;
+		case gbk_ide_snc:
+			s = "snc";
+			break;
+		case gbk_ide_msv:
+			s = "msv";
+			break;
+		case gbk_ide_lcc:
+			s = "lcc";
+			break;
+		case gbk_ide_dvc:
+			s = "dvc";
+			break;
+		case gbk_ide_mgw:
+			s = "mgw";
+			break;
+		case gbk_ide_xcd:
+			s = "xcd";
+			break;
+		case gbk_ide_dmc:
+			s = "dmc";
+			break;
+		case gbk_ide_plc:
+			s = "plc";
+			break;
+		case gbk_ide_cyg:
+			s = "cyg";
+			break;
+		case gbk_ide_dkp:
+			s = "dkp";
+			break;
+		case gbk_ide_ccc:
+			s = "ccc";
+			break;
+		case gbk_ide_mvc:
+			s = "mvc";
+			break;
+		default:
+			s = "(unknown IDE)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC tMyErr TryAsIdeOptionNot(void)
+{
+	return FindNamedOption("-e", kNumIdes, GetIdeName, &cur_ide);
+}
+
+LOCALFUNC tMyErr ChooseIde(void)
+{
+	switch (gbo_targfam) {
+		case gbk_targfam_cmac:
+		case gbk_targfam_carb:
+			dfo_ide = gbk_ide_mpw;
+			break;
+		case gbk_targfam_mach:
+		case gbk_targfam_mx11:
+			dfo_ide = gbk_ide_xcd;
+			break;
+		case gbk_targfam_mswn:
+		case gbk_targfam_wnce:
+			dfo_ide = gbk_ide_msv;
+			break;
+		case gbk_targfam_linx:
+		case gbk_targfam_slrs:
+		case gbk_targfam_fbsd:
+		case gbk_targfam_obsd:
+		case gbk_targfam_nbsd:
+		case gbk_targfam_dbsd:
+		case gbk_targfam_oind:
+		case gbk_targfam_minx:
+		case gbk_targfam_irix:
+			dfo_ide = gbk_ide_bgc;
+			break;
+		case gbk_targfam_cygw:
+			dfo_ide = gbk_ide_cyg;
+			break;
+		case gbk_targfam_lnds:
+			dfo_ide = gbk_ide_dkp;
+			break;
+		case gbk_targfam_xgen:
+		default:
+			dfo_ide = gbk_ide_ccc;
+			break;
+	}
+
+	if (kListOptionAuto == cur_ide) {
+		cur_ide = dfo_ide;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptIdeOption(void)
+{
+	WrtOptNamedOption("-e", GetIdeName, cur_ide, dfo_ide);
+}
+
+/* option: ide version */
+
+LOCALVAR uimr ide_vers;
+LOCALVAR uimr dfo_ide_vers;
+LOCALVAR blnr have_ide_vers;
+
+LOCALPROC ResetIdeVersOption(void)
+{
+	have_ide_vers = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsIdeVersOptionNot(void)
+{
+	return NumberTryAsOptionNot("-ev",
+		(long *)&ide_vers, &have_ide_vers);
+}
+
+LOCALFUNC tMyErr ChooseIdeVers(void)
+{
+	switch (cur_ide) {
+		case gbk_ide_xcd:
+			dfo_ide_vers = 2410;
+			break;
+		case gbk_ide_msv:
+			dfo_ide_vers = 8000;
+			break;
+		default:
+			dfo_ide_vers = 1;
+			break;
+	}
+
+	if (! have_ide_vers) {
+		ide_vers = dfo_ide_vers;
+		have_ide_vers = trueblnr;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptIdeVersOption(void)
+{
+	WrtOptNumberOption("-ev", ide_vers, dfo_ide_vers);
+}
+
+/* option: use command line tools */
+
+LOCALVAR blnr UseCmndLine;
+
+LOCALPROC ResetCmndLine(void)
+{
+	UseCmndLine = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsCmndLineOptionNot(void)
+{
+	return FlagTryAsOptionNot("-cl", &UseCmndLine);
+}
+
+LOCALFUNC tMyErr ChooseCmndLineOption(void)
+{
+	return noErr;
+}
+
+LOCALPROC WrtOptCmndLine(void)
+{
+	WrtOptFlagOption("-cl", UseCmndLine);
 }
 
 /* option: export archive */
 
 LOCALVAR blnr WantAllSrc;
+#define dfo_WantAllSrc falseblnr
 
 LOCALPROC ResetWantAllSrc(void)
 {
@@ -1120,11 +1298,18 @@ LOCALFUNC tMyErr TryAsWantAllSrcNot(void)
 	return BooleanTryAsOptionNot("-all-src", &WantAllSrc);
 }
 
-LOCALPROC ChooseWantAllSrc(void)
+LOCALFUNC tMyErr ChooseWantAllSrc(void)
 {
 	if (nanblnr == WantAllSrc) {
-		WantAllSrc = falseblnr;
+		WantAllSrc = dfo_WantAllSrc;
 	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptAllSrc(void)
+{
+	WrtOptBooleanOption("-all-src", WantAllSrc, dfo_WantAllSrc);
 }
 
 /* option: export archive */
@@ -1141,6 +1326,16 @@ LOCALFUNC tMyErr TryAsWantExportNot(void)
 	return FlagTryAsOptionNot("-nex", &NotWantExport);
 }
 
+LOCALFUNC tMyErr ChooseWantExport(void)
+{
+	return noErr;
+}
+
+LOCALPROC WrtOptWantExport(void)
+{
+	WrtOptFlagOption("-nex", NotWantExport);
+}
+
 /* option: eol source code format */
 
 enum {
@@ -1151,6 +1346,7 @@ enum {
 };
 
 LOCALVAR int cur_eol;
+LOCALVAR int dfo_eol;
 
 LOCALPROC ResetEolOption(void)
 {
@@ -1178,42 +1374,51 @@ LOCALFUNC char * GetEolName(int i)
 	return s;
 }
 
-LOCALPROC ChooseEOL(void)
-{
-	if (kListOptionAuto == cur_eol) {
-		if (NotWantExport) {
-			cur_eol = gbk_eol_mac;
-		} else {
-			switch (cur_ide) {
-				case gbk_ide_mpw:
-				case gbk_ide_mw8:
-					cur_eol = gbk_eol_mac;
-					break;
-				case gbk_ide_bgc:
-				case gbk_ide_xcd:
-				case gbk_ide_snc:
-				case gbk_ide_ccc:
-				case gbk_ide_mvc:
-					cur_eol = gbk_eol_unx;
-					break;
-				case gbk_ide_msv:
-				case gbk_ide_lcc:
-				case gbk_ide_dvc:
-				case gbk_ide_mgw:
-				case gbk_ide_cyg:
-				case gbk_ide_dmc:
-				case gbk_ide_plc:
-				case gbk_ide_dkp:
-					cur_eol = gbk_eol_win;
-					break;
-			}
-		}
-	}
-}
-
 LOCALFUNC tMyErr TryAsEolOptionNot(void)
 {
 	return FindNamedOption("-eol", kNumEol, GetEolName, &cur_eol);
+}
+
+LOCALFUNC tMyErr ChooseEOL(void)
+{
+	if (NotWantExport) {
+		dfo_eol = gbk_eol_mac;
+	} else {
+		switch (cur_ide) {
+			case gbk_ide_mpw:
+			case gbk_ide_mw8:
+				dfo_eol = gbk_eol_mac;
+				break;
+			case gbk_ide_bgc:
+			case gbk_ide_xcd:
+			case gbk_ide_snc:
+			case gbk_ide_ccc:
+			case gbk_ide_mvc:
+				dfo_eol = gbk_eol_unx;
+				break;
+			case gbk_ide_msv:
+			case gbk_ide_lcc:
+			case gbk_ide_dvc:
+			case gbk_ide_mgw:
+			case gbk_ide_cyg:
+			case gbk_ide_dmc:
+			case gbk_ide_plc:
+			case gbk_ide_dkp:
+				dfo_eol = gbk_eol_win;
+				break;
+		}
+	}
+
+	if (kListOptionAuto == cur_eol) {
+		cur_eol = dfo_eol;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptEOL(void)
+{
+	WrtOptNamedOption("-eol", GetEolName, cur_eol, dfo_eol);
 }
 
 /* option: archive format */
@@ -1226,6 +1431,7 @@ enum {
 };
 
 LOCALVAR int cur_arc;
+LOCALVAR int dfo_arc;
 
 LOCALPROC ResetArcOption(void)
 {
@@ -1253,38 +1459,47 @@ LOCALFUNC char * GetArcName(int i)
 	return s;
 }
 
-LOCALPROC ChooseArc(void)
-{
-	if (kListOptionAuto == cur_arc) {
-		switch (cur_ide) {
-			case gbk_ide_mpw:
-			case gbk_ide_mw8:
-				cur_arc = gbk_arc_sit;
-				break;
-			case gbk_ide_bgc:
-			case gbk_ide_xcd:
-			case gbk_ide_snc:
-			case gbk_ide_ccc:
-			case gbk_ide_mvc:
-				cur_arc = gbk_arc_tar;
-				break;
-			case gbk_ide_msv:
-			case gbk_ide_lcc:
-			case gbk_ide_dvc:
-			case gbk_ide_mgw:
-			case gbk_ide_cyg:
-			case gbk_ide_dmc:
-			case gbk_ide_plc:
-			case gbk_ide_dkp:
-				cur_arc = gbk_arc_zip;
-				break;
-		}
-	}
-}
-
 LOCALFUNC tMyErr TryAsArcOptionNot(void)
 {
 	return FindNamedOption("-arc", kNumArc, GetArcName, &cur_arc);
+}
+
+LOCALFUNC tMyErr ChooseArc(void)
+{
+	switch (cur_ide) {
+		case gbk_ide_mpw:
+		case gbk_ide_mw8:
+			dfo_arc = gbk_arc_sit;
+			break;
+		case gbk_ide_bgc:
+		case gbk_ide_xcd:
+		case gbk_ide_snc:
+		case gbk_ide_ccc:
+		case gbk_ide_mvc:
+			dfo_arc = gbk_arc_tar;
+			break;
+		case gbk_ide_msv:
+		case gbk_ide_lcc:
+		case gbk_ide_dvc:
+		case gbk_ide_mgw:
+		case gbk_ide_cyg:
+		case gbk_ide_dmc:
+		case gbk_ide_plc:
+		case gbk_ide_dkp:
+			dfo_arc = gbk_arc_zip;
+			break;
+	}
+
+	if (kListOptionAuto == cur_arc) {
+		cur_arc = dfo_arc;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptArc(void)
+{
+	WrtOptNamedOption("-arc", GetArcName, cur_arc, dfo_arc);
 }
 
 /* option: print file list */
@@ -1299,6 +1514,16 @@ LOCALPROC ResetListOption(void)
 LOCALFUNC tMyErr TryAsListOptionNot(void)
 {
 	return FlagTryAsOptionNot("-l", &CurPrintCFiles);
+}
+
+LOCALFUNC tMyErr ChooseListOption(void)
+{
+	return noErr;
+}
+
+LOCALPROC WrtOptListOption(void)
+{
+	WrtOptFlagOption("-l", CurPrintCFiles);
 }
 
 /* option: maintainer name */
@@ -1369,26 +1594,35 @@ LOCALFUNC tMyErr TryAsSponsorNameOptionNot(void)
 	return StringTryAsOptionNot("-sponsor", &hSponsorName);
 }
 
+LOCALFUNC tMyErr ChooseSponsorNameOption(void)
+{
+	return noErr;
+}
+
 /* derived option: application is os x bundle (folder) */
 
 LOCALVAR blnr HaveMacBundleApp;
 
-LOCALPROC ChooseHaveMacBundleApp(void)
+LOCALFUNC tMyErr ChooseHaveMacBundleApp(void)
 {
 	HaveMacBundleApp = (gbk_targfam_mach == gbo_targfam)
 		|| ((gbk_targfam_carb == gbo_targfam)
 			&& (gbk_ide_mpw == cur_ide));
+
+	return noErr;
 }
 
 /* derived option: have macintosh resources */
 
 LOCALVAR blnr HaveMacRrscs;
 
-LOCALPROC ChooseHaveMacRrscs(void)
+LOCALFUNC tMyErr ChooseHaveMacRrscs(void)
 {
 	HaveMacRrscs = (gbk_apifam_mac == gbo_apifam)
 		|| ((gbk_targfam_carb == gbo_targfam)
 			&& ! (gbk_ide_mpw == cur_ide));
+
+	return noErr;
 }
 
 /* option: Abbrev Name */
@@ -1427,11 +1661,13 @@ LOCALFUNC tMyErr TryAsAbbrevNameOptionNot(void)
 	return err;
 }
 
-LOCALPROC ChooseAbbrevName(void)
+LOCALFUNC tMyErr ChooseAbbrevName(void)
 {
 	if (0 == vStrAppAbbrev[0]) {
 		CStrCopy(vStrAppAbbrev, kStrAppAbbrev);
 	}
+
+	return noErr;
 }
 
 /* option: Variation Name */
@@ -1459,9 +1695,9 @@ LOCALFUNC tMyErr ChooseVariationName(void)
 
 		PStrFromCStr(s, vStrAppAbbrev);
 		PStrApndCStr(s, "-");
-		PStrApndCStr(s, kMajorVersion);
+		PStrApndNUimr(s, MajorVersion, 2);
 		PStrApndCStr(s, ".");
-		PStrApndCStr(s, kMinorVersion);
+		PStrApndNUimr(s, MinorVersion, 2);
 		PStrApndCStr(s, "-");
 		/* PStrApndCStr(s, GetIdeName(cur_ide)); */
 		PStrApndCStr(s, GetTargetName(cur_targ));
@@ -1486,36 +1722,13 @@ LOCALFUNC tMyErr TryAsConfigDirNot(void)
 	return BooleanTryAsOptionNot("-cfg", &WantConfigDir);
 }
 
-LOCALPROC ChooseConfigDir(void)
+LOCALFUNC tMyErr ChooseConfigDir(void)
 {
 	if (nanblnr == WantConfigDir) {
 		WantConfigDir = falseblnr;
 	}
-}
 
-/* option: IconMaster */
-
-#ifndef WantIconMasterDflt
-#define WantIconMasterDflt falseblnr
-#endif
-
-LOCALVAR blnr WantIconMaster;
-
-LOCALPROC ResetIconMaster(void)
-{
-	WantIconMaster = nanblnr;
-}
-
-LOCALFUNC tMyErr TryAsIconMasterNot(void)
-{
-	return BooleanTryAsOptionNot("-im", &WantIconMaster);
-}
-
-LOCALPROC ChooseIconMaster(void)
-{
-	if (nanblnr == WantIconMaster) {
-		WantIconMaster = WantIconMasterDflt;
-	}
+	return noErr;
 }
 
 
@@ -1523,16 +1736,20 @@ LOCALPROC ChooseIconMaster(void)
 
 LOCALPROC GNResetCommandLineParameters(void)
 {
+	ResetBranchOption();
 	ResetTargetOption();
 	ResetCPUFamOption();
+	ResetAPIFamOption();
+	ResetDbgOption();
+	ResetLangOption();
+	ResetIconMaster();
+
 	ResetIdeOption();
 	ResetIdeVersOption();
 	ResetCmndLine();
 	ResetWantAllSrc();
-	ResetDbgOption();
-	ResetLangOption();
-	ResetEolOption();
 	ResetWantExport();
+	ResetEolOption();
 	ResetArcOption();
 	ResetListOption();
 	ResetMaintainerName();
@@ -1541,34 +1758,33 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetAbbrevName();
 	ResetVariationName();
 	ResetConfigDir();
-	ResetIconMaster();
-	ResetAPIFamOption();
 }
 
 LOCALFUNC tMyErr TryAsGNOptionNot(void)
 {
 	tMyErr err;
 
+	if (kMyErrNoMatch == (err = TryAsBranchOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsTargetOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsCPUFamOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsAPIFamOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsDbgOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsLangOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsIconMasterNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeVersOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsCmndLineOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsWantAllSrcNot()))
-	if (kMyErrNoMatch == (err = TryAsDbgOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsEolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsWantExportNot()))
+	if (kMyErrNoMatch == (err = TryAsEolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsArcOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsLangOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsListOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsMaintainerNameOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsHomePageOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSponsorNameOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsListOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAbbrevNameOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsVariationNameOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsConfigDirNot()))
-	if (kMyErrNoMatch == (err = TryAsIconMasterNot()))
-	if (kMyErrNoMatch == (err = TryAsAPIFamOptionNot()))
 	{
 	}
 
@@ -1579,30 +1795,62 @@ LOCALFUNC tMyErr AutoChooseGNSettings(void)
 {
 	tMyErr err;
 
+	if (noErr == (err = ChooseBranch()))
 	if (noErr == (err = ChooseTarg()))
+	if (noErr == (err = ChooseCPUFam()))
+	if (noErr == (err = ChooseTargFam())) /* derived */
+	if (noErr == (err = ChooseAPIFam()))
+	if (noErr == (err = ChooseDbgOption()))
+	if (noErr == (err = ChooseLangOption()))
+	if (noErr == (err = ChooseIconMaster()))
+
+	if (noErr == (err = ChooseIde()))
+	if (noErr == (err = ChooseIdeVers()))
+	if (noErr == (err = ChooseCmndLineOption()))
+	if (noErr == (err = ChooseWantAllSrc()))
+	if (noErr == (err = ChooseWantExport()))
+	if (noErr == (err = ChooseEOL()))
+	if (noErr == (err = ChooseArc()))
+	if (noErr == (err = ChooseListOption()))
+	if (noErr == (err = ChooseMaintainerName()))
+	if (noErr == (err = ChooseHomePage()))
+	if (noErr == (err = ChooseSponsorNameOption()))
+	if (noErr == (err = ChooseHaveMacBundleApp())) /* derived */
+	if (noErr == (err = ChooseHaveMacRrscs())) /* derived */
+	if (noErr == (err = ChooseAbbrevName()))
+	if (noErr == (err = ChooseVariationName()))
+	if (noErr == (err = ChooseConfigDir()))
 	{
-		ChooseCPUFam();
-		ChooseTargFam();
-		ChooseIde();
-		ChooseIdeVers();
-		ChooseAPIFam();
-		ChooseWantAllSrc();
-		ChooseDbgOption();
-		ChooseLangOption();
-		ChooseEOL();
-		ChooseArc();
-		if (noErr == (err = ChooseMaintainerName()))
-		if (noErr == (err = ChooseHomePage()))
-		{
-			ChooseHaveMacBundleApp();
-			ChooseHaveMacRrscs();
-			ChooseAbbrevName();
-			if (noErr == (err = ChooseVariationName())) {
-				ChooseConfigDir();
-				ChooseIconMaster();
-			}
-		}
+		err = noErr;
 	}
 
 	return err;
+}
+
+LOCALPROC WrtOptGNSettings(void)
+{
+	WrtOptBranchOption();
+	WrtOptTarg();
+	WrtOptCPUFam();
+	WrtOptAPIFam();
+	WrtOptDbgOption();
+	WrtOptLangOption();
+	WrtOptIconMaster();
+
+#if 0
+	WrtOptIdeOption();
+	WrtOptIdeVersOption();
+	WrtOptCmndLine();
+	WrtOptAllSrc();
+	WrtOptWantExport();
+	WrtOptEOL();
+	WrtOptArc();
+	WrtOptListOption();
+	/* Maintainer */
+	/* HomePage */
+	/* Sponsor */
+	/* AbbrevName */
+	/* VariationName */
+	/* ConfigDir */
+#endif
 }

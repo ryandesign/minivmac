@@ -41,6 +41,14 @@ LOCALPROC WriteAppCNFGRAPIContents(void)
 	WriteCommonCNFGRAPIContents();
 
 	WriteAppSpecificCNFGRAPIoptions();
+
+	WriteBlankLineToDestFile();
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define kBldOpts \"");
+	WrtOptGNSettings();
+	WrtOptSPSettings();
+	WriteCStrToDestFile("\"");
+	WriteEndDestFileLn();
 }
 
 LOCALPROC WriteOneWire(char *a, char *b)

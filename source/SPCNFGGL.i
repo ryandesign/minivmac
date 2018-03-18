@@ -74,7 +74,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBlankLineToDestFile();
 
 	WriteCompCondBool("IncludePbufs",
-		((! WantMinExtn) || WantActvCode || WantDemoMsg)
+		1 /* ((! WantMinExtn) || WantActvCode || WantDemoMsg) */
 			&& (gbk_apifam_gtk != gbo_apifam)
 			&& (gbk_apifam_nds != gbo_apifam));
 

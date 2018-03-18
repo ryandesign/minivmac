@@ -120,6 +120,10 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WriteDestFileLn("#define GrabKeysFullScreen 0");
 	}
 
+	WriteCompCondBool("WantEnblCtrlInt", WantEnblCtrlInt);
+	WriteCompCondBool("WantEnblCtrlRst", WantEnblCtrlRst);
+	WriteCompCondBool("WantEnblCtrlKtg", WantEnblCtrlKtg);
+
 	WriteCompCondBool("NeedRequestInsertDisk",
 		(gbk_apifam_gtk == gbo_apifam)
 		|| (gbk_apifam_mac == gbo_apifam)

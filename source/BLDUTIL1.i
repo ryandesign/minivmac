@@ -63,21 +63,6 @@ GLOBALFUNC tMyErr ExportFromFile2HostFile2_v2(MyDir_R *d, StringPtr s)
 	return err;
 }
 
-GLOBALPROC Uimr2Dec(uimr v, ps3p s)
-{
-	MyCharR *p = PStrToMyCharPtr(s);
-	uimr newv;
-
-	do {
-		newv = v / (uimr)10;
-		*p++ = '0' + (v - newv * 10);
-		v = newv;
-	} while (v != 0);
-	s[0] = p - PStrToMyCharPtr(s);
-
-	ReversePStr(s);
-}
-
 GLOBALPROC ui2r2Hex(ui3r v, MyCharR *r)
 {
 	if (v < 10) {

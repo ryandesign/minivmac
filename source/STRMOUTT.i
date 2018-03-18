@@ -193,6 +193,22 @@ LOCALPROC strmo_writeNum(simr v)
 	strmo_writePStr(s);
 }
 
+LOCALPROC strmo_writeUimr(uimr v)
+{
+	MyPStr s;
+
+	PStrFromUimr(v, s);
+	strmo_writePStr(s);
+}
+
+LOCALPROC strmo_writeNUimr(uimr v, ui3r n)
+{
+	MyPStr s;
+
+	PStrFromNUimr(v, n, s);
+	strmo_writePStr(s);
+}
+
 LOCALPROC strmo_writeSpace(void)
 {
 	strmo_writeChar(' ');
