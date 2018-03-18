@@ -42,6 +42,8 @@ LOCALPROC WriteAppCNFGRAPIContents(void)
 
 	WriteAppSpecificCNFGRAPIoptions();
 
+	Branch = MajorVersion;
+
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define kBldOpts \"");

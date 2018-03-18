@@ -346,28 +346,75 @@ LOCALFUNC tMyErr ArchiveAndExport(void)
 	return err;
 }
 
+LOCALPROC ResetAllCommandLineParameters(void)
+{
+	GNResetCommandLineParameters();
+	GNDevResetCommandLineParameters();
+#ifdef Have_SPBLDOPT
+	SPResetCommandLineParameters();
+#endif
+	olv_cur = 1;
+	OnlyUserOptions = falseblnr;
+}
+
+LOCALFUNC tMyErr TryAsAtOptionNot(void)
+{
+	tMyErr err;
+
+	if (! CurArgIsCStr_v2("@")) {
+		err = kMyErrNoMatch;
+	} else
+	if (OnlyUserOptions) {
+		err = ReportParseFailure("Already have @");
+	} else
+	if (kMyErr_noErr != (err = AdvanceTheArg())) {
+		/* fail */
+	} else
+	{
+		OnlyUserOptions = trueblnr;
+		err = kMyErr_noErr;
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr TryAsXClmOptionNot(void)
+{
+	tMyErr err;
+
+	if (! CurArgIsCStr_v2("!")) {
+		err = kMyErrNoMatch;
+	} else
+	if (kMyErr_noErr != (err = AdvanceTheArg())) {
+		/* fail */
+	} else
+	{
+		err = noErr;
+		++olv_cur;
+	}
+
+	return err;
+}
+
 LOCALFUNC tMyErr ProcessCommandLineArguments(void)
 {
 	tMyErr err;
 
 	err = noErr;
-	GNResetCommandLineParameters();
-#ifdef Have_SPBLDOPT
-	SPResetCommandLineParameters();
-#endif
 	while ((! The_arg_end) && (noErr == err)) {
 		if (kMyErrNoMatch == (err = TryAsGNOptionNot()))
+		if (kMyErrNoMatch == (err = TryAsGNDevOptionNot()))
 #ifdef Have_SPBLDOPT
 		if (kMyErrNoMatch == (err = TryAsSPOptionNot()))
 #endif
+		if (kMyErrNoMatch == (err = TryAsAtOptionNot()))
+		if (kMyErrNoMatch == (err = TryAsXClmOptionNot()))
 		{
 			if (CurArgIsCStr_v2(";")) {
-				AdvanceTheArg();
-				err = noErr;
+				err = AdvanceTheArg();
 				goto Label_1;
 			} else {
-				ReportParseFailure("unknown switch");
-				err = kMyErrReported;
+				err = ReportParseFailure("unknown switch");
 			}
 		}
 		if (ParseArgsFailed && (noErr == err)) {
@@ -518,12 +565,70 @@ LOCALFUNC tMyErr MakeSrcFolder(void)
 	return err;
 }
 
+LOCALFUNC tMyErr WriteErrToFile0(MyDir_R *d, StringPtr s, tMyErr err0)
+{
+	MyPStr t;
+	tMyErr err;
+
+	if (noErr == (err = strmo_open_v2(d, s))) {
+		switch (err0) {
+			case kMyErr_noErr:
+				/* ok */
+				break;
+			case kMyErrSyntaxErr:
+				if (noErr == (err = MyHandleToCStr(SyntaxErrH, t))) {
+					strmo_writeCStr(t);
+				}
+				break;
+			default:
+				strmo_writeCStr(GetTextForSavedSysErr_v2(err0));
+				break;
+		}
+		err = strmo_close_v2();
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr WriteErrToFile(tMyErr err0)
+{
+	tMyErr err;
+	Str255 sarc;
+
+	if (0 == vStrAppAbbrev[0]) {
+		PStrFromCStr(sarc, kStrAppAbbrev);
+	} else {
+		PStrFromCStr(sarc, vStrAppAbbrev);
+	}
+	PStrApndCStr(sarc, ".err.txt");
+
+	if (noErr != (err = MyHGetDir_v2(&BaseDirR))) {
+		/* fail */
+	} else
+	if (noErr != (err = FindOutPutDir())) {
+		/* fail */
+	} else
+	if (noErr != (err = WriteErrToFile0(&OutputDir0R,
+		sarc, err0)))
+	{
+		/* fail */
+	} else
+	{
+		err = noErr;
+	}
+
+	return err;
+}
+
 LOCALFUNC tMyErr DoTheCommand0(void)
 {
 	tMyErr err;
 
+	ResetAllCommandLineParameters();
+
 	if (noErr == (err = ProcessCommandLineArguments()))
 	if (noErr == (err = AutoChooseGNSettings()))
+	if (noErr == (err = AutoChooseGNDevSettings()))
 #ifdef Have_SPBLDOPT
 	if (noErr == (err = AutoChooseSPSettings()))
 #endif
@@ -534,6 +639,13 @@ LOCALFUNC tMyErr DoTheCommand0(void)
 	if (noErr == (err = WriteIdeSpecificFiles()))
 	if ((NotWantExport) || (noErr == (err = ArchiveAndExport())))
 	{
+	}
+
+	if ((kMyErr_noErr != err)
+		&& (nanblnr != gbo_Err2File)
+		&& gbo_Err2File)
+	{
+		err = WriteErrToFile(err);
 	}
 
 	return err;

@@ -29,7 +29,7 @@ LOCALVAR char *Cur_args;
 LOCALVAR blnr The_arg_end;
 LOCALVAR blnr ParseArgsFailed;
 
-GLOBALPROC AdvanceTheArg(void)
+GLOBALFUNC tMyErr AdvanceTheArg(void)
 {
 	++The_argi;
 	if (The_argi < The_argc) {
@@ -37,6 +37,8 @@ GLOBALPROC AdvanceTheArg(void)
 	} else {
 		The_arg_end = trueblnr;
 	}
+
+	return kMyErr_noErr;
 }
 
 GLOBALFUNC blnr CurArgIsCStr_v2(char *s)
@@ -45,15 +47,18 @@ GLOBALFUNC blnr CurArgIsCStr_v2(char *s)
 	return CStrEq(Cur_args, s);
 }
 
-GLOBALFUNC blnr CurArgIsCStrAdvance_v2(char *s)
+GLOBALFUNC tMyErr CurArgIsCStrAdvance_v2(char *s)
 {
+	tMyErr err;
+
 	/* warning : assumes (! The_arg_end) */
 	if (! CurArgIsCStr_v2(s)) {
-		return falseblnr;
+		err = kMyErrNoMatch;
 	} else {
-		AdvanceTheArg();
-		return trueblnr;
+		err = AdvanceTheArg();
 	}
+
+	return err;
 }
 
 GLOBALPROC GetCurArgAsCStr(char *s, uimr MaxN)
@@ -85,13 +90,14 @@ GLOBALPROC BeginParseCommandLineArguments(int argc, The_argvt argv)
 	The_argv = argv;
 	The_arg_end = falseblnr;
 	ParseArgsFailed = falseblnr;
-	AdvanceTheArg();
+	(void) AdvanceTheArg();
 }
 
-GLOBALPROC ReportParseFailure(char *s)
+GLOBALFUNC tMyErr ReportParseFailure(char *s)
 {
 	fprintf(stderr, "%s\n", s);
 	ParseArgsFailed = trueblnr;
+	err = kMyErrSyntaxErr;
 }
 
 GLOBALPROC DisplayRunErr(char *s)

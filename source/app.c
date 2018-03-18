@@ -215,14 +215,26 @@ LOCALPROC ProgramMain(void)
 			if (noErr == ProgressBar_SetStage_v2(
 				"Running, type command-period to abort\311", 0))
 			{
-				BeginParseFromTE();
-				err = DoTheCommand();
-				EndParseFromTE();
+				if (kMyErr_noErr == (err = BeginParseFromTE())) {
+					err = DoTheCommand();
+					EndParseFromTE();
+				}
 			}
 			(void) ProgressBar_SetStage_v2(
 				"Done, ready for more options\311", 0);
 		}
-		ReportUnhandledErr(err);
+
+		switch (err) {
+			case kMyErr_noErr:
+				/* ok */
+				break;
+			case kMyErrSyntaxErr:
+				ShowSyntaxError();
+				break;
+			default:
+				ReportUnhandledErr(err);
+				break;
+		}
 	} while (! ProgramDone);
 }
 

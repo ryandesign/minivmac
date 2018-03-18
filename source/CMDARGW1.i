@@ -2850,13 +2850,17 @@ LOCALVAR uimr The_arg_range_size;
 LOCALVAR blnr The_arg_end;
 LOCALVAR blnr ParseArgsFailed;
 
-LOCALPROC ReportParseFailure(char *s)
+LOCALFUNC tMyErr ReportParseFailure(char *s)
 {
 	if (! ParseArgsFailed) {
-		MyAlertFromCStr(s);
+		/* MyAlertFromCStr(s); */
 
 		ParseArgsFailed = trueblnr;
 	}
+
+	return SetSyntaxErrCStr(s,
+		The_arg_range_start,
+		The_arg_range_start + The_arg_range_size);
 }
 
 LOCALFUNC blnr CurCharIsWhiteSpace(void)
@@ -2878,13 +2882,16 @@ LOCALFUNC blnr CurCharIsWhiteSpace(void)
 	return v;
 }
 
-LOCALPROC AdvanceTheArg(void)
+LOCALFUNC tMyErr AdvanceTheArg(void)
 {
+	tMyErr err;
+
 remove_white:
 	if (ParseCharDone) {
 		The_arg_range_start = ParseRangeStop;
 		The_arg_range_size = 0;
 		The_arg_end = trueblnr;
+		err = kMyErr_noErr;
 	} else if (CurCharIsWhiteSpace()) {
 		AdvanceParseChar();
 		goto remove_white;
@@ -2899,9 +2906,10 @@ remove_white:
 		The_arg_range_size = ParseCharIndex - The_arg_range_start;
 		if (! ParseCharDone) {
 			AdvanceParseChar();
+			err = kMyErr_noErr;
 		} else {
-			ReportParseFailure("missing '\"' to end string");
 			The_arg_end = trueblnr;
+			err = ReportParseFailure("missing '\"' to end string");
 		}
 	} else if ('{' == ParseCharCur) {
 		The_arg_range_start = ParseCharIndex;
@@ -2915,8 +2923,8 @@ remove_white:
 			goto remove_white;
 		} else {
 			The_arg_range_size = ParseCharIndex - The_arg_range_start;
-			ReportParseFailure("missing '}' to end comment");
 			The_arg_end = trueblnr;
+			err = ReportParseFailure("missing '}' to end comment");
 		}
 	} else {
 		The_arg_range_start = ParseCharIndex;
@@ -2925,7 +2933,10 @@ remove_white:
 			AdvanceParseChar();
 		} while ((! ParseCharDone) && ! CurCharIsWhiteSpace());
 		The_arg_range_size = ParseCharIndex - The_arg_range_start;
+		err = kMyErr_noErr;
 	}
+
+	return ErrReportStack(err, "AdvanceTheArg");
 }
 
 LOCALFUNC blnr CurArgIsCStr_v2(char *s)
@@ -2946,15 +2957,18 @@ LOCALFUNC blnr CurArgIsCStr_v2(char *s)
 	return trueblnr;
 }
 
-LOCALFUNC blnr CurArgIsCStrAdvance_v2(char *s)
+LOCALFUNC tMyErr CurArgIsCStrAdvance_v2(char *s)
 {
+	tMyErr err;
+
 	/* warning : assumes (! The_arg_end) */
 	if (! CurArgIsCStr_v2(s)) {
-		return falseblnr;
+		err = kMyErrNoMatch;
 	} else {
-		AdvanceTheArg();
-		return trueblnr;
+		err = AdvanceTheArg();
 	}
+
+	return err;
 }
 
 LOCALPROC GetCurArgAsCStr(char *s, uimr MaxN)
@@ -2983,15 +2997,19 @@ LOCALFUNC tMyErr GetCurArgAsHandle_v2(Handle *r)
 		ParseHandle, The_arg_range_start, The_arg_range_size);
 }
 
-LOCALPROC BeginParseFromTE(void)
+LOCALFUNC tMyErr BeginParseFromTE(void)
 {
+	tMyErr err;
+
 	ParseCharIndex = ParseRangeStart - 1;
 	ParseCharDone = falseblnr;
 	AdvanceParseChar();
 
 	ParseArgsFailed = falseblnr;
 	The_arg_end = falseblnr;
-	AdvanceTheArg();
+	err = AdvanceTheArg();
+
+	return err;
 }
 
 LOCALPROC EndParseFromTE(void)

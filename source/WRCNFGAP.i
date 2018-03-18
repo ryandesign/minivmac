@@ -43,6 +43,10 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 	WriteDestFileLn("*/");
 
 
+	if (gbo_TstCompErr) {
+		WriteDestFileLn("#error \"Testing Compile Time Error\"");
+	}
+
 	if (gbk_ide_msv == cur_ide) {
 		if (ide_vers >= 8000) {
 			WriteBlankLineToDestFile();

@@ -116,6 +116,26 @@ LOCALFUNC tMyErr MyHandleToPStr_v2(MyHandle x, ps3p s)
 }
 #endif
 
+#ifdef Have_STRUTILS
+LOCALFUNC tMyErr MyHandleToCStr(MyHandle x, char *s)
+{
+	tMyErr err;
+	uimr L;
+
+	if (kMyErr_noErr != (err =
+		MyHandleGetSize_v2(x, &L)))
+	{
+		/* fail */
+	} else
+	{
+		MyHandlePartToCStr(x, 0, L, s);
+		err = kMyErr_noErr;
+	}
+
+	return ErrReportStack(err, "MyHandleToCStr");
+}
+#endif
+
 LOCALFUNC tMyErr NHandleClear_v2(MyHandle *h)
 {
 	tMyErr err;

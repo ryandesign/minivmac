@@ -45,44 +45,71 @@
 
 /* --- end of default definitions for SPBASDEF --- */
 
+LOCALVAR blnr OnlyUserOptions = falseblnr;
+LOCALVAR blnr DoingDevOpts = falseblnr;
+
+LOCALVAR ui3r olv_cur;
+
+LOCALFUNC tMyErr CurArgIsOption(char *s, ui3r *olv)
+{
+	tMyErr err;
+
+	if (! CurArgIsCStr_v2(s)) {
+		err = kMyErrNoMatch;
+	} else
+	if (DoingDevOpts && OnlyUserOptions) {
+		err = ReportParseFailure("This a developer only option");
+	} else
+	if (*olv == olv_cur) {
+		err = ReportParseFailure(
+			"This option has already been defined");
+	} else
+	if (kMyErr_noErr != (err = AdvanceTheArg())) {
+		/* fail */
+	} else
+	{
+		*olv = olv_cur;
+		err = kMyErr_noErr;
+	}
+
+	return err;
+}
+
 #define nanblnr 2
 
 #define kListOptionAuto (-1)
 
 typedef char * (* tGetName)(int i);
 
-LOCALFUNC tMyErr FindNamedOption(char *s, int n, tGetName p, int *r)
+LOCALFUNC tMyErr FindNamedOption(char *s, int n, tGetName p,
+	int *r, ui3r *olv)
 {
 	tMyErr err;
 	int i;
 
-	if (! CurArgIsCStr_v2(s)) {
-		err = kMyErrNoMatch;
-	} else {
-		if (kListOptionAuto != *r) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			if (The_arg_end) {
-				ReportParseFailure(
-					"Expecting option argument when reached end");
-				err = kMyErrReported;
-			} else {
-				for (i = 0; i < n; ++i) {
-					if (CurArgIsCStr_v2(p(i))) {
-						AdvanceTheArg();
-						*r = i;
-						err = noErr;
-						goto label_1;
-					}
-				}
-				ReportParseFailure("unknown value for this option");
-				err = kMyErrReported;
-label_1:
-				;
+	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
+		/* no */
+	} else
+	if (The_arg_end) {
+		err = ReportParseFailure(
+			"Expecting option argument when reached end");
+	} else
+	{
+		for (i = 0; i < n; ++i) {
+			if (CurArgIsCStr_v2(p(i))) {
+				*r = i;
+				err = AdvanceTheArg();
+				goto label_1;
 			}
 		}
+		if (CurArgIsCStr_v2("*")) {
+			*r = kListOptionAuto;
+			err = AdvanceTheArg();
+			goto label_1;
+		}
+		err = ReportParseFailure("unknown value for this option");
+label_1:
+		;
 	}
 
 	return err;
@@ -96,80 +123,71 @@ LOCALPROC StringResetOption(Handle *r)
 	}
 }
 
-LOCALFUNC tMyErr StringTryAsOptionNot(char *s, Handle *r)
+LOCALFUNC tMyErr StringTryAsOptionNot(char *s, Handle *r, ui3r *olv)
 {
 	tMyErr err;
 
-	if (! CurArgIsCStr_v2(s)) {
-		err = kMyErrNoMatch;
-	} else {
-		if (NULL != *r) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			if (The_arg_end) {
-				ReportParseFailure(
-					"Expecting option argument when reached end");
-				err = kMyErrReported;
-			} else {
-				err = GetCurArgAsHandle_v2(r);
-				AdvanceTheArg();
-			}
+	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
+		/* no */
+	} else
+	if (The_arg_end) {
+		err = ReportParseFailure(
+			"Expecting option argument when reached end");
+	} else
+	{
+		StringResetOption(r);
+		if (kMyErr_noErr != (err = GetCurArgAsHandle_v2(r))) {
+			/* fail */
+		} else
+		{
+			err = AdvanceTheArg();
 		}
 	}
 
 	return err;
 }
 
-LOCALFUNC tMyErr BooleanTryAsOptionNot(char *s, blnr *r)
+LOCALFUNC tMyErr BooleanTryAsOptionNot(char *s, blnr *r, ui3r *olv)
 {
 	tMyErr err;
 
-	if (! CurArgIsCStr_v2(s)) {
-		err = kMyErrNoMatch;
-	} else {
-		if (nanblnr != *r) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			if (The_arg_end) {
-				ReportParseFailure(
-					"Expecting boolean value for option"
-					" when reached end");
-				err = kMyErrReported;
-			} else if (CurArgIsCStrAdvance_v2("1")) {
-				*r = trueblnr;
-				err = noErr;
-			} else if (CurArgIsCStrAdvance_v2("0")) {
-				*r = falseblnr;
-				err = noErr;
-			} else {
-				ReportParseFailure("boolean option - expecting 0 or 1");
-				err = kMyErrReported;
-			}
-		}
+	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
+		/* no */
+	} else
+	if (The_arg_end) {
+		err = ReportParseFailure(
+			"Expecting boolean value for option"
+			" when reached end");
+	} else
+	if (CurArgIsCStr_v2("1")) {
+		*r = trueblnr;
+		err = AdvanceTheArg();
+	} else
+	if (CurArgIsCStr_v2("0")) {
+		*r = falseblnr;
+		err = AdvanceTheArg();
+	} else
+	if (CurArgIsCStr_v2("*")) {
+		*r = nanblnr;
+		err = AdvanceTheArg();
+	} else
+	{
+		err = ReportParseFailure("boolean option - expecting 0 or 1");
 	}
 
 	return err;
 }
 
-LOCALFUNC tMyErr FlagTryAsOptionNot(char *s, blnr *r)
+LOCALFUNC tMyErr FlagTryAsOptionNot(char *s, blnr *r, ui3r *olv)
 {
 	tMyErr err;
 
-	if (! CurArgIsCStr_v2(s)) {
-		err = kMyErrNoMatch;
-	} else {
-		if (falseblnr != *r) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			*r = trueblnr;
-			err = noErr;
-		}
+	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
+		/* no */
+	} else
+	{
+		err = kMyErr_noErr;
+		*r = trueblnr;
 	}
 
 	return err;
@@ -182,42 +200,35 @@ LOCALFUNC tMyErr GetCurArgOptionAsNumber(long *r)
 	MyPStr t;
 
 	if (The_arg_end) {
-		ReportParseFailure("Expecting a number when reached end");
-		err = kMyErrReported;
+		err = ReportParseFailure("Expecting a number when reached end");
 	} else {
 		GetCurArgAsPStr(s);
 		StringToNum(s, r);
 		NumToString(*r, t);
 		if (! PStrEq(s, t)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"This argument option should be a number");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			err = noErr;
+		} else
+		{
+			err = AdvanceTheArg();
 		}
 	}
 
 	return err;
 }
 
-LOCALFUNC tMyErr NumberTryAsOptionNot(char *s, long *r, blnr *have_r)
+LOCALFUNC tMyErr NumberTryAsOptionNot(char *s, long *r, ui3r *olv)
 {
 	tMyErr err;
 
-	if (! CurArgIsCStr_v2(s)) {
-		err = kMyErrNoMatch;
-	} else {
-		if (*have_r) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			err = GetCurArgOptionAsNumber(r);
-			if (noErr == err) {
-				*have_r = trueblnr;
-			}
-		}
+	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
+		/* no */
+	} else
+	if (kMyErr_noErr != (err = GetCurArgOptionAsNumber(r))) {
+		/* fail */
+	} else
+	{
+		err = kMyErr_noErr;
 	}
 
 	return err;
@@ -261,27 +272,27 @@ LOCALPROC WrtOptFlagOption(char *s, blnr v)
 	}
 }
 
+
 /* option: Branch */
 
 LOCALVAR uimr Branch;
-LOCALVAR blnr have_Branch;
+LOCALVAR ui3r olv_Branch;
 
 LOCALPROC ResetBranchOption(void)
 {
-	have_Branch = falseblnr;
+	olv_Branch = 0;
 }
 
 LOCALFUNC tMyErr TryAsBranchOptionNot(void)
 {
 	return NumberTryAsOptionNot("-br",
-		(long *)&Branch, &have_Branch);
+		(long *)&Branch, &olv_Branch);
 }
 
 LOCALFUNC tMyErr ChooseBranch(void)
 {
-	if (! have_Branch) {
+	if (0 == olv_Branch) {
 		Branch = MajorVersion;
-		have_Branch = trueblnr;
 	}
 
 	return noErr;
@@ -293,6 +304,7 @@ LOCALPROC WrtOptBranchOption(void)
 	strmo_writeCStr(" ");
 	strmo_writeUimr(MajorVersion);
 }
+
 
 /* option: target */
 
@@ -338,10 +350,12 @@ enum {
 };
 
 LOCALVAR int cur_targ;
+LOCALVAR ui3r olv_targ;
 
 LOCALPROC ResetTargetOption(void)
 {
 	cur_targ = kListOptionAuto;
+	olv_targ = 0;
 }
 
 LOCALFUNC char * GetTargetName(int i)
@@ -469,7 +483,8 @@ LOCALFUNC char * GetTargetName(int i)
 
 LOCALFUNC tMyErr TryAsTargetOptionNot(void)
 {
-	return FindNamedOption("-t", kNumTargets, GetTargetName, &cur_targ);
+	return FindNamedOption("-t", kNumTargets, GetTargetName,
+		&cur_targ, &olv_targ);
 }
 
 LOCALFUNC tMyErr ChooseTarg(void)
@@ -477,8 +492,7 @@ LOCALFUNC tMyErr ChooseTarg(void)
 	tMyErr err;
 
 	if (kListOptionAuto == cur_targ) {
-		ReportParseFailure("target not specified ('-t' switch)");
-		err = kMyErrReported;
+		err = ReportParseFailure("target not specified ('-t' switch)");
 	} else {
 		err = noErr;
 	}
@@ -494,6 +508,291 @@ LOCALPROC WrtOptTarg(void)
 	strmo_writeCStr(GetTargetName(cur_targ));
 }
 
+
+/* option: debug level */
+
+enum {
+	gbk_dbg_off,
+	gbk_dbg_test,
+	gbk_dbg_on,
+	kNumDebugLevels
+};
+
+LOCALVAR int gbo_dbg;
+LOCALVAR ui3r olv_dbg;
+
+LOCALPROC ResetDbgOption(void)
+{
+	gbo_dbg = kListOptionAuto;
+	olv_dbg = 0;
+}
+
+LOCALFUNC char * GetDbgLvlName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_dbg_on:
+			s = "d";
+			break;
+		case gbk_dbg_test:
+			s = "t";
+			break;
+		case gbk_dbg_off:
+			s = "s";
+			break;
+		default:
+			s = "(unknown Debug Level)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC tMyErr TryAsDbgOptionNot(void)
+{
+	return FindNamedOption("-d",
+		kNumDebugLevels, GetDbgLvlName, &gbo_dbg, &olv_dbg);
+}
+
+#define dfo_dbg() gbk_dbg_off
+
+LOCALFUNC tMyErr ChooseDbgOption(void)
+{
+	if (kListOptionAuto == gbo_dbg) {
+		gbo_dbg = dfo_dbg();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptDbgOption(void)
+{
+	WrtOptNamedOption("-d", GetDbgLvlName, gbo_dbg, dfo_dbg());
+}
+
+
+/* option: language */
+
+enum {
+	gbk_lang_eng,
+	gbk_lang_fre,
+	gbk_lang_ita,
+	gbk_lang_ger,
+	gbk_lang_dut,
+	gbk_lang_spa,
+	gbk_lang_pol,
+	gbk_lang_ptb,
+	gbk_lang_cat,
+	gbk_lang_cze,
+	kNumLangLevels
+};
+
+LOCALVAR int gbo_lang;
+LOCALVAR ui3r olv_lang;
+
+LOCALPROC ResetLangOption(void)
+{
+	gbo_lang = kListOptionAuto;
+	olv_lang = 0;
+}
+
+LOCALFUNC char * GetLangName(int i)
+{
+	/* ISO 639-2/B */
+	char *s;
+
+	switch (i) {
+		case gbk_lang_eng:
+			s = "eng";
+			break;
+		case gbk_lang_fre:
+			s = "fre";
+			break;
+		case gbk_lang_ita:
+			s = "ita";
+			break;
+		case gbk_lang_ger:
+			s = "ger";
+			break;
+		case gbk_lang_dut:
+			s = "dut";
+			break;
+		case gbk_lang_spa:
+			s = "spa";
+			break;
+		case gbk_lang_pol:
+			s = "pol";
+			break;
+		case gbk_lang_ptb:
+			s = "ptb";
+			break;
+		case gbk_lang_cat:
+			s = "cat";
+			break;
+		case gbk_lang_cze:
+			s = "cze";
+			break;
+		default:
+			s = "(unknown Language Level)";
+			break;
+	}
+	return s;
+}
+
+LOCALFUNC tMyErr TryAsLangOptionNot(void)
+{
+	return FindNamedOption("-lang",
+		kNumLangLevels, GetLangName, &gbo_lang, &olv_lang);
+}
+
+LOCALFUNC char * GetLProjName(int i)
+{
+	/*
+		As used in OS X, IETF language tags, except when not
+	*/
+	char *s;
+
+	switch (i) {
+		case gbk_lang_eng:
+			s = "English";
+			break;
+		case gbk_lang_fre:
+			s = "French";
+			break;
+		case gbk_lang_ita:
+			s = "Italian";
+			break;
+		case gbk_lang_ger:
+			s = "German";
+			break;
+		case gbk_lang_dut:
+			s = "Dutch";
+			break;
+		case gbk_lang_spa:
+			s = "Spanish";
+			break;
+		case gbk_lang_pol:
+			s = "pl";
+			break;
+		case gbk_lang_ptb:
+			s = "pt_BR";
+			break;
+		case gbk_lang_cat:
+			s = "ca";
+			break;
+		case gbk_lang_cze:
+			s = "cs";
+			break;
+		default:
+			s = "(unknown Language Level)";
+			break;
+	}
+	return s;
+}
+
+#define dfo_lang() gbk_lang_eng
+
+LOCALFUNC tMyErr ChooseLangOption(void)
+{
+	if (kListOptionAuto == gbo_lang) {
+		gbo_lang = dfo_lang();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptLangOption(void)
+{
+	WrtOptNamedOption("-lang", GetLangName, gbo_lang, dfo_lang());
+}
+
+
+/* option: IconMaster */
+
+#ifndef WantIconMasterDflt
+#define WantIconMasterDflt falseblnr
+#endif
+
+LOCALVAR blnr WantIconMaster;
+LOCALVAR ui3r olv_IconMaster;
+
+LOCALPROC ResetIconMaster(void)
+{
+	WantIconMaster = nanblnr;
+	olv_IconMaster = 0;
+}
+
+LOCALFUNC tMyErr TryAsIconMasterNot(void)
+{
+	return BooleanTryAsOptionNot("-im",
+		&WantIconMaster, &olv_IconMaster);
+}
+
+LOCALFUNC tMyErr ChooseIconMaster(void)
+{
+	if (nanblnr == WantIconMaster) {
+		WantIconMaster = WantIconMasterDflt;
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptIconMaster(void)
+{
+	WrtOptBooleanOption("-im", WantIconMaster, WantIconMasterDflt);
+}
+
+
+/* option: Test Compile Time Error */
+
+LOCALVAR blnr gbo_TstCompErr;
+LOCALVAR ui3r olv_TstCompErr;
+
+LOCALPROC ResetTstCompErr(void)
+{
+	gbo_TstCompErr = nanblnr;
+	olv_TstCompErr = 0;
+}
+
+LOCALFUNC tMyErr TryAsTstCompErrNot(void)
+{
+	return BooleanTryAsOptionNot("-cte",
+		&gbo_TstCompErr, &olv_TstCompErr);
+}
+
+#define dfo_TstCompErr() falseblnr
+
+LOCALFUNC tMyErr ChooseTstCompErr(void)
+{
+	if (nanblnr == gbo_TstCompErr) {
+		gbo_TstCompErr = dfo_TstCompErr();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptTstCompErr(void)
+{
+	WrtOptBooleanOption("-cte", gbo_TstCompErr, dfo_TstCompErr());
+}
+
+
+/* option: Test Build System Error */
+
+LOCALFUNC tMyErr TryAsTstBldSysErr(void)
+{
+	tMyErr err;
+
+	if (! CurArgIsCStr_v2("-bte")) {
+		err = kMyErrNoMatch;
+	} else {
+		err = ReportParseFailure("Testing Build System Error");
+	}
+
+	return err;
+}
+
+
 /* option: target cpu family */
 
 enum {
@@ -508,12 +807,13 @@ enum {
 	kNumCPUFamilies
 };
 
-LOCALVAR int dfo_cpufam;
 LOCALVAR int gbo_cpufam;
+LOCALVAR ui3r olv_cpufam;
 
 LOCALPROC ResetCPUFamOption(void)
 {
 	gbo_cpufam = kListOptionAuto;
+	olv_cpufam = 0;
 }
 
 LOCALFUNC char * GetCPUFamName(int i)
@@ -555,15 +855,17 @@ LOCALFUNC char * GetCPUFamName(int i)
 LOCALFUNC tMyErr TryAsCPUFamOptionNot(void)
 {
 	return FindNamedOption("-cpu",
-		kNumCPUFamilies, GetCPUFamName, &gbo_cpufam);
+		kNumCPUFamilies, GetCPUFamName, &gbo_cpufam, &olv_cpufam);
 }
 
-LOCALFUNC tMyErr ChooseCPUFam(void)
+LOCALFUNC int dfo_cpufam(void)
 {
+	int v;
+
 	switch (cur_targ) {
 		case gbk_targ_m68k:
 		case gbk_targ_mfpu:
-			dfo_cpufam = gbk_cpufam_68k;
+			v = gbk_cpufam_68k;
 			break;
 		case gbk_targ_mppc:
 		case gbk_targ_carb:
@@ -571,7 +873,7 @@ LOCALFUNC tMyErr ChooseCPUFam(void)
 		case gbk_targ_mx11:
 		case gbk_targ_lppc:
 		case gbk_targ_fbpc:
-			dfo_cpufam = gbk_cpufam_ppc;
+			v = gbk_cpufam_ppc;
 			break;
 		case gbk_targ_wx86:
 		case gbk_targ_wc86:
@@ -586,16 +888,16 @@ LOCALFUNC tMyErr ChooseCPUFam(void)
 		case gbk_targ_imch:
 		case gbk_targ_mi11:
 		case gbk_targ_cygw:
-			dfo_cpufam = gbk_cpufam_x86;
+			v = gbk_cpufam_x86;
 			break;
 		case gbk_targ_lspr:
 		case gbk_targ_slrs:
-			dfo_cpufam = gbk_cpufam_spr;
+			v = gbk_cpufam_spr;
 			break;
 		case gbk_targ_wcar:
 		case gbk_targ_ndsa:
 		case gbk_targ_larm:
-			dfo_cpufam = gbk_cpufam_arm;
+			v = gbk_cpufam_arm;
 			break;
 		case gbk_targ_mc64:
 		case gbk_targ_lx64:
@@ -606,18 +908,23 @@ LOCALFUNC tMyErr ChooseCPUFam(void)
 		case gbk_targ_db64:
 		case gbk_targ_oi64:
 		case gbk_targ_mx64:
-			dfo_cpufam = gbk_cpufam_x64;
+			v = gbk_cpufam_x64;
 			break;
 		case gbk_targ_irix:
-			dfo_cpufam = gbk_cpufam_mip;
+			v = gbk_cpufam_mip;
 			break;
 		case gbk_targ_xgen:
-			dfo_cpufam = gbk_cpufam_gen;
+			v = gbk_cpufam_gen;
 			break;
 	}
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseCPUFam(void)
+{
 	if (kListOptionAuto == gbo_cpufam) {
-		gbo_cpufam = dfo_cpufam;
+		gbo_cpufam = dfo_cpufam();
 	}
 
 	return noErr;
@@ -625,7 +932,7 @@ LOCALFUNC tMyErr ChooseCPUFam(void)
 
 LOCALPROC WrtOptCPUFam(void)
 {
-	WrtOptNamedOption("-cpu", GetCPUFamName, gbo_cpufam, dfo_cpufam);
+	WrtOptNamedOption("-cpu", GetCPUFamName, gbo_cpufam, dfo_cpufam());
 }
 
 /* derived option: target family */
@@ -736,6 +1043,7 @@ LOCALFUNC tMyErr ChooseTargFam(void)
 	return noErr;
 }
 
+
 /* option: api family */
 
 enum {
@@ -752,11 +1060,12 @@ enum {
 };
 
 LOCALVAR int gbo_apifam;
-LOCALVAR int dfo_apifam;
+LOCALVAR ui3r olv_apifam;
 
 LOCALPROC ResetAPIFamOption(void)
 {
 	gbo_apifam = kListOptionAuto;
+	olv_apifam = 0;
 }
 
 LOCALFUNC char * GetAPIFamName(int i)
@@ -801,26 +1110,28 @@ LOCALFUNC char * GetAPIFamName(int i)
 LOCALFUNC tMyErr TryAsAPIFamOptionNot(void)
 {
 	return FindNamedOption("-api",
-		kNumAPIFamilies, GetAPIFamName, &gbo_apifam);
+		kNumAPIFamilies, GetAPIFamName, &gbo_apifam, &olv_apifam);
 }
 
-LOCALFUNC tMyErr ChooseAPIFam(void)
+LOCALFUNC int dfo_apifam(void)
 {
+	int v;
+
 	switch (gbo_targfam) {
 		case gbk_targfam_cmac:
-			dfo_apifam = gbk_apifam_mac;
+			v = gbk_apifam_mac;
 			break;
 		case gbk_targfam_mach:
 		case gbk_targfam_carb:
 			if (gbk_cpufam_x64 == gbo_cpufam) {
-				dfo_apifam = gbk_apifam_cco;
+				v = gbk_apifam_cco;
 			} else {
-				dfo_apifam = gbk_apifam_osx;
+				v = gbk_apifam_osx;
 			}
 			break;
 		case gbk_targfam_mswn:
 		case gbk_targfam_wnce:
-			dfo_apifam = gbk_apifam_win;
+			v = gbk_apifam_win;
 			break;
 		case gbk_targfam_linx:
 		case gbk_targfam_slrs:
@@ -834,15 +1145,20 @@ LOCALFUNC tMyErr ChooseAPIFam(void)
 		case gbk_targfam_mx11:
 		case gbk_targfam_cygw:
 		case gbk_targfam_xgen:
-			dfo_apifam = gbk_apifam_xwn;
+			v = gbk_apifam_xwn;
 			break;
 		case gbk_targfam_lnds:
-			dfo_apifam = gbk_apifam_nds;
+			v = gbk_apifam_nds;
 			break;
 	}
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseAPIFam(void)
+{
 	if (kListOptionAuto == gbo_apifam) {
-		gbo_apifam = dfo_apifam;
+		gbo_apifam = dfo_apifam();
 	}
 
 	return noErr;
@@ -850,228 +1166,9 @@ LOCALFUNC tMyErr ChooseAPIFam(void)
 
 LOCALPROC WrtOptAPIFam(void)
 {
-	WrtOptNamedOption("-api", GetAPIFamName, gbo_apifam, dfo_apifam);
+	WrtOptNamedOption("-api", GetAPIFamName, gbo_apifam, dfo_apifam());
 }
 
-/* option: debug level */
-
-enum {
-	gbk_dbg_off,
-	gbk_dbg_test,
-	gbk_dbg_on,
-	kNumDebugLevels
-};
-
-LOCALVAR int gbo_dbg;
-
-LOCALPROC ResetDbgOption(void)
-{
-	gbo_dbg = kListOptionAuto;
-}
-
-LOCALFUNC char * GetDbgLvlName(int i)
-{
-	char *s;
-
-	switch (i) {
-		case gbk_dbg_on:
-			s = "d";
-			break;
-		case gbk_dbg_test:
-			s = "t";
-			break;
-		case gbk_dbg_off:
-			s = "s";
-			break;
-		default:
-			s = "(unknown Debug Level)";
-			break;
-	}
-	return s;
-}
-
-LOCALFUNC tMyErr TryAsDbgOptionNot(void)
-{
-	return FindNamedOption("-d",
-		kNumDebugLevels, GetDbgLvlName, &gbo_dbg);
-}
-
-LOCALFUNC tMyErr ChooseDbgOption(void)
-{
-	if (kListOptionAuto == gbo_dbg) {
-		gbo_dbg = gbk_dbg_off;
-	}
-
-	return noErr;
-}
-
-LOCALPROC WrtOptDbgOption(void)
-{
-	WrtOptNamedOption("-d", GetDbgLvlName, gbo_dbg, gbk_dbg_off);
-}
-
-/* option: language */
-
-enum {
-	gbk_lang_eng,
-	gbk_lang_fre,
-	gbk_lang_ita,
-	gbk_lang_ger,
-	gbk_lang_dut,
-	gbk_lang_spa,
-	gbk_lang_pol,
-	gbk_lang_ptb,
-	gbk_lang_cat,
-	gbk_lang_cze,
-	kNumLangLevels
-};
-
-LOCALVAR int gbo_lang;
-
-LOCALPROC ResetLangOption(void)
-{
-	gbo_lang = kListOptionAuto;
-}
-
-LOCALFUNC char * GetLangName(int i)
-{
-	/* ISO 639-2/B */
-	char *s;
-
-	switch (i) {
-		case gbk_lang_eng:
-			s = "eng";
-			break;
-		case gbk_lang_fre:
-			s = "fre";
-			break;
-		case gbk_lang_ita:
-			s = "ita";
-			break;
-		case gbk_lang_ger:
-			s = "ger";
-			break;
-		case gbk_lang_dut:
-			s = "dut";
-			break;
-		case gbk_lang_spa:
-			s = "spa";
-			break;
-		case gbk_lang_pol:
-			s = "pol";
-			break;
-		case gbk_lang_ptb:
-			s = "ptb";
-			break;
-		case gbk_lang_cat:
-			s = "cat";
-			break;
-		case gbk_lang_cze:
-			s = "cze";
-			break;
-		default:
-			s = "(unknown Language Level)";
-			break;
-	}
-	return s;
-}
-
-LOCALFUNC tMyErr TryAsLangOptionNot(void)
-{
-	return FindNamedOption("-lang",
-		kNumLangLevels, GetLangName, &gbo_lang);
-}
-
-LOCALFUNC char * GetLProjName(int i)
-{
-	/*
-		As used in OS X, IETF language tags, except when not
-	*/
-	char *s;
-
-	switch (i) {
-		case gbk_lang_eng:
-			s = "English";
-			break;
-		case gbk_lang_fre:
-			s = "French";
-			break;
-		case gbk_lang_ita:
-			s = "Italian";
-			break;
-		case gbk_lang_ger:
-			s = "German";
-			break;
-		case gbk_lang_dut:
-			s = "Dutch";
-			break;
-		case gbk_lang_spa:
-			s = "Spanish";
-			break;
-		case gbk_lang_pol:
-			s = "pl";
-			break;
-		case gbk_lang_ptb:
-			s = "pt_BR";
-			break;
-		case gbk_lang_cat:
-			s = "ca";
-			break;
-		case gbk_lang_cze:
-			s = "cs";
-			break;
-		default:
-			s = "(unknown Language Level)";
-			break;
-	}
-	return s;
-}
-
-LOCALFUNC tMyErr ChooseLangOption(void)
-{
-	if (kListOptionAuto == gbo_lang) {
-		gbo_lang = gbk_lang_eng;
-	}
-
-	return noErr;
-}
-
-LOCALPROC WrtOptLangOption(void)
-{
-	WrtOptNamedOption("-lang", GetLangName, gbo_lang, gbk_lang_eng);
-}
-
-/* option: IconMaster */
-
-#ifndef WantIconMasterDflt
-#define WantIconMasterDflt falseblnr
-#endif
-
-LOCALVAR blnr WantIconMaster;
-
-LOCALPROC ResetIconMaster(void)
-{
-	WantIconMaster = nanblnr;
-}
-
-LOCALFUNC tMyErr TryAsIconMasterNot(void)
-{
-	return BooleanTryAsOptionNot("-im", &WantIconMaster);
-}
-
-LOCALFUNC tMyErr ChooseIconMaster(void)
-{
-	if (nanblnr == WantIconMaster) {
-		WantIconMaster = WantIconMasterDflt;
-	}
-
-	return noErr;
-}
-
-LOCALPROC WrtOptIconMaster(void)
-{
-	WrtOptBooleanOption("-im", WantIconMaster, WantIconMasterDflt);
-}
 
 /* option: ide */
 
@@ -1096,11 +1193,12 @@ enum {
 };
 
 LOCALVAR int cur_ide;
-LOCALVAR int dfo_ide;
+LOCALVAR ui3r olv_ide;
 
 LOCALPROC ResetIdeOption(void)
 {
 	cur_ide = kListOptionAuto;
+	olv_ide = 0;
 }
 
 LOCALFUNC char * GetIdeName(int i)
@@ -1162,23 +1260,26 @@ LOCALFUNC char * GetIdeName(int i)
 
 LOCALFUNC tMyErr TryAsIdeOptionNot(void)
 {
-	return FindNamedOption("-e", kNumIdes, GetIdeName, &cur_ide);
+	return FindNamedOption("-e", kNumIdes, GetIdeName,
+		&cur_ide, &olv_ide);
 }
 
-LOCALFUNC tMyErr ChooseIde(void)
+LOCALFUNC int dfo_ide(void)
 {
+	int v;
+
 	switch (gbo_targfam) {
 		case gbk_targfam_cmac:
 		case gbk_targfam_carb:
-			dfo_ide = gbk_ide_mpw;
+			v = gbk_ide_mpw;
 			break;
 		case gbk_targfam_mach:
 		case gbk_targfam_mx11:
-			dfo_ide = gbk_ide_xcd;
+			v = gbk_ide_xcd;
 			break;
 		case gbk_targfam_mswn:
 		case gbk_targfam_wnce:
-			dfo_ide = gbk_ide_msv;
+			v = gbk_ide_msv;
 			break;
 		case gbk_targfam_linx:
 		case gbk_targfam_slrs:
@@ -1189,22 +1290,28 @@ LOCALFUNC tMyErr ChooseIde(void)
 		case gbk_targfam_oind:
 		case gbk_targfam_minx:
 		case gbk_targfam_irix:
-			dfo_ide = gbk_ide_bgc;
+			v = gbk_ide_bgc;
 			break;
 		case gbk_targfam_cygw:
-			dfo_ide = gbk_ide_cyg;
+			v = gbk_ide_cyg;
 			break;
 		case gbk_targfam_lnds:
-			dfo_ide = gbk_ide_dkp;
+			v = gbk_ide_dkp;
 			break;
 		case gbk_targfam_xgen:
 		default:
-			dfo_ide = gbk_ide_ccc;
+			v = gbk_ide_ccc;
 			break;
 	}
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseIde(void)
+{
+
 	if (kListOptionAuto == cur_ide) {
-		cur_ide = dfo_ide;
+		cur_ide = dfo_ide();
 	}
 
 	return noErr;
@@ -1212,43 +1319,49 @@ LOCALFUNC tMyErr ChooseIde(void)
 
 LOCALPROC WrtOptIdeOption(void)
 {
-	WrtOptNamedOption("-e", GetIdeName, cur_ide, dfo_ide);
+	WrtOptNamedOption("-e", GetIdeName, cur_ide, dfo_ide());
 }
+
 
 /* option: ide version */
 
 LOCALVAR uimr ide_vers;
-LOCALVAR uimr dfo_ide_vers;
-LOCALVAR blnr have_ide_vers;
+LOCALVAR ui3r olv_ide_vers;
 
 LOCALPROC ResetIdeVersOption(void)
 {
-	have_ide_vers = falseblnr;
+	olv_ide_vers = 0;
 }
 
 LOCALFUNC tMyErr TryAsIdeVersOptionNot(void)
 {
 	return NumberTryAsOptionNot("-ev",
-		(long *)&ide_vers, &have_ide_vers);
+		(long *)&ide_vers, &olv_ide_vers);
+}
+
+LOCALFUNC uimr dfo_ide_vers(void)
+{
+	uimr v;
+
+	switch (cur_ide) {
+		case gbk_ide_xcd:
+			v = 2410;
+			break;
+		case gbk_ide_msv:
+			v = 8000;
+			break;
+		default:
+			v = 1;
+			break;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseIdeVers(void)
 {
-	switch (cur_ide) {
-		case gbk_ide_xcd:
-			dfo_ide_vers = 2410;
-			break;
-		case gbk_ide_msv:
-			dfo_ide_vers = 8000;
-			break;
-		default:
-			dfo_ide_vers = 1;
-			break;
-	}
-
-	if (! have_ide_vers) {
-		ide_vers = dfo_ide_vers;
-		have_ide_vers = trueblnr;
+	if (0 == olv_ide_vers) {
+		ide_vers = dfo_ide_vers();
 	}
 
 	return noErr;
@@ -1256,21 +1369,24 @@ LOCALFUNC tMyErr ChooseIdeVers(void)
 
 LOCALPROC WrtOptIdeVersOption(void)
 {
-	WrtOptNumberOption("-ev", ide_vers, dfo_ide_vers);
+	WrtOptNumberOption("-ev", ide_vers, dfo_ide_vers());
 }
+
 
 /* option: use command line tools */
 
 LOCALVAR blnr UseCmndLine;
+LOCALVAR ui3r olv_CmndLine;
 
 LOCALPROC ResetCmndLine(void)
 {
 	UseCmndLine = falseblnr;
+	olv_CmndLine = 0;
 }
 
 LOCALFUNC tMyErr TryAsCmndLineOptionNot(void)
 {
-	return FlagTryAsOptionNot("-cl", &UseCmndLine);
+	return FlagTryAsOptionNot("-cl", &UseCmndLine, &olv_CmndLine);
 }
 
 LOCALFUNC tMyErr ChooseCmndLineOption(void)
@@ -1283,25 +1399,30 @@ LOCALPROC WrtOptCmndLine(void)
 	WrtOptFlagOption("-cl", UseCmndLine);
 }
 
+
 /* option: export archive */
 
 LOCALVAR blnr WantAllSrc;
-#define dfo_WantAllSrc falseblnr
+LOCALVAR ui3r olv_WantAllSrc;
 
 LOCALPROC ResetWantAllSrc(void)
 {
 	WantAllSrc = nanblnr;
+	olv_WantAllSrc = 0;
 }
 
 LOCALFUNC tMyErr TryAsWantAllSrcNot(void)
 {
-	return BooleanTryAsOptionNot("-all-src", &WantAllSrc);
+	return BooleanTryAsOptionNot("-all-src",
+		&WantAllSrc, &olv_WantAllSrc);
 }
+
+#define dfo_WantAllSrc() falseblnr
 
 LOCALFUNC tMyErr ChooseWantAllSrc(void)
 {
 	if (nanblnr == WantAllSrc) {
-		WantAllSrc = dfo_WantAllSrc;
+		WantAllSrc = dfo_WantAllSrc();
 	}
 
 	return noErr;
@@ -1309,21 +1430,24 @@ LOCALFUNC tMyErr ChooseWantAllSrc(void)
 
 LOCALPROC WrtOptAllSrc(void)
 {
-	WrtOptBooleanOption("-all-src", WantAllSrc, dfo_WantAllSrc);
+	WrtOptBooleanOption("-all-src", WantAllSrc, dfo_WantAllSrc());
 }
+
 
 /* option: export archive */
 
 LOCALVAR blnr NotWantExport;
+LOCALVAR ui3r olv_WantExport;
 
 LOCALPROC ResetWantExport(void)
 {
 	NotWantExport = falseblnr;
+	olv_WantExport = 0;
 }
 
 LOCALFUNC tMyErr TryAsWantExportNot(void)
 {
-	return FlagTryAsOptionNot("-nex", &NotWantExport);
+	return FlagTryAsOptionNot("-nex", &NotWantExport, &olv_WantExport);
 }
 
 LOCALFUNC tMyErr ChooseWantExport(void)
@@ -1336,6 +1460,7 @@ LOCALPROC WrtOptWantExport(void)
 	WrtOptFlagOption("-nex", NotWantExport);
 }
 
+
 /* option: eol source code format */
 
 enum {
@@ -1346,11 +1471,12 @@ enum {
 };
 
 LOCALVAR int cur_eol;
-LOCALVAR int dfo_eol;
+LOCALVAR ui3r olv_eol;
 
 LOCALPROC ResetEolOption(void)
 {
 	cur_eol = kListOptionAuto;
+	olv_eol = 0;
 }
 
 LOCALFUNC char * GetEolName(int i)
@@ -1376,25 +1502,28 @@ LOCALFUNC char * GetEolName(int i)
 
 LOCALFUNC tMyErr TryAsEolOptionNot(void)
 {
-	return FindNamedOption("-eol", kNumEol, GetEolName, &cur_eol);
+	return FindNamedOption("-eol", kNumEol, GetEolName,
+		&cur_eol, &olv_eol);
 }
 
-LOCALFUNC tMyErr ChooseEOL(void)
+LOCALFUNC int dfo_eol(void)
 {
+	int v;
+
 	if (NotWantExport) {
-		dfo_eol = gbk_eol_mac;
+		v = gbk_eol_mac;
 	} else {
 		switch (cur_ide) {
 			case gbk_ide_mpw:
 			case gbk_ide_mw8:
-				dfo_eol = gbk_eol_mac;
+				v = gbk_eol_mac;
 				break;
 			case gbk_ide_bgc:
 			case gbk_ide_xcd:
 			case gbk_ide_snc:
 			case gbk_ide_ccc:
 			case gbk_ide_mvc:
-				dfo_eol = gbk_eol_unx;
+				v = gbk_eol_unx;
 				break;
 			case gbk_ide_msv:
 			case gbk_ide_lcc:
@@ -1404,13 +1533,19 @@ LOCALFUNC tMyErr ChooseEOL(void)
 			case gbk_ide_dmc:
 			case gbk_ide_plc:
 			case gbk_ide_dkp:
-				dfo_eol = gbk_eol_win;
+				v = gbk_eol_win;
 				break;
 		}
 	}
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseEOL(void)
+{
+
 	if (kListOptionAuto == cur_eol) {
-		cur_eol = dfo_eol;
+		cur_eol = dfo_eol();
 	}
 
 	return noErr;
@@ -1418,8 +1553,9 @@ LOCALFUNC tMyErr ChooseEOL(void)
 
 LOCALPROC WrtOptEOL(void)
 {
-	WrtOptNamedOption("-eol", GetEolName, cur_eol, dfo_eol);
+	WrtOptNamedOption("-eol", GetEolName, cur_eol, dfo_eol());
 }
+
 
 /* option: archive format */
 
@@ -1431,11 +1567,12 @@ enum {
 };
 
 LOCALVAR int cur_arc;
-LOCALVAR int dfo_arc;
+LOCALVAR ui3r olv_arc;
 
 LOCALPROC ResetArcOption(void)
 {
 	cur_arc = kListOptionAuto;
+	olv_arc = 0;
 }
 
 LOCALFUNC char * GetArcName(int i)
@@ -1461,22 +1598,25 @@ LOCALFUNC char * GetArcName(int i)
 
 LOCALFUNC tMyErr TryAsArcOptionNot(void)
 {
-	return FindNamedOption("-arc", kNumArc, GetArcName, &cur_arc);
+	return FindNamedOption("-arc", kNumArc, GetArcName,
+		&cur_arc, &olv_arc);
 }
 
-LOCALFUNC tMyErr ChooseArc(void)
+LOCALFUNC int dfo_arc(void)
 {
+	int v;
+
 	switch (cur_ide) {
 		case gbk_ide_mpw:
 		case gbk_ide_mw8:
-			dfo_arc = gbk_arc_sit;
+			v = gbk_arc_sit;
 			break;
 		case gbk_ide_bgc:
 		case gbk_ide_xcd:
 		case gbk_ide_snc:
 		case gbk_ide_ccc:
 		case gbk_ide_mvc:
-			dfo_arc = gbk_arc_tar;
+			v = gbk_arc_tar;
 			break;
 		case gbk_ide_msv:
 		case gbk_ide_lcc:
@@ -1486,12 +1626,17 @@ LOCALFUNC tMyErr ChooseArc(void)
 		case gbk_ide_dmc:
 		case gbk_ide_plc:
 		case gbk_ide_dkp:
-			dfo_arc = gbk_arc_zip;
+			v = gbk_arc_zip;
 			break;
 	}
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseArc(void)
+{
 	if (kListOptionAuto == cur_arc) {
-		cur_arc = dfo_arc;
+		cur_arc = dfo_arc();
 	}
 
 	return noErr;
@@ -1499,21 +1644,24 @@ LOCALFUNC tMyErr ChooseArc(void)
 
 LOCALPROC WrtOptArc(void)
 {
-	WrtOptNamedOption("-arc", GetArcName, cur_arc, dfo_arc);
+	WrtOptNamedOption("-arc", GetArcName, cur_arc, dfo_arc());
 }
+
 
 /* option: print file list */
 
 LOCALVAR blnr CurPrintCFiles;
+LOCALVAR ui3r olv_PrintCFiles;
 
 LOCALPROC ResetListOption(void)
 {
 	CurPrintCFiles = falseblnr;
+	olv_PrintCFiles = 0;
 }
 
 LOCALFUNC tMyErr TryAsListOptionNot(void)
 {
-	return FlagTryAsOptionNot("-l", &CurPrintCFiles);
+	return FlagTryAsOptionNot("-l", &CurPrintCFiles, &olv_PrintCFiles);
 }
 
 LOCALFUNC tMyErr ChooseListOption(void)
@@ -1526,18 +1674,22 @@ LOCALPROC WrtOptListOption(void)
 	WrtOptFlagOption("-l", CurPrintCFiles);
 }
 
+
 /* option: maintainer name */
 
 LOCALVAR Handle hMaintainerName = NULL;
+LOCALVAR ui3r olv_MaintainerName;
 
 LOCALPROC ResetMaintainerName(void)
 {
 	StringResetOption(&hMaintainerName);
+	olv_MaintainerName = 0;
 }
 
 LOCALFUNC tMyErr TryAsMaintainerNameOptionNot(void)
 {
-	return StringTryAsOptionNot("-maintainer", &hMaintainerName);
+	return StringTryAsOptionNot("-maintainer",
+		&hMaintainerName, &olv_MaintainerName);
 }
 
 LOCALFUNC tMyErr ChooseMaintainerName(void)
@@ -1553,18 +1705,21 @@ LOCALFUNC tMyErr ChooseMaintainerName(void)
 	return err;
 }
 
+
 /* option: home page */
 
 LOCALVAR Handle hHomePage = NULL;
+LOCALVAR ui3r olv_HomePage;
 
 LOCALPROC ResetHomePage(void)
 {
 	StringResetOption(&hHomePage);
+	olv_HomePage = 0;
 }
 
 LOCALFUNC tMyErr TryAsHomePageOptionNot(void)
 {
-	return StringTryAsOptionNot("-homepage", &hHomePage);
+	return StringTryAsOptionNot("-homepage", &hHomePage, &olv_HomePage);
 }
 
 LOCALFUNC tMyErr ChooseHomePage(void)
@@ -1580,18 +1735,22 @@ LOCALFUNC tMyErr ChooseHomePage(void)
 	return err;
 }
 
+
 /* option: sponsor name */
 
 LOCALVAR Handle hSponsorName = NULL;
+LOCALVAR ui3r olv_SponsorName;
 
 LOCALPROC ResetSponsorName(void)
 {
 	StringResetOption(&hSponsorName);
+	olv_SponsorName = 0;
 }
 
 LOCALFUNC tMyErr TryAsSponsorNameOptionNot(void)
 {
-	return StringTryAsOptionNot("-sponsor", &hSponsorName);
+	return StringTryAsOptionNot("-sponsor",
+		&hSponsorName, &olv_SponsorName);
 }
 
 LOCALFUNC tMyErr ChooseSponsorNameOption(void)
@@ -1625,37 +1784,34 @@ LOCALFUNC tMyErr ChooseHaveMacRrscs(void)
 	return noErr;
 }
 
+
 /* option: Abbrev Name */
 
 LOCALVAR char vStrAppAbbrev[8 + 1];
+LOCALVAR ui3r olv_AbbrevName;
 
 LOCALPROC ResetAbbrevName(void)
 {
 	vStrAppAbbrev[0] = 0;
+	olv_AbbrevName = 0;
 }
 
 LOCALFUNC tMyErr TryAsAbbrevNameOptionNot(void)
 {
 	tMyErr err;
 
-	if (! CurArgIsCStr_v2("-an")) {
-		err = kMyErrNoMatch;
-	} else {
-		if (0 != vStrAppAbbrev[0]) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			if (The_arg_end) {
-				ReportParseFailure(
-					"Expecting string for option when reached end");
-				err = kMyErrReported;
-			} else {
-				GetCurArgAsCStr(vStrAppAbbrev, 8);
-				AdvanceTheArg();
-				err = noErr;
-			}
-		}
+	if (kMyErr_noErr != (err =
+		CurArgIsOption("-an", &olv_AbbrevName)))
+	{
+		/* no */
+	} else
+	if (The_arg_end) {
+		err = ReportParseFailure(
+			"Expecting string for option when reached end");
+	} else
+	{
+		GetCurArgAsCStr(vStrAppAbbrev, 8);
+		err = AdvanceTheArg();
 	}
 
 	return err;
@@ -1670,18 +1826,22 @@ LOCALFUNC tMyErr ChooseAbbrevName(void)
 	return noErr;
 }
 
+
 /* option: Variation Name */
 
 LOCALVAR Handle hVariationName = NULL;
+LOCALVAR ui3r olv_VariationName;
 
 LOCALPROC ResetVariationName(void)
 {
 	StringResetOption(&hVariationName);
+	olv_VariationName = 0;
 }
 
 LOCALFUNC tMyErr TryAsVariationNameOptionNot(void)
 {
-	return StringTryAsOptionNot("-n", &hVariationName);
+	return StringTryAsOptionNot("-n",
+		&hVariationName, &olv_VariationName);
 }
 
 LOCALFUNC tMyErr ChooseVariationName(void)
@@ -1708,26 +1868,153 @@ LOCALFUNC tMyErr ChooseVariationName(void)
 	return err;
 }
 
+
 /* option: Configuration Directory */
 
 LOCALVAR blnr WantConfigDir;
+LOCALVAR ui3r olv_ConfigDir;
 
 LOCALPROC ResetConfigDir(void)
 {
 	WantConfigDir = nanblnr;
+	olv_ConfigDir = 0;
 }
 
 LOCALFUNC tMyErr TryAsConfigDirNot(void)
 {
-	return BooleanTryAsOptionNot("-cfg", &WantConfigDir);
+	return BooleanTryAsOptionNot("-cfg",
+		&WantConfigDir, &olv_ConfigDir);
 }
+
+#define dfo_ConfigDir() falseblnr
 
 LOCALFUNC tMyErr ChooseConfigDir(void)
 {
 	if (nanblnr == WantConfigDir) {
-		WantConfigDir = falseblnr;
+		WantConfigDir = dfo_ConfigDir();
 	}
 
+	return noErr;
+}
+
+
+/* option: Errors To File */
+
+LOCALVAR blnr gbo_Err2File;
+LOCALVAR ui3r olv_Err2File;
+
+LOCALPROC ResetErr2File(void)
+{
+	gbo_Err2File = nanblnr;
+	olv_Err2File = 0;
+}
+
+LOCALFUNC tMyErr TryAsErr2FileNot(void)
+{
+	return BooleanTryAsOptionNot("-ef", &gbo_Err2File, &olv_Err2File);
+}
+
+#define dfo_Err2File() falseblnr
+
+LOCALFUNC tMyErr ChooseErr2File(void)
+{
+	if (nanblnr == gbo_Err2File) {
+		gbo_Err2File = dfo_Err2File();
+	}
+
+	return noErr;
+}
+
+
+/* option: Need International Characters */
+
+LOCALVAR blnr NeedIntl;
+LOCALVAR ui3r olv_NeedIntl;
+
+LOCALPROC ResetNeedIntl(void)
+{
+	NeedIntl = falseblnr;
+	olv_NeedIntl = 0;
+}
+
+LOCALFUNC tMyErr TryAsNeedIntlNot(void)
+{
+	return FlagTryAsOptionNot("-intl", &NeedIntl, &olv_NeedIntl);
+}
+
+LOCALFUNC tMyErr ChooseNeedIntl(void)
+{
+	return noErr;
+}
+
+
+/* option: Demo Message */
+
+LOCALVAR blnr WantDemoMsg;
+LOCALVAR ui3r olv_DemoMsg;
+
+LOCALPROC ResetDemoMsg(void)
+{
+	WantDemoMsg = nanblnr;
+	olv_DemoMsg = 0;
+}
+
+LOCALFUNC tMyErr TryAsDemoMsgNot(void)
+{
+	return BooleanTryAsOptionNot("-dmo", &WantDemoMsg, &olv_DemoMsg);
+}
+
+#define dfo_DemoMsg() falseblnr
+
+LOCALFUNC tMyErr ChooseDemoMsg(void)
+{
+	if (nanblnr == WantDemoMsg) {
+		WantDemoMsg = dfo_DemoMsg();
+	}
+
+	return noErr;
+}
+
+
+/* option: Activation Code */
+
+LOCALVAR blnr WantActvCode;
+#define NumKeyCon 7
+LOCALVAR long KeyCon[NumKeyCon];
+LOCALVAR ui3r olv_ActvCode;
+
+LOCALPROC ResetActvCode(void)
+{
+	WantActvCode = falseblnr;
+	olv_ActvCode = 0;
+}
+
+LOCALFUNC tMyErr TryAsActvCodeNot(void)
+{
+	tMyErr err;
+	int i;
+
+	if (kMyErr_noErr != (err = CurArgIsOption("-act", &olv_ActvCode))) {
+		/* no */
+	} else
+	{
+		WantActvCode = trueblnr;
+		for (i = 0; i < NumKeyCon; ++i) {
+			err = GetCurArgOptionAsNumber(&KeyCon[i]);
+			if (noErr != err) {
+				goto Label_1;
+			}
+		}
+		err = noErr;
+Label_1:
+		;
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr ChooseActvCode(void)
+{
 	return noErr;
 }
 
@@ -1738,12 +2025,60 @@ LOCALPROC GNResetCommandLineParameters(void)
 {
 	ResetBranchOption();
 	ResetTargetOption();
-	ResetCPUFamOption();
-	ResetAPIFamOption();
 	ResetDbgOption();
 	ResetLangOption();
 	ResetIconMaster();
+	ResetTstCompErr();
+}
 
+LOCALFUNC tMyErr TryAsGNOptionNot(void)
+{
+	tMyErr err;
+
+	if (kMyErrNoMatch == (err = TryAsBranchOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsTargetOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsDbgOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsLangOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsIconMasterNot()))
+	if (kMyErrNoMatch == (err = TryAsTstCompErrNot()))
+	if (kMyErrNoMatch == (err = TryAsTstBldSysErr()))
+	{
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr AutoChooseGNSettings(void)
+{
+	tMyErr err;
+
+	if (noErr == (err = ChooseBranch()))
+	if (noErr == (err = ChooseTarg()))
+	if (noErr == (err = ChooseDbgOption()))
+	if (noErr == (err = ChooseLangOption()))
+	if (noErr == (err = ChooseIconMaster()))
+	if (noErr == (err = ChooseTstCompErr()))
+	{
+		err = noErr;
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptGNSettings(void)
+{
+	WrtOptBranchOption();
+	WrtOptTarg();
+	WrtOptDbgOption();
+	WrtOptLangOption();
+	WrtOptIconMaster();
+	WrtOptTstCompErr();
+}
+
+LOCALPROC GNDevResetCommandLineParameters(void)
+{
+	ResetCPUFamOption();
+	ResetAPIFamOption();
 	ResetIdeOption();
 	ResetIdeVersOption();
 	ResetCmndLine();
@@ -1758,19 +2093,20 @@ LOCALPROC GNResetCommandLineParameters(void)
 	ResetAbbrevName();
 	ResetVariationName();
 	ResetConfigDir();
+	ResetErr2File();
+	ResetNeedIntl();
+	ResetDemoMsg();
+	ResetActvCode();
 }
 
-LOCALFUNC tMyErr TryAsGNOptionNot(void)
+LOCALFUNC tMyErr TryAsGNDevOptionNot(void)
 {
 	tMyErr err;
 
-	if (kMyErrNoMatch == (err = TryAsBranchOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsTargetOptionNot()))
+	DoingDevOpts = trueblnr;
+
 	if (kMyErrNoMatch == (err = TryAsCPUFamOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAPIFamOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsDbgOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsLangOptionNot()))
-	if (kMyErrNoMatch == (err = TryAsIconMasterNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsIdeVersOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsCmndLineOptionNot()))
@@ -1785,25 +2121,25 @@ LOCALFUNC tMyErr TryAsGNOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsAbbrevNameOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsVariationNameOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsConfigDirNot()))
+	if (kMyErrNoMatch == (err = TryAsErr2FileNot()))
+	if (kMyErrNoMatch == (err = TryAsNeedIntlNot()))
+	if (kMyErrNoMatch == (err = TryAsDemoMsgNot()))
+	if (kMyErrNoMatch == (err = TryAsActvCodeNot()))
 	{
 	}
+
+	DoingDevOpts = falseblnr;
 
 	return err;
 }
 
-LOCALFUNC tMyErr AutoChooseGNSettings(void)
+LOCALFUNC tMyErr AutoChooseGNDevSettings(void)
 {
 	tMyErr err;
 
-	if (noErr == (err = ChooseBranch()))
-	if (noErr == (err = ChooseTarg()))
 	if (noErr == (err = ChooseCPUFam()))
 	if (noErr == (err = ChooseTargFam())) /* derived */
 	if (noErr == (err = ChooseAPIFam()))
-	if (noErr == (err = ChooseDbgOption()))
-	if (noErr == (err = ChooseLangOption()))
-	if (noErr == (err = ChooseIconMaster()))
-
 	if (noErr == (err = ChooseIde()))
 	if (noErr == (err = ChooseIdeVers()))
 	if (noErr == (err = ChooseCmndLineOption()))
@@ -1820,6 +2156,10 @@ LOCALFUNC tMyErr AutoChooseGNSettings(void)
 	if (noErr == (err = ChooseAbbrevName()))
 	if (noErr == (err = ChooseVariationName()))
 	if (noErr == (err = ChooseConfigDir()))
+	if (noErr == (err = ChooseErr2File()))
+	if (noErr == (err = ChooseNeedIntl()))
+	if (noErr == (err = ChooseDemoMsg()))
+	if (noErr == (err = ChooseActvCode()))
 	{
 		err = noErr;
 	}
@@ -1827,17 +2167,11 @@ LOCALFUNC tMyErr AutoChooseGNSettings(void)
 	return err;
 }
 
-LOCALPROC WrtOptGNSettings(void)
+#if 0
+LOCALPROC WrtOptGNDevSettings(void)
 {
-	WrtOptBranchOption();
-	WrtOptTarg();
 	WrtOptCPUFam();
 	WrtOptAPIFam();
-	WrtOptDbgOption();
-	WrtOptLangOption();
-	WrtOptIconMaster();
-
-#if 0
 	WrtOptIdeOption();
 	WrtOptIdeVersOption();
 	WrtOptCmndLine();
@@ -1849,8 +2183,11 @@ LOCALPROC WrtOptGNSettings(void)
 	/* Maintainer */
 	/* HomePage */
 	/* Sponsor */
-	/* AbbrevName */
 	/* VariationName */
+	/* AbbrevName */
 	/* ConfigDir */
-#endif
+	/* Err2File */
+	/* WantDemoMsg */
+	/* WantActvCode */
 }
+#endif

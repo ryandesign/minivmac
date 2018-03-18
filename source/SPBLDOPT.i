@@ -35,11 +35,12 @@ enum {
 };
 
 LOCALVAR int cur_mdl;
-#define dfo_mdl gbk_mdl_Plus
+LOCALVAR ui3r olv_mdl;
 
 LOCALPROC ResetModelOption(void)
 {
 	cur_mdl = kListOptionAuto;
+	olv_mdl = 0;
 }
 
 LOCALFUNC char * GetModelName(int i)
@@ -89,13 +90,16 @@ LOCALFUNC char * GetModelName(int i)
 
 LOCALFUNC tMyErr TryAsModelOptionNot(void)
 {
-	return FindNamedOption("-m", kNumModels, GetModelName, &cur_mdl);
+	return FindNamedOption("-m", kNumModels, GetModelName,
+		&cur_mdl, &olv_mdl);
 }
+
+#define dfo_mdl() gbk_mdl_Plus
 
 LOCALFUNC tMyErr ChooseModel(void)
 {
 	if (kListOptionAuto == cur_mdl) {
-		cur_mdl = dfo_mdl;
+		cur_mdl = dfo_mdl();
 	}
 
 	return noErr;
@@ -103,53 +107,56 @@ LOCALFUNC tMyErr ChooseModel(void)
 
 LOCALPROC WrtOptModelOption(void)
 {
-	WrtOptNamedOption("-m", GetModelName, cur_mdl, dfo_mdl);
+	WrtOptNamedOption("-m", GetModelName, cur_mdl, dfo_mdl());
 }
 
 
 /* option: horizontal resolution */
 
 LOCALVAR uimr cur_hres;
-LOCALVAR uimr dfo_hres;
-LOCALVAR blnr have_hres;
+LOCALVAR ui3r olv_hres;
 
 LOCALPROC ResetHResOption(void)
 {
-	have_hres = falseblnr;
+	olv_hres = 0;
 }
 
 LOCALFUNC tMyErr TryAsHResOptionNot(void)
 {
 	return NumberTryAsOptionNot("-hres",
-		(long *)&cur_hres, &have_hres);
+		(long *)&cur_hres, &olv_hres);
+}
+
+LOCALFUNC uimr dfo_hres(void)
+{
+	uimr v;
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		v = 640;
+	} else if (gbk_mdl_PB100 == cur_mdl) {
+		v = 640;
+	} else {
+		v = 512;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseHRes(void)
 {
 	tMyErr err;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		dfo_hres = 640;
-	} else if (gbk_mdl_PB100 == cur_mdl) {
-		dfo_hres = 640;
-	} else {
-		dfo_hres = 512;
-	}
 
-	if (! have_hres) {
-		cur_hres = dfo_hres;
-		have_hres = trueblnr;
+	if (0 == olv_hres) {
+		cur_hres = dfo_hres();
 		err = noErr;
 	} else {
 		if ((cur_hres & 0x1F) != 0) {
-			ReportParseFailure("-hres must be a multiple of 32");
-			err = kMyErrReported;
+			err = ReportParseFailure("-hres must be a multiple of 32");
 		} else if (cur_hres < 128) {
-			ReportParseFailure("-hres must be >= 128");
-			err = kMyErrReported;
+			err = ReportParseFailure("-hres must be >= 128");
 		} else if (cur_hres >= (uimr)32 * 1024) {
-			ReportParseFailure("-hres must be < 32k");
-			err = kMyErrReported;
+			err = ReportParseFailure("-hres must be < 32k");
 		} else {
 			err = noErr;
 		}
@@ -160,49 +167,52 @@ LOCALFUNC tMyErr ChooseHRes(void)
 
 LOCALPROC WrtOptHResOption(void)
 {
-	WrtOptNumberOption("-hres", cur_hres, dfo_hres);
+	WrtOptNumberOption("-hres", cur_hres, dfo_hres());
 }
 
 
 /* option: vertical resolution */
 
 LOCALVAR uimr cur_vres;
-LOCALVAR uimr dfo_vres;
-LOCALVAR blnr have_vres;
+LOCALVAR ui3r olv_vres;
 
 LOCALPROC ResetVResOption(void)
 {
-	have_vres = falseblnr;
+	olv_vres = 0;
 }
 
 LOCALFUNC tMyErr TryAsVResOptionNot(void)
 {
-	return NumberTryAsOptionNot("-vres", (long *)&cur_vres, &have_vres);
+	return NumberTryAsOptionNot("-vres", (long *)&cur_vres, &olv_vres);
+}
+
+LOCALFUNC uimr dfo_vres(void)
+{
+	uimr v;
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		v = 480;
+	} else if (gbk_mdl_PB100 == cur_mdl) {
+		v = 400;
+	} else {
+		v = 342;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseVRes(void)
 {
 	tMyErr err;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		dfo_vres = 480;
-	} else if (gbk_mdl_PB100 == cur_mdl) {
-		dfo_vres = 400;
-	} else {
-		dfo_vres = 342;
-	}
-
-	if (! have_vres) {
-		cur_vres = dfo_vres;
-		have_vres = trueblnr;
+	if (0 == olv_vres) {
+		cur_vres = dfo_vres();
 		err = noErr;
 	} else {
 		if (cur_vres < 128) {
-			ReportParseFailure("-vres must be >= 128");
-			err = kMyErrReported;
+			err = ReportParseFailure("-vres must be >= 128");
 		} else if (cur_vres >= (uimr)32 * 1024) {
-			ReportParseFailure("-vres must be < 32k");
-			err = kMyErrReported;
+			err = ReportParseFailure("-vres must be < 32k");
 		} else {
 			err = noErr;
 		}
@@ -213,25 +223,37 @@ LOCALFUNC tMyErr ChooseVRes(void)
 
 LOCALPROC WrtOptVResOption(void)
 {
-	WrtOptNumberOption("-vres", cur_vres, dfo_vres);
+	WrtOptNumberOption("-vres", cur_vres, dfo_vres());
 }
 
 
 /* option: screen depth */
 
 LOCALVAR uimr cur_ScrnDpth;
-LOCALVAR uimr dfo_ScrnDpth;
-LOCALVAR blnr have_ScrnDpth;
+LOCALVAR ui3r olv_ScrnDpth;
 
 LOCALPROC ResetScrnDpthOption(void)
 {
-	have_ScrnDpth = falseblnr;
+	olv_ScrnDpth = 0;
 }
 
 LOCALFUNC tMyErr TryAsScrnDpthOptionNot(void)
 {
 	return NumberTryAsOptionNot("-depth",
-		(long *)&cur_ScrnDpth, &have_ScrnDpth);
+		(long *)&cur_ScrnDpth, &olv_ScrnDpth);
+}
+
+LOCALFUNC uimr dfo_ScrnDpth(void)
+{
+	uimr v;
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		v = 3;
+	} else {
+		v = 0;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseScrnDpth(void)
@@ -240,25 +262,17 @@ LOCALFUNC tMyErr ChooseScrnDpth(void)
 
 	err = noErr;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		dfo_ScrnDpth = 3;
-	} else {
-		dfo_ScrnDpth = 0;
-	}
-
-	if (! have_ScrnDpth) {
-		cur_ScrnDpth = dfo_ScrnDpth;
-		have_ScrnDpth = trueblnr;
+	if (0 == olv_ScrnDpth) {
+		cur_ScrnDpth = dfo_ScrnDpth();
 	} else {
 		if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
 			if (cur_ScrnDpth > 5) {
-				ReportParseFailure("-depth must be <= 5");
-				err = kMyErrReported;
+				err = ReportParseFailure("-depth must be <= 5");
 			}
 		} else {
 			if (cur_ScrnDpth != 0) {
-				ReportParseFailure("-depth must be 0 for this model");
-				err = kMyErrReported;
+				err = ReportParseFailure(
+					"-depth must be 0 for this model");
 			}
 		}
 	}
@@ -268,31 +282,40 @@ LOCALFUNC tMyErr ChooseScrnDpth(void)
 
 LOCALPROC WrtOptScrnDpth(void)
 {
-	WrtOptNumberOption("-depth", cur_ScrnDpth, dfo_ScrnDpth);
+	WrtOptNumberOption("-depth", cur_ScrnDpth, dfo_ScrnDpth());
 }
 
 
 /* option: Initial FullScreen */
 
 LOCALVAR blnr WantInitFullScreen;
-LOCALVAR blnr dfo_InitFullScreen;
+LOCALVAR ui3r olv_InitFullScreen;
 
 LOCALPROC ResetInitFullScreen(void)
 {
 	WantInitFullScreen = nanblnr;
+	olv_InitFullScreen = 0;
 }
 
 LOCALFUNC tMyErr TryAsInitFullScreenNot(void)
 {
-	return BooleanTryAsOptionNot("-fullscreen", &WantInitFullScreen);
+	return BooleanTryAsOptionNot("-fullscreen",
+		&WantInitFullScreen, &olv_InitFullScreen);
+}
+
+LOCALFUNC blnr dfo_InitFullScreen(void)
+{
+	int v;
+
+	v = gbk_targfam_wnce == gbo_targfam;
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseInitFullScreen(void)
 {
-	dfo_InitFullScreen = gbk_targfam_wnce == gbo_targfam;
-
 	if (nanblnr == WantInitFullScreen) {
-		WantInitFullScreen = dfo_InitFullScreen;
+		WantInitFullScreen = dfo_InitFullScreen();
 	}
 
 	return noErr;
@@ -301,38 +324,46 @@ LOCALFUNC tMyErr ChooseInitFullScreen(void)
 LOCALPROC WrtOptInitFullScreen(void)
 {
 	WrtOptBooleanOption("-fullscreen",
-		WantInitFullScreen, dfo_InitFullScreen);
+		WantInitFullScreen, dfo_InitFullScreen());
 }
 
 
 /* option: Variable FullScreen */
 
 LOCALVAR blnr WantVarFullScreen;
-LOCALVAR blnr dfo_VarFullScreen;
+LOCALVAR ui3r olv_VarFullScreen;
 
 LOCALPROC ResetVarFullScreen(void)
 {
 	WantVarFullScreen = nanblnr;
+	olv_VarFullScreen = 0;
 }
 
 LOCALFUNC tMyErr TryAsVarFullScreenNot(void)
 {
 	return BooleanTryAsOptionNot("-var-fullscreen",
-		&WantVarFullScreen);
+		&WantVarFullScreen, &olv_VarFullScreen);
+}
+
+LOCALFUNC blnr dfo_VarFullScreen(void)
+{
+	int v;
+
+	if ((gbk_apifam_gtk == gbo_apifam)
+		|| (gbk_targfam_wnce == gbo_targfam))
+	{
+		v = falseblnr;
+	} else {
+		v = trueblnr;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseVarFullScreen(void)
 {
-	if ((gbk_apifam_gtk == gbo_apifam)
-		|| (gbk_targfam_wnce == gbo_targfam))
-	{
-		dfo_VarFullScreen = falseblnr;
-	} else {
-		dfo_VarFullScreen = trueblnr;
-	}
-
 	if (nanblnr == WantVarFullScreen) {
-		WantVarFullScreen = dfo_VarFullScreen;
+		WantVarFullScreen = dfo_VarFullScreen();
 	}
 
 	return noErr;
@@ -341,25 +372,38 @@ LOCALFUNC tMyErr ChooseVarFullScreen(void)
 LOCALPROC WrtOptVarFullScreen(void)
 {
 	WrtOptBooleanOption("-var-fullscreen",
-		WantVarFullScreen, dfo_VarFullScreen);
+		WantVarFullScreen, dfo_VarFullScreen());
 }
 
 
 /* option: magnification factor */
 
 LOCALVAR uimr cur_MagFctr;
-LOCALVAR uimr dfo_MagFctr;
-LOCALVAR blnr have_MagFctr;
+LOCALVAR ui3r olv_MagFctr;
 
 LOCALPROC ResetMagFctrOption(void)
 {
-	have_MagFctr = falseblnr;
+	olv_MagFctr = 0;
 }
 
 LOCALFUNC tMyErr TryAsMagFctrOptionNot(void)
 {
 	return NumberTryAsOptionNot("-mf",
-		(long *)&cur_MagFctr, &have_MagFctr);
+		(long *)&cur_MagFctr, &olv_MagFctr);
+}
+
+LOCALFUNC uimr dfo_MagFctr(void)
+{
+	uimr v;
+
+	if (gbk_apifam_gtk == gbo_apifam) {
+		/* temporary, until implemented */
+		v = 1;
+	} else {
+		v = 2;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseMagFctr(void)
@@ -368,20 +412,11 @@ LOCALFUNC tMyErr ChooseMagFctr(void)
 
 	err = noErr;
 
-	if (gbk_apifam_gtk == gbo_apifam) {
-		/* temporary, until implemented */
-		dfo_MagFctr = 1;
-	} else {
-		dfo_MagFctr = 2;
-	}
-
-	if (! have_MagFctr) {
-		cur_MagFctr = dfo_MagFctr;
-		have_MagFctr = trueblnr;
+	if (0 == olv_MagFctr) {
+		cur_MagFctr = dfo_MagFctr();
 	} else {
 		if (cur_MagFctr < 1) {
-			ReportParseFailure("-mf must be >= 1");
-			err = kMyErrReported;
+			err = ReportParseFailure("-mf must be >= 1");
 		}
 	}
 
@@ -390,24 +425,28 @@ LOCALFUNC tMyErr ChooseMagFctr(void)
 
 LOCALPROC WrtOptMagFctrOption(void)
 {
-	WrtOptNumberOption("-mf", cur_MagFctr, dfo_MagFctr);
+	WrtOptNumberOption("-mf", cur_MagFctr, dfo_MagFctr());
 }
 
 
 /* option: Initial Magnify */
 
 LOCALVAR blnr WantInitMagnify;
-#define dfo_WantInitMagnify falseblnr
+LOCALVAR ui3r olv_InitMagnify;
 
 LOCALPROC ResetInitMagnify(void)
 {
 	WantInitMagnify = nanblnr;
+	olv_InitMagnify = 0;
 }
 
 LOCALFUNC tMyErr TryAsInitMagnifyNot(void)
 {
-	return BooleanTryAsOptionNot("-magnify", &WantInitMagnify);
+	return BooleanTryAsOptionNot("-magnify",
+		&WantInitMagnify, &olv_InitMagnify);
 }
+
+#define dfo_InitMagnify() falseblnr
 
 LOCALFUNC tMyErr ChooseInitMagnify(void)
 {
@@ -415,12 +454,11 @@ LOCALFUNC tMyErr ChooseInitMagnify(void)
 
 	err = noErr;
 	if (nanblnr == WantInitMagnify) {
-		WantInitMagnify = dfo_WantInitMagnify;
+		WantInitMagnify = dfo_InitMagnify();
 	} else {
 		if (WantInitMagnify && (cur_MagFctr == 1)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-magnify 1 does not make sense with -mf 1");
-			err = kMyErrReported;
 		}
 	}
 
@@ -430,28 +468,32 @@ LOCALFUNC tMyErr ChooseInitMagnify(void)
 LOCALPROC WrtOptInitMagnify(void)
 {
 	WrtOptBooleanOption("-magnify",
-		WantInitMagnify, dfo_WantInitMagnify);
+		WantInitMagnify, dfo_InitMagnify());
 }
 
 
 /* option: sound */
 
 LOCALVAR blnr MySoundEnabled;
-LOCALVAR blnr dfo_SoundEnabled;
+LOCALVAR ui3r olv_SoundEnabled;
 
 LOCALPROC ResetSoundOption(void)
 {
 	MySoundEnabled = nanblnr;
+	olv_SoundEnabled = 0;
 }
 
 LOCALFUNC tMyErr TryAsSoundOptionNot(void)
 {
-	return BooleanTryAsOptionNot("-sound", &MySoundEnabled);
+	return BooleanTryAsOptionNot("-sound",
+		&MySoundEnabled, &olv_SoundEnabled);
 }
 
-LOCALFUNC tMyErr ChooseSoundEnabled(void)
+LOCALFUNC blnr dfo_SoundEnabled(void)
 {
-	dfo_SoundEnabled = (gbk_apifam_mac == gbo_apifam)
+	int v;
+
+	v = (gbk_apifam_mac == gbo_apifam)
 		|| (gbk_apifam_osx == gbo_apifam)
 		|| (gbk_apifam_win == gbo_apifam)
 		|| (gbk_apifam_sdl == gbo_apifam)
@@ -462,8 +504,13 @@ LOCALFUNC tMyErr ChooseSoundEnabled(void)
 				|| (gbo_targfam == gbk_targfam_fbsd)
 				|| (gbo_targfam == gbk_targfam_nbsd)));
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseSoundEnabled(void)
+{
 	if (nanblnr == MySoundEnabled) {
-		MySoundEnabled = dfo_SoundEnabled;
+		MySoundEnabled = dfo_SoundEnabled();
 	}
 
 	return noErr;
@@ -471,7 +518,7 @@ LOCALFUNC tMyErr ChooseSoundEnabled(void)
 
 LOCALPROC WrtOptSoundOption(void)
 {
-	WrtOptBooleanOption("-sound", MySoundEnabled, dfo_SoundEnabled);
+	WrtOptBooleanOption("-sound", MySoundEnabled, dfo_SoundEnabled());
 }
 
 
@@ -485,11 +532,12 @@ enum {
 };
 
 LOCALVAR int gbo_sndapi;
-LOCALVAR int dfo_sndapi;
+LOCALVAR ui3r olv_sndapi;
 
 LOCALPROC ResetSndApiOption(void)
 {
 	gbo_sndapi = kListOptionAuto;
+	olv_sndapi = 0;
 }
 
 LOCALFUNC char * GetSndApiName(int i)
@@ -516,52 +564,69 @@ LOCALFUNC char * GetSndApiName(int i)
 LOCALFUNC tMyErr TryAsSndApiOptionNot(void)
 {
 	return FindNamedOption("-snd-api",
-		kNumSndApiLevels, GetSndApiName, &gbo_sndapi);
+		kNumSndApiLevels, GetSndApiName, &gbo_sndapi, &olv_sndapi);
+}
+
+LOCALFUNC int dfo_sndapi(void)
+{
+	int v;
+
+	if (! MySoundEnabled) {
+		v = gbk_sndapi_none;
+	} else if (gbk_apifam_xwn != gbo_apifam) {
+		v = gbk_sndapi_none;
+	} else if (gbo_targfam == gbk_targfam_linx) {
+		v = gbk_sndapi_alsa;
+	} else {
+		v = gbk_sndapi_ddsp;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseSndApiOption(void)
 {
-	tMyErr err = noErr;
-
-	if (! MySoundEnabled) {
-		dfo_sndapi = gbk_sndapi_none;
-	} else if (gbk_apifam_xwn != gbo_apifam) {
-		dfo_sndapi = gbk_sndapi_none;
-	} else if (gbo_targfam == gbk_targfam_linx) {
-		dfo_sndapi = gbk_sndapi_alsa;
-	} else {
-		dfo_sndapi = gbk_sndapi_ddsp;
-	}
-
 	if (kListOptionAuto == gbo_sndapi) {
-		gbo_sndapi = dfo_sndapi;
+		gbo_sndapi = dfo_sndapi();
 	}
 
-	return err;
+	return noErr;
 }
 
 LOCALPROC WrtOptSndApiOption(void)
 {
 	WrtOptNamedOption("-snd-api", GetSndApiName,
-		gbo_sndapi, dfo_sndapi);
+		gbo_sndapi, dfo_sndapi());
 }
 
 
 /* option: sound sample size */
 
 LOCALVAR uimr cur_SoundSampSz;
-LOCALVAR uimr dfo_SoundSampSz;
-LOCALVAR blnr have_SoundSampSz;
+LOCALVAR ui3r olv_SoundSampSz;
 
 LOCALPROC ResetSoundSampSzOption(void)
 {
-	have_SoundSampSz = falseblnr;
+	olv_SoundSampSz = 0;
 }
 
 LOCALFUNC tMyErr TryAsSoundSampSzOptionNot(void)
 {
 	return NumberTryAsOptionNot("-sss",
-		(long *)&cur_SoundSampSz, &have_SoundSampSz);
+		(long *)&cur_SoundSampSz, &olv_SoundSampSz);
+}
+
+LOCALFUNC uimr dfo_SoundSampSz(void)
+{
+	uimr v;
+
+	if (gbk_sndapi_ddsp == gbo_sndapi) {
+		v = 4;
+	} else {
+		v = 3;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseSoundSampSz(void)
@@ -570,20 +635,13 @@ LOCALFUNC tMyErr ChooseSoundSampSz(void)
 
 	err = noErr;
 
-	if (gbk_sndapi_ddsp == gbo_sndapi) {
-		dfo_SoundSampSz = 4;
-	} else {
-		dfo_SoundSampSz = 3;
-	}
 
-	if (! have_SoundSampSz) {
-		cur_SoundSampSz = dfo_SoundSampSz;
-		have_SoundSampSz = trueblnr;
+	if (0 == olv_SoundSampSz) {
+		cur_SoundSampSz = dfo_SoundSampSz();
 	} else {
 		if ((cur_SoundSampSz < 3) || (cur_SoundSampSz > 4)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-sss must be 3 or 4");
-			err = kMyErrReported;
 		}
 	}
 
@@ -592,25 +650,37 @@ LOCALFUNC tMyErr ChooseSoundSampSz(void)
 
 LOCALPROC WrtOptSoundSampSzOption(void)
 {
-	WrtOptNumberOption("-sss", cur_SoundSampSz, dfo_SoundSampSz);
+	WrtOptNumberOption("-sss", cur_SoundSampSz, dfo_SoundSampSz());
 }
 
 
 /* option: number of drives */
 
 LOCALVAR uimr cur_numdrives;
-LOCALVAR uimr dfo_numdrives;
-LOCALVAR blnr have_numdrives;
+LOCALVAR ui3r olv_numdrives;
 
 LOCALPROC ResetNumDrivesOption(void)
 {
-	have_numdrives = falseblnr;
+	olv_numdrives = 0;
 }
 
 LOCALFUNC tMyErr TryAsNumDrivesOptionNot(void)
 {
 	return NumberTryAsOptionNot("-drives",
-		(long *)&cur_numdrives, &have_numdrives);
+		(long *)&cur_numdrives, &olv_numdrives);
+}
+
+LOCALFUNC uimr dfo_numdrives(void)
+{
+	uimr v;
+
+	if (cur_mdl < gbk_mdl_512Ke) {
+		v = 2;
+	} else {
+		v = 6;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseNumDrives(void)
@@ -619,20 +689,13 @@ LOCALFUNC tMyErr ChooseNumDrives(void)
 
 	err = noErr;
 
-	if (cur_mdl < gbk_mdl_512Ke) {
-		dfo_numdrives = 2;
-	} else {
-		dfo_numdrives = 6;
-	}
 
-	if (! have_numdrives) {
-		cur_numdrives = dfo_numdrives;
-		have_numdrives = trueblnr;
+	if (0 == olv_numdrives) {
+		cur_numdrives = dfo_numdrives();
 	} else {
 		if ((cur_numdrives <= 0) || (cur_numdrives > 32)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-drives must be a number between 1 and 32");
-			err = kMyErrReported;
 		}
 	}
 
@@ -641,29 +704,33 @@ LOCALFUNC tMyErr ChooseNumDrives(void)
 
 LOCALPROC WrtOptNumDrivesOption(void)
 {
-	WrtOptNumberOption("-drives", cur_numdrives, dfo_numdrives);
+	WrtOptNumberOption("-drives", cur_numdrives, dfo_numdrives());
 }
 
 
 /* option: disk driver - support tags */
 
 LOCALVAR blnr SonySupportTags;
-#define dfo_SonySupportTags falseblnr
+LOCALVAR ui3r olv_SonySupportTags;
 
 LOCALPROC ResetSonySupportTags(void)
 {
 	SonySupportTags = nanblnr;
+	olv_SonySupportTags = 0;
 }
 
 LOCALFUNC tMyErr TryAsSonySupportTagsNot(void)
 {
-	return BooleanTryAsOptionNot("-sony-tag", &SonySupportTags);
+	return BooleanTryAsOptionNot("-sony-tag",
+		&SonySupportTags, &olv_SonySupportTags);
 }
+
+#define dfo_SonySupportTags() falseblnr
 
 LOCALFUNC tMyErr ChooseSonySupportTags(void)
 {
 	if (nanblnr == SonySupportTags) {
-		SonySupportTags = dfo_SonySupportTags;
+		SonySupportTags = dfo_SonySupportTags();
 	}
 
 	return noErr;
@@ -672,30 +739,33 @@ LOCALFUNC tMyErr ChooseSonySupportTags(void)
 LOCALPROC WrtOptSonySupportTags(void)
 {
 	WrtOptBooleanOption("-sony-tag",
-		SonySupportTags, dfo_SonySupportTags);
+		SonySupportTags, dfo_SonySupportTags());
 }
 
 
 /* option: disk driver - calculate checksums */
 
 LOCALVAR blnr SonyWantChecksumsUpdated;
-#define dfo_SonyWantChecksumsUpdated falseblnr
+LOCALVAR ui3r olv_SonyWantChecksumsUpdated;
 
 LOCALPROC ResetSonyWantChecksumsUpdated(void)
 {
 	SonyWantChecksumsUpdated = nanblnr;
+	olv_SonyWantChecksumsUpdated = 0;
 }
 
 LOCALFUNC tMyErr TryAsSonyWantChecksumsUpdatedNot(void)
 {
 	return BooleanTryAsOptionNot("-sony-sum",
-		&SonyWantChecksumsUpdated);
+		&SonyWantChecksumsUpdated, &olv_SonyWantChecksumsUpdated);
 }
+
+#define dfo_SonyWantChecksumsUpdated() falseblnr
 
 LOCALFUNC tMyErr ChooseSonyWantChecksumsUpdated(void)
 {
 	if (nanblnr == SonyWantChecksumsUpdated) {
-		SonyWantChecksumsUpdated = dfo_SonyWantChecksumsUpdated;
+		SonyWantChecksumsUpdated = dfo_SonyWantChecksumsUpdated();
 	}
 
 	return noErr;
@@ -704,29 +774,33 @@ LOCALFUNC tMyErr ChooseSonyWantChecksumsUpdated(void)
 LOCALPROC WrtOptSonyWantChecksumsUpdated(void)
 {
 	WrtOptBooleanOption("-sony-sum",
-		SonyWantChecksumsUpdated, dfo_SonyWantChecksumsUpdated);
+		SonyWantChecksumsUpdated, dfo_SonyWantChecksumsUpdated());
 }
 
 
 /* option: disk driver - support disk copy 4.2 format */
 
 LOCALVAR blnr SonySupportDC42;
-#define dfo_SonySupportDC42 trueblnr
+LOCALVAR ui3r olv_SonySupportDC42;
 
 LOCALPROC ResetSonySupportDC42(void)
 {
 	SonySupportDC42 = nanblnr;
+	olv_SonySupportDC42 = 0;
 }
 
 LOCALFUNC tMyErr TryAsSonySupportDC42Not(void)
 {
-	return BooleanTryAsOptionNot("-sony-dc42", &SonySupportDC42);
+	return BooleanTryAsOptionNot("-sony-dc42",
+		&SonySupportDC42, &olv_SonySupportDC42);
 }
+
+#define dfo_SonySupportDC42() trueblnr
 
 LOCALFUNC tMyErr ChooseSonySupportDC42(void)
 {
 	if (nanblnr == SonySupportDC42) {
-		SonySupportDC42 = dfo_SonySupportDC42;
+		SonySupportDC42 = dfo_SonySupportDC42();
 	}
 
 	return noErr;
@@ -735,29 +809,33 @@ LOCALFUNC tMyErr ChooseSonySupportDC42(void)
 LOCALPROC WrtOptSonySupportDC42(void)
 {
 	WrtOptBooleanOption("-sony-dc42",
-		SonySupportDC42, dfo_SonySupportDC42);
+		SonySupportDC42, dfo_SonySupportDC42());
 }
 
 
 /* option: Insert Ith Disk Image */
 
 LOCALVAR blnr WantInsertIthDisk;
-#define dfo_InsertIthDisk falseblnr
+LOCALVAR ui3r olv_InsertIthDisk;
 
 LOCALPROC ResetInsertIthDisk(void)
 {
 	WantInsertIthDisk = nanblnr;
+	olv_InsertIthDisk = 0;
 }
 
 LOCALFUNC tMyErr TryAsInsertIthDisk(void)
 {
-	return BooleanTryAsOptionNot("-iid", &WantInsertIthDisk);
+	return BooleanTryAsOptionNot("-iid",
+		&WantInsertIthDisk, &olv_InsertIthDisk);
 }
+
+#define dfo_InsertIthDisk() falseblnr
 
 LOCALFUNC tMyErr ChooseInsertIthDisk(void)
 {
 	if (nanblnr == WantInsertIthDisk) {
-		WantInsertIthDisk = dfo_InsertIthDisk;
+		WantInsertIthDisk = dfo_InsertIthDisk();
 	}
 
 	return noErr;
@@ -766,22 +844,25 @@ LOCALFUNC tMyErr ChooseInsertIthDisk(void)
 LOCALPROC WrtOptInsertIthDisk(void)
 {
 	WrtOptBooleanOption("-iid",
-		WantInsertIthDisk, dfo_InsertIthDisk);
+		WantInsertIthDisk, dfo_InsertIthDisk());
 }
 
 
 /* option: Command Option Swap */
 
 LOCALVAR blnr WantCmndOptSwap;
+LOCALVAR ui3r olv_CmndOptSwap;
 
 LOCALPROC ResetCmndOptSwap(void)
 {
 	WantCmndOptSwap = falseblnr;
+	olv_CmndOptSwap = 0;
 }
 
 LOCALFUNC tMyErr TryAsCmndOptSwapNot(void)
 {
-	return FlagTryAsOptionNot("-ccs", &WantCmndOptSwap);
+	return FlagTryAsOptionNot("-ccs",
+		&WantCmndOptSwap, &olv_CmndOptSwap);
 }
 
 LOCALFUNC tMyErr ChooseCmndOptSwap(void)
@@ -798,15 +879,18 @@ LOCALPROC WrtOptCmndOptSwap(void)
 /* option: Alternate Keyboard Mode */
 
 LOCALVAR blnr WantAltKeysMode;
+LOCALVAR ui3r olv_WantAltKeysMode;
 
 LOCALPROC ResetAltKeysMode(void)
 {
 	WantAltKeysMode = falseblnr;
+	olv_WantAltKeysMode = 0;
 }
 
 LOCALFUNC tMyErr TryAsAltKeysModeNot(void)
 {
-	return FlagTryAsOptionNot("-akm", &WantAltKeysMode);
+	return FlagTryAsOptionNot("-akm",
+		&WantAltKeysMode, &olv_WantAltKeysMode);
 }
 
 LOCALFUNC tMyErr ChooseAltKeysMode(void)
@@ -823,7 +907,7 @@ LOCALPROC WrtOptAltKeysMode(void)
 /* option: ItnlKyBdFix */
 
 LOCALVAR blnr ItnlKyBdFix;
-LOCALVAR blnr dfo_ItnlKyBdFix;
+LOCALVAR ui3r olv_ItnlKyBdFix;
 
 LOCALPROC ResetItnlKyBdFixOption(void)
 {
@@ -832,22 +916,29 @@ LOCALPROC ResetItnlKyBdFixOption(void)
 
 LOCALFUNC tMyErr TryAsItnlKyBdFixNot(void)
 {
-	return BooleanTryAsOptionNot("-ikb", &ItnlKyBdFix);
+	return BooleanTryAsOptionNot("-ikb",
+		&ItnlKyBdFix, &olv_ItnlKyBdFix);
+}
+
+LOCALFUNC blnr dfo_ItnlKyBdFix(void)
+{
+	int v;
+
+	v = (gbk_apifam_win == gbo_apifam);
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseItnlKyBdFix(void)
 {
 	tMyErr err = noErr;
 
-	dfo_ItnlKyBdFix = (gbk_apifam_win == gbo_apifam);
-
 	if (nanblnr == ItnlKyBdFix) {
-		ItnlKyBdFix = dfo_ItnlKyBdFix;
+		ItnlKyBdFix = dfo_ItnlKyBdFix();
 	} else {
 		if (ItnlKyBdFix) {
 			if (gbk_apifam_win != gbo_apifam) {
-				ReportParseFailure("-ikb is only for Windows");
-				err = kMyErrReported;
+				err = ReportParseFailure("-ikb is only for Windows");
 			}
 		}
 	}
@@ -857,22 +948,24 @@ LOCALFUNC tMyErr ChooseItnlKyBdFix(void)
 
 LOCALPROC WrtOptItnlKyBdFix(void)
 {
-	WrtOptBooleanOption("-ikb", ItnlKyBdFix, dfo_ItnlKyBdFix);
+	WrtOptBooleanOption("-ikb", ItnlKyBdFix, dfo_ItnlKyBdFix());
 }
 
 
 /* option: LocalTalk emulation */
 
 LOCALVAR blnr WantLocalTalk;
+LOCALVAR ui3r olv_LocalTalk;
 
 LOCALPROC ResetLocalTalk(void)
 {
 	WantLocalTalk = falseblnr;
+	olv_LocalTalk = 0;
 }
 
 LOCALFUNC tMyErr TryAsLocalTalkNot(void)
 {
-	return FlagTryAsOptionNot("-lt", &WantLocalTalk);
+	return FlagTryAsOptionNot("-lt", &WantLocalTalk, &olv_LocalTalk);
 }
 
 LOCALFUNC tMyErr ChooseLocalTalk(void)
@@ -900,11 +993,12 @@ enum {
 };
 
 LOCALVAR int CurInitSpeed;
-LOCALVAR int dfo_InitSpeed;
+LOCALVAR ui3r olv_InitSpeed;
 
 LOCALPROC ResetInitSpeedOption(void)
 {
 	CurInitSpeed = kListOptionAuto;
+	olv_InitSpeed = 0;
 }
 
 LOCALFUNC char * GetInitSpeedName(int i)
@@ -943,21 +1037,28 @@ LOCALFUNC char * GetInitSpeedName(int i)
 LOCALFUNC tMyErr TryAsInitSpeedOptionNot(void)
 {
 	return FindNamedOption("-speed",
-		kNumSpeeds, GetInitSpeedName, &CurInitSpeed);
+		kNumSpeeds, GetInitSpeedName, &CurInitSpeed, &olv_InitSpeed);
+}
+
+LOCALFUNC int dfo_InitSpeed(void)
+{
+	int v;
+
+	if ((gbk_mdl_II == cur_mdl)
+		|| (gbk_mdl_IIx == cur_mdl))
+	{
+		v = gbk_speed_4X;
+	} else {
+		v = gbk_speed_8X;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseInitSpeed(void)
 {
-	if ((gbk_mdl_II == cur_mdl)
-		|| (gbk_mdl_IIx == cur_mdl))
-	{
-		dfo_InitSpeed = gbk_speed_4X;
-	} else {
-		dfo_InitSpeed = gbk_speed_8X;
-	}
-
 	if (kListOptionAuto == CurInitSpeed) {
-		CurInitSpeed = dfo_InitSpeed;
+		CurInitSpeed = dfo_InitSpeed();
 	}
 
 	return noErr;
@@ -966,35 +1067,44 @@ LOCALFUNC tMyErr ChooseInitSpeed(void)
 LOCALPROC WrtOptInitSpeedOption(void)
 {
 	WrtOptNamedOption("-speed", GetInitSpeedName,
-		CurInitSpeed, dfo_InitSpeed);
+		CurInitSpeed, dfo_InitSpeed());
 }
 
 
 /* option: Initial Run In Background */
 
 LOCALVAR blnr WantInitBackground;
-LOCALVAR blnr dfo_InitBackground;
+LOCALVAR ui3r olv_InitBackground;
 
 LOCALPROC ResetInitBackground(void)
 {
 	WantInitBackground = nanblnr;
+	olv_InitBackground = 0;
 }
 
 LOCALFUNC tMyErr TryAsInitBackgroundNot(void)
 {
-	return BooleanTryAsOptionNot("-bg", &WantInitBackground);
+	return BooleanTryAsOptionNot("-bg",
+		&WantInitBackground, &olv_InitBackground);
+}
+
+LOCALFUNC blnr dfo_InitBackground(void)
+{
+	int v;
+
+	if (WantLocalTalk) {
+		v = trueblnr;
+	} else {
+		v = falseblnr;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseInitBackground(void)
 {
-	if (WantLocalTalk) {
-		dfo_InitBackground = trueblnr;
-	} else {
-		dfo_InitBackground = falseblnr;
-	}
-
 	if (nanblnr == WantInitBackground) {
-		WantInitBackground = dfo_InitBackground;
+		WantInitBackground = dfo_InitBackground();
 	}
 
 	return noErr;
@@ -1002,32 +1112,42 @@ LOCALFUNC tMyErr ChooseInitBackground(void)
 
 LOCALPROC WrtOptInitBackground(void)
 {
-	WrtOptBooleanOption("-bg", WantInitBackground, dfo_InitBackground);
+	WrtOptBooleanOption("-bg", WantInitBackground,
+		dfo_InitBackground());
 }
 
 
 /* option: Initial AutoSlow */
 
 LOCALVAR blnr WantInitAutoSlow;
-LOCALVAR blnr dfo_InitAutoSlow;
+LOCALVAR ui3r olv_InitAutoSlow;
 
 LOCALPROC ResetInitAutoSlow(void)
 {
 	WantInitAutoSlow = nanblnr;
+	olv_InitAutoSlow = 0;
 }
 
 LOCALFUNC tMyErr TryAsInitAutoSlowNot(void)
 {
-	return BooleanTryAsOptionNot("-as", &WantInitAutoSlow);
+	return BooleanTryAsOptionNot("-as",
+		&WantInitAutoSlow, &olv_InitAutoSlow);
+}
+
+LOCALFUNC blnr dfo_InitAutoSlow(void)
+{
+	int v;
+
+	v = (gbk_mdl_II != cur_mdl)
+		&& (gbk_mdl_IIx != cur_mdl);
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseInitAutoSlow(void)
 {
-	dfo_InitAutoSlow = (gbk_mdl_II != cur_mdl)
-		&& (gbk_mdl_IIx != cur_mdl);
-
 	if (nanblnr == WantInitAutoSlow) {
-		WantInitAutoSlow = dfo_InitAutoSlow;
+		WantInitAutoSlow = dfo_InitAutoSlow();
 	}
 
 	return noErr;
@@ -1035,32 +1155,32 @@ LOCALFUNC tMyErr ChooseInitAutoSlow(void)
 
 LOCALPROC WrtOptInitAutoSlow(void)
 {
-	WrtOptBooleanOption("-as", WantInitAutoSlow, dfo_InitAutoSlow);
+	WrtOptBooleanOption("-as", WantInitAutoSlow, dfo_InitAutoSlow());
 }
 
 
 /* option: Timing Accuracy */
 
 LOCALVAR uimr timingacc;
-#define dfo_timingacc 1
-LOCALVAR blnr have_timingacc;
+LOCALVAR ui3r olv_timingacc;
 
 LOCALPROC ResetTimingAccuracyOption(void)
 {
-	have_timingacc = falseblnr;
+	olv_timingacc = 0;
 }
 
 LOCALFUNC tMyErr TryAsTimingAccuracyOptionNot(void)
 {
 	return NumberTryAsOptionNot("-ta",
-		(long *)&timingacc, &have_timingacc);
+		(long *)&timingacc, &olv_timingacc);
 }
+
+#define dfo_timingacc() 1
 
 LOCALFUNC tMyErr ChooseTimingAccuracy(void)
 {
-	if (! have_timingacc) {
-		timingacc = dfo_timingacc;
-		have_timingacc = trueblnr;
+	if (0 == olv_timingacc) {
+		timingacc = dfo_timingacc();
 	}
 
 	return noErr;
@@ -1068,38 +1188,43 @@ LOCALFUNC tMyErr ChooseTimingAccuracy(void)
 
 LOCALPROC WrtOptTimingAccuracy(void)
 {
-	WrtOptNumberOption("-ta", timingacc, dfo_timingacc);
+	WrtOptNumberOption("-ta", timingacc, dfo_timingacc());
 }
 
 
 /* option: Emulated CPU version */
 
 LOCALVAR uimr em_cpu_vers;
-LOCALVAR uimr dfo_em_cpu_vers;
-LOCALVAR blnr have_em_cpu_vers;
+LOCALVAR ui3r olv_em_cpu_vers;
 
 LOCALPROC ResetEmCpuVersOption(void)
 {
-	have_em_cpu_vers = falseblnr;
+	olv_em_cpu_vers = 0;
 }
 
 LOCALFUNC tMyErr TryAsEmCpuVersOptionNot(void)
 {
 	return NumberTryAsOptionNot("-em-cpu",
-		(long *)&em_cpu_vers, &have_em_cpu_vers);
+		(long *)&em_cpu_vers, &olv_em_cpu_vers);
+}
+
+LOCALFUNC uimr dfo_em_cpu_vers(void)
+{
+	uimr v;
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		v = 2;
+	} else {
+		v = 0;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseEmCpuVers(void)
 {
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		dfo_em_cpu_vers = 2;
-	} else {
-		dfo_em_cpu_vers = 0;
-	}
-
-	if (! have_em_cpu_vers) {
-		em_cpu_vers = dfo_em_cpu_vers;
-		have_em_cpu_vers = trueblnr;
+	if (0 == olv_em_cpu_vers) {
+		em_cpu_vers = dfo_em_cpu_vers();
 	}
 
 	return noErr;
@@ -1107,7 +1232,7 @@ LOCALFUNC tMyErr ChooseEmCpuVers(void)
 
 LOCALPROC WrtOptEmCpuVers(void)
 {
-	WrtOptNumberOption("-em-cpu", em_cpu_vers, dfo_em_cpu_vers);
+	WrtOptNumberOption("-em-cpu", em_cpu_vers, dfo_em_cpu_vers());
 }
 
 
@@ -1126,11 +1251,12 @@ enum {
 };
 
 LOCALVAR int cur_msz;
-LOCALVAR int dfo_msz;
+LOCALVAR ui3r olv_msz;
 
 LOCALPROC ResetMemSizOption(void)
 {
 	cur_msz = kListOptionAuto;
+	olv_msz = 0;
 }
 
 LOCALFUNC char * GetMemSizName(int i)
@@ -1172,23 +1298,25 @@ LOCALFUNC char * GetMemSizName(int i)
 LOCALFUNC tMyErr TryAsMemSizOptionNot(void)
 {
 	return FindNamedOption("-mem",
-		kNumMemSizs, GetMemSizName, &cur_msz);
+		kNumMemSizs, GetMemSizName, &cur_msz, &olv_msz);
 }
 
-LOCALFUNC tMyErr ChooseMemSiz(void)
+LOCALFUNC int dfo_msz(void)
 {
+	int v;
+
 	switch (cur_mdl) {
 		case gbk_mdl_Twig43:
 		case gbk_mdl_Twiggy:
 		case gbk_mdl_128K:
-			dfo_msz = gbk_msz_128K;
+			v = gbk_msz_128K;
 			break;
 		case gbk_mdl_512Ke:
-			dfo_msz = gbk_msz_512K;
+			v = gbk_msz_512K;
 			break;
 		case gbk_mdl_II:
 		case gbk_mdl_IIx:
-			dfo_msz = gbk_msz_8M;
+			v = gbk_msz_8M;
 			break;
 		case gbk_mdl_Plus:
 		case gbk_mdl_SE:
@@ -1196,17 +1324,22 @@ LOCALFUNC tMyErr ChooseMemSiz(void)
 		case gbk_mdl_Classic:
 		case gbk_mdl_PB100:
 		default:
-			dfo_msz = gbk_msz_4M;
+			v = gbk_msz_4M;
 			break;
 	}
 	if (gbk_targfam_lnds == gbo_targfam) {
-		if (dfo_msz > gbk_msz_2M) {
-			dfo_msz = gbk_msz_2M;
+		if (v > gbk_msz_2M) {
+			v = gbk_msz_2M;
 		}
 	}
 
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseMemSiz(void)
+{
 	if (kListOptionAuto == cur_msz) {
-		cur_msz = dfo_msz;
+		cur_msz = dfo_msz();
 	} else {
 		/* should error check here */
 	}
@@ -1216,7 +1349,7 @@ LOCALFUNC tMyErr ChooseMemSiz(void)
 
 LOCALPROC WrtOptMemSizOption(void)
 {
-	WrtOptNamedOption("-mem", GetMemSizName, cur_msz, dfo_msz);
+	WrtOptNamedOption("-mem", GetMemSizName, cur_msz, dfo_msz());
 }
 
 /* memory bank sizes */
@@ -1322,9 +1455,8 @@ LOCALFUNC tMyErr ChooseMemBankSizes(void)
 	}
 
 	if (0 == RAMa_Size) {
-		ReportParseFailure(
+		err = ReportParseFailure(
 			"memory size (-mem) unsupported for this model (-m)");
-		err = kMyErrReported;
 	} else {
 		err = noErr;
 	}
@@ -1337,40 +1469,44 @@ LOCALFUNC tMyErr ChooseMemBankSizes(void)
 	/* usually in 3 (Fast), 8 (Medium), 15 (Slow) */
 
 LOCALVAR uimr cur_CaretBlinkTime;
-LOCALVAR uimr dfo_CaretBlinkTime;
-LOCALVAR blnr have_CaretBlinkTime;
+LOCALVAR ui3r olv_CaretBlinkTime;
 
 LOCALPROC ResetCaretBlinkTimeOption(void)
 {
-	have_CaretBlinkTime = falseblnr;
+	olv_CaretBlinkTime = 0;
 }
 
 LOCALFUNC tMyErr TryAsCaretBlinkTimeOptionNot(void)
 {
 	return NumberTryAsOptionNot("-cbt",
-		(long *)&cur_CaretBlinkTime, &have_CaretBlinkTime);
+		(long *)&cur_CaretBlinkTime, &olv_CaretBlinkTime);
+}
+
+LOCALFUNC uimr dfo_CaretBlinkTime(void)
+{
+	uimr v;
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		v = 8;
+	} else {
+		v = 3;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseCaretBlinkTime(void)
 {
 	tMyErr err;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		dfo_CaretBlinkTime = 8;
-	} else {
-		dfo_CaretBlinkTime = 3;
-	}
 
 	err = noErr;
-	if (! have_CaretBlinkTime) {
-		cur_CaretBlinkTime = dfo_CaretBlinkTime;
-
-		have_CaretBlinkTime = trueblnr;
+	if (0 == olv_CaretBlinkTime) {
+		cur_CaretBlinkTime = dfo_CaretBlinkTime();
 	} else {
 		if ((cur_CaretBlinkTime <= 0) || (cur_CaretBlinkTime > 15)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-cbt must be a number between 1 and 15");
-			err = kMyErrReported;
 		}
 	}
 
@@ -1379,7 +1515,8 @@ LOCALFUNC tMyErr ChooseCaretBlinkTime(void)
 
 LOCALPROC WrtOptCaretBlinkTime(void)
 {
-	WrtOptNumberOption("-cbt", cur_CaretBlinkTime, dfo_CaretBlinkTime);
+	WrtOptNumberOption("-cbt",
+		cur_CaretBlinkTime, dfo_CaretBlinkTime());
 }
 
 
@@ -1387,18 +1524,30 @@ LOCALPROC WrtOptCaretBlinkTime(void)
 	/* usually in 5 (Fast), 8 (Medium), 12 (Slow) */
 
 LOCALVAR uimr cur_DoubleClickTime;
-LOCALVAR uimr dfo_DoubleClickTime;
-LOCALVAR blnr have_DoubleClickTime;
+LOCALVAR ui3r olv_DoubleClickTime;
 
 LOCALPROC ResetDoubleClickTimeOption(void)
 {
-	have_DoubleClickTime = falseblnr;
+	olv_DoubleClickTime = 0;
 }
 
 LOCALFUNC tMyErr TryAsDoubleClickTimeOptionNot(void)
 {
 	return NumberTryAsOptionNot("-dct",
-		(long *)&cur_DoubleClickTime, &have_DoubleClickTime);
+		(long *)&cur_DoubleClickTime, &olv_DoubleClickTime);
+}
+
+LOCALFUNC uimr dfo_DoubleClickTime(void)
+{
+	uimr v;
+
+	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		v = 8;
+	} else {
+		v = 5;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseDoubleClickTime(void)
@@ -1407,21 +1556,13 @@ LOCALFUNC tMyErr ChooseDoubleClickTime(void)
 
 	err = noErr;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
-		dfo_DoubleClickTime = 8;
-	} else {
-		dfo_DoubleClickTime = 5;
-	}
 
-	if (! have_DoubleClickTime) {
-		cur_DoubleClickTime = dfo_DoubleClickTime;
-
-		have_DoubleClickTime = trueblnr;
+	if (0 == olv_DoubleClickTime) {
+		cur_DoubleClickTime = dfo_DoubleClickTime();
 	} else {
 		if ((cur_DoubleClickTime <= 0) || (cur_DoubleClickTime > 15)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-dct must be a number between 1 and 15");
-			err = kMyErrReported;
 		}
 	}
 
@@ -1431,7 +1572,7 @@ LOCALFUNC tMyErr ChooseDoubleClickTime(void)
 LOCALPROC WrtOptDoubleClickTime(void)
 {
 	WrtOptNumberOption("-dct",
-		cur_DoubleClickTime, dfo_DoubleClickTime);
+		cur_DoubleClickTime, dfo_DoubleClickTime());
 }
 
 
@@ -1439,34 +1580,32 @@ LOCALPROC WrtOptDoubleClickTime(void)
 	/* in 0..3 */
 
 LOCALVAR uimr cur_MenuBlink;
-#define dfo_MenuBlink 3
-LOCALVAR blnr have_MenuBlink;
+LOCALVAR ui3r olv_MenuBlink;
 
 LOCALPROC ResetMenuBlinkOption(void)
 {
-	have_MenuBlink = falseblnr;
+	olv_MenuBlink = 0;
 }
 
 LOCALFUNC tMyErr TryAsMenuBlinkOptionNot(void)
 {
 	return NumberTryAsOptionNot("-mnb",
-		(long *)&cur_MenuBlink, &have_MenuBlink);
+		(long *)&cur_MenuBlink, &olv_MenuBlink);
 }
+
+#define dfo_MenuBlink() 3
 
 LOCALFUNC tMyErr ChooseMenuBlink(void)
 {
 	tMyErr err;
 
 	err = noErr;
-	if (! have_MenuBlink) {
-		cur_MenuBlink = dfo_MenuBlink;
-
-		have_MenuBlink = trueblnr;
+	if (0 == olv_MenuBlink) {
+		cur_MenuBlink = dfo_MenuBlink();
 	} else {
 		if ((cur_MenuBlink < 0) || (cur_MenuBlink > 3)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-mnb must be a number between 0 and 3");
-			err = kMyErrReported;
 		}
 	}
 
@@ -1475,7 +1614,7 @@ LOCALFUNC tMyErr ChooseMenuBlink(void)
 
 LOCALPROC WrtOptMenuBlink(void)
 {
-	WrtOptNumberOption("-mnb", cur_MenuBlink, dfo_MenuBlink);
+	WrtOptNumberOption("-mnb", cur_MenuBlink, dfo_MenuBlink());
 }
 
 
@@ -1483,34 +1622,32 @@ LOCALPROC WrtOptMenuBlink(void)
 	/* usually in 0 (Off), A (Long), 6, 4, 3 (Short) */
 
 LOCALVAR uimr cur_AutoKeyThresh;
-#define dfo_AutoKeyThresh 6
-LOCALVAR blnr have_AutoKeyThresh;
+LOCALVAR ui3r olv_AutoKeyThresh;
 
 LOCALPROC ResetAutoKeyThreshOption(void)
 {
-	have_AutoKeyThresh = falseblnr;
+	olv_AutoKeyThresh = 0;
 }
 
 LOCALFUNC tMyErr TryAsAutoKeyThreshOptionNot(void)
 {
 	return NumberTryAsOptionNot("-kyt",
-		(long *)&cur_AutoKeyThresh, &have_AutoKeyThresh);
+		(long *)&cur_AutoKeyThresh, &olv_AutoKeyThresh);
 }
+
+#define dfo_AutoKeyThresh() 6
 
 LOCALFUNC tMyErr ChooseAutoKeyThresh(void)
 {
 	tMyErr err;
 
 	err = noErr;
-	if (! have_AutoKeyThresh) {
-		cur_AutoKeyThresh = dfo_AutoKeyThresh;
-
-		have_AutoKeyThresh = trueblnr;
+	if (0 == olv_AutoKeyThresh) {
+		cur_AutoKeyThresh = dfo_AutoKeyThresh();
 	} else {
 		if ((cur_AutoKeyThresh < 0) || (cur_AutoKeyThresh > 15)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-kyt must be a number between 0 and 15");
-			err = kMyErrReported;
 		}
 	}
 
@@ -1519,7 +1656,7 @@ LOCALFUNC tMyErr ChooseAutoKeyThresh(void)
 
 LOCALPROC WrtOptAutoKeyThresh(void)
 {
-	WrtOptNumberOption("-kyt", cur_AutoKeyThresh, dfo_AutoKeyThresh);
+	WrtOptNumberOption("-kyt", cur_AutoKeyThresh, dfo_AutoKeyThresh());
 }
 
 
@@ -1527,34 +1664,32 @@ LOCALPROC WrtOptAutoKeyThresh(void)
 	/* usually in 0 (Slow), 6, 4, 3, 1 (Fast) */
 
 LOCALVAR uimr cur_AutoKeyRate;
-#define dfo_AutoKeyRate 3
-LOCALVAR blnr have_AutoKeyRate;
+LOCALVAR ui3r olv_AutoKeyRate;
 
 LOCALPROC ResetAutoKeyRateOption(void)
 {
-	have_AutoKeyRate = falseblnr;
+	olv_AutoKeyRate = 0;
 }
 
 LOCALFUNC tMyErr TryAsAutoKeyRateOptionNot(void)
 {
 	return NumberTryAsOptionNot("-kyr",
-		(long *)&cur_AutoKeyRate, &have_AutoKeyRate);
+		(long *)&cur_AutoKeyRate, &olv_AutoKeyRate);
 }
+
+#define dfo_AutoKeyRate() 3
 
 LOCALFUNC tMyErr ChooseAutoKeyRate(void)
 {
 	tMyErr err;
 
 	err = noErr;
-	if (! have_AutoKeyRate) {
-		cur_AutoKeyRate = dfo_AutoKeyRate;
-
-		have_AutoKeyRate = trueblnr;
+	if (0 == olv_AutoKeyRate) {
+		cur_AutoKeyRate = dfo_AutoKeyRate();
 	} else {
 		if ((cur_AutoKeyRate < 0) || (cur_AutoKeyRate > 15)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-kyr must be a number between 0 and 15");
-			err = kMyErrReported;
 		}
 	}
 
@@ -1563,7 +1698,7 @@ LOCALFUNC tMyErr ChooseAutoKeyRate(void)
 
 LOCALPROC WrtOptAutoKeyRate(void)
 {
-	WrtOptNumberOption("-kyr", cur_AutoKeyRate, dfo_AutoKeyRate);
+	WrtOptNumberOption("-kyr", cur_AutoKeyRate, dfo_AutoKeyRate());
 }
 
 
@@ -1571,18 +1706,30 @@ LOCALPROC WrtOptAutoKeyRate(void)
 	/* usually in 3 (Fast), 8 (Medium), 15 (Slow) */
 
 LOCALVAR uimr cur_SpeakerVol;
-LOCALVAR uimr dfo_SpeakerVol;
-LOCALVAR blnr have_SpeakerVol;
+LOCALVAR ui3r olv_SpeakerVol;
 
 LOCALPROC ResetSpeakerVolOption(void)
 {
-	have_SpeakerVol = falseblnr;
+	olv_SpeakerVol = 0;
 }
 
 LOCALFUNC tMyErr TryAsSpeakerVolOptionNot(void)
 {
 	return NumberTryAsOptionNot("-svl",
-		(long *)&cur_SpeakerVol, &have_SpeakerVol);
+		(long *)&cur_SpeakerVol, &olv_SpeakerVol);
+}
+
+LOCALFUNC uimr dfo_SpeakerVol(void)
+{
+	uimr v;
+
+	if (MySoundEnabled) {
+		v = 7;
+	} else {
+		v = 0;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseSpeakerVol(void)
@@ -1591,21 +1738,13 @@ LOCALFUNC tMyErr ChooseSpeakerVol(void)
 
 	err = noErr;
 
-	if (MySoundEnabled) {
-		dfo_SpeakerVol = 7;
-	} else {
-		dfo_SpeakerVol = 0;
-	}
 
-	if (! have_SpeakerVol) {
-		cur_SpeakerVol = dfo_SpeakerVol;
-
-		have_SpeakerVol = trueblnr;
+	if (0 == olv_SpeakerVol) {
+		cur_SpeakerVol = dfo_SpeakerVol();
 	} else {
 		if ((cur_SpeakerVol < 0) || (cur_SpeakerVol >= 8)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-svl must be a number between 0 and 7");
-			err = kMyErrReported;
 		}
 	}
 
@@ -1614,22 +1753,25 @@ LOCALFUNC tMyErr ChooseSpeakerVol(void)
 
 LOCALPROC WrtOptSpeakerVol(void)
 {
-	WrtOptNumberOption("-svl", cur_SpeakerVol, dfo_SpeakerVol);
+	WrtOptNumberOption("-svl", cur_SpeakerVol, dfo_SpeakerVol());
 }
 
 
 /* option: Minimum Extension */
 
 LOCALVAR blnr WantMinExtn;
+LOCALVAR ui3r olv_WantMinExtn;
 
 LOCALPROC ResetWantMinExtn(void)
 {
 	WantMinExtn = falseblnr;
+	olv_WantMinExtn = 0;
 }
 
 LOCALFUNC tMyErr TryAsWantMinExtnNot(void)
 {
-	return FlagTryAsOptionNot("-min-extn", &WantMinExtn);
+	return FlagTryAsOptionNot("-min-extn",
+		&WantMinExtn, &olv_WantMinExtn);
 }
 
 LOCALFUNC tMyErr ChooseWantMinExtn(void)
@@ -1646,24 +1788,34 @@ LOCALPROC WrtOptMinExtn(void)
 /* option: MouseMotion */
 
 LOCALVAR blnr MyMouseMotion;
-LOCALVAR blnr dfo_MouseMotion;
+LOCALVAR ui3r olv_MouseMotion;
 
 LOCALPROC ResetMouseMotionOption(void)
 {
 	MyMouseMotion = nanblnr;
+	olv_MouseMotion = 0;
 }
 
 LOCALFUNC tMyErr TryAsMouseMotionOptionNot(void)
 {
-	return BooleanTryAsOptionNot("-emm", &MyMouseMotion);
+	return BooleanTryAsOptionNot("-emm",
+		&MyMouseMotion, &olv_MouseMotion);
+}
+
+LOCALFUNC blnr dfo_MouseMotion(void)
+{
+	int v;
+
+	v = (gbk_apifam_gtk != gbo_apifam);
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseMouseMotion(void)
 {
-	dfo_MouseMotion = (gbk_apifam_gtk != gbo_apifam);
 
 	if (nanblnr == MyMouseMotion) {
-		MyMouseMotion = dfo_MouseMotion;
+		MyMouseMotion = dfo_MouseMotion();
 	}
 
 	return noErr;
@@ -1671,62 +1823,67 @@ LOCALFUNC tMyErr ChooseMouseMotion(void)
 
 LOCALPROC WrtOptMouseMotion(void)
 {
-	WrtOptBooleanOption("-emm", MyMouseMotion, dfo_MouseMotion);
+	WrtOptBooleanOption("-emm", MyMouseMotion, dfo_MouseMotion());
 }
 
 
 /* option: GrabKeysFullScreen */
 
 LOCALVAR blnr WantGrabKeysFS;
-#define dfo_GrabKeysFS trueblnr
+LOCALVAR ui3r olv_GrabKeysFS;
 
 LOCALPROC ResetGrabKeysFS(void)
 {
 	WantGrabKeysFS = nanblnr;
+	olv_GrabKeysFS = 0;
 }
 
 LOCALFUNC tMyErr TryAsGrabKeysFSNot(void)
 {
-	return BooleanTryAsOptionNot("-gkf", &WantGrabKeysFS);
+	return BooleanTryAsOptionNot("-gkf",
+		&WantGrabKeysFS, &olv_GrabKeysFS);
 }
+
+#define dfo_GrabKeysFS() trueblnr
 
 LOCALFUNC tMyErr ChooseGrabKeysFS(void)
 {
-	tMyErr err;
-
-	err = noErr;
 	if (nanblnr == WantGrabKeysFS) {
-		WantGrabKeysFS = dfo_GrabKeysFS;
+		WantGrabKeysFS = dfo_GrabKeysFS();
 	}
 
-	return err;
+	return noErr;
 }
 
 LOCALPROC WrtOptGrabKeysFS(void)
 {
-	WrtOptBooleanOption("-gkf", WantGrabKeysFS, dfo_GrabKeysFS);
+	WrtOptBooleanOption("-gkf", WantGrabKeysFS, dfo_GrabKeysFS());
 }
 
 
 /* option: Enable Control Interrupt */
 
 LOCALVAR blnr WantEnblCtrlInt;
-#define dfo_EnblCtrlInt trueblnr
+LOCALVAR ui3r olv_EnblCtrlInt;
 
 LOCALPROC ResetEnblCtrlInt(void)
 {
 	WantEnblCtrlInt = nanblnr;
+	olv_EnblCtrlInt = 0;
 }
 
 LOCALFUNC tMyErr TryAsEnblCtrlIntNot(void)
 {
-	return BooleanTryAsOptionNot("-eci", &WantEnblCtrlInt);
+	return BooleanTryAsOptionNot("-eci",
+		&WantEnblCtrlInt, &olv_EnblCtrlInt);
 }
+
+#define dfo_EnblCtrlInt() trueblnr
 
 LOCALFUNC tMyErr ChooseEnblCtrlInt(void)
 {
 	if (nanblnr == WantEnblCtrlInt) {
-		WantEnblCtrlInt = dfo_EnblCtrlInt;
+		WantEnblCtrlInt = dfo_EnblCtrlInt();
 	}
 
 	return noErr;
@@ -1734,29 +1891,33 @@ LOCALFUNC tMyErr ChooseEnblCtrlInt(void)
 
 LOCALPROC WrtOptEnblCtrlInt(void)
 {
-	WrtOptBooleanOption("-eci", WantEnblCtrlInt, dfo_EnblCtrlInt);
+	WrtOptBooleanOption("-eci", WantEnblCtrlInt, dfo_EnblCtrlInt());
 }
 
 
 /* option: Enable Control Reset */
 
 LOCALVAR blnr WantEnblCtrlRst;
-#define dfo_EnblCtrlRst trueblnr
+LOCALVAR ui3r olv_EnblCtrlRst;
 
 LOCALPROC ResetEnblCtrlRst(void)
 {
 	WantEnblCtrlRst = nanblnr;
+	olv_EnblCtrlRst = 0;
 }
 
 LOCALFUNC tMyErr TryAsEnblCtrlRstNot(void)
 {
-	return BooleanTryAsOptionNot("-ecr", &WantEnblCtrlRst);
+	return BooleanTryAsOptionNot("-ecr",
+		&WantEnblCtrlRst, &olv_EnblCtrlRst);
 }
+
+#define dfo_EnblCtrlRst() trueblnr
 
 LOCALFUNC tMyErr ChooseEnblCtrlRst(void)
 {
 	if (nanblnr == WantEnblCtrlRst) {
-		WantEnblCtrlRst = dfo_EnblCtrlRst;
+		WantEnblCtrlRst = dfo_EnblCtrlRst();
 	}
 
 	return noErr;
@@ -1764,29 +1925,33 @@ LOCALFUNC tMyErr ChooseEnblCtrlRst(void)
 
 LOCALPROC WrtOptEnblCtrlRst(void)
 {
-	WrtOptBooleanOption("-ecr", WantEnblCtrlRst, dfo_EnblCtrlRst);
+	WrtOptBooleanOption("-ecr", WantEnblCtrlRst, dfo_EnblCtrlRst());
 }
 
 
 /* option: Enable Control K (emulated control toggle) */
 
 LOCALVAR blnr WantEnblCtrlKtg;
-#define dfo_EnblCtrlKtg trueblnr
+LOCALVAR ui3r olv_EnblCtrlKtg;
 
 LOCALPROC ResetEnblCtrlKtg(void)
 {
 	WantEnblCtrlKtg = nanblnr;
+	olv_EnblCtrlKtg = 0;
 }
 
 LOCALFUNC tMyErr TryAsEnblCtrlKtgNot(void)
 {
-	return BooleanTryAsOptionNot("-eck", &WantEnblCtrlKtg);
+	return BooleanTryAsOptionNot("-eck",
+		&WantEnblCtrlKtg, &olv_EnblCtrlKtg);
 }
+
+#define dfo_EnblCtrlKtg() trueblnr
 
 LOCALFUNC tMyErr ChooseEnblCtrlKtg(void)
 {
 	if (nanblnr == WantEnblCtrlKtg) {
-		WantEnblCtrlKtg = dfo_EnblCtrlKtg;
+		WantEnblCtrlKtg = dfo_EnblCtrlKtg();
 	}
 
 	return noErr;
@@ -1794,23 +1959,39 @@ LOCALFUNC tMyErr ChooseEnblCtrlKtg(void)
 
 LOCALPROC WrtOptEnblCtrlKtg(void)
 {
-	WrtOptBooleanOption("-eck", WantEnblCtrlKtg, dfo_EnblCtrlKtg);
+	WrtOptBooleanOption("-eck", WantEnblCtrlKtg, dfo_EnblCtrlKtg());
 }
 
 
 /* option: Want Color Image */
 
 LOCALVAR blnr WantColorImage;
-LOCALVAR blnr dfo_ColorImage;
+LOCALVAR ui3r olv_ColorImage;
 
 LOCALPROC ResetWantColorImage(void)
 {
 	WantColorImage = nanblnr;
+	olv_ColorImage = 0;
 }
 
 LOCALFUNC tMyErr TryAsWantColorImageNot(void)
 {
-	return BooleanTryAsOptionNot("-ci", &WantColorImage);
+	return BooleanTryAsOptionNot("-ci",
+		&WantColorImage, &olv_ColorImage);
+}
+
+LOCALFUNC blnr dfo_ColorImage(void)
+{
+	int v;
+
+	if (gbk_apifam_xwn == gbo_apifam) {
+		v = trueblnr;
+	} else {
+		/* leave as default */
+		v = nanblnr;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseWantColorImage(void)
@@ -1819,25 +2000,16 @@ LOCALFUNC tMyErr ChooseWantColorImage(void)
 
 	err = noErr;
 
-	if (gbk_apifam_xwn == gbo_apifam) {
-		dfo_ColorImage = trueblnr;
-	} else {
-		/* leave as default */
-		dfo_ColorImage = nanblnr;
-	}
-
 	if (nanblnr == WantColorImage) {
-		WantColorImage = dfo_ColorImage;
+		WantColorImage = dfo_ColorImage();
 	} else {
 		if (gbk_apifam_xwn != gbo_apifam) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-ci is only for -api xwn");
-			err = kMyErrReported;
 		} else
 		if ((! WantColorImage) && (cur_ScrnDpth != 0)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-ci 0 requires -depth 0");
-			err = kMyErrReported;
 		} else
 		{
 			/* ok */
@@ -1849,7 +2021,7 @@ LOCALFUNC tMyErr ChooseWantColorImage(void)
 
 LOCALPROC WrtOptColorImage(void)
 {
-	WrtOptBooleanOption("-ci", WantColorImage, dfo_ColorImage);
+	WrtOptBooleanOption("-ci", WantColorImage, dfo_ColorImage());
 }
 
 
@@ -1877,11 +2049,12 @@ enum {
 };
 
 LOCALVAR int cur_AltHappyMac;
-#define dfo_AltHappyMac gbk_AHM_none
+LOCALVAR ui3r olv_AltHappyMac;
 
 LOCALPROC ResetAltHappyMacOption(void)
 {
 	cur_AltHappyMac = kListOptionAuto;
+	olv_AltHappyMac = 0;
 }
 
 LOCALFUNC char * GetAltHappyMacName(int i)
@@ -1945,43 +2118,74 @@ LOCALFUNC char * GetAltHappyMacName(int i)
 	return s;
 }
 
+LOCALFUNC tMyErr TryAsAltHappyMacOptionNot(void)
+{
+	return FindNamedOption("-ahm", kNumAHMs, GetAltHappyMacName,
+		&cur_AltHappyMac, &olv_AltHappyMac);
+}
+
+#define dfo_AltHappyMac() gbk_AHM_none
+
 LOCALFUNC tMyErr ChooseAltHappyMac(void)
 {
 	if (kListOptionAuto == cur_AltHappyMac) {
-		cur_AltHappyMac = dfo_AltHappyMac;
+		cur_AltHappyMac = dfo_AltHappyMac();
 	}
 
 	return noErr;
 }
 
-LOCALFUNC tMyErr TryAsAltHappyMacOptionNot(void)
-{
-	return FindNamedOption("-ahm", kNumAHMs, GetAltHappyMacName,
-		&cur_AltHappyMac);
-}
-
 LOCALPROC WrtOptAltHappyMac(void)
 {
 	WrtOptNamedOption("-ahm", GetAltHappyMacName,
-		cur_AltHappyMac, dfo_AltHappyMac);
+		cur_AltHappyMac, dfo_AltHappyMac());
 }
 
 
 /* option: ROM size */
 
 LOCALVAR uimr cur_RomSize;
-LOCALVAR uimr dfo_RomSize;
-LOCALVAR blnr have_RomSize;
+LOCALVAR ui3r olv_RomSize;
 
 LOCALPROC ResetRomSizeOption(void)
 {
-	have_RomSize = falseblnr;
+	olv_RomSize = 0;
 }
 
 LOCALFUNC tMyErr TryAsRomSizeOptionNot(void)
 {
 	return NumberTryAsOptionNot("-rsz",
-		(long *)&cur_RomSize, &have_RomSize);
+		(long *)&cur_RomSize, &olv_RomSize);
+}
+
+LOCALFUNC uimr dfo_RomSize(void)
+{
+	uimr v;
+
+	switch (cur_mdl) {
+		case gbk_mdl_Twig43:
+		case gbk_mdl_Twiggy:
+		case gbk_mdl_128K:
+			v = ln2_msz_64K; /* 64 KB */
+			break;
+		case gbk_mdl_512Ke:
+		case gbk_mdl_Plus:
+			v = ln2_msz_128K; /* 128 KB */
+			break;
+		case gbk_mdl_SE:
+		case gbk_mdl_SEFDHD:
+		case gbk_mdl_PB100:
+		case gbk_mdl_II:
+		case gbk_mdl_IIx:
+			v = ln2_msz_256K; /* 256 KB */
+			break;
+		case gbk_mdl_Classic:
+		default:
+			v = ln2_msz_512K; /* 512 KB */
+			break;
+	}
+
+	return v;
 }
 
 LOCALFUNC tMyErr ChooseRomSize(void)
@@ -1990,37 +2194,13 @@ LOCALFUNC tMyErr ChooseRomSize(void)
 
 	err = noErr;
 
-	switch (cur_mdl) {
-		case gbk_mdl_Twig43:
-		case gbk_mdl_Twiggy:
-		case gbk_mdl_128K:
-			dfo_RomSize = ln2_msz_64K; /* 64 KB */
-			break;
-		case gbk_mdl_512Ke:
-		case gbk_mdl_Plus:
-			dfo_RomSize = ln2_msz_128K; /* 128 KB */
-			break;
-		case gbk_mdl_SE:
-		case gbk_mdl_SEFDHD:
-		case gbk_mdl_PB100:
-		case gbk_mdl_II:
-		case gbk_mdl_IIx:
-			dfo_RomSize = ln2_msz_256K; /* 256 KB */
-			break;
-		case gbk_mdl_Classic:
-		default:
-			dfo_RomSize = ln2_msz_512K; /* 512 KB */
-			break;
-	}
 
-	if (! have_RomSize) {
-		cur_RomSize = dfo_RomSize;
-		have_RomSize = trueblnr;
+	if (0 == olv_RomSize) {
+		cur_RomSize = dfo_RomSize();
 	} else {
 		if ((cur_RomSize < 16) || (cur_RomSize > 31)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-rsz must be a number between 16 and 31");
-			err = kMyErrReported;
 		}
 	}
 
@@ -2029,29 +2209,33 @@ LOCALFUNC tMyErr ChooseRomSize(void)
 
 LOCALPROC WrtOptRomSize(void)
 {
-	WrtOptNumberOption("-rsz", cur_RomSize, dfo_RomSize);
+	WrtOptNumberOption("-rsz", cur_RomSize, dfo_RomSize());
 }
 
 
 /* option: Want Check RomCheck Sum */
 
 LOCALVAR blnr WantCheckRomCheckSum;
-#define dfo_CheckRomCheckSum trueblnr
+LOCALVAR ui3r olv_CheckRomCheckSum;
 
 LOCALPROC ResetCheckRomCheckSum(void)
 {
 	WantCheckRomCheckSum = nanblnr;
+	olv_CheckRomCheckSum = 0;
 }
 
 LOCALFUNC tMyErr TryAsCheckRomCheckSumNot(void)
 {
-	return BooleanTryAsOptionNot("-chr", &WantCheckRomCheckSum);
+	return BooleanTryAsOptionNot("-chr",
+		&WantCheckRomCheckSum, &olv_CheckRomCheckSum);
 }
+
+#define dfo_CheckRomCheckSum() trueblnr
 
 LOCALFUNC tMyErr ChooseCheckRomCheckSum(void)
 {
 	if (nanblnr == WantCheckRomCheckSum) {
-		WantCheckRomCheckSum = dfo_CheckRomCheckSum;
+		WantCheckRomCheckSum = dfo_CheckRomCheckSum();
 	}
 
 	return noErr;
@@ -2060,29 +2244,33 @@ LOCALFUNC tMyErr ChooseCheckRomCheckSum(void)
 LOCALPROC WrtOptCheckRomCheckSum(void)
 {
 	WrtOptBooleanOption("-chr",
-		WantCheckRomCheckSum, dfo_CheckRomCheckSum);
+		WantCheckRomCheckSum, dfo_CheckRomCheckSum());
 }
 
 
 /* option: Want Disable Rom Check */
 
 LOCALVAR blnr WantDisableRomCheck;
-#define dfo_DisableRomCheck trueblnr
+LOCALVAR ui3r olv_DisableRomCheck;
 
 LOCALPROC ResetDisableRomCheck(void)
 {
 	WantDisableRomCheck = nanblnr;
+	olv_DisableRomCheck = 0;
 }
 
 LOCALFUNC tMyErr TryAsDisableRomCheckNot(void)
 {
-	return BooleanTryAsOptionNot("-drc", &WantDisableRomCheck);
+	return BooleanTryAsOptionNot("-drc",
+		&WantDisableRomCheck, &olv_DisableRomCheck);
 }
+
+#define dfo_DisableRomCheck() trueblnr
 
 LOCALFUNC tMyErr ChooseDisableRomCheck(void)
 {
 	if (nanblnr == WantDisableRomCheck) {
-		WantDisableRomCheck = dfo_DisableRomCheck;
+		WantDisableRomCheck = dfo_DisableRomCheck();
 	}
 
 	return noErr;
@@ -2091,29 +2279,33 @@ LOCALFUNC tMyErr ChooseDisableRomCheck(void)
 LOCALPROC WrtOptDisableRomCheck(void)
 {
 	WrtOptBooleanOption("-drc",
-		WantDisableRomCheck, dfo_DisableRomCheck);
+		WantDisableRomCheck, dfo_DisableRomCheck());
 }
 
 
 /* option: Want Disable Ram Test */
 
 LOCALVAR blnr WantDisableRamTest;
-#define dfo_DisableRamTest trueblnr
+LOCALVAR ui3r olv_DisableRamTest;
 
 LOCALPROC ResetDisableRamTest(void)
 {
 	WantDisableRamTest = nanblnr;
+	olv_DisableRamTest = 0;
 }
 
 LOCALFUNC tMyErr TryAsDisableRamTestNot(void)
 {
-	return BooleanTryAsOptionNot("-drt", &WantDisableRamTest);
+	return BooleanTryAsOptionNot("-drt",
+		&WantDisableRamTest, &olv_DisableRamTest);
 }
+
+#define dfo_DisableRamTest() trueblnr
 
 LOCALFUNC tMyErr ChooseDisableRamTest(void)
 {
 	if (nanblnr == WantDisableRamTest) {
-		WantDisableRamTest = dfo_DisableRamTest;
+		WantDisableRamTest = dfo_DisableRamTest();
 	}
 
 	return noErr;
@@ -2121,29 +2313,34 @@ LOCALFUNC tMyErr ChooseDisableRamTest(void)
 
 LOCALPROC WrtOptDisableRamTest(void)
 {
-	WrtOptBooleanOption("-drt", WantDisableRamTest, dfo_DisableRamTest);
+	WrtOptBooleanOption("-drt",
+		WantDisableRamTest, dfo_DisableRamTest());
 }
 
 
 /* option: Want Disassembly */
 
 LOCALVAR blnr WantDisasm;
-#define dfo_WantDisasm falseblnr
+LOCALVAR ui3r olv_WantDisasm;
 
 LOCALPROC ResetWantDisasm(void)
 {
 	WantDisasm = nanblnr;
+	olv_WantDisasm = 0;
 }
 
 LOCALFUNC tMyErr TryAsWantDisasmNot(void)
 {
-	return BooleanTryAsOptionNot("-dis", &WantDisasm);
+	return BooleanTryAsOptionNot("-dis",
+		&WantDisasm, &olv_WantDisasm);
 }
+
+#define dfo_WantDisasm() falseblnr
 
 LOCALFUNC tMyErr ChooseWantDisasm(void)
 {
 	if (nanblnr == WantDisasm) {
-		WantDisasm = dfo_WantDisasm;
+		WantDisasm = dfo_WantDisasm();
 	}
 
 	return noErr;
@@ -2151,31 +2348,32 @@ LOCALFUNC tMyErr ChooseWantDisasm(void)
 
 LOCALPROC WrtOptWantDisasmNot(void)
 {
-	WrtOptBooleanOption("-dis", WantDisasm, dfo_WantDisasm);
+	WrtOptBooleanOption("-dis", WantDisasm, dfo_WantDisasm());
 }
 
 
 /* option: dbglog_HAVE */
 
 LOCALVAR blnr DbgLogHAVE;
-LOCALVAR blnr dfo_DbgLogHAVE;
+LOCALVAR ui3r olv_DbgLogHAVE;
 
 LOCALPROC ResetDbgLogHAVE(void)
 {
 	DbgLogHAVE = nanblnr;
+	olv_DbgLogHAVE = 0;
 }
 
 LOCALFUNC tMyErr TryAsDbgLogHAVENot(void)
 {
-	return BooleanTryAsOptionNot("-log", &DbgLogHAVE);
+	return BooleanTryAsOptionNot("-log", &DbgLogHAVE, &olv_DbgLogHAVE);
 }
+
+#define dfo_DbgLogHAVE() WantDisasm
 
 LOCALFUNC tMyErr ChooseDbgLogHAVE(void)
 {
-	dfo_DbgLogHAVE = WantDisasm;
-
 	if (nanblnr == DbgLogHAVE) {
-		DbgLogHAVE = dfo_DbgLogHAVE;
+		DbgLogHAVE = dfo_DbgLogHAVE();
 	}
 
 	return noErr;
@@ -2183,23 +2381,28 @@ LOCALFUNC tMyErr ChooseDbgLogHAVE(void)
 
 LOCALPROC WrtOptDbgLogHAVE(void)
 {
-	WrtOptBooleanOption("-log", DbgLogHAVE, dfo_DbgLogHAVE);
+	WrtOptBooleanOption("-log", DbgLogHAVE, dfo_DbgLogHAVE());
 }
 
 
 /* option: Screen VSync */
 
 LOCALVAR blnr WantScreenVSync;
+LOCALVAR ui3r olv_ScreenVSync;
 
 LOCALPROC ResetScreenVSync(void)
 {
 	WantScreenVSync = nanblnr;
+	olv_ScreenVSync = 0;
 }
 
 LOCALFUNC tMyErr TryAsScreenVSyncNot(void)
 {
-	return BooleanTryAsOptionNot("-vsync", &WantScreenVSync);
+	return BooleanTryAsOptionNot("-vsync",
+		&WantScreenVSync, &olv_ScreenVSync);
 }
+
+#define dfo_ScreenVSync() falseblnr
 
 LOCALFUNC tMyErr ChooseScreenVSync(void)
 {
@@ -2207,12 +2410,11 @@ LOCALFUNC tMyErr ChooseScreenVSync(void)
 
 	err = noErr;
 	if (nanblnr == WantScreenVSync) {
-		WantScreenVSync = falseblnr;
+		WantScreenVSync = dfo_ScreenVSync();
 	} else {
 		if (WantScreenVSync && (gbk_apifam_osx != gbo_apifam)) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-vsync is so far only implemented for OS X");
-			err = kMyErrReported;
 		}
 	}
 
@@ -2221,97 +2423,7 @@ LOCALFUNC tMyErr ChooseScreenVSync(void)
 
 LOCALPROC WrtOptScreenVSync(void)
 {
-	WrtOptFlagOption("-vsync", WantScreenVSync);
-}
-
-
-/* option: Need International Characters */
-
-LOCALVAR blnr NeedIntl;
-
-LOCALPROC ResetNeedIntl(void)
-{
-	NeedIntl = falseblnr;
-}
-
-LOCALFUNC tMyErr TryAsNeedIntlNot(void)
-{
-	return FlagTryAsOptionNot("-intl", &NeedIntl);
-}
-
-LOCALFUNC tMyErr ChooseNeedIntl(void)
-{
-	return noErr;
-}
-
-
-/* option: Demo Message */
-
-LOCALVAR blnr WantDemoMsg;
-
-LOCALPROC ResetDemoMsg(void)
-{
-	WantDemoMsg = nanblnr;
-}
-
-LOCALFUNC tMyErr TryAsDemoMsgNot(void)
-{
-	return BooleanTryAsOptionNot("-dmo", &WantDemoMsg);
-}
-
-LOCALFUNC tMyErr ChooseDemoMsg(void)
-{
-	if (nanblnr == WantDemoMsg) {
-		WantDemoMsg = falseblnr;
-	}
-
-	return noErr;
-}
-
-
-/* option: Activation Code */
-
-LOCALVAR blnr WantActvCode;
-#define NumKeyCon 7
-LOCALVAR long KeyCon[NumKeyCon];
-
-LOCALPROC ResetActvCode(void)
-{
-	WantActvCode = falseblnr;
-}
-
-LOCALFUNC tMyErr TryAsActvCodeNot(void)
-{
-	tMyErr err;
-	int i;
-
-	if (! CurArgIsCStr_v2("-act")) {
-		err = kMyErrNoMatch;
-	} else {
-		if (falseblnr != WantActvCode) {
-			ReportParseFailure("This option has already been defined");
-			err = kMyErrReported;
-		} else {
-			AdvanceTheArg();
-			WantActvCode = trueblnr;
-			for (i = 0; i < NumKeyCon; ++i) {
-				err = GetCurArgOptionAsNumber(&KeyCon[i]);
-				if (noErr != err) {
-					goto Label_1;
-				}
-			}
-			err = noErr;
-Label_1:
-			;
-		}
-	}
-
-	return err;
-}
-
-LOCALFUNC tMyErr ChooseActvCode(void)
-{
-	return noErr;
+	WrtOptBooleanOption("-vsync", WantScreenVSync, dfo_ScreenVSync());
 }
 
 /* ------ */
@@ -2326,9 +2438,8 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 	err = noErr;
 	if ((gbk_mdl_II != cur_mdl) && (gbk_mdl_IIx != cur_mdl)) {
 		if (cur_hres * cur_vres > (uimr)2 * 1024 * 1024) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"-hres and -vres multiplied must be < 2M");
-			err = kMyErrReported;
 		}
 	}
 
@@ -2339,8 +2450,8 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 		NeedScrnHack = falseblnr;
 		NeedVidMem = trueblnr;
 	} else {
-		NeedScrnHack = (cur_hres != dfo_hres)
-			|| (cur_vres != dfo_vres);
+		NeedScrnHack = (cur_hres != dfo_hres())
+			|| (cur_vres != dfo_vres());
 		NeedVidMem = NeedScrnHack;
 	}
 
@@ -2374,9 +2485,8 @@ LOCALFUNC tMyErr ChooseVidMemSize(void)
 		VidMemSize = 0;
 	} else if (EmVidCard) {
 		if (VidMemSize > 4 * 1024 * 1024) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"video memory must be <= 4M");
-			err = kMyErrReported;
 		} else if (VidMemSize <= 0x00008000) {
 			VidMemSize = 0x00008000;
 		}
@@ -2386,9 +2496,8 @@ LOCALFUNC tMyErr ChooseVidMemSize(void)
 		/* VidMemSize = 0x00020000; */
 
 		if (VidMemSize > 256 * 1024) {
-			ReportParseFailure(
+			err = ReportParseFailure(
 				"video memory must be <= 4M");
-			err = kMyErrReported;
 		} else if (VidMemSize <= 0x00004000) {
 			VidMemSize = 0x00004000;
 		}
@@ -2548,9 +2657,6 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetWantDisasm();
 	ResetDbgLogHAVE();
 	ResetScreenVSync();
-	ResetNeedIntl();
-	ResetActvCode();
-	ResetDemoMsg();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -2604,9 +2710,6 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsWantDisasmNot()))
 	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
-	if (kMyErrNoMatch == (err = TryAsNeedIntlNot()))
-	if (kMyErrNoMatch == (err = TryAsDemoMsgNot()))
-	if (kMyErrNoMatch == (err = TryAsActvCodeNot()))
 	{
 	}
 
@@ -2667,9 +2770,6 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseDbgLogHAVE()))
 	if (noErr == (err = ChooseScreenVSync()))
 
-	if (noErr == (err = ChooseNeedIntl()))
-	if (noErr == (err = ChooseDemoMsg()))
-	if (noErr == (err = ChooseActvCode()))
 	if (noErr == (err = ChooseScreenOpts())) /* derived */
 	if (noErr == (err = ChooseVidMemSize())) /* derived */
 	if (noErr == (err = ChooseMiscEmHardware())) /* derived */
@@ -2730,6 +2830,4 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptWantDisasmNot();
 	WrtOptDbgLogHAVE();
 	WrtOptScreenVSync();
-	/* WantDemoMsg */
-	/* WantActvCode */
 }
