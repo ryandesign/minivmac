@@ -2804,21 +2804,28 @@ LOCALVAR MyHandle SyntaxErrH = nullpr;
 LOCALVAR uimr SyntaxErrOffsetA;
 LOCALVAR uimr SyntaxErrOffsetB;
 
-LOCALFUNC tMyErr SetSyntaxErrCStr(char *s,
+LOCALFUNC tMyErr SetSyntaxErrPStr(ps3p s,
 	uimr offsetA, uimr offsetB)
 {
 	tMyErr err;
 
-#if DebugCheck
-	dbglog_writeln(s);
-#endif
-	if (noErr == (err = NHandleFromCStr(&SyntaxErrH, s))) {
+	if (noErr == (err = NHandleFromPStr(&SyntaxErrH, s))) {
 		SyntaxErrOffsetA = offsetA;
 		SyntaxErrOffsetB = offsetB;
 		err = kMyErrSyntaxErr;
 	}
 
 	return err;
+}
+
+LOCALFUNC tMyErr SetSyntaxErrCStr(char *s,
+	uimr offsetA, uimr offsetB)
+{
+	Str255 t;
+
+	PStrFromCStr(t, s);
+
+	return SetSyntaxErrPStr(s, offsetA, offsetB);
 }
 
 LOCALPROC ShowSyntaxError(void)
@@ -2848,19 +2855,21 @@ LOCALPROC AdvanceParseChar(void)
 LOCALVAR uimr The_arg_range_start;
 LOCALVAR uimr The_arg_range_size;
 LOCALVAR blnr The_arg_end;
-LOCALVAR blnr ParseArgsFailed;
+
+LOCALFUNC tMyErr ReportParseFailPStr(ps3p s)
+{
+	return SetSyntaxErrPStr(s,
+		The_arg_range_start,
+		The_arg_range_start + The_arg_range_size);
+}
 
 LOCALFUNC tMyErr ReportParseFailure(char *s)
 {
-	if (! ParseArgsFailed) {
-		/* MyAlertFromCStr(s); */
+	Str255 t;
 
-		ParseArgsFailed = trueblnr;
-	}
+	PStrFromCStr(t, s);
 
-	return SetSyntaxErrCStr(s,
-		The_arg_range_start,
-		The_arg_range_start + The_arg_range_size);
+	return ReportParseFailPStr(t);
 }
 
 LOCALFUNC blnr CurCharIsWhiteSpace(void)
@@ -3005,19 +3014,15 @@ LOCALFUNC tMyErr BeginParseFromTE(void)
 	ParseCharDone = falseblnr;
 	AdvanceParseChar();
 
-	ParseArgsFailed = falseblnr;
 	The_arg_end = falseblnr;
 	err = AdvanceTheArg();
 
 	return err;
 }
 
-LOCALPROC EndParseFromTE(void)
+LOCALPROC EndParseFromTE_v2(tMyErr err0)
 {
-	if (ParseArgsFailed) {
-		TESetSelect(The_arg_range_start,
-			The_arg_range_start + The_arg_range_size, MyDocTE);
-	} else {
+	if (noErr == err0) {
 		MyDocSelectAll();
 	}
 }

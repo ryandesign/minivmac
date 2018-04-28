@@ -67,7 +67,7 @@ GLOBALFUNC uimr CStrLength(char *s)
 {
 	char *p = s;
 
-	while (*p++ != 0) {
+	while (0 != *p++) {
 	}
 	return p - s - 1;
 }

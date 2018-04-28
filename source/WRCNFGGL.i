@@ -240,7 +240,7 @@ LOCALPROC WriteCommonCNFGGLOBContents(void)
 			" applied to unsigned type warning */");
 		WriteDestFileLn("#pragma warning(disable : 4146)");
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)
+	if (cur_mIIorIIX
 		|| (em_cpu_vers >= 2))
 	{
 		/* C4127: conditional expression is constant */

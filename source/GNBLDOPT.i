@@ -53,16 +53,20 @@ LOCALVAR ui3r olv_cur;
 LOCALFUNC tMyErr CurArgIsOption(char *s, ui3r *olv)
 {
 	tMyErr err;
+	MyPStr t;
 
 	if (! CurArgIsCStr_v2(s)) {
 		err = kMyErrNoMatch;
 	} else
 	if (DoingDevOpts && OnlyUserOptions) {
-		err = ReportParseFailure("This a developer only option");
+		PStrFromCStr(t, s);
+		PStrApndCStr(t, " is a developer only option");
+		err = ReportParseFailPStr(t);
 	} else
 	if (*olv == olv_cur) {
-		err = ReportParseFailure(
-			"This option has already been defined");
+		PStrFromCStr(t, s);
+		PStrApndCStr(t, " has appeared more than once");
+		err = ReportParseFailPStr(t);
 	} else
 	if (kMyErr_noErr != (err = AdvanceTheArg())) {
 		/* fail */
@@ -86,13 +90,16 @@ LOCALFUNC tMyErr FindNamedOption(char *s, int n, tGetName p,
 {
 	tMyErr err;
 	int i;
+	MyPStr t;
 
 	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
 		/* no */
 	} else
 	if (The_arg_end) {
-		err = ReportParseFailure(
-			"Expecting option argument when reached end");
+		PStrFromCStr(t, "Expecting an argument for ");
+		PStrApndCStr(t, s);
+		PStrApndCStr(t, " when reached end");
+		err = ReportParseFailPStr(t);
 	} else
 	{
 		for (i = 0; i < n; ++i) {
@@ -107,7 +114,9 @@ LOCALFUNC tMyErr FindNamedOption(char *s, int n, tGetName p,
 			err = AdvanceTheArg();
 			goto label_1;
 		}
-		err = ReportParseFailure("unknown value for this option");
+		PStrFromCStr(t, "Unknown value for ");
+		PStrApndCStr(t, s);
+		err = ReportParseFailPStr(t);
 label_1:
 		;
 	}
@@ -126,13 +135,16 @@ LOCALPROC StringResetOption(Handle *r)
 LOCALFUNC tMyErr StringTryAsOptionNot(char *s, Handle *r, ui3r *olv)
 {
 	tMyErr err;
+	MyPStr t;
 
 	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
 		/* no */
 	} else
 	if (The_arg_end) {
-		err = ReportParseFailure(
-			"Expecting option argument when reached end");
+		PStrFromCStr(t, "Expecting an argument for ");
+		PStrApndCStr(t, s);
+		PStrApndCStr(t, " when reached end");
+		err = ReportParseFailPStr(t);
 	} else
 	{
 		StringResetOption(r);
@@ -150,14 +162,16 @@ LOCALFUNC tMyErr StringTryAsOptionNot(char *s, Handle *r, ui3r *olv)
 LOCALFUNC tMyErr BooleanTryAsOptionNot(char *s, blnr *r, ui3r *olv)
 {
 	tMyErr err;
+	MyPStr t;
 
 	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
 		/* no */
 	} else
 	if (The_arg_end) {
-		err = ReportParseFailure(
-			"Expecting boolean value for option"
-			" when reached end");
+		PStrFromCStr(t, "Expecting a boolean argument for ");
+		PStrApndCStr(t, s);
+		PStrApndCStr(t, " when reached end");
+		err = ReportParseFailPStr(t);
 	} else
 	if (CurArgIsCStr_v2("1")) {
 		*r = trueblnr;
@@ -172,7 +186,9 @@ LOCALFUNC tMyErr BooleanTryAsOptionNot(char *s, blnr *r, ui3r *olv)
 		err = AdvanceTheArg();
 	} else
 	{
-		err = ReportParseFailure("boolean option - expecting 0 or 1");
+		PStrFromCStr(t, "Expecting a boolean argument for ");
+		PStrApndCStr(t, s);
+		err = ReportParseFailPStr(t);
 	}
 
 	return err;
@@ -193,21 +209,27 @@ LOCALFUNC tMyErr FlagTryAsOptionNot(char *s, blnr *r, ui3r *olv)
 	return err;
 }
 
-LOCALFUNC tMyErr GetCurArgOptionAsNumber(long *r)
+LOCALFUNC tMyErr GetCurArgOptionAsNumber(char *s, long *r)
 {
 	tMyErr err;
-	MyPStr s;
+	MyPStr t0;
 	MyPStr t;
 
 	if (The_arg_end) {
-		err = ReportParseFailure("Expecting a number when reached end");
+		PStrFromCStr(t, "Expecting a number argument for ");
+		PStrApndCStr(t, s);
+		PStrApndCStr(t, " when reached end");
+		err = ReportParseFailPStr(t);
 	} else {
-		GetCurArgAsPStr(s);
-		StringToNum(s, r);
+		GetCurArgAsPStr(t0);
+		StringToNum(t0, r);
 		NumToString(*r, t);
-		if (! PStrEq(s, t)) {
-			err = ReportParseFailure(
-				"This argument option should be a number");
+		if (! PStrEq(t0, t)) {
+			PStrFromCStr(t, "Expecting a number argument for ");
+			PStrApndCStr(t, s);
+			PStrApndCStr(t, " but got ");
+			PStrAppend(t, t0);
+			err = ReportParseFailPStr(t);
 		} else
 		{
 			err = AdvanceTheArg();
@@ -224,7 +246,7 @@ LOCALFUNC tMyErr NumberTryAsOptionNot(char *s, long *r, ui3r *olv)
 	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
 		/* no */
 	} else
-	if (kMyErr_noErr != (err = GetCurArgOptionAsNumber(r))) {
+	if (kMyErr_noErr != (err = GetCurArgOptionAsNumber(s, r))) {
 		/* fail */
 	} else
 	{
@@ -1799,6 +1821,7 @@ LOCALPROC ResetAbbrevName(void)
 LOCALFUNC tMyErr TryAsAbbrevNameOptionNot(void)
 {
 	tMyErr err;
+	MyPStr t;
 
 	if (kMyErr_noErr != (err =
 		CurArgIsOption("-an", &olv_AbbrevName)))
@@ -1806,8 +1829,10 @@ LOCALFUNC tMyErr TryAsAbbrevNameOptionNot(void)
 		/* no */
 	} else
 	if (The_arg_end) {
-		err = ReportParseFailure(
-			"Expecting string for option when reached end");
+		PStrFromCStr(t, "Expecting an argument for ");
+		PStrApndCStr(t, "-an");
+		PStrApndCStr(t, " when reached end");
+		err = ReportParseFailPStr(t);
 	} else
 	{
 		GetCurArgAsCStr(vStrAppAbbrev, 8);
@@ -2000,7 +2025,7 @@ LOCALFUNC tMyErr TryAsActvCodeNot(void)
 	{
 		WantActvCode = trueblnr;
 		for (i = 0; i < NumKeyCon; ++i) {
-			err = GetCurArgOptionAsNumber(&KeyCon[i]);
+			err = GetCurArgOptionAsNumber("-act", &KeyCon[i]);
 			if (noErr != err) {
 				goto Label_1;
 			}

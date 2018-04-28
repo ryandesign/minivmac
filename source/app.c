@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
 
 		err = DoTheCommand();
 
-		if (! ParseArgsFailed) {
+		if (noErr == err) {
 			return_code = 0;
 		}
 	}
@@ -217,7 +217,7 @@ LOCALPROC ProgramMain(void)
 			{
 				if (kMyErr_noErr == (err = BeginParseFromTE())) {
 					err = DoTheCommand();
-					EndParseFromTE();
+					EndParseFromTE_v2(err);
 				}
 			}
 			(void) ProgressBar_SetStage_v2(
@@ -227,6 +227,7 @@ LOCALPROC ProgramMain(void)
 		switch (err) {
 			case kMyErr_noErr:
 				/* ok */
+				MyDocSelectAll();
 				break;
 			case kMyErrSyntaxErr:
 				ShowSyntaxError();

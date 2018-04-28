@@ -96,11 +96,24 @@ LOCALFUNC tMyErr TryAsModelOptionNot(void)
 
 #define dfo_mdl() gbk_mdl_Plus
 
+LOCALVAR blnr cur_mIIorIIX;
+
 LOCALFUNC tMyErr ChooseModel(void)
 {
 	if (kListOptionAuto == cur_mdl) {
 		cur_mdl = dfo_mdl();
 	}
+
+	cur_mIIorIIX = (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl);
+
+#if 0
+	if (cur_mIIorIIX) {
+		if (gbk_cpufam_68k == gbo_cpufam) {
+			err = ReportParseFailure(
+				"Mac II emulation is not supported on Macintosh 680x0");
+		}
+	}
+#endif
 
 	return noErr;
 }
@@ -131,7 +144,7 @@ LOCALFUNC uimr dfo_hres(void)
 {
 	uimr v;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		v = 640;
 	} else if (gbk_mdl_PB100 == cur_mdl) {
 		v = 640;
@@ -145,14 +158,19 @@ LOCALFUNC uimr dfo_hres(void)
 LOCALFUNC tMyErr ChooseHRes(void)
 {
 	tMyErr err;
-
+	MyPStr t;
+	MyPStr s;
 
 	if (0 == olv_hres) {
 		cur_hres = dfo_hres();
 		err = noErr;
 	} else {
 		if ((cur_hres & 0x1F) != 0) {
-			err = ReportParseFailure("-hres must be a multiple of 32");
+			PStrFromCStr(t, "-hres must be a multiple of 32."
+				" The next lowest multiple is ");
+			PStrFromUimr(cur_hres & ~ 0x1F, s);
+			PStrAppend(t, s);
+			err = ReportParseFailPStr(t);
 		} else if (cur_hres < 128) {
 			err = ReportParseFailure("-hres must be >= 128");
 		} else if (cur_hres >= (uimr)32 * 1024) {
@@ -190,7 +208,7 @@ LOCALFUNC uimr dfo_vres(void)
 {
 	uimr v;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		v = 480;
 	} else if (gbk_mdl_PB100 == cur_mdl) {
 		v = 400;
@@ -247,7 +265,7 @@ LOCALFUNC uimr dfo_ScrnDpth(void)
 {
 	uimr v;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		v = 3;
 	} else {
 		v = 0;
@@ -265,7 +283,7 @@ LOCALFUNC tMyErr ChooseScrnDpth(void)
 	if (0 == olv_ScrnDpth) {
 		cur_ScrnDpth = dfo_ScrnDpth();
 	} else {
-		if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+		if (cur_mIIorIIX) {
 			if (cur_ScrnDpth > 5) {
 				err = ReportParseFailure("-depth must be <= 5");
 			}
@@ -314,11 +332,22 @@ LOCALFUNC blnr dfo_InitFullScreen(void)
 
 LOCALFUNC tMyErr ChooseInitFullScreen(void)
 {
+	tMyErr err;
+
+	err = noErr;
+
 	if (nanblnr == WantInitFullScreen) {
 		WantInitFullScreen = dfo_InitFullScreen();
+	} else {
+		if (WantInitFullScreen) {
+			if (gbk_targ_wcar == cur_targ) {
+				err = ReportParseFailure(
+					"-fullscreen 1 is not supported for -t wcar");
+			}
+		}
 	}
 
-	return noErr;
+	return err;
 }
 
 LOCALPROC WrtOptInitFullScreen(void)
@@ -362,11 +391,22 @@ LOCALFUNC blnr dfo_VarFullScreen(void)
 
 LOCALFUNC tMyErr ChooseVarFullScreen(void)
 {
+	tMyErr err;
+
+	err = noErr;
+
 	if (nanblnr == WantVarFullScreen) {
 		WantVarFullScreen = dfo_VarFullScreen();
+	} else {
+		if (WantVarFullScreen) {
+			if (gbk_targ_wcar == cur_targ) {
+				err = ReportParseFailure(
+					"-var-fullscreen is not supported for -t wcar");
+			}
+		}
 	}
 
-	return noErr;
+	return err;
 }
 
 LOCALPROC WrtOptVarFullScreen(void)
@@ -970,7 +1010,20 @@ LOCALFUNC tMyErr TryAsLocalTalkNot(void)
 
 LOCALFUNC tMyErr ChooseLocalTalk(void)
 {
-	return noErr;
+	tMyErr err;
+
+	err = noErr;
+
+	if (WantLocalTalk) {
+		if ((gbk_apifam_osx != gbo_apifam)
+			&& (gbk_apifam_cco != gbo_apifam))
+		{
+			err = ReportParseFailure(
+				"-lt is so far only implemented for OS X");
+		}
+	}
+
+	return err;
 }
 
 LOCALPROC WrtOptLocalTalk(void)
@@ -1044,9 +1097,7 @@ LOCALFUNC int dfo_InitSpeed(void)
 {
 	int v;
 
-	if ((gbk_mdl_II == cur_mdl)
-		|| (gbk_mdl_IIx == cur_mdl))
-	{
+	if (cur_mIIorIIX) {
 		v = gbk_speed_4X;
 	} else {
 		v = gbk_speed_8X;
@@ -1138,8 +1189,7 @@ LOCALFUNC blnr dfo_InitAutoSlow(void)
 {
 	int v;
 
-	v = (gbk_mdl_II != cur_mdl)
-		&& (gbk_mdl_IIx != cur_mdl);
+	v = ! cur_mIIorIIX;
 
 	return v;
 }
@@ -1212,7 +1262,7 @@ LOCALFUNC uimr dfo_em_cpu_vers(void)
 {
 	uimr v;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		v = 2;
 	} else {
 		v = 0;
@@ -1342,6 +1392,7 @@ LOCALFUNC tMyErr ChooseMemSiz(void)
 		cur_msz = dfo_msz();
 	} else {
 		/* should error check here */
+		/* no, checked in ChooseMemBankSizes */
 	}
 
 	return noErr;
@@ -1486,7 +1537,7 @@ LOCALFUNC uimr dfo_CaretBlinkTime(void)
 {
 	uimr v;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		v = 8;
 	} else {
 		v = 3;
@@ -1541,7 +1592,7 @@ LOCALFUNC uimr dfo_DoubleClickTime(void)
 {
 	uimr v;
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		v = 8;
 	} else {
 		v = 5;
@@ -1699,6 +1750,124 @@ LOCALFUNC tMyErr ChooseAutoKeyRate(void)
 LOCALPROC WrtOptAutoKeyRate(void)
 {
 	WrtOptNumberOption("-kyr", cur_AutoKeyRate, dfo_AutoKeyRate());
+}
+
+
+LOCALFUNC tMyErr ChooseHilColPart(char *s, uimr *cur_HilColV,
+	ui3r olv_HilColV, uimr dfo_HilColV)
+{
+	tMyErr err;
+	Str255 t;
+
+	err = noErr;
+	if (0 == olv_HilColV) {
+		*cur_HilColV = dfo_HilColV;
+	} else {
+		if (! cur_mIIorIIX) {
+			if (0 != *cur_HilColV) {
+				PStrFromCStr(t, s);
+				PStrApndCStr(t,
+					" not allowed for this emulated computer");
+				err = ReportParseFailPStr(t);
+			}
+		} else
+		if ((*cur_HilColV < 0) || (*cur_HilColV > 65535)) {
+			PStrFromCStr(t, s);
+			PStrApndCStr(t, " must be a number between 0 and 65535");
+			err = ReportParseFailPStr(t);
+		}
+	}
+
+	return err;
+}
+
+/* option: Parameter RAM HilColRed */
+
+LOCALVAR uimr cur_HilColRed;
+LOCALVAR ui3r olv_HilColRed;
+
+LOCALPROC ResetHilColRedOption(void)
+{
+	olv_HilColRed = 0;
+}
+
+LOCALFUNC tMyErr TryAsHilColRedOptionNot(void)
+{
+	return NumberTryAsOptionNot("-hcr",
+		(long *)&cur_HilColRed, &olv_HilColRed);
+}
+
+#define dfo_HilColRed() 0
+
+LOCALFUNC tMyErr ChooseHilColRed(void)
+{
+	return ChooseHilColPart("-hcr", &cur_HilColRed, olv_HilColRed,
+		dfo_HilColRed());
+}
+
+LOCALPROC WrtOptHilColRed(void)
+{
+	WrtOptNumberOption("-hcr", cur_HilColRed, dfo_HilColRed());
+}
+
+
+/* option: Parameter RAM HilColGreen */
+
+LOCALVAR uimr cur_HilColGreen;
+LOCALVAR ui3r olv_HilColGreen;
+
+LOCALPROC ResetHilColGreenOption(void)
+{
+	olv_HilColGreen = 0;
+}
+
+LOCALFUNC tMyErr TryAsHilColGreenOptionNot(void)
+{
+	return NumberTryAsOptionNot("-hcg",
+		(long *)&cur_HilColGreen, &olv_HilColGreen);
+}
+
+#define dfo_HilColGreen() 0
+
+LOCALFUNC tMyErr ChooseHilColGreen(void)
+{
+	return ChooseHilColPart("-hcg", &cur_HilColGreen, olv_HilColGreen,
+		dfo_HilColGreen());
+}
+
+LOCALPROC WrtOptHilColGreen(void)
+{
+	WrtOptNumberOption("-hcg", cur_HilColGreen, dfo_HilColGreen());
+}
+
+
+/* option: Parameter RAM HilColBlue */
+
+LOCALVAR uimr cur_HilColBlue;
+LOCALVAR ui3r olv_HilColBlue;
+
+LOCALPROC ResetHilColBlueOption(void)
+{
+	olv_HilColBlue = 0;
+}
+
+LOCALFUNC tMyErr TryAsHilColBlueOptionNot(void)
+{
+	return NumberTryAsOptionNot("-hcb",
+		(long *)&cur_HilColBlue, &olv_HilColBlue);
+}
+
+#define dfo_HilColBlue() 0
+
+LOCALFUNC tMyErr ChooseHilColBlue(void)
+{
+	return ChooseHilColPart("-hcb", &cur_HilColBlue, olv_HilColBlue,
+		dfo_HilColBlue());
+}
+
+LOCALPROC WrtOptHilColBlue(void)
+{
+	WrtOptNumberOption("-hcb", cur_HilColBlue, dfo_HilColBlue());
 }
 
 
@@ -2436,7 +2605,7 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 	tMyErr err;
 
 	err = noErr;
-	if ((gbk_mdl_II != cur_mdl) && (gbk_mdl_IIx != cur_mdl)) {
+	if (! cur_mIIorIIX) {
 		if (cur_hres * cur_vres > (uimr)2 * 1024 * 1024) {
 			err = ReportParseFailure(
 				"-hres and -vres multiplied must be < 2M");
@@ -2444,8 +2613,7 @@ LOCALFUNC tMyErr ChooseScreenOpts(void)
 	}
 
 	if ((gbk_mdl_PB100 == cur_mdl)
-		|| (gbk_mdl_II == cur_mdl)
-		|| (gbk_mdl_IIx == cur_mdl))
+		|| cur_mIIorIIX)
 	{
 		NeedScrnHack = falseblnr;
 		NeedVidMem = trueblnr;
@@ -2468,7 +2636,7 @@ LOCALFUNC tMyErr ChooseVidMemSize(void)
 {
 	tMyErr err;
 
-	EmVidCard = (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl);
+	EmVidCard = cur_mIIorIIX;
 
 	VidMemSize = (((cur_hres * cur_vres) << cur_ScrnDpth) + 7) >> 3;
 
@@ -2497,7 +2665,7 @@ LOCALFUNC tMyErr ChooseVidMemSize(void)
 
 		if (VidMemSize > 256 * 1024) {
 			err = ReportParseFailure(
-				"video memory must be <= 4M");
+				"video memory must be <= 256K");
 		} else if (VidMemSize <= 0x00004000) {
 			VidMemSize = 0x00004000;
 		}
@@ -2525,7 +2693,7 @@ LOCALFUNC tMyErr ChooseMiscEmHardware(void)
 		EmPMU = falseblnr;
 	} else
 	if ((cur_mdl <= gbk_mdl_Classic)
-		|| (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl))
+		|| cur_mIIorIIX)
 	{
 		EmADB = trueblnr;
 		EmRTC = trueblnr;
@@ -2537,9 +2705,8 @@ LOCALFUNC tMyErr ChooseMiscEmHardware(void)
 		EmPMU = trueblnr;
 	}
 
-	EmVIA2 = (gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl);
-	EmASC = (gbk_mdl_PB100 == cur_mdl) || (gbk_mdl_II == cur_mdl)
-		|| (gbk_mdl_IIx == cur_mdl);
+	EmVIA2 = cur_mIIorIIX;
+	EmASC = (gbk_mdl_PB100 == cur_mdl) || cur_mIIorIIX;
 
 	return noErr;
 }
@@ -2641,6 +2808,9 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetMenuBlinkOption();
 	ResetAutoKeyThreshOption();
 	ResetAutoKeyRateOption();
+	ResetHilColRedOption();
+	ResetHilColGreenOption();
+	ResetHilColBlueOption();
 	ResetSpeakerVolOption();
 	ResetWantMinExtn();
 	ResetMouseMotionOption();
@@ -2694,6 +2864,9 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsMenuBlinkOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAutoKeyThreshOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAutoKeyRateOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsHilColRedOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsHilColGreenOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsHilColBlueOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSpeakerVolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsWantMinExtnNot()))
 	if (kMyErrNoMatch == (err = TryAsMouseMotionOptionNot()))
@@ -2752,6 +2925,9 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseMenuBlink()))
 	if (noErr == (err = ChooseAutoKeyThresh()))
 	if (noErr == (err = ChooseAutoKeyRate()))
+	if (noErr == (err = ChooseHilColRed()))
+	if (noErr == (err = ChooseHilColGreen()))
+	if (noErr == (err = ChooseHilColBlue()))
 	if (noErr == (err = ChooseSpeakerVol()))
 	if (noErr == (err = ChooseWantMinExtn()))
 	if (noErr == (err = ChooseMouseMotion()))
@@ -2814,6 +2990,9 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptMenuBlink();
 	WrtOptAutoKeyThresh();
 	WrtOptAutoKeyRate();
+	WrtOptHilColRed();
+	WrtOptHilColGreen();
+	WrtOptHilColBlue();
 	WrtOptSpeakerVol();
 	WrtOptMinExtn();
 	WrtOptMouseMotion();

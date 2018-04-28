@@ -417,9 +417,6 @@ LOCALFUNC tMyErr ProcessCommandLineArguments(void)
 				err = ReportParseFailure("unknown switch");
 			}
 		}
-		if (ParseArgsFailed && (noErr == err)) {
-			err = kMyErrProgramBug;
-		}
 	}
 
 Label_1:
@@ -658,7 +655,6 @@ LOCALFUNC tMyErr DoTheCommand(void)
 	do {
 		err = DoTheCommand0();
 	} while ((! The_arg_end)
-		&& (! ParseArgsFailed)
 		&& (noErr == err));
 
 	return err;

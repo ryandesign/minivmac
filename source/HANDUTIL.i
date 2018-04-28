@@ -199,3 +199,10 @@ LOCALFUNC tMyErr NHandleFromCStr(MyHandle *r, char *s)
 	return NHandleFromPtr(r, (MyPtr)s, CStrLength(s));
 }
 #endif
+
+#ifdef Have_STRUTILS
+LOCALFUNC tMyErr NHandleFromPStr(MyHandle *r, ps3p s)
+{
+	return NHandleFromPtr(r, PStrToPtr(s), PStrToSize(s));
+}
+#endif

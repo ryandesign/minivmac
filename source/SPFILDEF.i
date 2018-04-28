@@ -97,7 +97,7 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 
 static void DoMINEM68Kdepends(tDoOneDepends p)
 {
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		p(kDepDirCSrc, "FPMATHEM.h");
 		p(kDepDirCSrc, "FPCPEMDV.h");
 	}
@@ -216,12 +216,10 @@ static void DoAllSrcFiles(tDoOneCFile p)
 	p("M68KITAB", kDepDirCSrc, kCSrcFlgmNone, nullpr);
 	p("DISAM68K", kDepDirCSrc, CSrcFlagsUseIf(WantDisasm), nullpr);
 	p("FPMATHEM", kDepDirCSrc,
-		CSrcFlagsUseHdrIf((gbk_mdl_II == cur_mdl)
-			|| (gbk_mdl_IIx == cur_mdl)),
+		CSrcFlagsUseHdrIf(cur_mIIorIIX),
 		nullpr);
 	p("FPCPEMDV", kDepDirCSrc,
-		CSrcFlagsUseHdrIf((gbk_mdl_II == cur_mdl)
-			|| (gbk_mdl_IIx == cur_mdl)),
+		CSrcFlagsUseHdrIf(cur_mIIorIIX),
 		nullpr);
 
 	p("MINEM68K", kDepDirCSrc, kCSrcFlgmSortFirst, DoMINEM68Kdepends);

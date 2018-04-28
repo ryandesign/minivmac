@@ -21,7 +21,7 @@ LOCALPROC WriteAppCNFGGLOBContents(void)
 {
 	WriteCommonCNFGGLOBContents();
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		Write64bitConfig();
 	}
 
@@ -92,7 +92,7 @@ LOCALPROC WriteConfigureWires(void)
 		"/* the Wire variables are 1/0, not true/false */");
 	WriteBlankLineToDestFile();
 	WriteDestFileLn("enum {");
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("\tWire_unknown_SoundDisable,");
 		WriteDestFileLn(
@@ -176,8 +176,7 @@ LOCALPROC WriteConfigureWires(void)
 		WriteOneWire("VIA1_iA2", "SoundVolb2");
 	}
 
-	if ((cur_mdl <= gbk_mdl_Plus) || (gbk_mdl_II == cur_mdl)
-		|| (gbk_mdl_IIx == cur_mdl))
+	if ((cur_mdl <= gbk_mdl_Plus) || cur_mIIorIIX)
 	{
 		WriteOneWire("VIA1_iA4", "MemOverlay");
 		WriteDestFileLn(
@@ -359,7 +358,7 @@ LOCALPROC WriteConfigureWires(void)
 			"#define ADBMouseDisabled (Wires[Wire_ADBMouseDisabled])");
 	}
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn("\tWire_VBLinterrupt,");
 		WriteDestFileLn(
@@ -383,7 +382,7 @@ LOCALPROC WriteConfigureVIA1(void)
 
 	if (gbk_mdl_Classic == cur_mdl) {
 		WriteDestFileLn("#define VIA1_ORA_FloatVal 0xF7");
-	} else if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	} else if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA1_ORA_FloatVal 0xBF");
 		WriteDestFileLn(
 			"\t/* bit 6 used to check version of hardware */");
@@ -399,7 +398,7 @@ LOCALPROC WriteConfigureVIA1(void)
 	} else if (gbk_mdl_PB100 == cur_mdl) {
 		WriteDestFileLn("#define VIA1_ORA_CanIn 0xFF");
 		WriteDestFileLn("#define VIA1_ORA_CanOut 0xFF");
-	} else if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	} else if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA1_ORA_CanIn 0x80");
 		WriteDestFileLn("#define VIA1_ORA_CanOut 0x3F");
 	} else {
@@ -416,7 +415,7 @@ LOCALPROC WriteConfigureVIA1(void)
 	} else if (gbk_mdl_PB100 == cur_mdl) {
 		WriteDestFileLn("#define VIA1_ORB_CanIn 0x02");
 		WriteDestFileLn("#define VIA1_ORB_CanOut 0xFD");
-	} else if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	} else if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA1_ORB_CanIn 0x09");
 		WriteDestFileLn("#define VIA1_ORB_CanOut 0xB7");
 	} else {
@@ -435,7 +434,7 @@ LOCALPROC WriteConfigureVIA1(void)
 	} else if (gbk_mdl_PB100 == cur_mdl) {
 		WriteDestFileLn("#define VIA1_IER_Never0 0x00");
 		WriteDestFileLn("#define VIA1_IER_Never1 0x0C");
-	} else if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	} else if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA1_IER_Never0 0x00");
 		WriteDestFileLn("#define VIA1_IER_Never1 0x58");
 	} else {
@@ -459,7 +458,7 @@ LOCALPROC WriteConfigureVIA2(void)
 	WriteDestFileLn("#define VIA2_ORA_FloatVal 0xFF");
 	WriteDestFileLn("#define VIA2_ORB_FloatVal 0xFF");
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA2_ORA_CanIn 0x01");
 		WriteDestFileLn("#define VIA2_ORA_CanOut 0xC0");
 	} else {
@@ -467,7 +466,7 @@ LOCALPROC WriteConfigureVIA2(void)
 		WriteDestFileLn("#define VIA2_ORA_CanOut 0x00");
 	}
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA2_ORB_CanIn 0x00");
 		WriteDestFileLn("#define VIA2_ORB_CanOut 0x8C");
 	} else {
@@ -475,7 +474,7 @@ LOCALPROC WriteConfigureVIA2(void)
 		WriteDestFileLn("#define VIA2_ORB_CanOut 0x00");
 	}
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteDestFileLn("#define VIA2_IER_Never0 0x00");
 		WriteDestFileLn("#define VIA2_IER_Never1 0xED");
 	} else {
@@ -582,7 +581,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteCompCondBool("EmVIA2", EmVIA2);
 	WriteCompCondBool("Use68020", em_cpu_vers >= 2);
 	WriteCompCondBool("EmFPU",
-		(gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl));
+		cur_mIIorIIX);
 	WriteCompCondBool("EmMMU", falseblnr);
 	WriteCompCondBool("EmASC", EmASC);
 
@@ -597,7 +596,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define kMyClockMult ");
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteCStrToDestFile("2");
 	} else {
 		WriteCStrToDestFile("1");
@@ -676,7 +675,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 
 	WriteBlankLineToDestFile();
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteDestFileLn("#define MaxATTListN 20");
 	} else {
 		WriteDestFileLn("#define MaxATTListN 16");
@@ -728,6 +727,23 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteHexByteToOutput(cur_AutoKeyRate);
 	WriteEndDestFileLn();
 
+	if (cur_mIIorIIX) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define pr_HilColRed 0x");
+		WriteHexWordToOutput(cur_HilColRed);
+		WriteEndDestFileLn();
+
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define pr_HilColGreen 0x");
+		WriteHexWordToOutput(cur_HilColGreen);
+		WriteEndDestFileLn();
+
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define pr_HilColBlue 0x");
+		WriteHexWordToOutput(cur_HilColBlue);
+		WriteEndDestFileLn();
+	}
+
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
 
@@ -768,7 +784,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 		"#define RTC_OneSecond_PulseNtfy"
 		" VIA1_iCA2_RTC_OneSecond_PulseNtfy");
 
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteBlankLineToDestFile();
 		WriteDestFileLn(
 			"#define VIA2_iCA1_PulseNtfy"
@@ -829,7 +845,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	}
 
 	WriteBlankLineToDestFile();
-	if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	if (cur_mIIorIIX) {
 		WriteDestFileLn("#define kExtn_Block_Base 0x50F0C000");
 	} else {
 		WriteDestFileLn("#define kExtn_Block_Base 0x00F40000");
@@ -839,7 +855,7 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 	WriteBlankLineToDestFile();
 	if (gbk_mdl_PB100 == cur_mdl) {
 		WriteDestFileLn("#define kROM_Base 0x00900000");
-	} else if ((gbk_mdl_II == cur_mdl) || (gbk_mdl_IIx == cur_mdl)) {
+	} else if (cur_mIIorIIX) {
 		WriteDestFileLn("#define kROM_Base 0x00800000");
 	} else {
 		WriteDestFileLn("#define kROM_Base 0x00400000");
