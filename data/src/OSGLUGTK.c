@@ -509,17 +509,17 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(GDK_KP_Delete, MKC_Decimal);
 #endif
 
-	KC2MKCAssignOne(GDK_asciitilde, MKC_Grave);
+	KC2MKCAssignOne(GDK_asciitilde, MKC_formac_Grave);
 	KC2MKCAssignOne(GDK_underscore, MKC_Minus);
 	KC2MKCAssignOne(GDK_plus, MKC_Equal);
 	KC2MKCAssignOne(GDK_braceleft, MKC_LeftBracket);
 	KC2MKCAssignOne(GDK_braceright, MKC_RightBracket);
-	KC2MKCAssignOne(GDK_bar, MKC_BackSlash);
+	KC2MKCAssignOne(GDK_bar, MKC_formac_BackSlash);
 	KC2MKCAssignOne(GDK_colon, MKC_SemiColon);
 	KC2MKCAssignOne(GDK_quotedbl, MKC_SingleQuote);
 	KC2MKCAssignOne(GDK_less, MKC_Comma);
 	KC2MKCAssignOne(GDK_greater, MKC_Period);
-	KC2MKCAssignOne(GDK_question, MKC_Slash);
+	KC2MKCAssignOne(GDK_question, MKC_formac_Slash);
 
 	KC2MKCAssignOne(GDK_a, MKC_A);
 	KC2MKCAssignOne(GDK_b, MKC_B);
@@ -552,11 +552,11 @@ LOCALFUNC blnr KC2MKCInit(void)
 		main mappings
 	*/
 
-	KC2MKCAssignOne(GDK_F1, MKC_F1);
-	KC2MKCAssignOne(GDK_F2, MKC_F2);
-	KC2MKCAssignOne(GDK_F3, MKC_F3);
-	KC2MKCAssignOne(GDK_F4, MKC_F4);
-	KC2MKCAssignOne(GDK_F5, MKC_F5);
+	KC2MKCAssignOne(GDK_F1, MKC_formac_F1);
+	KC2MKCAssignOne(GDK_F2, MKC_formac_F2);
+	KC2MKCAssignOne(GDK_F3, MKC_formac_F3);
+	KC2MKCAssignOne(GDK_F4, MKC_formac_F4);
+	KC2MKCAssignOne(GDK_F5, MKC_formac_F5);
 	KC2MKCAssignOne(GDK_F6, MKC_F6);
 	KC2MKCAssignOne(GDK_F7, MKC_F7);
 	KC2MKCAssignOne(GDK_F8, MKC_F8);
@@ -566,34 +566,34 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(GDK_F12, MKC_F12);
 
 #ifdef GDK_Delete
-	KC2MKCAssignOne(GDK_Delete, MKC_ForwardDel);
+	KC2MKCAssignOne(GDK_Delete, MKC_formac_ForwardDel);
 #endif
 #ifdef GDK_Insert
-	KC2MKCAssignOne(GDK_Insert, MKC_Help);
+	KC2MKCAssignOne(GDK_Insert, MKC_formac_Help);
 #endif
 #ifdef GDK_Help
-	KC2MKCAssignOne(GDK_Help, MKC_Help);
+	KC2MKCAssignOne(GDK_Help, MKC_formac_Help);
 #endif
 #ifdef GDK_Home
-	KC2MKCAssignOne(GDK_Home, MKC_Home);
+	KC2MKCAssignOne(GDK_Home, MKC_formac_Home);
 #endif
 #ifdef GDK_End
-	KC2MKCAssignOne(GDK_End, MKC_End);
+	KC2MKCAssignOne(GDK_End, MKC_formac_End);
 #endif
 
 #ifdef GDK_Page_Up
-	KC2MKCAssignOne(GDK_Page_Up, MKC_PageUp);
+	KC2MKCAssignOne(GDK_Page_Up, MKC_formac_PageUp);
 #else
 #ifdef GDK_Prior
-	KC2MKCAssignOne(GDK_Prior, MKC_PageUp);
+	KC2MKCAssignOne(GDK_Prior, MKC_formac_PageUp);
 #endif
 #endif
 
 #ifdef GDK_Page_Down
-	KC2MKCAssignOne(GDK_Page_Down, MKC_PageDown);
+	KC2MKCAssignOne(GDK_Page_Down, MKC_formac_PageDown);
 #else
 #ifdef GDK_Next
-	KC2MKCAssignOne(GDK_Next, MKC_PageDown);
+	KC2MKCAssignOne(GDK_Next, MKC_formac_PageDown);
 #endif
 #endif
 
@@ -611,7 +611,7 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(GDK_KP_Subtract, MKC_KPSubtract);
 	KC2MKCAssignOne(GDK_KP_Multiply, MKC_KPMultiply);
 	KC2MKCAssignOne(GDK_KP_Divide, MKC_KPDevide);
-	KC2MKCAssignOne(GDK_KP_Enter, MKC_Enter);
+	KC2MKCAssignOne(GDK_KP_Enter, MKC_formac_Enter);
 	KC2MKCAssignOne(GDK_KP_Equal, MKC_KPEqual);
 
 	KC2MKCAssignOne(GDK_KP_0, MKC_KP0);
@@ -631,85 +631,55 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(GDK_Up, MKC_Up);
 	KC2MKCAssignOne(GDK_Down, MKC_Down);
 
-	KC2MKCAssignOne(GDK_grave, MKC_Grave);
+	KC2MKCAssignOne(GDK_grave, MKC_formac_Grave);
 	KC2MKCAssignOne(GDK_minus, MKC_Minus);
 	KC2MKCAssignOne(GDK_equal, MKC_Equal);
 	KC2MKCAssignOne(GDK_bracketleft, MKC_LeftBracket);
 	KC2MKCAssignOne(GDK_bracketright, MKC_RightBracket);
-	KC2MKCAssignOne(GDK_backslash, MKC_BackSlash);
+	KC2MKCAssignOne(GDK_backslash, MKC_formac_BackSlash);
 	KC2MKCAssignOne(GDK_semicolon, MKC_SemiColon);
 	KC2MKCAssignOne(GDK_apostrophe, MKC_SingleQuote);
 	KC2MKCAssignOne(GDK_comma, MKC_Comma);
 	KC2MKCAssignOne(GDK_period, MKC_Period);
-	KC2MKCAssignOne(GDK_slash, MKC_Slash);
+	KC2MKCAssignOne(GDK_slash, MKC_formac_Slash);
 
-	KC2MKCAssignOne(GDK_Escape, MKC_Escape);
+	KC2MKCAssignOne(GDK_Escape, MKC_formac_Escape);
 
 	KC2MKCAssignOne(GDK_Tab, MKC_Tab);
 	KC2MKCAssignOne(GDK_Return, MKC_Return);
 	KC2MKCAssignOne(GDK_space, MKC_Space);
 	KC2MKCAssignOne(GDK_BackSpace, MKC_BackSpace);
 
-	KC2MKCAssignOne(GDK_Caps_Lock, MKC_CapsLock);
+	KC2MKCAssignOne(GDK_Caps_Lock, MKC_formac_CapsLock);
 	KC2MKCAssignOne(GDK_Num_Lock, MKC_Clear);
 
-#ifndef MKC_for_Meta
-#define MKC_for_Meta MKC_Command
-#endif
+	KC2MKCAssignOne(GDK_Meta_L, MKC_formac_Command);
 
-#ifndef MKC_for_Meta_L
-#define MKC_for_Meta_L MKC_for_Meta
-#endif
-	KC2MKCAssignOne(GDK_Meta_L, MKC_for_Meta_L);
+	KC2MKCAssignOne(GDK_Meta_R, MKC_formac_RCommand);
 
-#ifndef MKC_for_Meta_R
-#define MKC_for_Meta_R MKC_for_Meta
-#endif
-	KC2MKCAssignOne(GDK_Meta_R, MKC_for_Meta_R);
+	KC2MKCAssignOne(GDK_Mode_switch, MKC_formac_Option);
+	KC2MKCAssignOne(GDK_Menu, MKC_formac_Option);
+	KC2MKCAssignOne(GDK_Super_L, MKC_formac_Option);
+	KC2MKCAssignOne(GDK_Super_R, MKC_formac_ROption);
+	KC2MKCAssignOne(GDK_Hyper_L, MKC_formac_Option);
+	KC2MKCAssignOne(GDK_Hyper_R, MKC_formac_ROption);
 
-	KC2MKCAssignOne(GDK_Mode_switch, MKC_Option);
-	KC2MKCAssignOne(GDK_Menu, MKC_Option);
-	KC2MKCAssignOne(GDK_Super_L, MKC_Option);
-	KC2MKCAssignOne(GDK_Super_R, MKC_Option);
-	KC2MKCAssignOne(GDK_Hyper_L, MKC_Option);
-	KC2MKCAssignOne(GDK_Hyper_R, MKC_Option);
-
-	KC2MKCAssignOne(GDK_F13, MKC_Option);
+	KC2MKCAssignOne(GDK_F13, MKC_formac_Option);
 		/*
 			seen being used in Mandrake Linux 9.2
 			for windows key
 		*/
 
-	KC2MKCAssignOne(GDK_Shift_L, MKC_Shift);
-	KC2MKCAssignOne(GDK_Shift_R, MKC_Shift);
+	KC2MKCAssignOne(GDK_Shift_L, MKC_formac_Shift);
+	KC2MKCAssignOne(GDK_Shift_R, MKC_formac_RShift);
 
-#ifndef MKC_for_Alt
-#define MKC_for_Alt MKC_Command
-#endif
+	KC2MKCAssignOne(GDK_Alt_L, MKC_formac_Command);
 
-#ifndef MKC_for_Alt_L
-#define MKC_for_Alt_L MKC_for_Alt
-#endif
-	KC2MKCAssignOne(GDK_Alt_L, MKC_for_Alt_L);
+	KC2MKCAssignOne(GDK_Alt_R, MKC_formac_RCommand);
 
-#ifndef MKC_for_Alt_R
-#define MKC_for_Alt_R MKC_for_Alt
-#endif
-	KC2MKCAssignOne(GDK_Alt_R, MKC_for_Alt_R);
+	KC2MKCAssignOne(GDK_Control_L, MKC_formac_Control);
 
-#ifndef MKC_for_Control
-#define MKC_for_Control MKC_Control
-#endif
-
-#ifndef MKC_for_Control_L
-#define MKC_for_Control_L MKC_for_Control
-#endif
-	KC2MKCAssignOne(GDK_Control_L, MKC_for_Control_L);
-
-#ifndef MKC_for_Control_R
-#define MKC_for_Control_R MKC_for_Control
-#endif
-	KC2MKCAssignOne(GDK_Control_R, MKC_for_Control_R);
+	KC2MKCAssignOne(GDK_Control_R, MKC_formac_RControl);
 
 	KC2MKCAssignOne(GDK_1, MKC_1);
 	KC2MKCAssignOne(GDK_2, MKC_2);
@@ -760,16 +730,18 @@ LOCALPROC CheckTheCapsLock(void)
 
 	(void) gdk_window_get_pointer(window->window, NULL, NULL, &mask);
 
-	Keyboard_UpdateKeyMap2(MKC_CapsLock, (mask & GDK_LOCK_MASK) != 0);
+	Keyboard_UpdateKeyMap2(MKC_formac_CapsLock,
+		(mask & GDK_LOCK_MASK) != 0);
 }
 
 LOCALPROC DoKeyCode(guint keycode, blnr down)
 {
-	int key = KC2MKC[keycode & KeyCodeMask];
-	if (key >= 0) {
-		if (MKC_CapsLock == key) {
-			CheckTheCapsLock();
-		} else {
+	if (GDK_Caps_Lock == keycode) {
+		CheckTheCapsLock();
+	} else {
+		int key = KC2MKC[keycode & KeyCodeMask];
+
+		if (key >= 0) {
 			Keyboard_UpdateKeyMap2(key, down);
 		}
 	}

@@ -1999,17 +1999,17 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(XK_KP_Delete, MKC_Decimal);
 #endif
 
-	KC2MKCAssignOne(XK_asciitilde, MKC_Grave);
+	KC2MKCAssignOne(XK_asciitilde, MKC_formac_Grave);
 	KC2MKCAssignOne(XK_underscore, MKC_Minus);
 	KC2MKCAssignOne(XK_plus, MKC_Equal);
 	KC2MKCAssignOne(XK_braceleft, MKC_LeftBracket);
 	KC2MKCAssignOne(XK_braceright, MKC_RightBracket);
-	KC2MKCAssignOne(XK_bar, MKC_BackSlash);
+	KC2MKCAssignOne(XK_bar, MKC_formac_BackSlash);
 	KC2MKCAssignOne(XK_colon, MKC_SemiColon);
 	KC2MKCAssignOne(XK_quotedbl, MKC_SingleQuote);
 	KC2MKCAssignOne(XK_less, MKC_Comma);
 	KC2MKCAssignOne(XK_greater, MKC_Period);
-	KC2MKCAssignOne(XK_question, MKC_Slash);
+	KC2MKCAssignOne(XK_question, MKC_formac_Slash);
 
 	KC2MKCAssignOne(XK_a, MKC_A);
 	KC2MKCAssignOne(XK_b, MKC_B);
@@ -2042,11 +2042,11 @@ LOCALFUNC blnr KC2MKCInit(void)
 	main mappings
 	*/
 
-	KC2MKCAssignOne(XK_F1, MKC_F1);
-	KC2MKCAssignOne(XK_F2, MKC_F2);
-	KC2MKCAssignOne(XK_F3, MKC_F3);
-	KC2MKCAssignOne(XK_F4, MKC_F4);
-	KC2MKCAssignOne(XK_F5, MKC_F5);
+	KC2MKCAssignOne(XK_F1, MKC_formac_F1);
+	KC2MKCAssignOne(XK_F2, MKC_formac_F2);
+	KC2MKCAssignOne(XK_F3, MKC_formac_F3);
+	KC2MKCAssignOne(XK_F4, MKC_formac_F4);
+	KC2MKCAssignOne(XK_F5, MKC_formac_F5);
 	KC2MKCAssignOne(XK_F6, MKC_F6);
 	KC2MKCAssignOne(XK_F7, MKC_F7);
 	KC2MKCAssignOne(XK_F8, MKC_F8);
@@ -2056,34 +2056,34 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(XK_F12, MKC_F12);
 
 #ifdef XK_Delete
-	KC2MKCAssignOne(XK_Delete, MKC_ForwardDel);
+	KC2MKCAssignOne(XK_Delete, MKC_formac_ForwardDel);
 #endif
 #ifdef XK_Insert
-	KC2MKCAssignOne(XK_Insert, MKC_Help);
+	KC2MKCAssignOne(XK_Insert, MKC_formac_Help);
 #endif
 #ifdef XK_Help
-	KC2MKCAssignOne(XK_Help, MKC_Help);
+	KC2MKCAssignOne(XK_Help, MKC_formac_Help);
 #endif
 #ifdef XK_Home
-	KC2MKCAssignOne(XK_Home, MKC_Home);
+	KC2MKCAssignOne(XK_Home, MKC_formac_Home);
 #endif
 #ifdef XK_End
-	KC2MKCAssignOne(XK_End, MKC_End);
+	KC2MKCAssignOne(XK_End, MKC_formac_End);
 #endif
 
 #ifdef XK_Page_Up
-	KC2MKCAssignOne(XK_Page_Up, MKC_PageUp);
+	KC2MKCAssignOne(XK_Page_Up, MKC_formac_PageUp);
 #else
 #ifdef XK_Prior
-	KC2MKCAssignOne(XK_Prior, MKC_PageUp);
+	KC2MKCAssignOne(XK_Prior, MKC_formac_PageUp);
 #endif
 #endif
 
 #ifdef XK_Page_Down
-	KC2MKCAssignOne(XK_Page_Down, MKC_PageDown);
+	KC2MKCAssignOne(XK_Page_Down, MKC_formac_PageDown);
 #else
 #ifdef XK_Next
-	KC2MKCAssignOne(XK_Next, MKC_PageDown);
+	KC2MKCAssignOne(XK_Next, MKC_formac_PageDown);
 #endif
 #endif
 
@@ -2101,7 +2101,7 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(XK_KP_Subtract, MKC_KPSubtract);
 	KC2MKCAssignOne(XK_KP_Multiply, MKC_KPMultiply);
 	KC2MKCAssignOne(XK_KP_Divide, MKC_KPDevide);
-	KC2MKCAssignOne(XK_KP_Enter, MKC_Enter);
+	KC2MKCAssignOne(XK_KP_Enter, MKC_formac_Enter);
 	KC2MKCAssignOne(XK_KP_Equal, MKC_KPEqual);
 
 	KC2MKCAssignOne(XK_KP_0, MKC_KP0);
@@ -2121,85 +2121,55 @@ LOCALFUNC blnr KC2MKCInit(void)
 	KC2MKCAssignOne(XK_Up, MKC_Up);
 	KC2MKCAssignOne(XK_Down, MKC_Down);
 
-	KC2MKCAssignOne(XK_grave, MKC_Grave);
+	KC2MKCAssignOne(XK_grave, MKC_formac_Grave);
 	KC2MKCAssignOne(XK_minus, MKC_Minus);
 	KC2MKCAssignOne(XK_equal, MKC_Equal);
 	KC2MKCAssignOne(XK_bracketleft, MKC_LeftBracket);
 	KC2MKCAssignOne(XK_bracketright, MKC_RightBracket);
-	KC2MKCAssignOne(XK_backslash, MKC_BackSlash);
+	KC2MKCAssignOne(XK_backslash, MKC_formac_BackSlash);
 	KC2MKCAssignOne(XK_semicolon, MKC_SemiColon);
 	KC2MKCAssignOne(XK_apostrophe, MKC_SingleQuote);
 	KC2MKCAssignOne(XK_comma, MKC_Comma);
 	KC2MKCAssignOne(XK_period, MKC_Period);
-	KC2MKCAssignOne(XK_slash, MKC_Slash);
+	KC2MKCAssignOne(XK_slash, MKC_formac_Slash);
 
-	KC2MKCAssignOne(XK_Escape, MKC_Escape);
+	KC2MKCAssignOne(XK_Escape, MKC_formac_Escape);
 
 	KC2MKCAssignOne(XK_Tab, MKC_Tab);
 	KC2MKCAssignOne(XK_Return, MKC_Return);
 	KC2MKCAssignOne(XK_space, MKC_Space);
 	KC2MKCAssignOne(XK_BackSpace, MKC_BackSpace);
 
-	KC2MKCAssignOne(XK_Caps_Lock, MKC_CapsLock);
+	KC2MKCAssignOne(XK_Caps_Lock, MKC_formac_CapsLock);
 	KC2MKCAssignOne(XK_Num_Lock, MKC_Clear);
 
-#ifndef MKC_for_Meta
-#define MKC_for_Meta MKC_Command
-#endif
+	KC2MKCAssignOne(XK_Meta_L, MKC_formac_Command);
 
-#ifndef MKC_for_Meta_L
-#define MKC_for_Meta_L MKC_for_Meta
-#endif
-	KC2MKCAssignOne(XK_Meta_L, MKC_for_Meta_L);
+	KC2MKCAssignOne(XK_Meta_R, MKC_formac_RCommand);
 
-#ifndef MKC_for_Meta_R
-#define MKC_for_Meta_R MKC_for_Meta
-#endif
-	KC2MKCAssignOne(XK_Meta_R, MKC_for_Meta_R);
+	KC2MKCAssignOne(XK_Mode_switch, MKC_formac_Option);
+	KC2MKCAssignOne(XK_Menu, MKC_formac_Option);
+	KC2MKCAssignOne(XK_Super_L, MKC_formac_Option);
+	KC2MKCAssignOne(XK_Super_R, MKC_formac_ROption);
+	KC2MKCAssignOne(XK_Hyper_L, MKC_formac_Option);
+	KC2MKCAssignOne(XK_Hyper_R, MKC_formac_ROption);
 
-	KC2MKCAssignOne(XK_Mode_switch, MKC_Option);
-	KC2MKCAssignOne(XK_Menu, MKC_Option);
-	KC2MKCAssignOne(XK_Super_L, MKC_Option);
-	KC2MKCAssignOne(XK_Super_R, MKC_Option);
-	KC2MKCAssignOne(XK_Hyper_L, MKC_Option);
-	KC2MKCAssignOne(XK_Hyper_R, MKC_Option);
-
-	KC2MKCAssignOne(XK_F13, MKC_Option);
+	KC2MKCAssignOne(XK_F13, MKC_formac_Option);
 		/*
 			seen being used in Mandrake Linux 9.2
 			for windows key
 		*/
 
-	KC2MKCAssignOne(XK_Shift_L, MKC_Shift);
-	KC2MKCAssignOne(XK_Shift_R, MKC_Shift);
+	KC2MKCAssignOne(XK_Shift_L, MKC_formac_Shift);
+	KC2MKCAssignOne(XK_Shift_R, MKC_formac_RShift);
 
-#ifndef MKC_for_Alt
-#define MKC_for_Alt MKC_Command
-#endif
+	KC2MKCAssignOne(XK_Alt_L, MKC_formac_Command);
 
-#ifndef MKC_for_Alt_L
-#define MKC_for_Alt_L MKC_for_Alt
-#endif
-	KC2MKCAssignOne(XK_Alt_L, MKC_for_Alt_L);
+	KC2MKCAssignOne(XK_Alt_R, MKC_formac_RCommand);
 
-#ifndef MKC_for_Alt_R
-#define MKC_for_Alt_R MKC_for_Alt
-#endif
-	KC2MKCAssignOne(XK_Alt_R, MKC_for_Alt_R);
+	KC2MKCAssignOne(XK_Control_L, MKC_formac_Control);
 
-#ifndef MKC_for_Control
-#define MKC_for_Control MKC_Control
-#endif
-
-#ifndef MKC_for_Control_L
-#define MKC_for_Control_L MKC_for_Control
-#endif
-	KC2MKCAssignOne(XK_Control_L, MKC_for_Control_L);
-
-#ifndef MKC_for_Control_R
-#define MKC_for_Control_R MKC_for_Control
-#endif
-	KC2MKCAssignOne(XK_Control_R, MKC_for_Control_R);
+	KC2MKCAssignOne(XK_Control_R, MKC_formac_RControl);
 
 	KC2MKCAssignOne(XK_1, MKC_1);
 	KC2MKCAssignOne(XK_2, MKC_2);
@@ -2262,7 +2232,8 @@ LOCALPROC CheckTheCapsLock(void)
 		&NewMousePosh, &NewMousePosv,
 		&mask_return);
 
-	Keyboard_UpdateKeyMap2(MKC_CapsLock, (mask_return & LockMask) != 0);
+	Keyboard_UpdateKeyMap2(MKC_formac_CapsLock,
+		(mask_return & LockMask) != 0);
 }
 
 LOCALPROC DoKeyCode0(int i, blnr down)
@@ -3120,7 +3091,7 @@ LOCALPROC HandleTheEvent(XEvent *theEvent)
 			} else {
 				/*
 					could check some modifiers, but don't bother for now
-					Keyboard_UpdateKeyMap2(MKC_CapsLock,
+					Keyboard_UpdateKeyMap2(MKC_formac_CapsLock,
 						(theEvent->xbutton.state & LockMask) != 0);
 				*/
 				MousePositionNotify(

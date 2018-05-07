@@ -916,6 +916,294 @@ LOCALPROC WrtOptCmndOptSwap(void)
 }
 
 
+/* option: key mapping */
+
+enum {
+	gbk_keynam_Control,
+	gbk_keynam_Command,
+	gbk_keynam_Option,
+	gbk_keynam_Shift,
+	gbk_keynam_CapsLock,
+	gbk_keynam_F1,
+	gbk_keynam_F2,
+	gbk_keynam_F3,
+	gbk_keynam_F4,
+	gbk_keynam_F5,
+	gbk_keynam_Escape,
+	gbk_keynam_BackSlash,
+	gbk_keynam_Slash,
+	gbk_keynam_Grave,
+	gbk_keynam_Enter,
+	gbk_keynam_PageUp,
+	gbk_keynam_PageDown,
+	gbk_keynam_Home,
+	gbk_keynam_End,
+	gbk_keynam_Help,
+	gbk_keynam_ForwardDel,
+	kNumKeyNames
+};
+
+enum {
+	gbk_keynam_RControl = kNumKeyNames,
+	gbk_keynam_RCommand,
+	gbk_keynam_ROption,
+	gbk_keynam_RShift,
+	kNumSrcKeyNames
+};
+
+enum {
+	gbk_keynam_CM = kNumKeyNames,
+	kNumDstKeyNames
+};
+
+LOCALVAR ui3b gbo_keymap[kNumSrcKeyNames];
+LOCALVAR ui3r olv_keymap[kNumSrcKeyNames];
+
+LOCALPROC ResetKeyMapOption(void)
+{
+	uimr i;
+
+	for (i = 0; i < kNumSrcKeyNames; ++i) {
+		gbo_keymap[i] = 0xFF;
+		olv_keymap[i] = 0;
+	}
+}
+
+LOCALFUNC char * GetKeyMapName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_keynam_Control:
+			s = "Control";
+			break;
+		case gbk_keynam_Command:
+			s = "Command";
+			break;
+		case gbk_keynam_Option:
+			s = "Option";
+			break;
+		case gbk_keynam_Shift:
+			s = "Shift";
+			break;
+		case gbk_keynam_CapsLock:
+			s = "CapsLock";
+			break;
+		case gbk_keynam_F1:
+			s = "F1";
+			break;
+		case gbk_keynam_F2:
+			s = "F2";
+			break;
+		case gbk_keynam_F3:
+			s = "F3";
+			break;
+		case gbk_keynam_F4:
+			s = "F4";
+			break;
+		case gbk_keynam_F5:
+			s = "F5";
+			break;
+		case gbk_keynam_Escape:
+			s = "Escape";
+			break;
+		case gbk_keynam_BackSlash:
+			s = "BackSlash";
+			break;
+		case gbk_keynam_Slash:
+			s = "Slash";
+			break;
+		case gbk_keynam_Grave:
+			s = "Grave";
+			break;
+		case gbk_keynam_Enter:
+			s = "Enter";
+			break;
+		case gbk_keynam_PageUp:
+			s = "PageUp";
+			break;
+		case gbk_keynam_PageDown:
+			s = "PageDown";
+			break;
+		case gbk_keynam_Home:
+			s = "Home";
+			break;
+		case gbk_keynam_End:
+			s = "End";
+			break;
+		case gbk_keynam_Help:
+			s = "Help";
+			break;
+		case gbk_keynam_ForwardDel:
+			s = "ForwardDel";
+			break;
+		default:
+			s = "(unknown key)";
+			break;
+	}
+
+	return s;
+}
+
+LOCALFUNC char * GetSrcKeyMapName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_keynam_RControl:
+			s = "RControl";
+			break;
+		case gbk_keynam_RCommand:
+			s = "RCommand";
+			break;
+		case gbk_keynam_ROption:
+			s = "ROption";
+			break;
+		case gbk_keynam_RShift:
+			s = "RShift";
+			break;
+		default:
+			s = GetKeyMapName(i);
+			break;
+	}
+
+	return s;
+}
+
+LOCALFUNC char * GetDstKeyMapName(int i)
+{
+	char *s;
+
+	switch (i) {
+		case gbk_keynam_CM:
+			s = "CM";
+			break;
+		default:
+			s = GetKeyMapName(i);
+			break;
+	}
+
+	return s;
+}
+
+LOCALFUNC tMyErr TryAsKeyMapOptionNot(void)
+{
+	tMyErr err;
+	MyPStr t;
+	int k;
+	int j;
+
+	if (! CurArgIsCStr_v2("-km")) {
+		err = kMyErrNoMatch;
+	} else
+	if (kMyErr_noErr != (err = AdvanceTheArg())) {
+		/* fail */
+	} else
+	if (The_arg_end) {
+		PStrFromCStr(t,
+			"Expecting a src argument for -km when reached end");
+		err = ReportParseFailPStr(t);
+	} else
+	if (! GetCurArgNameIndex(kNumSrcKeyNames, GetSrcKeyMapName, &k)) {
+		PStrFromCStr(t, "Unknown source value for -km");
+		err = ReportParseFailPStr(t);
+	} else
+	if (olv_keymap[k] == olv_cur) {
+		PStrFromCStr(t,
+			"same -km src value has appeared more than once");
+		err = ReportParseFailPStr(t);
+	} else
+	if (kMyErr_noErr != (err = AdvanceTheArg())) {
+		/* fail */
+	} else
+	if (The_arg_end) {
+		PStrFromCStr(t,
+			"Expecting a dst argument for -km when reached end");
+		err = ReportParseFailPStr(t);
+	} else
+	if (! GetCurArgNameIndex(kNumDstKeyNames, GetDstKeyMapName, &j)) {
+		if (CurArgIsCStr_v2("*")) {
+			olv_keymap[k] = olv_cur;
+			gbo_keymap[k] = 0xFF;
+			err = AdvanceTheArg();
+		} else
+		{
+			PStrFromCStr(t, "Unknown dst value for -km");
+			err = ReportParseFailPStr(t);
+		}
+	} else
+
+	{
+		olv_keymap[k] = olv_cur;
+		gbo_keymap[k] = j;
+		err = AdvanceTheArg();
+	}
+
+	return err;
+}
+
+LOCALPROC dfo_keyset(ui3b *a, uimr i, ui3r v)
+{
+	a[i] = v;
+
+	if (0xFF == gbo_keymap[i]) {
+		gbo_keymap[i] = v;
+	}
+}
+
+LOCALPROC dfo_keymap(ui3b *a)
+{
+	uimr i;
+
+	dfo_keyset(a, gbk_keynam_Control,
+		WantCmndOptSwap ? gbk_keynam_Command : gbk_keynam_CM);
+	dfo_keyset(a, gbk_keynam_Command,
+		WantCmndOptSwap ? gbk_keynam_CM : gbk_keynam_Command);
+
+	for (i = gbk_keynam_Option; i <= gbk_keynam_CapsLock; ++i) {
+		dfo_keyset(a, i, i);
+	}
+
+	dfo_keyset(a, gbk_keynam_F1, gbk_keynam_Option);
+	dfo_keyset(a, gbk_keynam_F2, gbk_keynam_Command);
+
+	for (i = gbk_keynam_F3; i <= gbk_keynam_ForwardDel; ++i) {
+		dfo_keyset(a, i, i);
+	}
+
+	dfo_keyset(a, gbk_keynam_RControl, gbo_keymap[gbk_keynam_Control]);
+	dfo_keyset(a, gbk_keynam_RCommand, gbo_keymap[gbk_keynam_Command]);
+	dfo_keyset(a, gbk_keynam_ROption, gbo_keymap[gbk_keynam_Option]);
+	dfo_keyset(a, gbk_keynam_RShift, gbo_keymap[gbk_keynam_Shift]);
+}
+
+LOCALFUNC tMyErr ChooseKeyMap(void)
+{
+	ui3b a[kNumSrcKeyNames];
+
+	dfo_keymap(a);
+
+	return noErr;
+}
+
+LOCALPROC WrtOptKeyMap(void)
+{
+	ui3b a[kNumSrcKeyNames];
+	uimr i;
+
+	dfo_keymap(a);
+
+	for (i = 0; i < kNumSrcKeyNames; ++i) {
+		if (gbo_keymap[i] != a[i]) {
+			strmo_writeCStr(" -km ");
+			strmo_writeCStr(GetSrcKeyMapName(i));
+			strmo_writeCStr(" ");
+			strmo_writeCStr(GetDstKeyMapName(gbo_keymap[i]));
+		}
+	}
+}
+
+
 /* option: Alternate Keyboard Mode */
 
 LOCALVAR blnr WantAltKeysMode;
@@ -2794,6 +3082,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetSonySupportDC42();
 	ResetInsertIthDisk();
 	ResetCmndOptSwap();
+	ResetKeyMapOption();
 	ResetAltKeysMode();
 	ResetItnlKyBdFixOption();
 	ResetLocalTalk();
@@ -2850,6 +3139,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsSonySupportDC42Not()))
 	if (kMyErrNoMatch == (err = TryAsInsertIthDisk()))
 	if (kMyErrNoMatch == (err = TryAsCmndOptSwapNot()))
+	if (kMyErrNoMatch == (err = TryAsKeyMapOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAltKeysModeNot()))
 	if (kMyErrNoMatch == (err = TryAsItnlKyBdFixNot()))
 	if (kMyErrNoMatch == (err = TryAsLocalTalkNot()))
@@ -2910,6 +3200,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseSonySupportDC42()))
 	if (noErr == (err = ChooseInsertIthDisk()))
 	if (noErr == (err = ChooseCmndOptSwap()))
+	if (noErr == (err = ChooseKeyMap()))
 	if (noErr == (err = ChooseAltKeysMode()))
 	if (noErr == (err = ChooseItnlKyBdFix()))
 	if (noErr == (err = ChooseLocalTalk()))
@@ -2976,6 +3267,7 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptSonySupportDC42();
 	WrtOptInsertIthDisk();
 	WrtOptCmndOptSwap();
+	WrtOptKeyMap();
 	WrtOptAltKeysMode();
 	WrtOptItnlKyBdFix();
 	WrtOptLocalTalk();

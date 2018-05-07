@@ -337,6 +337,8 @@ LOCALPROC dbglog_close0(void)
 
 #include "COMOSGLU.h"
 
+#define WantKeyboard_RemapMac 1
+
 #include "CONTROLM.h"
 
 /* --- parameter buffers --- */
@@ -1381,23 +1383,23 @@ LOCALPROC MyUpdateKeyboardModifiers(NSUInteger newMods)
 
 	if (0 != changeMask) {
 		if (0 != (changeMask & NSAlphaShiftKeyMask)) {
-			Keyboard_UpdateKeyMap2(MKC_CapsLock,
+			Keyboard_UpdateKeyMap2(MKC_formac_CapsLock,
 				0 != (newMods & NSAlphaShiftKeyMask));
 		}
 		if (0 != (changeMask & NSShiftKeyMask)) {
-			Keyboard_UpdateKeyMap2(MKC_Shift,
+			Keyboard_UpdateKeyMap2(MKC_formac_Shift,
 				0 != (newMods & NSShiftKeyMask));
 		}
 		if (0 != (changeMask & NSControlKeyMask)) {
-			Keyboard_UpdateKeyMap2(MKC_Control,
+			Keyboard_UpdateKeyMap2(MKC_formac_Control,
 				0 != (newMods & NSControlKeyMask));
 		}
 		if (0 != (changeMask & NSCommandKeyMask)) {
-			Keyboard_UpdateKeyMap2(MKC_Command,
+			Keyboard_UpdateKeyMap2(MKC_formac_Command,
 				0 != (newMods & NSCommandKeyMask));
 		}
 		if (0 != (changeMask & NSAlternateKeyMask)) {
-			Keyboard_UpdateKeyMap2(MKC_Option,
+			Keyboard_UpdateKeyMap2(MKC_formac_Option,
 				0 != (newMods & NSAlternateKeyMask));
 		}
 
@@ -4301,7 +4303,7 @@ LOCALPROC ProcessKeyEvent(blnr down, NSEvent *event)
 	ui3b scancode = [event keyCode];
 
 	ProcessEventModifiers(event);
-	Keyboard_UpdateKeyMap2(scancode, down);
+	Keyboard_UpdateKeyMap2(Keyboard_RemapMac(scancode), down);
 }
 
 LOCALPROC ProcessOneSystemEvent(NSEvent *event)

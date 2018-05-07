@@ -985,7 +985,7 @@ LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
 		case SDLK_CLEAR: v = MKC_Clear; break;
 		case SDLK_RETURN: v = MKC_Return; break;
 		case SDLK_PAUSE: v = MKC_Pause; break;
-		case SDLK_ESCAPE: v = MKC_Escape; break;
+		case SDLK_ESCAPE: v = MKC_formac_Escape; break;
 		case SDLK_SPACE: v = MKC_Space; break;
 		case SDLK_EXCLAIM: /* ? */ break;
 		case SDLK_QUOTEDBL: /* ? */ break;
@@ -1000,7 +1000,7 @@ LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
 		case SDLK_COMMA: v = MKC_Comma; break;
 		case SDLK_MINUS: v = MKC_Minus; break;
 		case SDLK_PERIOD: v = MKC_Period; break;
-		case SDLK_SLASH: v = MKC_Slash; break;
+		case SDLK_SLASH: v = MKC_formac_Slash; break;
 		case SDLK_0: v = MKC_0; break;
 		case SDLK_1: v = MKC_1; break;
 		case SDLK_2: v = MKC_2; break;
@@ -1020,11 +1020,11 @@ LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
 		case SDLK_AT: /* ? */ break;
 
 		case SDLK_LEFTBRACKET: v = MKC_LeftBracket; break;
-		case SDLK_BACKSLASH: v = MKC_BackSlash; break;
+		case SDLK_BACKSLASH: v = MKC_formac_BackSlash; break;
 		case SDLK_RIGHTBRACKET: v = MKC_RightBracket; break;
 		case SDLK_CARET: /* ? */ break;
 		case SDLK_UNDERSCORE: /* ? */ break;
-		case SDLK_BACKQUOTE: v = MKC_Grave; break;
+		case SDLK_BACKQUOTE: v = MKC_formac_Grave; break;
 
 		case SDLK_a: v = MKC_A; break;
 		case SDLK_b: v = MKC_B; break;
@@ -1069,24 +1069,24 @@ LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
 		case SDLK_KP_MULTIPLY: v = MKC_KPMultiply; break;
 		case SDLK_KP_MINUS: v = MKC_KPSubtract; break;
 		case SDLK_KP_PLUS: v = MKC_KPAdd; break;
-		case SDLK_KP_ENTER: v = MKC_Enter; break;
+		case SDLK_KP_ENTER: v = MKC_formac_Enter; break;
 		case SDLK_KP_EQUALS: v = MKC_KPEqual; break;
 
 		case SDLK_UP: v = MKC_Up; break;
 		case SDLK_DOWN: v = MKC_Down; break;
 		case SDLK_RIGHT: v = MKC_Right; break;
 		case SDLK_LEFT: v = MKC_Left; break;
-		case SDLK_INSERT: v = MKC_Help; break;
-		case SDLK_HOME: v = MKC_Home; break;
-		case SDLK_END: v = MKC_End; break;
-		case SDLK_PAGEUP: v = MKC_PageUp; break;
-		case SDLK_PAGEDOWN: v = MKC_PageDown; break;
+		case SDLK_INSERT: v = MKC_formac_Help; break;
+		case SDLK_HOME: v = MKC_formac_Home; break;
+		case SDLK_END: v = MKC_formac_End; break;
+		case SDLK_PAGEUP: v = MKC_formac_PageUp; break;
+		case SDLK_PAGEDOWN: v = MKC_formac_PageDown; break;
 
-		case SDLK_F1: v = MKC_F1; break;
-		case SDLK_F2: v = MKC_F2; break;
-		case SDLK_F3: v = MKC_F3; break;
-		case SDLK_F4: v = MKC_F4; break;
-		case SDLK_F5: v = MKC_F5; break;
+		case SDLK_F1: v = MKC_formac_F1; break;
+		case SDLK_F2: v = MKC_formac_F2; break;
+		case SDLK_F3: v = MKC_formac_F3; break;
+		case SDLK_F4: v = MKC_formac_F4; break;
+		case SDLK_F5: v = MKC_formac_F5; break;
 		case SDLK_F6: v = MKC_F6; break;
 		case SDLK_F7: v = MKC_F7; break;
 		case SDLK_F8: v = MKC_F8; break;
@@ -1099,24 +1099,24 @@ LOCALFUNC int SDLKey2MacKeyCode(SDLKey i)
 		case SDLK_F14: /* ? */ break;
 		case SDLK_F15: /* ? */ break;
 
-		case SDLK_NUMLOCK: v = MKC_ForwardDel; break;
-		case SDLK_CAPSLOCK: v = MKC_CapsLock; break;
+		case SDLK_NUMLOCK: v = MKC_formac_ForwardDel; break;
+		case SDLK_CAPSLOCK: v = MKC_formac_CapsLock; break;
 		case SDLK_SCROLLOCK: v = MKC_ScrollLock; break;
-		case SDLK_RSHIFT: v = MKC_Shift; break;
-		case SDLK_LSHIFT: v = MKC_Shift; break;
-		case SDLK_RCTRL: v = MKC_Control; break;
-		case SDLK_LCTRL: v = MKC_Control; break;
-		case SDLK_RALT: v = MKC_Command; break;
-		case SDLK_LALT: v = MKC_Command; break;
-		case SDLK_RMETA: v = MKC_Command; break;
-		case SDLK_LMETA: v = MKC_Command; break;
-		case SDLK_LSUPER: v = MKC_Option; break;
-		case SDLK_RSUPER: v = MKC_Option; break;
+		case SDLK_RSHIFT: v = MKC_formac_RShift; break;
+		case SDLK_LSHIFT: v = MKC_formac_Shift; break;
+		case SDLK_RCTRL: v = MKC_formac_RControl; break;
+		case SDLK_LCTRL: v = MKC_formac_Control; break;
+		case SDLK_RALT: v = MKC_formac_RCommand; break;
+		case SDLK_LALT: v = MKC_formac_Command; break;
+		case SDLK_RMETA: v = MKC_formac_RCommand; break;
+		case SDLK_LMETA: v = MKC_formac_Command; break;
+		case SDLK_LSUPER: v = MKC_formac_Option; break;
+		case SDLK_RSUPER: v = MKC_formac_ROption; break;
 
 		case SDLK_MODE: /* ? */ break;
 		case SDLK_COMPOSE: /* ? */ break;
 
-		case SDLK_HELP: v = MKC_Help; break;
+		case SDLK_HELP: v = MKC_formac_Help; break;
 		case SDLK_PRINT: v = MKC_Print; break;
 
 		case SDLK_SYSREQ: /* ? */ break;

@@ -1070,67 +1070,127 @@ LOCALFUNC ui3p GetCurDrawBuff(void)
 	return p;
 }
 
-LOCALPROC Keyboard_UpdateKeyMap2(int key, blnr down)
+#ifdef WantKeyboard_RemapMac
+LOCALFUNC int Keyboard_RemapMac(int key)
 {
-#ifndef MKC_formac_Control
-#if SwapCommandControl
-#define MKC_formac_Control MKC_Command
-#else
-#define MKC_formac_Control MKC_Control
-#endif
-#endif
+	switch (key) {
 #if MKC_formac_Control != MKC_Control
-	if (MKC_Control == key) {
-		key = MKC_formac_Control;
-	} else
-#endif
-
-#ifndef MKC_formac_Command
-#if SwapCommandControl
-#define MKC_formac_Command MKC_Control
-#else
-#define MKC_formac_Command MKC_Command
-#endif
+		case MKC_Control:
+			key = MKC_formac_Control;
+			break;
 #endif
 #if MKC_formac_Command != MKC_Command
-	if (MKC_Command == key) {
-		key = MKC_formac_Command;
-	} else
-#endif
-
-#ifndef MKC_formac_Option
-#define MKC_formac_Option MKC_Option
+		case MKC_Command:
+			key = MKC_formac_Command;
+			break;
 #endif
 #if MKC_formac_Option != MKC_Option
-	if (MKC_Option == key) {
-		key = MKC_formac_Option;
-	} else
+		case MKC_Option:
+			key = MKC_formac_Option;
+			break;
 #endif
-
-#ifndef MKC_formac_F1
-#define MKC_formac_F1 MKC_Option
+#if MKC_formac_Shift != MKC_Shift
+		case MKC_Shift:
+			key = MKC_formac_Shift;
+			break;
+#endif
+#if MKC_formac_CapsLock != MKC_CapsLock
+		case MKC_CapsLock:
+			key = MKC_formac_CapsLock;
+			break;
 #endif
 #if MKC_formac_F1 != MKC_F1
-	if (MKC_F1 == key) {
-		key = MKC_formac_F1;
-	} else
-#endif
-
-#ifndef MKC_formac_F2
-#define MKC_formac_F2 MKC_Command
+		case MKC_F1:
+			key = MKC_formac_F1;
+			break;
 #endif
 #if MKC_formac_F2 != MKC_F2
-	if (MKC_F2 == key) {
-		key = MKC_formac_F2;
-	} else
+		case MKC_F2:
+			key = MKC_formac_F2;
+			break;
 #endif
-
-	{
+#if MKC_formac_F3 != MKC_F3
+		case MKC_F3:
+			key = MKC_formac_F3;
+			break;
+#endif
+#if MKC_formac_F4 != MKC_F4
+		case MKC_F4:
+			key = MKC_formac_F4;
+			break;
+#endif
+#if MKC_formac_F5 != MKC_F5
+		case MKC_F5:
+			key = MKC_formac_F5;
+			break;
+#endif
+#if MKC_formac_Escape != MKC_Escape
+		case MKC_Escape:
+			key = MKC_formac_Escape;
+			break;
+#endif
+#if MKC_formac_BackSlash != MKC_BackSlash
+		case MKC_BackSlash:
+			key = MKC_formac_BackSlash;
+			break;
+#endif
+#if MKC_formac_Slash != MKC_Slash
+		case MKC_Slash:
+			key = MKC_formac_Slash;
+			break;
+#endif
+#if MKC_formac_Grave != MKC_Grave
+		case MKC_Grave:
+			key = MKC_formac_Grave;
+			break;
+#endif
+#if MKC_formac_Enter != MKC_Enter
+		case MKC_Enter:
+			key = MKC_formac_Enter;
+			break;
+#endif
+#if MKC_formac_PageUp != MKC_PageUp
+		case MKC_PageUp:
+			key = MKC_formac_PageUp;
+			break;
+#endif
+#if MKC_formac_PageDown != MKC_PageDown
+		case MKC_PageDown:
+			key = MKC_formac_PageDown;
+			break;
+#endif
+#if MKC_formac_Home != MKC_Home
+		case MKC_Home:
+			key = MKC_formac_Home;
+			break;
+#endif
+#if MKC_formac_End != MKC_End
+		case MKC_End:
+			key = MKC_formac_End;
+			break;
+#endif
+#if MKC_formac_Help != MKC_Help
+		case MKC_Help:
+			key = MKC_formac_Help;
+			break;
+#endif
+#if MKC_formac_ForwardDel != MKC_ForwardDel
+		case MKC_ForwardDel:
+			key = MKC_formac_ForwardDel;
+			break;
+#endif
+		default:
+			break;
 	}
 
+	return key;
+}
+#endif /* WantKeyboard_RemapMac */
 
+LOCALPROC Keyboard_UpdateKeyMap2(int key, blnr down)
+{
 #if UseControlKeys
-	if (MKC_Control == key) {
+	if (MKC_CM == key) {
 		Keyboard_UpdateControlKey(down);
 	} else
 #endif

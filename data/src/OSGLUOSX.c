@@ -1209,6 +1209,8 @@ GLOBALOSGLUFUNC tMacErr HTCEimport(tPbuf *r)
 
 /* --- control mode and internationalization --- */
 
+#define WantKeyboard_RemapMac 1
+
 #include "CONTROLM.h"
 
 
@@ -1656,23 +1658,23 @@ LOCALPROC MyUpdateKeyboardModifiers(UInt32 theModifiers)
 
 	if (0 != ChangedModifiers) {
 		if (0 != (ChangedModifiers & shiftKey)) {
-			Keyboard_UpdateKeyMap2(MKC_Shift,
+			Keyboard_UpdateKeyMap2(MKC_formac_Shift,
 				(shiftKey & theModifiers) != 0);
 		}
 		if (0 != (ChangedModifiers & cmdKey)) {
-			Keyboard_UpdateKeyMap2(MKC_Command,
+			Keyboard_UpdateKeyMap2(MKC_formac_Command,
 				(cmdKey & theModifiers) != 0);
 		}
 		if (0 != (ChangedModifiers & alphaLock)) {
-			Keyboard_UpdateKeyMap2(MKC_CapsLock,
+			Keyboard_UpdateKeyMap2(MKC_formac_CapsLock,
 				(alphaLock & theModifiers) != 0);
 		}
 		if (0 != (ChangedModifiers & optionKey)) {
-			Keyboard_UpdateKeyMap2(MKC_Option,
+			Keyboard_UpdateKeyMap2(MKC_formac_Option,
 				(optionKey & theModifiers) != 0);
 		}
 		if (0 != (ChangedModifiers & controlKey)) {
-			Keyboard_UpdateKeyMap2(MKC_Control,
+			Keyboard_UpdateKeyMap2(MKC_formac_Control,
 				(controlKey & theModifiers) != 0);
 		}
 
@@ -4874,7 +4876,8 @@ LOCALFUNC OSStatus Keyboard_UpdateKeyMap3(EventRef theEvent, blnr down)
 	HandleEventModifiers(theEvent);
 	GetEventParameter(theEvent, kEventParamKeyCode, typeUInt32, NULL,
 		sizeof(uiKeyCode), NULL, &uiKeyCode);
-	Keyboard_UpdateKeyMap2(uiKeyCode & 0x000000FF, down);
+	Keyboard_UpdateKeyMap2(Keyboard_RemapMac(uiKeyCode & 0x000000FF),
+		down);
 	return noErr;
 }
 

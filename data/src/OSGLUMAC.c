@@ -742,6 +742,8 @@ LOCALPROC dbglog_close0(void)
 
 #include "COMOSGLU.h"
 
+#define WantKeyboard_RemapMac 1
+
 #include "CONTROLM.h"
 
 /* --- some simple utilities --- */
@@ -1270,7 +1272,7 @@ LOCALPROC CheckKeyBoardState(void)
 		if (k3 != 0) {
 			for (i = 0; i < 8; ++i) {
 				if ((k3 & (1 << i)) != 0) {
-					Keyboard_UpdateKeyMap2(j * 8 + i,
+					Keyboard_UpdateKeyMap2(Keyboard_RemapMac(j * 8 + i),
 						(k1 & (1 << i)) != 0);
 				}
 			}
@@ -1301,7 +1303,7 @@ LOCALPROC ReconnectKeyCodes3(void)
 	oldv = KeyMap_TestBit(LastEmKeys, MKC_CapsLock);
 	newv = KeyMap_TestBit(NewKeys, MKC_CapsLock);
 	if (oldv != newv) {
-		Keyboard_UpdateKeyMap2(MKC_CapsLock, newv);
+		Keyboard_UpdateKeyMap2(MKC_formac_CapsLock, newv);
 	}
 
 	/* and except for command/option on receive drop */
@@ -1314,7 +1316,8 @@ LOCALPROC ReconnectKeyCodes3(void)
 				if (0 != ((1 << j) & v)) {
 					int k = i * 8 + j;
 					if (MKC_CapsLock != k) {
-						Keyboard_UpdateKeyMap2(k, trueblnr);
+						Keyboard_UpdateKeyMap2(Keyboard_RemapMac(k),
+							trueblnr);
 					}
 				}
 			}

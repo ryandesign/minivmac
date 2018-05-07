@@ -79,17 +79,35 @@ LOCALFUNC tMyErr CurArgIsOption(char *s, ui3r *olv)
 	return err;
 }
 
+typedef char * (* tGetName)(int i);
+
+LOCALFUNC blnr GetCurArgNameIndex(int n, tGetName p,
+	int *r)
+{
+	blnr v;
+	int i;
+
+	for (i = 0; i < n; ++i) {
+		if (CurArgIsCStr_v2(p(i))) {
+			*r = i;
+			v = trueblnr;
+			goto label_1;
+		}
+	}
+	v = falseblnr;
+
+label_1:
+	return v;
+}
+
 #define nanblnr 2
 
 #define kListOptionAuto (-1)
-
-typedef char * (* tGetName)(int i);
 
 LOCALFUNC tMyErr FindNamedOption(char *s, int n, tGetName p,
 	int *r, ui3r *olv)
 {
 	tMyErr err;
-	int i;
 	MyPStr t;
 
 	if (kMyErr_noErr != (err = CurArgIsOption(s, olv))) {
@@ -101,24 +119,17 @@ LOCALFUNC tMyErr FindNamedOption(char *s, int n, tGetName p,
 		PStrApndCStr(t, " when reached end");
 		err = ReportParseFailPStr(t);
 	} else
+	if (GetCurArgNameIndex(n, p, r)) {
+		err = AdvanceTheArg();
+	} else
+	if (CurArgIsCStr_v2("*")) {
+		*r = kListOptionAuto;
+		err = AdvanceTheArg();
+	} else
 	{
-		for (i = 0; i < n; ++i) {
-			if (CurArgIsCStr_v2(p(i))) {
-				*r = i;
-				err = AdvanceTheArg();
-				goto label_1;
-			}
-		}
-		if (CurArgIsCStr_v2("*")) {
-			*r = kListOptionAuto;
-			err = AdvanceTheArg();
-			goto label_1;
-		}
 		PStrFromCStr(t, "Unknown value for ");
 		PStrApndCStr(t, s);
 		err = ReportParseFailPStr(t);
-label_1:
-		;
 	}
 
 	return err;

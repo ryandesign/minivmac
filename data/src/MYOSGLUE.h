@@ -407,3 +407,5 @@ EXPORTOSGLUPROC MyEvtQOutDone(void);
 #define MKC_Pause 0x71
 
 #define MKC_AngleBracket 0x0A /* found on german keyboard */
+
+#define MKC_CM 0x80

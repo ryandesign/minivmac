@@ -636,21 +636,21 @@ LOCALFUNC blnr KC2MKCInit(void)
 	AssignKeyToMKC('*', '8', MKC_8);
 	AssignKeyToMKC('(', '9', MKC_9);
 
-	AssignKeyToMKC('~', '`', MKC_Grave);
+	AssignKeyToMKC('~', '`', MKC_formac_Grave);
 	AssignKeyToMKC('_', '-', MKC_Minus);
 	AssignKeyToMKC('+', '=', MKC_Equal);
 	AssignKeyToMKC(':', ';', MKC_SemiColon);
 	AssignKeyToMKC('\"', '\'', MKC_SingleQuote);
 	AssignKeyToMKC('{', '[', MKC_LeftBracket);
 	AssignKeyToMKC('}', ']', MKC_RightBracket);
-	AssignKeyToMKC('|', '\\', MKC_BackSlash);
+	AssignKeyToMKC('|', '\\', MKC_formac_BackSlash);
 	AssignKeyToMKC('<', ',', MKC_Comma);
 	AssignKeyToMKC('>', '.', MKC_Period);
-	AssignKeyToMKC('?', '/', MKC_Slash);
+	AssignKeyToMKC('?', '/', MKC_formac_Slash);
 
 	AssignKeyToMKC(NOKEY, DVK_SPACE, MKC_Space);
 	AssignKeyToMKC(NOKEY, DVK_BACKSPACE, MKC_BackSpace);
-	AssignKeyToMKC(NOKEY, DVK_ENTER, MKC_Enter);
+	AssignKeyToMKC(NOKEY, DVK_ENTER, MKC_formac_Enter);
 	AssignKeyToMKC(NOKEY, DVK_TAB, MKC_Tab);
 
 	InitKeyCodes();
@@ -710,13 +710,13 @@ LOCALPROC DS_HandleKey(si5b Key, blnr Down)
 			break;
 
 		case DVK_SHIFT:
-			Keyboard_UpdateKeyMap2(MKC_Shift, trueblnr);
+			Keyboard_UpdateKeyMap2(MKC_formac_Shift, trueblnr);
 			break;
 
 		default:
 			if (Key > 0) {
 				DoKeyCode(Key, Down);
-				Keyboard_UpdateKeyMap2(MKC_Shift, falseblnr);
+				Keyboard_UpdateKeyMap2(MKC_formac_Shift, falseblnr);
 			}
 			break;
 	}

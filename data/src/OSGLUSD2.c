@@ -1350,13 +1350,13 @@ LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
 		case SDL_SCANCODE_CLEAR: v = MKC_Clear; break;
 		case SDL_SCANCODE_RETURN: v = MKC_Return; break;
 		case SDL_SCANCODE_PAUSE: v = MKC_Pause; break;
-		case SDL_SCANCODE_ESCAPE: v = MKC_Escape; break;
+		case SDL_SCANCODE_ESCAPE: v = MKC_formac_Escape; break;
 		case SDL_SCANCODE_SPACE: v = MKC_Space; break;
 		case SDL_SCANCODE_APOSTROPHE: v = MKC_SingleQuote; break;
 		case SDL_SCANCODE_COMMA: v = MKC_Comma; break;
 		case SDL_SCANCODE_MINUS: v = MKC_Minus; break;
 		case SDL_SCANCODE_PERIOD: v = MKC_Period; break;
-		case SDL_SCANCODE_SLASH: v = MKC_Slash; break;
+		case SDL_SCANCODE_SLASH: v = MKC_formac_Slash; break;
 		case SDL_SCANCODE_0: v = MKC_0; break;
 		case SDL_SCANCODE_1: v = MKC_1; break;
 		case SDL_SCANCODE_2: v = MKC_2; break;
@@ -1371,9 +1371,9 @@ LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
 		case SDL_SCANCODE_EQUALS: v = MKC_Equal; break;
 
 		case SDL_SCANCODE_LEFTBRACKET: v = MKC_LeftBracket; break;
-		case SDL_SCANCODE_BACKSLASH: v = MKC_BackSlash; break;
+		case SDL_SCANCODE_BACKSLASH: v = MKC_formac_BackSlash; break;
 		case SDL_SCANCODE_RIGHTBRACKET: v = MKC_RightBracket; break;
-		case SDL_SCANCODE_GRAVE: v = MKC_Grave; break;
+		case SDL_SCANCODE_GRAVE: v = MKC_formac_Grave; break;
 
 		case SDL_SCANCODE_A: v = MKC_A; break;
 		case SDL_SCANCODE_B: v = MKC_B; break;
@@ -1418,24 +1418,24 @@ LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
 		case SDL_SCANCODE_KP_MULTIPLY: v = MKC_KPMultiply; break;
 		case SDL_SCANCODE_KP_MINUS: v = MKC_KPSubtract; break;
 		case SDL_SCANCODE_KP_PLUS: v = MKC_KPAdd; break;
-		case SDL_SCANCODE_KP_ENTER: v = MKC_Enter; break;
+		case SDL_SCANCODE_KP_ENTER: v = MKC_formac_Enter; break;
 		case SDL_SCANCODE_KP_EQUALS: v = MKC_KPEqual; break;
 
 		case SDL_SCANCODE_UP: v = MKC_Up; break;
 		case SDL_SCANCODE_DOWN: v = MKC_Down; break;
 		case SDL_SCANCODE_RIGHT: v = MKC_Right; break;
 		case SDL_SCANCODE_LEFT: v = MKC_Left; break;
-		case SDL_SCANCODE_INSERT: v = MKC_Help; break;
-		case SDL_SCANCODE_HOME: v = MKC_Home; break;
-		case SDL_SCANCODE_END: v = MKC_End; break;
-		case SDL_SCANCODE_PAGEUP: v = MKC_PageUp; break;
-		case SDL_SCANCODE_PAGEDOWN: v = MKC_PageDown; break;
+		case SDL_SCANCODE_INSERT: v = MKC_formac_Help; break;
+		case SDL_SCANCODE_HOME: v = MKC_formac_Home; break;
+		case SDL_SCANCODE_END: v = MKC_formac_End; break;
+		case SDL_SCANCODE_PAGEUP: v = MKC_formac_PageUp; break;
+		case SDL_SCANCODE_PAGEDOWN: v = MKC_formac_PageDown; break;
 
-		case SDL_SCANCODE_F1: v = MKC_F1; break;
-		case SDL_SCANCODE_F2: v = MKC_F2; break;
-		case SDL_SCANCODE_F3: v = MKC_F3; break;
-		case SDL_SCANCODE_F4: v = MKC_F4; break;
-		case SDL_SCANCODE_F5: v = MKC_F5; break;
+		case SDL_SCANCODE_F1: v = MKC_formac_F1; break;
+		case SDL_SCANCODE_F2: v = MKC_formac_F2; break;
+		case SDL_SCANCODE_F3: v = MKC_formac_F3; break;
+		case SDL_SCANCODE_F4: v = MKC_formac_F4; break;
+		case SDL_SCANCODE_F5: v = MKC_formac_F5; break;
 		case SDL_SCANCODE_F6: v = MKC_F6; break;
 		case SDL_SCANCODE_F7: v = MKC_F7; break;
 		case SDL_SCANCODE_F8: v = MKC_F8; break;
@@ -1444,29 +1444,30 @@ LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
 		case SDL_SCANCODE_F11: v = MKC_F11; break;
 		case SDL_SCANCODE_F12: v = MKC_F12; break;
 
-		case SDL_SCANCODE_NUMLOCKCLEAR: v = MKC_ForwardDel; break;
-		case SDL_SCANCODE_CAPSLOCK: v = MKC_CapsLock; break;
+		case SDL_SCANCODE_NUMLOCKCLEAR:
+			v = MKC_formac_ForwardDel; break;
+		case SDL_SCANCODE_CAPSLOCK: v = MKC_formac_CapsLock; break;
 		case SDL_SCANCODE_SCROLLLOCK: v = MKC_ScrollLock; break;
-		case SDL_SCANCODE_RSHIFT: v = MKC_Shift; break;
-		case SDL_SCANCODE_LSHIFT: v = MKC_Shift; break;
-		case SDL_SCANCODE_RCTRL: v = MKC_Control; break;
-		case SDL_SCANCODE_LCTRL: v = MKC_Control; break;
-		case SDL_SCANCODE_RALT: v = MKC_Option; break;
-		case SDL_SCANCODE_LALT: v = MKC_Option; break;
-		case SDL_SCANCODE_RGUI: v = MKC_Command; break;
-		case SDL_SCANCODE_LGUI: v = MKC_Command; break;
-		/* case SDLK_LSUPER: v = MKC_Option; break; */
-		/* case SDLK_RSUPER: v = MKC_Option; break; */
+		case SDL_SCANCODE_RSHIFT: v = MKC_formac_RShift; break;
+		case SDL_SCANCODE_LSHIFT: v = MKC_formac_Shift; break;
+		case SDL_SCANCODE_RCTRL: v = MKC_formac_RControl; break;
+		case SDL_SCANCODE_LCTRL: v = MKC_formac_Control; break;
+		case SDL_SCANCODE_RALT: v = MKC_formac_ROption; break;
+		case SDL_SCANCODE_LALT: v = MKC_formac_Option; break;
+		case SDL_SCANCODE_RGUI: v = MKC_formac_RCommand; break;
+		case SDL_SCANCODE_LGUI: v = MKC_formac_Command; break;
+		/* case SDLK_LSUPER: v = MKC_formac_Option; break; */
+		/* case SDLK_RSUPER: v = MKC_formac_ROption; break; */
 
-		case SDL_SCANCODE_HELP: v = MKC_Help; break;
+		case SDL_SCANCODE_HELP: v = MKC_formac_Help; break;
 		case SDL_SCANCODE_PRINTSCREEN: v = MKC_Print; break;
 
-		case SDL_SCANCODE_UNDO: v = MKC_F1; break;
-		case SDL_SCANCODE_CUT: v = MKC_F2; break;
-		case SDL_SCANCODE_COPY: v = MKC_F3; break;
-		case SDL_SCANCODE_PASTE: v = MKC_F4; break;
+		case SDL_SCANCODE_UNDO: v = MKC_formac_F1; break;
+		case SDL_SCANCODE_CUT: v = MKC_formac_F2; break;
+		case SDL_SCANCODE_COPY: v = MKC_formac_F3; break;
+		case SDL_SCANCODE_PASTE: v = MKC_formac_F4; break;
 
-		case SDL_SCANCODE_AC_HOME: v = MKC_Home; break;
+		case SDL_SCANCODE_AC_HOME: v = MKC_formac_Home; break;
 
 		case SDL_SCANCODE_KP_A: v = MKC_A; break;
 		case SDL_SCANCODE_KP_B: v = MKC_B; break;

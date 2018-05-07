@@ -78,7 +78,18 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WriteDestFileLn("#define EnableDragDrop 1");
 	}
 	WriteCompCondBool("EnableAltKeysMode", WantAltKeysMode);
-	WriteCompCondBool("SwapCommandControl", WantCmndOptSwap);
+	{
+		uimr i;
+
+		for (i = 0; i < kNumSrcKeyNames; ++i) {
+			WriteBgnDestFileLn();
+			WriteCStrToDestFile("#define MKC_formac_");
+			WriteCStrToDestFile(GetSrcKeyMapName(i));
+			WriteCStrToDestFile(" MKC_");
+			WriteCStrToDestFile(GetDstKeyMapName(gbo_keymap[i]));
+			WriteEndDestFileLn();
+		}
+	}
 
 	WriteCompCondBool("VarFullScreen", WantVarFullScreen);
 	if (WantVarFullScreen) {

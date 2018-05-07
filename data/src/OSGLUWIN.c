@@ -1625,79 +1625,48 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 	AssignOneMacKey(myVK_SingleQuote, MKC_SingleQuote);
 	AssignOneMacKey('K', MKC_K);
 	AssignOneMacKey(myVK_SemiColon, MKC_SemiColon);
-	AssignOneMacKey(myVK_BackSlash, MKC_BackSlash);
+	AssignOneMacKey(myVK_BackSlash, MKC_formac_BackSlash);
 	AssignOneMacKey(myVK_Comma, MKC_Comma);
-	AssignOneMacKey(myVK_Slash, MKC_Slash);
+	AssignOneMacKey(myVK_Slash, MKC_formac_Slash);
 	AssignOneMacKey('N', MKC_N);
 	AssignOneMacKey('M', MKC_M);
 	AssignOneMacKey(myVK_Period, MKC_Period);
 
 	AssignOneMacKey(VK_TAB, MKC_Tab);
 	AssignOneMacKey(VK_SPACE, MKC_Space);
-	AssignOneMacKey(myVK_Grave, MKC_Grave);
+	AssignOneMacKey(myVK_Grave, MKC_formac_Grave);
 	AssignOneMacKey(VK_BACK, MKC_BackSpace);
-	AssignOneMacKey(VK_ESCAPE, MKC_Escape);
+	AssignOneMacKey(VK_ESCAPE, MKC_formac_Escape);
 
-#ifndef MKC_for_MENU
-#define MKC_for_MENU MKC_Command
-#endif
-	AssignOneMacKey(VK_MENU, MKC_for_MENU);
+	AssignOneMacKey(VK_MENU, MKC_formac_Command);
 
-#ifndef MKC_for_LMENU
-#define MKC_for_LMENU MKC_for_MENU
-#endif
-	AssignOneMacKey(VK_LMENU, MKC_for_LMENU);
+	AssignOneMacKey(VK_LMENU, MKC_formac_Command);
 
-#ifndef MKC_for_RMENU
-#define MKC_for_RMENU MKC_for_MENU
-#endif
-	AssignOneMacKey(VK_RMENU, MKC_for_RMENU);
+	AssignOneMacKey(VK_RMENU, MKC_formac_RCommand);
 
-	AssignOneMacKey(VK_SHIFT, MKC_Shift);
-	AssignOneMacKey(VK_LSHIFT, MKC_Shift);
-	AssignOneMacKey(VK_RSHIFT, MKC_Shift);
+	AssignOneMacKey(VK_SHIFT, MKC_formac_Shift);
+	AssignOneMacKey(VK_LSHIFT, MKC_formac_Shift);
+	AssignOneMacKey(VK_RSHIFT, MKC_formac_RShift);
 
-	AssignOneMacKey(VK_CAPITAL, MKC_CapsLock);
+	AssignOneMacKey(VK_CAPITAL, MKC_formac_CapsLock);
 
-#ifndef MKC_for_APPS
-#define MKC_for_APPS MKC_Option
-#endif
-	AssignOneMacKey(VK_APPS, MKC_for_APPS);
+	AssignOneMacKey(VK_APPS, MKC_formac_Option);
 
-#ifndef MKC_for_WIN
-#define MKC_for_WIN MKC_Option
-#endif
+	AssignOneMacKey(VK_LWIN, MKC_formac_Option);
 
-#ifndef MKC_for_LWIN
-#define MKC_for_LWIN MKC_for_WIN
-#endif
-	AssignOneMacKey(VK_LWIN, MKC_for_LWIN);
+	AssignOneMacKey(VK_RWIN, MKC_formac_ROption);
 
-#ifndef MKC_for_RWIN
-#define MKC_for_RWIN MKC_for_WIN
-#endif
-	AssignOneMacKey(VK_RWIN, MKC_for_RWIN);
+	AssignOneMacKey(VK_CONTROL, MKC_formac_Control);
 
-#ifndef MKC_for_CONTROL
-#define MKC_for_CONTROL MKC_Control
-#endif
-	AssignOneMacKey(VK_CONTROL, MKC_for_CONTROL);
+	AssignOneMacKey(VK_LCONTROL, MKC_formac_Control);
 
-#ifndef MKC_for_LCONTROL
-#define MKC_for_LCONTROL MKC_for_CONTROL
-#endif
-	AssignOneMacKey(VK_LCONTROL, MKC_for_LCONTROL);
+	AssignOneMacKey(VK_RCONTROL, MKC_formac_RControl);
 
-#ifndef MKC_for_RCONTROL
-#define MKC_for_RCONTROL MKC_for_CONTROL
-#endif
-	AssignOneMacKey(VK_RCONTROL, MKC_for_RCONTROL);
-
-	AssignOneMacKey(VK_F1, MKC_F1);
-	AssignOneMacKey(VK_F2, MKC_F2);
-	AssignOneMacKey(VK_F3, MKC_F3);
-	AssignOneMacKey(VK_F4, MKC_F4);
-	AssignOneMacKey(VK_F5, MKC_F5);
+	AssignOneMacKey(VK_F1, MKC_formac_F1);
+	AssignOneMacKey(VK_F2, MKC_formac_F2);
+	AssignOneMacKey(VK_F3, MKC_formac_F3);
+	AssignOneMacKey(VK_F4, MKC_formac_F4);
+	AssignOneMacKey(VK_F5, MKC_formac_F5);
 	AssignOneMacKey(VK_F6, MKC_F6);
 	AssignOneMacKey(VK_F7, MKC_F7);
 	AssignOneMacKey(VK_F8, MKC_F8);
@@ -1716,7 +1685,7 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 
 	/* AssignOneMacKey(VK_DOWN, 0x48); */
 	AssignOneMacKey(VK_DIVIDE, MKC_KPDevide);
-	/* AssignOneMacKey(VK_RETURN, MKC_Enter); */
+	/* AssignOneMacKey(VK_RETURN, MKC_formac_Enter); */
 	/* AssignOneMacKey(VK_UP, 0x4D); */
 	AssignOneMacKey(VK_DIVIDE, MKC_KPDevide);
 	AssignOneMacKey(VK_SUBTRACT, MKC_KPSubtract);
@@ -1739,13 +1708,13 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 	AssignOneMacKey(VK_DOWN, MKC_Down);
 	AssignOneMacKey(VK_UP, MKC_Up);
 
-	AssignOneMacKey(myVK_PRIOR, MKC_PageUp);
-	AssignOneMacKey(myVK_NEXT, MKC_PageDown);
-	AssignOneMacKey(myVK_END, MKC_End);
-	AssignOneMacKey(myVK_HOME, MKC_Home);
-	AssignOneMacKey(myVK_INSERT, MKC_Help);
-	AssignOneMacKey(myVK_DELETE, MKC_ForwardDel);
-	AssignOneMacKey(myVK_HELP, MKC_Help);
+	AssignOneMacKey(myVK_PRIOR, MKC_formac_PageUp);
+	AssignOneMacKey(myVK_NEXT, MKC_formac_PageDown);
+	AssignOneMacKey(myVK_END, MKC_formac_End);
+	AssignOneMacKey(myVK_HOME, MKC_formac_Home);
+	AssignOneMacKey(myVK_INSERT, MKC_formac_Help);
+	AssignOneMacKey(myVK_DELETE, MKC_formac_ForwardDel);
+	AssignOneMacKey(myVK_HELP, MKC_formac_Help);
 	AssignOneMacKey(myVK_SNAPSHOT, MKC_Print);
 	AssignOneMacKey(myVK_SCROLL, MKC_ScrollLock);
 	AssignOneMacKey(myVK_PAUSE, MKC_Pause);
@@ -1837,7 +1806,7 @@ LOCALPROC DoVKcode(int i, ui3r flags, blnr down)
 {
 	if (VK_RETURN == i) {
 		Keyboard_UpdateKeyMap2(TestBit(flags, 0)
-			? MKC_Enter : MKC_Return,
+			? MKC_formac_Enter : MKC_Return,
 			down);
 	} else if (VK_CAPITAL == i) {
 		CheckTheCapsLock();
