@@ -392,7 +392,7 @@ LOCALPROC MacMsgDisplayOn(void)
 	SpecialModeSet(SpclModeMessage);
 }
 
-LOCALPROC DoMessageModeKey(int key)
+LOCALPROC DoMessageModeKey(ui3r key)
 {
 	if (MKC_C == key) {
 		MacMsgDisplayOff();
@@ -572,7 +572,7 @@ LOCALPROC CopyRegistrationStr(void)
 #endif
 
 
-LOCALPROC DoControlModeKey(int key)
+LOCALPROC DoControlModeKey(ui3r key)
 {
 	switch (CurControlMode) {
 		case kCntrlModeBase:
@@ -1071,7 +1071,7 @@ LOCALFUNC ui3p GetCurDrawBuff(void)
 }
 
 #ifdef WantKeyboard_RemapMac
-LOCALFUNC int Keyboard_RemapMac(int key)
+LOCALFUNC ui3r Keyboard_RemapMac(ui3r key)
 {
 	switch (key) {
 #if MKC_formac_Control != MKC_Control
@@ -1187,7 +1187,7 @@ LOCALFUNC int Keyboard_RemapMac(int key)
 }
 #endif /* WantKeyboard_RemapMac */
 
-LOCALPROC Keyboard_UpdateKeyMap2(int key, blnr down)
+LOCALPROC Keyboard_UpdateKeyMap2(ui3r key, blnr down)
 {
 #if UseControlKeys
 	if (MKC_CM == key) {

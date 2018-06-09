@@ -114,7 +114,9 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 		WriteDestFileLn("#include <string.h>");
 		WriteDestFileLn("#include <sys/param.h>");
 		WriteDestFileLn("#include <sys/time.h>");
-
+		if (WantUnTranslocate) {
+			WriteDestFileLn("#include <dlfcn.h>");
+		}
 		if (WantLocalTalk) {
 			WriteOSXLocalTalkCNFGRAPI();
 		}
@@ -406,6 +408,10 @@ LOCALPROC WriteCommonCNFGRAPIContents(void)
 
 	if (HaveMacBundleApp) {
 		WriteDestFileLn("#define MyAppIsBundle 1");
+	}
+	if (gbk_apifam_cco == gbo_apifam) {
+		WriteCompCondBool("WantUnTranslocate",
+			WantUnTranslocate);
 	}
 	if (gbk_apifam_win == gbo_apifam) {
 		if (WantIconMaster) {

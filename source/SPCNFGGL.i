@@ -95,4 +95,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteDestFileLn("#define EnableAutoSlow 1");
 	WriteCompCondBool("EmLocalTalk", WantLocalTalk);
+
+	WriteCompCondBool("AutoLocation", WantAutoLocation);
+	WriteCompCondBool("AutoTimeZone", WantAutoTimeZone);
 }

@@ -1930,9 +1930,9 @@ LOCALPROC CheckMouseState(void)
 
 LOCALVAR KeyCode TheCapsLockCode;
 
-LOCALVAR si3b KC2MKC[256];
+LOCALVAR ui3b KC2MKC[256];
 
-LOCALPROC KC2MKCAssignOne(KeySym ks, int key)
+LOCALPROC KC2MKCAssignOne(KeySym ks, ui3r key)
 {
 	KeyCode code = XKeysymToKeycode(x_display, ks);
 	if (code != NoSymbol) {
@@ -1948,7 +1948,7 @@ LOCALFUNC blnr KC2MKCInit(void)
 	int i;
 
 	for (i = 0; i < 256; ++i) {
-		KC2MKC[i] = -1;
+		KC2MKC[i] = MKC_None;
 	}
 
 #if 0 /* find Keysym for a code */
@@ -2238,8 +2238,8 @@ LOCALPROC CheckTheCapsLock(void)
 
 LOCALPROC DoKeyCode0(int i, blnr down)
 {
-	int key = KC2MKC[i];
-	if (key >= 0) {
+	ui3r key = KC2MKC[i];
+	if (MKC_None != key) {
 		Keyboard_UpdateKeyMap2(key, down);
 	}
 }
@@ -2382,7 +2382,7 @@ LOCALPROC GetCurrentTicks(void)
 		s = localtime(&Current_Time);
 		TimeDelta = Date2MacSeconds(s->tm_sec, s->tm_min, s->tm_hour,
 			s->tm_mday, 1 + s->tm_mon, 1900 + s->tm_year) - t.tv_sec;
-#if 0 /* how portable is this ? */
+#if 0 && AutoTimeZone /* how portable is this ? */
 		CurMacDelta = ((ui5b)(s->tm_gmtoff) & 0x00FFFFFF)
 			| ((s->tm_isdst ? 0x80 : 0) << 24);
 #endif

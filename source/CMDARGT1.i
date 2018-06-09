@@ -97,7 +97,16 @@ GLOBALFUNC tMyErr ReportParseFailure(char *s)
 {
 	fprintf(stderr, "%s\n", s);
 	ParseArgsFailed = trueblnr;
-	err = kMyErrSyntaxErr;
+
+	return kMyErrSyntaxErr;
+}
+
+GLOBALFUNC tMyErr ReportParseFailPStr(ps3p s)
+{
+	fprintf(stderr, "%p\n", s);
+	ParseArgsFailed = trueblnr;
+
+	return kMyErrSyntaxErr;
 }
 
 GLOBALPROC DisplayRunErr(char *s)
@@ -110,8 +119,10 @@ GLOBALVAR uimr ProgressBarVal;
 
 #define CheckAbort()
 
+#if 0
 GLOBALFUNC tMyErr CheckAbortRequested(void)
 {
 	CheckAbort();
 	return AbortRequested ? kMyErrUsrAbort : noErr;
 }
+#endif

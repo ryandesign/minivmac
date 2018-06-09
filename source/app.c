@@ -13,7 +13,6 @@
 	license for more details.
 */
 
-
 #include "MYMACAPI.i"
 
 #define Support64kROM 0
@@ -95,10 +94,10 @@
 
 #include "DFFILDEF.i"
 #include "SPFILDEF.i"
-#include "USFILDEF.i"
 
 #pragma segment Body2
 
+#include "USFILDEF.i"
 #include "WRMACRES.i"
 #include "WRMPLIST.i"
 #include "WRCNFGGL.i"
@@ -217,6 +216,7 @@ LOCALPROC ProgramMain(void)
 			{
 				if (kMyErr_noErr == (err = BeginParseFromTE())) {
 					err = DoTheCommand();
+
 					EndParseFromTE_v2(err);
 				}
 			}

@@ -134,8 +134,9 @@ LOCALFUNC tMyErr WriteMakeOutputDirectories(void)
 		&OutputDir0R, s)))
 	if (noErr == (err = rConverTextInThingXtn(&BaseDirR,
 		&OutputDirR, "README", ".txt")))
-	if (noErr == (err = rConverTextInThingXtn(&BaseDirR,
-		&OutputDirR, "COPYING", ".txt")))
+	if (gbo_WantNoSrc || (noErr == (err =
+		rConverTextInThingXtn(&BaseDirR,
+			&OutputDirR, "COPYING", ".txt"))))
 	{
 		if ((gbk_ide_xcd == cur_ide) && (! UseCmndLine)) {
 			err = MakeSubDirectory_v2(&ProjDirR, &OutputDirR,
@@ -278,12 +279,50 @@ LOCALFUNC tMyErr rMakeArchiveThing(
 	return err;
 }
 
+LOCALFUNC tMyErr CheckCanExport(void)
+{
+	tMyErr err;
+	ui4r version;
+	ui5r features;
+
+	if (noErr != (err = HaveDiskExtenstion_v2())) {
+		/* don't bother */
+		err = noErr;
+	} else
+	if (noErr != (err = DiskVersion_v2(&version))) {
+		MyAlertFromCStr("DiskVersion fails");
+		err = kMyErrReported;
+	} else
+	if (version < 2) {
+		MyAlertFromCStr("Disk Extension Version version too old");
+		err = kMyErrReported;
+	} else
+	if (noErr != (err = DiskFeatures_v2(&features))) {
+		MyAlertFromCStr("DiskFeatures fails");
+		err = kMyErrReported;
+	} else
+	if (0 == (features & ((ui5r)1 << kFeatureCmndDisk_New)))
+	{
+		MyAlertFromCStr("New disk creation not enabled");
+		err = kMyErrReported;
+	} else
+	if (0 == (
+		features & ((ui5r)1 << kFeatureCmndDisk_RawMode)))
+	{
+		MyAlertFromCStr("Raw mode access not enabled");
+		err = kMyErrReported;
+	} else
+	{
+		err = noErr;
+	}
+
+	return err;
+}
+
 LOCALFUNC tMyErr ArchiveAndExport(void)
 {
 	tMyErr err;
 	Str255 sarc;
-	ui4r version;
-	ui5r features;
 
 	MyHandleToPStr_v2(hVariationName, sarc);
 	switch (cur_arc) {
@@ -311,28 +350,8 @@ LOCALFUNC tMyErr ArchiveAndExport(void)
 		/* don't bother */
 		err = noErr;
 	} else
-	if (noErr != (err = DiskVersion_v2(&version))) {
-		MyAlertFromCStr("DiskVersion fails");
-		err = kMyErrReported;
-	} else
-	if (version < 2) {
-		MyAlertFromCStr("Disk Extension Version version too old");
-		err = kMyErrReported;
-	} else
-	if (noErr != (err = DiskFeatures_v2(&features))) {
-		MyAlertFromCStr("DiskFeatures fails");
-		err = kMyErrReported;
-	} else
-	if (0 == (features & ((ui5r)1 << kFeatureCmndDisk_New)))
-	{
-		MyAlertFromCStr("New disk creation not enabled");
-		err = kMyErrReported;
-	} else
-	if (0 == (
-		features & ((ui5r)1 << kFeatureCmndDisk_RawMode)))
-	{
-		MyAlertFromCStr("Raw mode access not enabled");
-		err = kMyErrReported;
+	if (noErr != (err = CheckCanExport())) {
+		/* fail */
 	} else
 	if (noErr != (err = ExportFromFile2HostFile2_v2(
 		&OutputDir0R, sarc)))
@@ -396,6 +415,18 @@ LOCALFUNC tMyErr TryAsXClmOptionNot(void)
 	return err;
 }
 
+LOCALFUNC tMyErr ReportUnknownSwitch(void)
+{
+	MyPStr t0;
+	MyPStr t;
+
+	GetCurArgAsPStr(t0);
+	PStrFromCStr(t, "unknown switch : ");
+	PStrAppend(t, t0);
+
+	return ReportParseFailPStr(t);
+}
+
 LOCALFUNC tMyErr ProcessCommandLineArguments(void)
 {
 	tMyErr err;
@@ -410,16 +441,10 @@ LOCALFUNC tMyErr ProcessCommandLineArguments(void)
 		if (kMyErrNoMatch == (err = TryAsAtOptionNot()))
 		if (kMyErrNoMatch == (err = TryAsXClmOptionNot()))
 		{
-			if (CurArgIsCStr_v2(";")) {
-				err = AdvanceTheArg();
-				goto Label_1;
-			} else {
-				err = ReportParseFailure("unknown switch");
-			}
+			err = ReportUnknownSwitch();
 		}
 	}
 
-Label_1:
 	return err;
 }
 
@@ -463,7 +488,6 @@ LOCALFUNC tMyErr WriteConfigFiles(void)
 	return err;
 }
 
-LOCALVAR MyDir_R SourceDirR;
 LOCALVAR MyDir_R C_srcDirR;
 
 
@@ -531,6 +555,7 @@ LOCALPROC DoDocTypeAddToSrcDir(void)
 LOCALFUNC tMyErr MakeSrcFolder(void)
 {
 	tMyErr err;
+	MyDir_R SourceDirR;
 
 	if (noErr == (err = FindSubDirectory_v2(&SourceDirR,
 		&BaseDirR, "data", "")))
@@ -538,15 +563,9 @@ LOCALFUNC tMyErr MakeSrcFolder(void)
 		&SourceDirR, "src", "")))
 	if (noErr == (err = MakeSubDirectory_v2(&SrcDirR,
 		&OutputDirR, src_d_name, "")))
-	if ((! WantConfigDir)
-		|| (noErr == (err = MakeSubDirectory_v2(&CfgDirR,
-			&OutputDirR, cfg_d_name, ""))))
 	if (noErr == (err = DoAllSrcFilesWithSetup0(DoSrcFileAddToSrcDir)))
 	if (noErr == (err = DoAllDocTypesWithSetup0(DoDocTypeAddToSrcDir)))
 	{
-		if (! WantConfigDir) {
-			CfgDirR = SrcDirR;
-		}
 		if (WantAllSrc || (HaveMacRrscs
 			&& ((gbk_apifam_mac == gbo_apifam)
 			|| (gbk_apifam_osx == gbo_apifam))))
@@ -557,6 +576,21 @@ LOCALFUNC tMyErr MakeSrcFolder(void)
 				/* ok */
 			}
 		}
+	}
+
+	return err;
+}
+
+LOCALFUNC tMyErr MakeConfigFolder(void)
+{
+	tMyErr err;
+
+	if (WantConfigDir) {
+		err = MakeSubDirectory_v2(&CfgDirR,
+			&OutputDirR, cfg_d_name, "");
+	} else {
+		CfgDirR = SrcDirR;
+		err = noErr;
 	}
 
 	return err;
@@ -573,9 +607,11 @@ LOCALFUNC tMyErr WriteErrToFile0(MyDir_R *d, StringPtr s, tMyErr err0)
 				/* ok */
 				break;
 			case kMyErrSyntaxErr:
+#if IsAnApp
 				if (noErr == (err = MyHandleToCStr(SyntaxErrH, t))) {
 					strmo_writeCStr(t);
 				}
+#endif
 				break;
 			default:
 				strmo_writeCStr(GetTextForSavedSysErr_v2(err0));
@@ -610,14 +646,25 @@ LOCALFUNC tMyErr WriteErrToFile(tMyErr err0)
 	{
 		/* fail */
 	} else
+	if (NotWantExport) {
+		err = noErr; /* ok, done */
+	} else
+	if (noErr != (err = CheckCanExport())) {
+		/* fail */
+	} else
+	if (noErr != (err = ExportFromFile2HostFile2_v2(
+		&OutputDir0R, sarc)))
 	{
-		err = noErr;
+		/* fail */
+	} else
+	{
+		err = dellib_DeleteOne_v2(&OutputDir0R, sarc);
 	}
 
 	return err;
 }
 
-LOCALFUNC tMyErr DoTheCommand0(void)
+LOCALFUNC tMyErr DoTheCommand(void)
 {
 	tMyErr err;
 
@@ -630,7 +677,8 @@ LOCALFUNC tMyErr DoTheCommand0(void)
 	if (noErr == (err = AutoChooseSPSettings()))
 #endif
 	if (noErr == (err = WriteMakeOutputDirectories()))
-	if (noErr == (err = MakeSrcFolder()))
+	if (gbo_WantNoSrc || (noErr == (err = MakeSrcFolder())))
+	if (noErr == (err = MakeConfigFolder()))
 	if (noErr == (err = WriteConfigFiles()))
 	if ((! CurPrintCFiles) || (noErr == (err = WriteCFilesList())))
 	if (noErr == (err = WriteIdeSpecificFiles()))
@@ -645,17 +693,5 @@ LOCALFUNC tMyErr DoTheCommand0(void)
 		err = WriteErrToFile(err);
 	}
 
-	return err;
-}
-
-LOCALFUNC tMyErr DoTheCommand(void)
-{
-	tMyErr err;
-
-	do {
-		err = DoTheCommand0();
-	} while ((! The_arg_end)
-		&& (noErr == err));
-
-	return err;
+	return ErrReportStack(err, "DoTheCommand");
 }

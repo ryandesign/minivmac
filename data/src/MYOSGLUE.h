@@ -161,10 +161,14 @@ EXPORTOSGLUFUNC tMacErr HTCEimport(tPbuf *r);
 EXPORTVAR(ui5b, OnTrueTime)
 
 EXPORTVAR(ui5b, CurMacDateInSeconds)
+#if AutoLocation
 EXPORTVAR(ui5b, CurMacLatitude)
 EXPORTVAR(ui5b, CurMacLongitude)
+#endif
+#if AutoTimeZone
 EXPORTVAR(ui5b, CurMacDelta)
 	/* (dlsDelta << 24) | (gmtDelta & 0x00FFFFFF) */
+#endif
 
 
 #define vMacScreenNumPixels \
@@ -409,3 +413,4 @@ EXPORTOSGLUPROC MyEvtQOutDone(void);
 #define MKC_AngleBracket 0x0A /* found on german keyboard */
 
 #define MKC_CM 0x80
+#define MKC_None 0xFF

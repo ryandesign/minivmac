@@ -287,6 +287,16 @@ LOCALPROC WrtOptNumberOption(char *s, int i, int i0)
 	}
 }
 
+LOCALPROC WrtOptSimrOption(char *s, simr i, simr i0)
+{
+	if (i != i0) {
+		strmo_writeCStr(" ");
+		strmo_writeCStr(s);
+		strmo_writeCStr(" ");
+		strmo_writeNum(i);
+	}
+}
+
 LOCALPROC WrtOptBooleanOption(char *s, blnr i, blnr i0)
 {
 	if (i != i0) {
@@ -1433,7 +1443,7 @@ LOCALPROC WrtOptCmndLine(void)
 }
 
 
-/* option: export archive */
+/* option: export all source files */
 
 LOCALVAR blnr WantAllSrc;
 LOCALVAR ui3r olv_WantAllSrc;
@@ -1464,6 +1474,47 @@ LOCALFUNC tMyErr ChooseWantAllSrc(void)
 LOCALPROC WrtOptAllSrc(void)
 {
 	WrtOptBooleanOption("-all-src", WantAllSrc, dfo_WantAllSrc());
+}
+
+
+/* option: export no source files */
+
+LOCALVAR blnr gbo_WantNoSrc;
+LOCALVAR ui3r olv_WantNoSrc;
+
+LOCALPROC ResetWantNoSrc(void)
+{
+	gbo_WantNoSrc = nanblnr;
+	olv_WantNoSrc = 0;
+}
+
+LOCALFUNC tMyErr TryAsWantNoSrcNot(void)
+{
+	return BooleanTryAsOptionNot("-no-src",
+		&gbo_WantNoSrc, &olv_WantNoSrc);
+}
+
+#define dfo_WantNoSrc() falseblnr
+
+LOCALFUNC tMyErr ChooseWantNoSrc(void)
+{
+	tMyErr err = noErr;
+
+	if (nanblnr == gbo_WantNoSrc) {
+		gbo_WantNoSrc = dfo_WantNoSrc();
+	} else {
+		if (gbo_WantNoSrc && WantAllSrc) {
+			err = ReportParseFailure(
+				"-no-src 1 may not be used with -all-src 1");
+		}
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptNoSrc(void)
+{
+	WrtOptBooleanOption("-no-src", gbo_WantNoSrc, dfo_WantNoSrc());
 }
 
 
@@ -1794,12 +1845,16 @@ LOCALFUNC tMyErr ChooseSponsorNameOption(void)
 /* derived option: application is os x bundle (folder) */
 
 LOCALVAR blnr HaveMacBundleApp;
+LOCALVAR blnr WantUnTranslocate;
 
 LOCALFUNC tMyErr ChooseHaveMacBundleApp(void)
 {
 	HaveMacBundleApp = (gbk_targfam_mach == gbo_targfam)
 		|| ((gbk_targfam_carb == gbo_targfam)
 			&& (gbk_ide_mpw == cur_ide));
+	WantUnTranslocate = (gbk_apifam_cco == gbo_apifam)
+		&& ((gbk_cpufam_x64 == gbo_cpufam)
+			|| (gbk_cpufam_x86 == gbo_cpufam));
 
 	return noErr;
 }
@@ -1922,15 +1977,33 @@ LOCALFUNC tMyErr TryAsConfigDirNot(void)
 		&WantConfigDir, &olv_ConfigDir);
 }
 
-#define dfo_ConfigDir() falseblnr
+LOCALFUNC blnr dfo_ConfigDir(void)
+{
+	int v;
+
+	if (gbo_WantNoSrc) {
+		v = trueblnr;
+	} else {
+		v = falseblnr;
+	}
+
+	return v;
+}
 
 LOCALFUNC tMyErr ChooseConfigDir(void)
 {
+	tMyErr err = noErr;
+
 	if (nanblnr == WantConfigDir) {
 		WantConfigDir = dfo_ConfigDir();
+	} else {
+		if ((! WantConfigDir) && gbo_WantNoSrc) {
+			err = ReportParseFailure(
+				"-cfg 0 may not be used with -no-src 1");
+		}
 	}
 
-	return noErr;
+	return err;
 }
 
 
@@ -2119,6 +2192,7 @@ LOCALPROC GNDevResetCommandLineParameters(void)
 	ResetIdeVersOption();
 	ResetCmndLine();
 	ResetWantAllSrc();
+	ResetWantNoSrc();
 	ResetWantExport();
 	ResetEolOption();
 	ResetArcOption();
@@ -2147,6 +2221,7 @@ LOCALFUNC tMyErr TryAsGNDevOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsIdeVersOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsCmndLineOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsWantAllSrcNot()))
+	if (kMyErrNoMatch == (err = TryAsWantNoSrcNot()))
 	if (kMyErrNoMatch == (err = TryAsWantExportNot()))
 	if (kMyErrNoMatch == (err = TryAsEolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsArcOptionNot()))
@@ -2180,6 +2255,7 @@ LOCALFUNC tMyErr AutoChooseGNDevSettings(void)
 	if (noErr == (err = ChooseIdeVers()))
 	if (noErr == (err = ChooseCmndLineOption()))
 	if (noErr == (err = ChooseWantAllSrc()))
+	if (noErr == (err = ChooseWantNoSrc()))
 	if (noErr == (err = ChooseWantExport()))
 	if (noErr == (err = ChooseEOL()))
 	if (noErr == (err = ChooseArc()))
@@ -2212,6 +2288,7 @@ LOCALPROC WrtOptGNDevSettings(void)
 	WrtOptIdeVersOption();
 	WrtOptCmndLine();
 	WrtOptAllSrc();
+	WrtOptNoSrc();
 	WrtOptWantExport();
 	WrtOptEOL();
 	WrtOptArc();

@@ -1314,7 +1314,7 @@ LOCALPROC ReconnectKeyCodes3(void)
 			ui3b v = ((ui3b *)NewKeys)[i];
 			for (j = 0; j < 8; ++j) {
 				if (0 != ((1 << j) & v)) {
-					int k = i * 8 + j;
+					ui3r k = i * 8 + j;
 					if (MKC_CapsLock != k) {
 						Keyboard_UpdateKeyMap2(Keyboard_RemapMac(k),
 							trueblnr);
@@ -1801,12 +1801,18 @@ LOCALFUNC blnr CheckDateTime(void)
 
 LOCALFUNC blnr InitLocationDat(void)
 {
+#if AutoLocation || AutoTimeZone
 	MachineLocation loc;
 
 	ReadLocation(&loc);
+#if AutoLocation
 	CurMacLatitude = (ui5b)loc.latitude;
 	CurMacLongitude = (ui5b)loc.longitude;
+#endif
+#if AutoTimeZone
 	CurMacDelta = (ui5b)loc.u.gmtDelta;
+#endif
+#endif
 
 	(void) CheckDateTime();
 

@@ -446,9 +446,9 @@ LOCALPROC CheckMouseState(void)
 	*/
 
 
-LOCALVAR si3b KC2MKC[MaxNumKeycode];
+LOCALVAR ui3b KC2MKC[MaxNumKeycode];
 
-LOCALPROC KC2MKCAssignOne(guint keyval, int key)
+LOCALPROC KC2MKCAssignOne(guint keyval, ui3r key)
 {
 	GdkKeymapKey *keys;
 	gint n_keys;
@@ -472,7 +472,7 @@ LOCALFUNC blnr KC2MKCInit(void)
 	int i;
 
 	for (i = 0; i < 256; ++i) {
-		KC2MKC[i] = -1;
+		KC2MKC[i] = MKC_None;
 	}
 
 #ifdef GDK_KP_Insert
@@ -739,9 +739,9 @@ LOCALPROC DoKeyCode(guint keycode, blnr down)
 	if (GDK_Caps_Lock == keycode) {
 		CheckTheCapsLock();
 	} else {
-		int key = KC2MKC[keycode & KeyCodeMask];
+		ui3r key = KC2MKC[keycode & KeyCodeMask];
 
-		if (key >= 0) {
+		if (MKC_None != key) {
 			Keyboard_UpdateKeyMap2(key, down);
 		}
 	}
@@ -782,7 +782,7 @@ LOCALPROC GetCurrentTicks(void)
 		s = localtime(&Current_Time);
 		TimeDelta = Date2MacSeconds(s->tm_sec, s->tm_min, s->tm_hour,
 			s->tm_mday, 1 + s->tm_mon, 1900 + s->tm_year) - t.tv_sec;
-#if 0 /* how portable is this ? */
+#if 0 && AutoTimeZone /* how portable is this ? */
 		CurMacDelta = ((ui5b)(s->tm_gmtoff) & 0x00FFFFFF)
 			| ((s->tm_isdst ? 0x80 : 0) << 24);
 #endif

@@ -77,6 +77,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 	} else {
 		WriteDestFileLn("#define EnableDragDrop 1");
 	}
+	WriteCompCondBool("SaveDialogEnable", gbo_SaveDialogEnable);
 	WriteCompCondBool("EnableAltKeysMode", WantAltKeysMode);
 	{
 		uimr i;

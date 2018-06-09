@@ -744,6 +744,25 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 		WriteEndDestFileLn();
 	}
 
+	if (! WantAutoLocation) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define CurMacLatitude 0x");
+		WriteHexLongToOutput(cur_InitLatitude);
+		WriteEndDestFileLn();
+
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define CurMacLongitude 0x");
+		WriteHexLongToOutput(cur_InitLongitude);
+		WriteEndDestFileLn();
+	}
+	if (! WantAutoTimeZone) {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define CurMacDelta 0x");
+		WriteHexLongToOutput(((WantTzDST ? 1UL : 0) << 31)
+			| (((ui5r)cur_TzDeltS) & 0x00FFFFFF));
+		WriteEndDestFileLn();
+	}
+
 	WriteBlankLineToDestFile();
 	WriteBlankLineToDestFile();
 

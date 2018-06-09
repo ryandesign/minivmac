@@ -1340,9 +1340,9 @@ LOCALPROC CheckMouseState(void)
 
 /* --- keyboard input --- */
 
-LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
+LOCALFUNC ui3r SDLScan2MacKeyCode(SDL_Scancode i)
 {
-	int v = -1;
+	ui3r v = MKC_None;
 
 	switch (i) {
 		case SDL_SCANCODE_BACKSPACE: v = MKC_BackSpace; break;
@@ -1490,8 +1490,8 @@ LOCALFUNC int SDLScan2MacKeyCode(SDL_Scancode i)
 
 LOCALPROC DoKeyCode(SDL_Keysym *r, blnr down)
 {
-	int v = SDLScan2MacKeyCode(r->scancode);
-	if (v >= 0) {
+	ui3r v = SDLScan2MacKeyCode(r->scancode);
+	if (MKC_None != v) {
 		Keyboard_UpdateKeyMap2(v, down);
 	}
 }

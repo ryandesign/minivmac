@@ -1569,9 +1569,9 @@ LOCALPROC MyInitCheckKeyboardLayout(void)
 }
 #endif
 
-LOCALVAR si3b WinKey2Mac[256];
+LOCALVAR ui3b WinKey2Mac[256];
 
-LOCALPROC AssignOneMacKey(ui3b WinKey, si3b MacKey)
+LOCALPROC AssignOneMacKey(ui3b WinKey, ui3r MacKey)
 {
 	WinKey2Mac[WinKey] = MacKey;
 }
@@ -1581,7 +1581,7 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 	int i;
 
 	for (i = 0; i < 256; ++i) {
-		WinKey2Mac[i] = -1;
+		WinKey2Mac[i] = MKC_None;
 	}
 
 	AssignOneMacKey('A', MKC_A);
@@ -1732,14 +1732,14 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 
 LOCALPROC DoKeyCode(int i, blnr down)
 {
-	int key = WinKey2Mac[
+	ui3r key = WinKey2Mac[
 #if ItnlKyBdFix
 		MyVkMapA[i]
 #else
 		i
 #endif
 		];
-	if (key >= 0) {
+	if (MKC_None != key) {
 		Keyboard_UpdateKeyMap2(key, down);
 	}
 }
@@ -2097,8 +2097,10 @@ LOCALFUNC blnr CheckDateTime(void)
 LOCALFUNC blnr Init60thCheck(void)
 {
 	SYSTEMTIME s;
+#if AutoTimeZone
 	TIME_ZONE_INFORMATION r;
 	DWORD v;
+#endif
 	DWORD t;
 
 	GetLocalTime(&s);
@@ -2107,6 +2109,7 @@ LOCALFUNC blnr Init60thCheck(void)
 		s.wDay, s.wMonth, s.wYear);
 	TimeMilliBase = t - s.wMilliseconds;
 
+#if AutoTimeZone
 	v = GetTimeZoneInformation(&r);
 	if ((v != 0xFFFFFFFF) && (v != TIME_ZONE_ID_UNKNOWN)) {
 		si5b dlsBias = (v != TIME_ZONE_ID_DAYLIGHT)
@@ -2116,6 +2119,7 @@ LOCALFUNC blnr Init60thCheck(void)
 			| (((v != TIME_ZONE_ID_DAYLIGHT) ? 0 : 0x80)
 				<< 24);
 	}
+#endif
 
 	LastTime = timeGetTime();
 	InitNextTime();
@@ -4459,19 +4463,17 @@ LOCALFUNC blnr MyFileExists(LPTSTR pathName, blnr *directory)
 	return IsOk;
 }
 
-LOCALFUNC tMacErr ResolveNamedChild(LPTSTR pathName,
-	char *Child, blnr *directory)
+LOCALFUNC tMacErr ResolveNamedChild0(LPTSTR pathName,
+	LPTSTR Child, blnr *directory)
 {
-	TCHAR Child0[ClStrMaxLength + 1];
 	size_t newlen;
 	size_t oldlen = _tcslen(pathName);
 	tMacErr err = mnvm_miscErr;
 
-	NativeStrFromCStr(Child0, Child, falseblnr);
-	newlen = oldlen + 1 + _tcslen(Child0);
+	newlen = oldlen + 1 + _tcslen(Child);
 	if (newlen + 1 < _MAX_PATH) {
 		_tcscat(pathName, TEXT("\\"));
-		_tcscat(pathName, Child0);
+		_tcscat(pathName, Child);
 
 		if (MyFileExists(pathName, directory)) {
 			err = mnvm_noErr;
@@ -4496,6 +4498,16 @@ LOCALFUNC tMacErr ResolveNamedChild(LPTSTR pathName,
 	return err;
 }
 
+LOCALFUNC tMacErr ResolveNamedChild(LPTSTR pathName,
+	char *Child, blnr *directory)
+{
+	TCHAR Child0[ClStrMaxLength + 1];
+
+	NativeStrFromCStr(Child0, Child, falseblnr);
+
+	return ResolveNamedChild0(pathName, Child0, directory);
+}
+
 LOCALFUNC blnr ResolveNamedChildDir(LPTSTR pathName, char *Child)
 {
 	blnr directory;
@@ -4513,6 +4525,25 @@ LOCALFUNC blnr ResolveNamedChildFile(LPTSTR pathName, char *Child)
 		pathName, Child, &directory))
 		&& ! directory;
 }
+
+#if UseActvFile || (IncludeSonyNew && ! SaveDialogEnable)
+LOCALFUNC blnr MakeNamedChildDir(LPTSTR pathName, char *Child)
+{
+	blnr directory;
+	blnr IsOk = falseblnr;
+	tMacErr err = ResolveNamedChild(pathName, Child, &directory);
+
+	if (mnvm_noErr == err) {
+		IsOk = directory;
+	} else if (mnvm_fnfErr == err) {
+		if (CreateDirectory(pathName, NULL)) {
+			IsOk = trueblnr;
+		}
+	}
+
+	return IsOk;
+}
+#endif
 
 LOCALFUNC blnr MyGetAppDataPath(LPTSTR lpszPath,
 	BOOL fCreate)
@@ -4716,23 +4747,6 @@ LOCALFUNC tMacErr ActvCodeFileLoad(ui3p p)
 	return IsOk ? mnvm_noErr : mnvm_miscErr;
 }
 
-LOCALFUNC blnr MakeNamedChildDir(LPTSTR pathName, char *Child)
-{
-	blnr directory;
-	blnr IsOk = falseblnr;
-	tMacErr err = ResolveNamedChild(pathName, Child, &directory);
-
-	if (mnvm_noErr == err) {
-		IsOk = directory;
-	} else if (mnvm_fnfErr == err) {
-		if (CreateDirectory(pathName, NULL)) {
-			IsOk = trueblnr;
-		}
-	}
-
-	return IsOk;
-}
-
 LOCALFUNC blnr NewNamedChildFile(LPTSTR pathName, char *Child)
 {
 	blnr directory;
@@ -4845,13 +4859,60 @@ LOCALFUNC blnr WriteZero(HANDLE refnum, ui5b L)
 #define MaxSavePathSize MAX_PATH
 
 #if IncludeSonyNew
+LOCALPROC MakeNewDisk0(ui5b L, LPTSTR pathName)
+{
+	blnr IsOk = falseblnr;
+	HANDLE newrefNum;
+
+	IsOk = falseblnr;
+	newrefNum = CreateFile(
+		pathName, /* pointer to name of the file */
+		GENERIC_READ + GENERIC_WRITE, /* access (read-write) mode */
+		0, /* share mode */
+		NULL, /* pointer to security descriptor */
+		CREATE_ALWAYS, /* how to create */
+		FILE_ATTRIBUTE_NORMAL, /* file attributes */
+		NULL /* handle to file with attributes to copy */
+	);
+	if (newrefNum == INVALID_HANDLE_VALUE) {
+		/* report error */
+	} else {
+		if (SetFilePointer(
+			newrefNum, /* handle of file */
+			L, /* number of bytes to move file pointer */
+			nullpr,
+				/* address of high-order word of distance to move */
+			FILE_BEGIN /* how to move */
+			) != L)
+		{
+			/* report error */
+		} else if (! SetEndOfFile(newrefNum)) {
+			/* report error */
+		} else if (! WriteZero(newrefNum, L)) {
+			/* report error */
+		} else {
+			IsOk =
+				Sony_Insert0(newrefNum, falseblnr, pathName);
+			newrefNum = INVALID_HANDLE_VALUE;
+		}
+		if (INVALID_HANDLE_VALUE != newrefNum) {
+			(void) CloseHandle(newrefNum);
+		}
+		if (! IsOk) {
+			(void) DeleteFile(pathName);
+		}
+	}
+}
+#endif
+
+#if IncludeSonyNew
 LOCALPROC MakeNewDisk(ui5b L, HGLOBAL NewDiskNameDat)
 {
+#if SaveDialogEnable
 	OPENFILENAME ofn;
 	blnr IsOk = falseblnr;
 	TCHAR szFile[MaxSavePathSize];
 	TCHAR szFileTitle[MaxSavePathSize];
-	HANDLE newrefNum;
 
 	memset(&ofn, 0, sizeof(OPENFILENAME));
 	szFile[0] = 0;
@@ -4889,45 +4950,37 @@ LOCALPROC MakeNewDisk(ui5b L, HGLOBAL NewDiskNameDat)
 	if (! IsOk) {
 		/* report error */
 	} else {
-		IsOk = falseblnr;
-		newrefNum = CreateFile(
-			ofn.lpstrFile, /* pointer to name of the file */
-			GENERIC_READ + GENERIC_WRITE, /* access (read-write) mode */
-			0, /* share mode */
-			NULL, /* pointer to security descriptor */
-			CREATE_ALWAYS, /* how to create */
-			FILE_ATTRIBUTE_NORMAL, /* file attributes */
-			NULL /* handle to file with attributes to copy */
-		);
-		if (newrefNum == INVALID_HANDLE_VALUE) {
-			/* report error */
-		} else {
-			if (SetFilePointer(
-				newrefNum, /* handle of file */
-				L, /* number of bytes to move file pointer */
-				nullpr,
-					/* address of high-order word of distance to move */
-				FILE_BEGIN /* how to move */
-				) != L)
-			{
-				/* report error */
-			} else if (! SetEndOfFile(newrefNum)) {
-				/* report error */
-			} else if (! WriteZero(newrefNum, L)) {
-				/* report error */
-			} else {
-				IsOk =
-					Sony_Insert0(newrefNum, falseblnr, ofn.lpstrFile);
-				newrefNum = INVALID_HANDLE_VALUE;
+		MakeNewDisk0(L, ofn.lpstrFile);
+	}
+#else /* SaveDialogEnable */
+	TCHAR pathName[MaxSavePathSize];
+
+	if (GetAppDir(pathName))
+	if (MakeNamedChildDir(pathName, "out"))
+	{
+		blnr directory;
+		LPTSTR p = GlobalLock(NewDiskNameDat);
+
+		if (p != NULL) {
+			tMacErr err = ResolveNamedChild0(pathName, p,
+				&directory);
+
+			if (mnvm_fnfErr == err) {
+				err = mnvm_noErr;
+			} else if (mnvm_noErr == err) {
+				if (directory) {
+					err = mnvm_miscErr;
+				}
 			}
-			if (INVALID_HANDLE_VALUE != newrefNum) {
-				(void) CloseHandle(newrefNum);
+
+			if (mnvm_noErr == err) {
+				MakeNewDisk0(L, pathName);
 			}
-			if (! IsOk) {
-				(void) DeleteFile(ofn.lpstrFile);
-			}
+
+			(void) GlobalUnlock(NewDiskNameDat);
 		}
 	}
+#endif /* SaveDialogEnable */
 }
 #endif
 

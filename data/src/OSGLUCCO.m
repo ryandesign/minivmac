@@ -283,6 +283,9 @@ GLOBALOSGLUPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 
 /* --- sending debugging info to file --- */
 
+LOCALVAR NSString *myAppName = nil;
+LOCALVAR NSString *MyDataPath = nil;
+
 #if dbglog_HAVE
 
 #define dbglog_ToStdErr 0
@@ -296,10 +299,7 @@ LOCALFUNC blnr dbglog_open0(void)
 #if dbglog_ToStdErr
 	return trueblnr;
 #else
-	NSBundle *myBundle = [NSBundle mainBundle];
-	NSString *myAppPath = [myBundle bundlePath];
-	NSString *myAppDir = [myAppPath stringByDeletingLastPathComponent];
-	NSString *myLogPath = [myAppDir
+	NSString *myLogPath = [MyDataPath
 		stringByAppendingPathComponent: @"dbglog.txt"];
 	const char *path = [myLogPath fileSystemRepresentation];
 
@@ -765,9 +765,6 @@ LOCALFUNC blnr FindNamedChildFilePath(NSString *parentPath,
 
 	return v;
 }
-
-LOCALVAR NSString *myAppName = nil;
-LOCALVAR NSString *MyDataPath = nil;
 
 
 #define NotAfileRef NULL
@@ -1972,14 +1969,18 @@ LOCALFUNC blnr InitLocationDat(void)
 {
 	NSTimeZone *MyZone = [NSTimeZone localTimeZone];
 	ui5b TzOffSet = (ui5b)[MyZone secondsFromGMT];
+#if AutoTimeZone
 	BOOL isdst = [MyZone isDaylightSavingTime];
+#endif
 
 	MyDateDelta = TzOffSet - 1233815296;
 	LatestTime = [NSDate timeIntervalSinceReferenceDate];
 	NewMacDateInSeconds = ((ui5b)LatestTime) + MyDateDelta;
 	CurMacDateInSeconds = NewMacDateInSeconds;
+#if AutoTimeZone
 	CurMacDelta = (TzOffSet & 0x00FFFFFF)
 		| ((isdst ? 0x80 : 0) << 24);
+#endif
 
 	return trueblnr;
 }
@@ -3976,6 +3977,67 @@ LOCALPROC EnterSpeedStopped(void)
 #endif
 }
 
+#if IncludeSonyNew && ! SaveDialogEnable
+LOCALFUNC blnr FindOrMakeNamedChildDirPath(NSString *parentPath,
+	char *ChildName, NSString **childPath)
+{
+	NSString *r;
+	BOOL isDir;
+	Boolean isDirectory;
+	NSFileManager *fm = [NSFileManager defaultManager];
+	blnr v = falseblnr;
+
+	if (FindNamedChildPath(parentPath, ChildName, &r)) {
+		if ([fm fileExistsAtPath:r isDirectory: &isDir])
+		{
+			if (isDir) {
+				*childPath = r;
+				v = trueblnr;
+			} else {
+				NSString *RslvPath = MyResolveAlias(r, &isDirectory);
+				if (nil != RslvPath) {
+					if (isDirectory) {
+						*childPath = RslvPath;
+						v = trueblnr;
+					}
+				}
+			}
+		} else {
+			if ([fm respondsToSelector:@selector(
+createDirectoryAtURL:withIntermediateDirectories:attributes:error:
+				)])
+			{
+				if ([fm
+					createDirectoryAtPath:r
+					withIntermediateDirectories:NO
+					attributes:nil
+					error:nil])
+				{
+					*childPath = r;
+					v = trueblnr;
+				}
+			} else
+			if ([fm respondsToSelector:
+				@selector(createDirectoryAtURL:attributes:)])
+			{
+				if ([fm
+					createDirectoryAtPath:r
+					attributes:nil])
+				{
+					*childPath = r;
+					v = trueblnr;
+				}
+			} else
+			{
+				/* fail */
+			}
+		}
+	}
+
+	return v;
+}
+#endif
+
 @interface MyNSSavePanel : NSObject
 - (NSInteger)runModalForDirectory:(NSString *)path
 	file:(NSString *)filename;
@@ -3985,6 +4047,7 @@ LOCALPROC EnterSpeedStopped(void)
 #if IncludeSonyNew
 LOCALPROC MakeNewDisk(ui5b L, NSString *drivename)
 {
+#if SaveDialogEnable
 	NSInteger result = NSCancelButton;
 	NSSavePanel *panel = [NSSavePanel savePanel];
 
@@ -4042,12 +4105,15 @@ LOCALPROC MakeNewDisk(ui5b L, NSString *drivename)
 		NSString* filePath = [[panel URL] path];
 		MakeNewDisk0(L, filePath);
 	}
+#else /* SaveDialogEnable */
+	NSString *sPath;
 
-#if 0
-	NSString *sPath =
-		[myAppDir stringByAppendingPathComponent: drivename];
-	MakeNewDisk0(L, sPath);
-#endif
+	if (FindOrMakeNamedChildDirPath(MyDataPath, "out", &sPath)) {
+		NSString *filePath =
+			[sPath stringByAppendingPathComponent: drivename];
+		MakeNewDisk0(L, filePath);
+	}
+#endif /* SaveDialogEnable */
 }
 #endif
 
@@ -4300,7 +4366,7 @@ LOCALPROC ProcessEventLocation(NSEvent *event)
 
 LOCALPROC ProcessKeyEvent(blnr down, NSEvent *event)
 {
-	ui3b scancode = [event keyCode];
+	ui3r scancode = [event keyCode];
 
 	ProcessEventModifiers(event);
 	Keyboard_UpdateKeyMap2(Keyboard_RemapMac(scancode), down);
@@ -4492,14 +4558,95 @@ label_exit:
 	[pool release];
 }
 
+typedef Boolean (*SecTranslocateIsTranslocatedURL_t)(
+	CFURLRef path, bool *isTranslocated, CFErrorRef * error);
+typedef CFURLRef (*SecTranslocateCreateOriginalPathForURL_t)(
+	CFURLRef translocatedPath, CFErrorRef * error);
+
 LOCALFUNC blnr setupWorkingDirectory(void)
 {
+	NSString *myAppDir;
 	NSString *contentsPath;
 	NSString *dataPath;
 	NSBundle *myBundle = [NSBundle mainBundle];
 	NSString *myAppPath = [myBundle bundlePath];
-	NSString *myAppDir = [myAppPath stringByDeletingLastPathComponent];
 
+#if WantUnTranslocate
+	{
+		bool isTranslocated;
+		void *sec_handle = NULL;
+		SecTranslocateIsTranslocatedURL_t
+			mySecTranslocateIsTranslocatedURL = NULL;
+		CFURLRef url = NULL;
+		SecTranslocateCreateOriginalPathForURL_t
+			mySecTranslocateCreateOriginalPathForURL = NULL;
+		CFURLRef untranslocatedURL = NULL;
+		NSString *realAppPath = NULL;
+
+		if (NULL == (sec_handle = dlopen(
+			"/System/Library/Frameworks/Security.framework/Security",
+			RTLD_LAZY)))
+		{
+			/* fail */
+		} else
+		if (NULL == (mySecTranslocateIsTranslocatedURL =
+			dlsym(sec_handle, "SecTranslocateIsTranslocatedURL")))
+		{
+			/* fail */
+		} else
+		if (NULL == (url =
+			CFURLCreateWithFileSystemPath(kCFAllocatorDefault,
+				(CFStringRef)myAppPath, kCFURLPOSIXPathStyle, NO)))
+		{
+			/* fail */
+		} else
+		if (! mySecTranslocateIsTranslocatedURL(url, &isTranslocated,
+			NULL))
+		{
+			/* fail */
+		} else
+		if (! isTranslocated) {
+			/* done */
+		} else
+		if (NULL == (mySecTranslocateCreateOriginalPathForURL =
+			dlsym(sec_handle,
+				"SecTranslocateCreateOriginalPathForURL")))
+		{
+			/* fail */
+		} else
+		if (NULL == (untranslocatedURL =
+			mySecTranslocateCreateOriginalPathForURL(url, NULL)))
+		{
+			/* fail */
+		} else
+		if (NULL == (realAppPath =
+			(NSString *)CFURLCopyFileSystemPath(
+				untranslocatedURL, kCFURLPOSIXPathStyle)))
+		{
+			/* fail */
+		} else
+		{
+			myAppPath = realAppPath;
+		}
+
+		if (NULL != realAppPath) {
+			[realAppPath autorelease];
+		}
+		if (NULL != untranslocatedURL) {
+			CFRelease(untranslocatedURL);
+		}
+		if (NULL != url) {
+			CFRelease(url);
+		}
+		if (NULL != sec_handle) {
+			if (0 != dlclose(sec_handle)) {
+				/* dbglog_writeln("dlclose  failed"); */
+			}
+		}
+	}
+#endif /* WantUnTranslocate */
+
+	myAppDir = [myAppPath stringByDeletingLastPathComponent];
 	myAppName = [[[myAppPath lastPathComponent]
 		stringByDeletingPathExtension] retain];
 
@@ -4739,9 +4886,17 @@ LOCALFUNC blnr InitOSGLU(void)
 	return IsOk;
 }
 
+#if dbglog_HAVE && 0
+IMPORTPROC DumpRTC(void);
+#endif
+
 LOCALPROC UnInitOSGLU(void)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+#if dbglog_HAVE && 0
+	DumpRTC();
+#endif
 
 	if (MacMsgDisplayed) {
 		MacMsgDisplayOff();

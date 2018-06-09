@@ -572,14 +572,14 @@ LOCALPROC CheckMouseState(void)
 
 /* --- keyboard input --- */
 
-LOCALVAR si5b KC2MKC[256];
+LOCALVAR ui3b KC2MKC[256];
 
 /*
 	AHA!
 	GCC Was turning this into a macro of some sort which of course
 	broke horribly with libnds's keyboard having some negative values.
 */
-LOCALPROC AssignKeyToMKC(int UKey, int LKey, int MKC)
+LOCALPROC AssignKeyToMKC(int UKey, int LKey, ui3r MKC)
 {
 	if (UKey != NOKEY) {
 		KC2MKC[UKey] = MKC;
@@ -595,7 +595,7 @@ LOCALFUNC blnr KC2MKCInit(void)
 	int i;
 
 	for (i = 0; i < 256; ++i) {
-		KC2MKC[i] = -1;
+		KC2MKC[i] = MKC_None;
 	}
 
 	AssignKeyToMKC('A', 'a', MKC_A);
@@ -660,8 +660,8 @@ LOCALFUNC blnr KC2MKCInit(void)
 
 LOCALPROC DoKeyCode0(int i, blnr down)
 {
-	int key = KC2MKC[i];
-	if (key >= 0) {
+	ui3r key = KC2MKC[i];
+	if (MKC_None != key) {
 		fprintf(stderr, "%s() :: %c (%d) == %d\n",
 			__FUNCTION__, (char) i, key, down);
 		Keyboard_UpdateKeyMap2(key, down);
@@ -773,7 +773,7 @@ LOCALPROC GetCurrentTicks(void)
 		s = localtime(&Current_Time);
 		TimeDelta = Date2MacSeconds(s->tm_sec, s->tm_min, s->tm_hour,
 			s->tm_mday, 1 + s->tm_mon, 1900 + s->tm_year) - t.tv_sec;
-#if 0 /* how portable is this ? */
+#if 0 && AutoTimeZone /* how portable is this ? */
 		CurMacDelta = ((ui5b)(s->tm_gmtoff) & 0x00FFFFFF)
 			| ((s->tm_isdst ? 0x80 : 0) << 24);
 #endif

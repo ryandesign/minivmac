@@ -776,6 +776,33 @@ LOCALFUNC tMacErr FindNamedChildRef(FSRef *ParentRef,
 	return err;
 }
 
+#if UseActvFile || (IncludeSonyNew && ! SaveDialogEnable)
+LOCALFUNC tMacErr FindOrMakeNamedChildRef(FSRef *ParentRef,
+	char *ChildName, FSRef *ChildRef)
+{
+	tMacErr err;
+	blnr isFolder;
+	int L;
+	UniChar x[ClStrMaxLength];
+
+	UniCharStrFromSubstCStr(&L, x, ChildName, falseblnr);
+	if (CheckSavetMacErr(MyMakeFSRefUniChar(ParentRef, L, x,
+		&isFolder, ChildRef)))
+	{
+		if (! isFolder) {
+			err = mnvm_miscErr;
+		}
+	}
+	if (mnvm_fnfErr == err) {
+		err = To_tMacErr(FSCreateDirectoryUnicode(
+			ParentRef, L, x, kFSCatInfoNone, NULL,
+			ChildRef, NULL, NULL));
+	}
+
+	return err;
+}
+#endif
+
 LOCALVAR FSRef MyDatDirRef;
 
 LOCALVAR CFStringRef MyAppName = NULL;
@@ -1984,12 +2011,18 @@ LOCALFUNC blnr InitMousePosition(void)
 
 LOCALFUNC blnr InitLocationDat(void)
 {
+#if AutoLocation || AutoTimeZone
 	MachineLocation loc;
 
 	ReadLocation(&loc);
+#if AutoLocation
 	CurMacLatitude = (ui5b)loc.latitude;
 	CurMacLongitude = (ui5b)loc.longitude;
+#endif
+#if AutoTimeZone
 	CurMacDelta = (ui5b)loc.u.gmtDelta;
+#endif
+#endif
 
 	{
 		CFTimeZoneRef tz = CFTimeZoneCopySystem();
@@ -3278,6 +3311,7 @@ LOCALPROC InsertADisk0(void)
 #if IncludeSonyNew
 LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 {
+#if SaveDialogEnable
 	NavDialogRef theSaveDialog;
 	NavDialogCreationOptions dialogOptions;
 	NavReplyRecord theReply;
@@ -3327,6 +3361,15 @@ LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 	}
 
 	DisposeNavEventUPP(gEventProc);
+#else /* SaveDialogEnable */
+	FSRef OutRef;
+
+	if (mnvm_noErr == FindOrMakeNamedChildRef(&MyDatDirRef,
+		"out", &OutRef))
+	{
+		MakeNewDisk0(&OutRef, NewDiskName, L);
+	}
+#endif /* SaveDialogEnable */
 }
 #endif
 
@@ -3456,31 +3499,6 @@ LOCALFUNC tMacErr ActvCodeFileLoad(ui3p p)
 		err = To_tMacErr(FSReadFork(refnum, fsFromStart, 0,
 			ActvCodeFileLen, p, &actualCount));
 		(void) FSCloseFork(refnum);
-	}
-
-	return err;
-}
-
-LOCALFUNC tMacErr FindOrMakeNamedChildRef(FSRef *ParentRef,
-	char *ChildName, FSRef *ChildRef)
-{
-	tMacErr err;
-	blnr isFolder;
-	int L;
-	UniChar x[ClStrMaxLength];
-
-	UniCharStrFromSubstCStr(&L, x, ChildName, falseblnr);
-	if (CheckSavetMacErr(MyMakeFSRefUniChar(ParentRef, L, x,
-		&isFolder, ChildRef)))
-	{
-		if (! isFolder) {
-			err = mnvm_miscErr;
-		}
-	}
-	if (mnvm_fnfErr == err) {
-		err = To_tMacErr(FSCreateDirectoryUnicode(
-			ParentRef, L, x, kFSCatInfoNone, NULL,
-			ChildRef, NULL, NULL));
 	}
 
 	return err;

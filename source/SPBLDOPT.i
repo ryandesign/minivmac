@@ -853,6 +853,41 @@ LOCALPROC WrtOptSonySupportDC42(void)
 }
 
 
+/* option: Save Dialog Enable */
+
+LOCALVAR blnr gbo_SaveDialogEnable;
+LOCALVAR ui3r olv_SaveDialogEnable;
+
+LOCALPROC ResetSaveDialogEnable(void)
+{
+	gbo_SaveDialogEnable = nanblnr;
+	olv_SaveDialogEnable = 0;
+}
+
+LOCALFUNC tMyErr TryAsSaveDialogEnable(void)
+{
+	return BooleanTryAsOptionNot("-svd",
+		&gbo_SaveDialogEnable, &olv_SaveDialogEnable);
+}
+
+#define dfo_SaveDialogEnable() trueblnr
+
+LOCALFUNC tMyErr ChooseSaveDialogEnable(void)
+{
+	if (nanblnr == gbo_SaveDialogEnable) {
+		gbo_SaveDialogEnable = dfo_SaveDialogEnable();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptSaveDialogEnable(void)
+{
+	WrtOptBooleanOption("-svd",
+		gbo_SaveDialogEnable, dfo_SaveDialogEnable());
+}
+
+
 /* option: Insert Ith Disk Image */
 
 LOCALVAR blnr WantInsertIthDisk;
@@ -2159,6 +2194,257 @@ LOCALPROC WrtOptHilColBlue(void)
 }
 
 
+/* option: Automatic Location */
+
+LOCALVAR blnr WantAutoLocation;
+LOCALVAR ui3r olv_AutoLocation;
+
+LOCALPROC ResetAutoLocation(void)
+{
+	WantAutoLocation = nanblnr;
+	olv_AutoLocation = 0;
+}
+
+LOCALFUNC tMyErr TryAsAutoLocationNot(void)
+{
+	return BooleanTryAsOptionNot("-alc",
+		&WantAutoLocation, &olv_AutoLocation);
+}
+
+#define dfo_AutoLocation() trueblnr
+
+LOCALFUNC tMyErr ChooseAutoLocation(void)
+{
+	if (nanblnr == WantAutoLocation) {
+		WantAutoLocation = dfo_AutoLocation();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptAutoLocation(void)
+{
+	WrtOptBooleanOption("-alc", WantAutoLocation, dfo_AutoLocation());
+}
+
+
+/* option: Location Latitude */
+
+LOCALVAR uimr cur_InitLatitude;
+LOCALVAR ui3r olv_InitLatitude;
+
+LOCALPROC ResetInitLatitudeOption(void)
+{
+	olv_InitLatitude = 0;
+}
+
+LOCALFUNC tMyErr TryAsInitLatitudeOptionNot(void)
+{
+	return NumberTryAsOptionNot("-lcy",
+		(long *)&cur_InitLatitude, &olv_InitLatitude);
+}
+
+#define dfo_InitLatitude() 0
+
+LOCALFUNC tMyErr ChooseInitLatitude(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (0 == olv_InitLatitude) {
+		cur_InitLatitude = dfo_InitLatitude();
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptInitLatitude(void)
+{
+	if (! WantAutoLocation) {
+		WrtOptSimrOption("-lcy", cur_InitLatitude, dfo_InitLatitude());
+	}
+}
+
+
+/* option: Location Longitude */
+
+LOCALVAR simr cur_InitLongitude;
+LOCALVAR ui3r olv_InitLongitude;
+
+LOCALPROC ResetInitLongitudeOption(void)
+{
+	olv_InitLongitude = 0;
+}
+
+LOCALFUNC tMyErr TryAsInitLongitudeOptionNot(void)
+{
+	return NumberTryAsOptionNot("-lcx",
+		&cur_InitLongitude, &olv_InitLongitude);
+}
+
+#define dfo_InitLongitude() 0
+
+LOCALFUNC tMyErr ChooseInitLongitude(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (0 == olv_InitLongitude) {
+		cur_InitLongitude = dfo_InitLongitude();
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptInitLongitude(void)
+{
+	if (! WantAutoLocation) {
+		WrtOptSimrOption("-lcx", cur_InitLongitude,
+			dfo_InitLongitude());
+	}
+}
+
+
+/* option: Automatic Time Zone */
+
+LOCALVAR blnr WantAutoTimeZone;
+LOCALVAR ui3r olv_AutoTimeZone;
+
+LOCALPROC ResetAutoTimeZone(void)
+{
+	WantAutoTimeZone = nanblnr;
+	olv_AutoTimeZone = 0;
+}
+
+LOCALFUNC tMyErr TryAsAutoTimeZoneNot(void)
+{
+	return BooleanTryAsOptionNot("-atz",
+		&WantAutoTimeZone, &olv_AutoTimeZone);
+}
+
+#define dfo_AutoTimeZone() trueblnr
+
+LOCALFUNC tMyErr ChooseAutoTimeZone(void)
+{
+	if (nanblnr == WantAutoTimeZone) {
+		WantAutoTimeZone = dfo_AutoTimeZone();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptAutoTimeZone(void)
+{
+	WrtOptBooleanOption("-atz", WantAutoTimeZone, dfo_AutoTimeZone());
+}
+
+
+/* option: Daylight Savings Time */
+
+LOCALVAR blnr WantTzDST;
+LOCALVAR ui3r olv_TzDST;
+
+LOCALPROC ResetTzDST(void)
+{
+	WantTzDST = nanblnr;
+	olv_TzDST = 0;
+}
+
+LOCALFUNC tMyErr TryAsTzDSTNot(void)
+{
+	return BooleanTryAsOptionNot("-lcd",
+		&WantTzDST, &olv_TzDST);
+}
+
+#define dfo_TzDST() falseblnr
+
+LOCALFUNC tMyErr ChooseTzDST(void)
+{
+	if (nanblnr == WantTzDST) {
+		WantTzDST = dfo_TzDST();
+	}
+
+	return noErr;
+}
+
+LOCALPROC WrtOptTzDST(void)
+{
+	if (! WantAutoTimeZone) {
+		WrtOptBooleanOption("-lcd", WantTzDST, dfo_TzDST());
+	}
+}
+
+
+/* option: Time Zone Delta Hours */
+
+LOCALVAR simr cur_TzDeltH;
+LOCALVAR ui3r olv_TzDeltH;
+
+LOCALPROC ResetTzDeltHOption(void)
+{
+	olv_TzDeltH = 0;
+}
+
+LOCALFUNC tMyErr TryAsTzDeltHOptionNot(void)
+{
+	return NumberTryAsOptionNot("-lcz",
+		&cur_TzDeltH, &olv_TzDeltH);
+}
+
+
+/* option: Time Zone Delta Seconds */
+
+LOCALVAR simr cur_TzDeltS;
+LOCALVAR ui3r olv_TzDeltS;
+
+LOCALPROC ResetTzDeltSOption(void)
+{
+	olv_TzDeltS = 0;
+}
+
+LOCALFUNC tMyErr TryAsTzDeltSOptionNot(void)
+{
+	return NumberTryAsOptionNot("-lczs",
+		&cur_TzDeltS, &olv_TzDeltS);
+}
+
+#define dfo_TzDeltS() 0
+
+LOCALFUNC tMyErr ChooseTzDeltS(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (0 == olv_TzDeltS) {
+		if (0 == olv_TzDeltH) {
+			cur_TzDeltS = dfo_TzDeltS();
+		} else {
+			cur_TzDeltS = cur_TzDeltH * 3600;
+		}
+	} else {
+		if (0 != olv_TzDeltH) {
+			err = ReportParseFailure(
+				"-lczs and -lcz can not both be used");
+		}
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptTzDeltS(void)
+{
+	if (! WantAutoTimeZone) {
+		simr t = cur_TzDeltS / 3600;
+
+		if (t * 3600 ==  cur_TzDeltS) {
+			WrtOptSimrOption("-lcz", t, 0);
+		} else {
+			WrtOptSimrOption("-lczs", cur_TzDeltS, dfo_TzDeltS());
+		}
+	}
+}
+
+
 /* option: Speaker Volume */
 	/* usually in 3 (Fast), 8 (Medium), 15 (Slow) */
 
@@ -3080,6 +3366,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetSonySupportTags();
 	ResetSonyWantChecksumsUpdated();
 	ResetSonySupportDC42();
+	ResetSaveDialogEnable();
 	ResetInsertIthDisk();
 	ResetCmndOptSwap();
 	ResetKeyMapOption();
@@ -3100,6 +3387,13 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetHilColRedOption();
 	ResetHilColGreenOption();
 	ResetHilColBlueOption();
+	ResetAutoLocation();
+	ResetInitLatitudeOption();
+	ResetInitLongitudeOption();
+	ResetAutoTimeZone();
+	ResetTzDST();
+	ResetTzDeltHOption();
+	ResetTzDeltSOption();
 	ResetSpeakerVolOption();
 	ResetWantMinExtn();
 	ResetMouseMotionOption();
@@ -3137,6 +3431,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsSonySupportTagsNot()))
 	if (kMyErrNoMatch == (err = TryAsSonyWantChecksumsUpdatedNot()))
 	if (kMyErrNoMatch == (err = TryAsSonySupportDC42Not()))
+	if (kMyErrNoMatch == (err = TryAsSaveDialogEnable()))
 	if (kMyErrNoMatch == (err = TryAsInsertIthDisk()))
 	if (kMyErrNoMatch == (err = TryAsCmndOptSwapNot()))
 	if (kMyErrNoMatch == (err = TryAsKeyMapOptionNot()))
@@ -3157,6 +3452,13 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsHilColRedOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsHilColGreenOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsHilColBlueOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsAutoLocationNot()))
+	if (kMyErrNoMatch == (err = TryAsInitLatitudeOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsInitLongitudeOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsAutoTimeZoneNot()))
+	if (kMyErrNoMatch == (err = TryAsTzDSTNot()))
+	if (kMyErrNoMatch == (err = TryAsTzDeltHOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsTzDeltSOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsSpeakerVolOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsWantMinExtnNot()))
 	if (kMyErrNoMatch == (err = TryAsMouseMotionOptionNot()))
@@ -3198,6 +3500,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseSonySupportTags()))
 	if (noErr == (err = ChooseSonyWantChecksumsUpdated()))
 	if (noErr == (err = ChooseSonySupportDC42()))
+	if (noErr == (err = ChooseSaveDialogEnable()))
 	if (noErr == (err = ChooseInsertIthDisk()))
 	if (noErr == (err = ChooseCmndOptSwap()))
 	if (noErr == (err = ChooseKeyMap()))
@@ -3219,6 +3522,13 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseHilColRed()))
 	if (noErr == (err = ChooseHilColGreen()))
 	if (noErr == (err = ChooseHilColBlue()))
+	if (noErr == (err = ChooseAutoLocation()))
+	if (noErr == (err = ChooseInitLatitude()))
+	if (noErr == (err = ChooseInitLongitude()))
+	if (noErr == (err = ChooseAutoTimeZone()))
+	if (noErr == (err = ChooseTzDST()))
+	/* if (noErr == (err = ChooseTzDeltH())) */
+	if (noErr == (err = ChooseTzDeltS()))
 	if (noErr == (err = ChooseSpeakerVol()))
 	if (noErr == (err = ChooseWantMinExtn()))
 	if (noErr == (err = ChooseMouseMotion()))
@@ -3265,6 +3575,7 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptSonySupportTags();
 	WrtOptSonyWantChecksumsUpdated();
 	WrtOptSonySupportDC42();
+	WrtOptSaveDialogEnable();
 	WrtOptInsertIthDisk();
 	WrtOptCmndOptSwap();
 	WrtOptKeyMap();
@@ -3285,6 +3596,13 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptHilColRed();
 	WrtOptHilColGreen();
 	WrtOptHilColBlue();
+	WrtOptAutoLocation();
+	WrtOptInitLatitude();
+	WrtOptInitLongitude();
+	WrtOptAutoTimeZone();
+	WrtOptTzDST();
+	/* WrtOptTzDeltH(); */
+	WrtOptTzDeltS();
 	WrtOptSpeakerVol();
 	WrtOptMinExtn();
 	WrtOptMouseMotion();
