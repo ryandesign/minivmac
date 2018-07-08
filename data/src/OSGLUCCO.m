@@ -44,12 +44,21 @@
 #endif
 
 
+#ifndef WantGraphicsSwitching
+#define WantGraphicsSwitching 0
+#endif
+
 #if MAC_OS_X_VERSION_10_5 > MAC_OS_X_VERSION_MAX_ALLOWED
 
 typedef unsigned long NSUInteger;
 typedef long NSInteger;
 
 typedef struct __CFError * CFErrorRef;
+
+#if WantGraphicsSwitching
+#define NSOpenGLPFAAllowOfflineRenderers \
+	(NSOpenGLPixelFormatAttribute)96
+#endif
 
 #endif
 
@@ -3157,16 +3166,32 @@ LOCALFUNC blnr GetOpnGLCntxt(void)
 
 	if (nil == MyNSOpnGLCntxt) {
 		NSRect NewWinRect = [MyNSview frame];
-		NSOpenGLPixelFormatAttribute attr[] = {
-			0};
 		NSOpenGLPixelFormat *fmt;
 
-		fmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attr];
-		if (nil == fmt) {
-#if dbglog_HAVE
-			dbglog_writeln("Could not create fmt");
+#if WantGraphicsSwitching
+		{
+			NSOpenGLPixelFormatAttribute attr0[] = {
+				NSOpenGLPFAAllowOfflineRenderers,
+				0};
+
+			fmt =
+				[[NSOpenGLPixelFormat alloc] initWithAttributes:attr0];
+		}
+		if (nil != fmt) {
+			/* ok */
+		} else
 #endif
-			goto label_exit;
+		{
+			NSOpenGLPixelFormatAttribute attr[] = {
+				0};
+
+			fmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attr];
+			if (nil == fmt) {
+#if dbglog_HAVE
+				dbglog_writeln("Could not create fmt");
+#endif
+				goto label_exit;
+			}
 		}
 
 		MyNSOpnGLCntxt = [[NSOpenGLContext alloc]
@@ -4004,7 +4029,7 @@ LOCALFUNC blnr FindOrMakeNamedChildDirPath(NSString *parentPath,
 			}
 		} else {
 			if ([fm respondsToSelector:@selector(
-createDirectoryAtURL:withIntermediateDirectories:attributes:error:
+createDirectoryAtPath:withIntermediateDirectories:attributes:error:
 				)])
 			{
 				if ([fm
@@ -4018,7 +4043,7 @@ createDirectoryAtURL:withIntermediateDirectories:attributes:error:
 				}
 			} else
 			if ([fm respondsToSelector:
-				@selector(createDirectoryAtURL:attributes:)])
+				@selector(createDirectoryAtPath:attributes:)])
 			{
 				if ([fm
 					createDirectoryAtPath:r

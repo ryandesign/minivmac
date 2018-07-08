@@ -3169,6 +3169,49 @@ LOCALPROC WrtOptScreenVSync(void)
 	WrtOptBooleanOption("-vsync", WantScreenVSync, dfo_ScreenVSync());
 }
 
+
+/* option: Graphics Switching */
+
+LOCALVAR blnr WantGraphicsSwitching;
+LOCALVAR ui3r olv_GraphicsSwitching;
+
+LOCALPROC ResetGraphicsSwitching(void)
+{
+	WantGraphicsSwitching = nanblnr;
+	olv_GraphicsSwitching = 0;
+}
+
+LOCALFUNC tMyErr TryAsGraphicsSwitchingNot(void)
+{
+	return BooleanTryAsOptionNot("-gse",
+		&WantGraphicsSwitching, &olv_GraphicsSwitching);
+}
+
+#define dfo_GraphicsSwitching() falseblnr
+
+LOCALFUNC tMyErr ChooseGraphicsSwitching(void)
+{
+	tMyErr err;
+
+	err = noErr;
+	if (nanblnr == WantGraphicsSwitching) {
+		WantGraphicsSwitching = dfo_GraphicsSwitching();
+	} else {
+		if (WantGraphicsSwitching && (gbk_apifam_cco != gbo_apifam)) {
+			err = ReportParseFailure(
+				"-gse is so far only implemented for cocoa on OS X");
+		}
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptGraphicsSwitching(void)
+{
+	WrtOptBooleanOption("-gse", WantGraphicsSwitching,
+		dfo_GraphicsSwitching());
+}
+
 /* ------ */
 
 LOCALVAR blnr NeedScrnHack;
@@ -3410,6 +3453,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetWantDisasm();
 	ResetDbgLogHAVE();
 	ResetScreenVSync();
+	ResetGraphicsSwitching();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -3475,6 +3519,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsWantDisasmNot()))
 	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
+	if (kMyErrNoMatch == (err = TryAsGraphicsSwitchingNot()))
 	{
 	}
 
@@ -3546,6 +3591,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (noErr == (err = ChooseWantDisasm()))
 	if (noErr == (err = ChooseDbgLogHAVE()))
 	if (noErr == (err = ChooseScreenVSync()))
+	if (noErr == (err = ChooseGraphicsSwitching()))
 
 	if (noErr == (err = ChooseScreenOpts())) /* derived */
 	if (noErr == (err = ChooseVidMemSize())) /* derived */
@@ -3619,4 +3665,5 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptWantDisasmNot();
 	WrtOptDbgLogHAVE();
 	WrtOptScreenVSync();
+	WrtOptGraphicsSwitching();
 }

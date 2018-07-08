@@ -525,7 +525,7 @@ LOCALPROC SetSpeedValue(ui3b i)
 FORWARDPROC ToggleWantFullScreen(void);
 #endif
 
-#if IncludePbufs
+#if IncludeHostTextClipExchange
 LOCALPROC CopyOptionsStr(void)
 {
 	ui3b ps[ClStrMaxLength];
@@ -637,7 +637,7 @@ LOCALPROC DoControlModeKey(ui3r key)
 					ControlMessage = kCntrlMsgFullScreen;
 					break;
 #endif
-#if IncludePbufs
+#if IncludeHostTextClipExchange
 				case MKC_P:
 					CopyOptionsStr();
 					ControlMessage = kCntrlMsgOptionsStrCopied;

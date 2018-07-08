@@ -89,6 +89,8 @@
 #include "SPBLDOPT.i"
 #endif
 
+#pragma segment Body1
+
 #include "WRTEXTFL.i"
 #include "BLDUTIL3.i"
 

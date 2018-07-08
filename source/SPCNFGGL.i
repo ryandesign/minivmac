@@ -88,7 +88,7 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 	WriteBlankLineToDestFile();
 
 	WriteCompCondBool("IncludeHostTextClipExchange",
-		((! WantMinExtn) || WantActvCode || WantDemoMsg)
+		1 /* ((! WantMinExtn) || WantActvCode || WantDemoMsg) */
 			&& (gbk_apifam_gtk != gbo_apifam)
 			&& (gbk_apifam_sdl != gbo_apifam)
 			&& (gbk_apifam_nds != gbo_apifam));

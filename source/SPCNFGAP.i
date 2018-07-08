@@ -128,6 +128,10 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		WriteDestFileLn("#define UseAGLdoublebuff 1");
 	}
 
+	if (WantGraphicsSwitching) {
+		WriteDestFileLn("#define WantGraphicsSwitching 1");
+	}
+
 	if (! WantGrabKeysFS) {
 		WriteDestFileLn("#define GrabKeysFullScreen 0");
 	}
