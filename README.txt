@@ -8,7 +8,7 @@ MnvM_b36 is the build system for Mini vMac,
 a miniature Macintosh emulator.
 
 Further information may be found at
-"http://www.gryphel.com/c/minivmac/".
+"https://www.gryphel.com/c/minivmac/".
 
 
 You can redistribute MnvM_b36 and/or modify it under the terms
