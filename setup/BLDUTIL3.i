@@ -693,22 +693,21 @@ LOCALPROC WriteMainRsrcSrcPath(void)
 
 LOCALPROC WriteMainRsrcObjName(void)
 {
-	switch (cur_ide) {
-		case gbk_ide_msv:
-		case gbk_ide_lcc:
-		case gbk_ide_dvc:
-		case gbk_ide_cyg:
-		case gbk_ide_mgw:
-		case gbk_ide_mvc:
-		case gbk_ide_dmc:
-		case gbk_ide_dkp:
-		case gbk_ide_plc:
-			WriteCStrToDestFile("main.res");
-			break;
-		case gbk_ide_mpw:
-			WriteCStrToDestFile("main.rsrc");
-			break;
-	}
+#if (gbk_ide_msv == cur_ide) \
+	|| (gbk_ide_lcc == cur_ide) \
+	|| (gbk_ide_dvc == cur_ide) \
+	|| (gbk_ide_cyg == cur_ide) \
+	|| (gbk_ide_mgw == cur_ide) \
+	|| (gbk_ide_mvc == cur_ide) \
+	|| (gbk_ide_dmc == cur_ide) \
+	|| (gbk_ide_dkp == cur_ide) \
+	|| (gbk_ide_plc == cur_ide)
+	WriteCStrToDestFile("main.res");
+#endif
+
+#if (gbk_ide_mpw == cur_ide)
+	WriteCStrToDestFile("main.rsrc");
+#endif
 }
 
 LOCALPROC WriteMainRsrcObjPath(void)
@@ -1020,7 +1019,6 @@ LOCALPROC WriteEchoToNewFile(MyProc ptext, MyProc pto, blnr newline)
 			WritePathArgInMakeCmnd(pto);
 			break;
 			break;
-		case gbk_ide_bgc:
 		case gbk_ide_cyg:
 		case gbk_ide_snc:
 		case gbk_ide_dkp:
@@ -1034,6 +1032,7 @@ LOCALPROC WriteEchoToNewFile(MyProc ptext, MyProc pto, blnr newline)
 			WriteCStrToDestFile("\" >");
 			WritePathArgInMakeCmnd(pto);
 			break;
+		case gbk_ide_bgc:
 		case gbk_ide_mvc:
 		case gbk_ide_xcd:
 			WriteCStrToDestFile("printf \"");

@@ -36,19 +36,24 @@ LOCALPROC WriteAppCNFGGLOBContents(void)
 	WriteAppSpecificCNFGGLOBoptions();
 }
 
+LOCALPROC WriteBldOpts(void)
+{
+	Branch = MajorVersion;
+
+	WrtOptGNSettings();
+	WrtOptSPSettings();
+}
+
 LOCALPROC WriteAppCNFGRAPIContents(void)
 {
 	WriteCommonCNFGRAPIContents();
 
 	WriteAppSpecificCNFGRAPIoptions();
 
-	Branch = MajorVersion;
-
 	WriteBlankLineToDestFile();
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("#define kBldOpts \"");
-	WrtOptGNSettings();
-	WrtOptSPSettings();
+	WriteBldOpts();
 	WriteCStrToDestFile("\"");
 	WriteEndDestFileLn();
 }

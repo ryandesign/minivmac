@@ -238,6 +238,24 @@ LOCALPROC MakeConfigFolder(void)
 	MakeSubDirectory("my_config_d", "my_project_d", cfg_d_name, "");
 }
 
+#if WantWriteVarName
+LOCALPROC WriteAppVariationStr1(void)
+{
+	WriteBgnDestFileLn();
+	WriteAppVariationStr();
+	WriteEndDestFileLn();
+}
+#endif
+
+#if WantWriteBldOpts
+LOCALPROC WriteBldOpts1(void)
+{
+	WriteBgnDestFileLn();
+	WriteBldOpts();
+	WriteEndDestFileLn();
+}
+#endif
+
 LOCALFUNC tMyErr DoTheCommand(void)
 {
 	tMyErr err;
@@ -262,6 +280,17 @@ LOCALFUNC tMyErr DoTheCommand(void)
 		if (CurPrintCFiles) {
 			WriteCFilesList();
 		}
+
+#if WantWriteVarName
+		WriteADstFile1("my_project_d",
+			"var_name", "", "variation name",
+			WriteAppVariationStr1);
+#endif
+#if WantWriteBldOpts
+		WriteADstFile1("my_project_d",
+			"bld_opts", "", "build options",
+			WriteBldOpts1);
+#endif
 
 		WriteIdeSpecificFiles();
 	}

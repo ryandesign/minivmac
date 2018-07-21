@@ -56,7 +56,7 @@ LOCALPROC WriteHexWordToOutput(unsigned int v)
 
 LOCALPROC WriteHexLongToOutput(ui5r v)
 {
-	printf("%08X", v);
+	printf("%08lX", v);
 }
 
 LOCALPROC WriteEolToOutput(void)
@@ -103,6 +103,12 @@ GLOBALPROC WriteScriptLangHeader(void)
 	WriteEolToOutput();
 #endif
 }
+
+#if (gbo_script == gbk_script_bash)
+#ifndef BashUsePrintf
+#define BashUsePrintf 1
+#endif
+#endif
 
 GLOBALPROC WriteSectionCommentDestFile(char * Description)
 {
@@ -192,7 +198,12 @@ LOCALPROC WriteOpenDestFile(char *DirVar, char *FileName, char *FileExt,
 		WriteCStrToOutput(FileExt);
 		WriteCStrToOutput("\"");
 		WriteEolToOutput();
-		WriteLnCStrToOutput("echo -n > \"${DestFile}\"");
+#if BashUsePrintf
+		WriteLnCStrToOutput("printf \"\" > \"${DestFile}\"");
+#else
+		/* WriteLnCStrToOutput("echo -n > \"${DestFile}\""); */
+		WriteLnCStrToOutput("true > \"${DestFile}\"");
+#endif
 		WriteEolToOutput();
 	}
 #endif
@@ -267,7 +278,11 @@ LOCALPROC WriteBlankLineToDestFile(void)
 	WriteLnCStrToOutput("\twrite \"\" & return to DestFile");
 #endif
 #if (gbo_script == gbk_script_bash)
+#if BashUsePrintf
+	WriteLnCStrToOutput("printf \"\\n\" >> \"${DestFile}\"");
+#else
 	WriteLnCStrToOutput("echo '' >> \"${DestFile}\"");
+#endif
 #endif
 #if (gbo_script == gbk_script_vbscript)
 	WriteLnCStrToOutput("f.WriteLine(\"\")");
@@ -294,7 +309,11 @@ LOCALPROC WriteBgnDestFileLn(void)
 	WriteCStrToOutput("\twrite \"");
 #endif
 #if (gbo_script == gbk_script_bash)
+#if BashUsePrintf
+	WriteCStrToOutput("printf \"%s\\n\" '");
+#else
 	WriteCStrToOutput("echo '");
+#endif
 #endif
 #if (gbo_script == gbk_script_vbscript)
 	WriteCStrToOutput("f.WriteLine(\"");

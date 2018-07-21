@@ -1977,7 +1977,7 @@ LOCALFUNC tMyErr ChooseMenuBlink(void)
 	if (0 == olv_MenuBlink) {
 		cur_MenuBlink = dfo_MenuBlink();
 	} else {
-		if ((cur_MenuBlink < 0) || (cur_MenuBlink > 3)) {
+		if (cur_MenuBlink > 3) {
 			err = ReportParseFailure(
 				"-mnb must be a number between 0 and 3");
 		}
@@ -2019,7 +2019,7 @@ LOCALFUNC tMyErr ChooseAutoKeyThresh(void)
 	if (0 == olv_AutoKeyThresh) {
 		cur_AutoKeyThresh = dfo_AutoKeyThresh();
 	} else {
-		if ((cur_AutoKeyThresh < 0) || (cur_AutoKeyThresh > 15)) {
+		if (cur_AutoKeyThresh > 15) {
 			err = ReportParseFailure(
 				"-kyt must be a number between 0 and 15");
 		}
@@ -2061,7 +2061,7 @@ LOCALFUNC tMyErr ChooseAutoKeyRate(void)
 	if (0 == olv_AutoKeyRate) {
 		cur_AutoKeyRate = dfo_AutoKeyRate();
 	} else {
-		if ((cur_AutoKeyRate < 0) || (cur_AutoKeyRate > 15)) {
+		if (cur_AutoKeyRate > 15) {
 			err = ReportParseFailure(
 				"-kyr must be a number between 0 and 15");
 		}
@@ -2094,7 +2094,7 @@ LOCALFUNC tMyErr ChooseHilColPart(char *s, uimr *cur_HilColV,
 				err = ReportParseFailPStr(t);
 			}
 		} else
-		if ((*cur_HilColV < 0) || (*cur_HilColV > 65535)) {
+		if (*cur_HilColV > 65535) {
 			PStrFromCStr(t, s);
 			PStrApndCStr(t, " must be a number between 0 and 65535");
 			err = ReportParseFailPStr(t);
@@ -2485,7 +2485,7 @@ LOCALFUNC tMyErr ChooseSpeakerVol(void)
 	if (0 == olv_SpeakerVol) {
 		cur_SpeakerVol = dfo_SpeakerVol();
 	} else {
-		if ((cur_SpeakerVol < 0) || (cur_SpeakerVol >= 8)) {
+		if (cur_SpeakerVol >= 8) {
 			err = ReportParseFailure(
 				"-svl must be a number between 0 and 7");
 		}

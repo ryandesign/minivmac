@@ -249,6 +249,10 @@ LOCALPROC WriteMyInfoPListContents(void)
 		if (gbk_apifam_cco == gbo_apifam) {
 			WritePListKeyString("NSHighResolutionCapable", "1");
 		}
+		if (WantGraphicsSwitching) {
+			WritePListKeyString("NSSupportsAutomaticGraphicsSwitching",
+				"1");
+		}
 		if (gbk_apifam_sd2 == gbo_apifam) {
 			WritePListKeyString("SDL_FILESYSTEM_BASE_DIR_TYPE",
 				"parent");

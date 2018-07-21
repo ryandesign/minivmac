@@ -79,3 +79,13 @@
 #endif
 
 #endif /* gbo_script */
+
+
+#ifndef WantWriteVarName
+#define WantWriteVarName 0
+#endif
+
+
+#ifndef WantWriteBldOpts
+#define WantWriteBldOpts 0
+#endif
