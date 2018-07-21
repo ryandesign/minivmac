@@ -86,6 +86,13 @@ LOCALPROC WriteLccW32WorkSpaceFile(void)
 	WriteEndDestFileLn();
 
 	WriteBgnDestFileLn();
+	WriteCStrToDestFile("Includes=");
+	Write_cfg_d_ToDestFile();
+	WriteCStrToDestFile(" ");
+	Write_src_d_ToDestFile();
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
 	WriteCStrToDestFile("MakeDir=");
 	Write_obj_d_ToDestFile();
 	WriteEndDestFileLn();

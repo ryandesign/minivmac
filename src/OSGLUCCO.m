@@ -1282,6 +1282,8 @@ GLOBALOSGLUFUNC tMacErr HTCEexport(tPbuf i)
 			err = mnvm_noErr;
 		}
 
+		[d release];
+
 		[pool release];
 	}
 

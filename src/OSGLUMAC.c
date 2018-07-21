@@ -3088,8 +3088,8 @@ LOCALFUNC tMacErr LoadMacRomFromFSSpec(FSSpec *spec)
 	tMacErr err;
 	short refnum;
 
-	if (mnvm_noErr != (err =
-		To_tMacErr(FSpOpenDF(spec, fsRdPerm, &refnum)))
+	if (mnvm_noErr == (err =
+		To_tMacErr(FSpOpenDF(spec, fsRdPerm, &refnum))))
 	{
 		err = LoadMacRomFromRefNum(refnum);
 		(void) FSClose(refnum);
@@ -3112,8 +3112,8 @@ LOCALFUNC tMacErr LoadMacRomFromNamevRef(ConstStr255Param fileName,
 	R.ioParam.ioPermssn = fsRdPerm;
 	R.ioParam.ioMisc = NULL;
 	if (mnvm_noErr == (err = To_tMacErr(PBOpen(&R, false)))) {
-		err = LoadMacRomFromRefNum(refnum);
-		(void) FSClose(refnum);
+		err = LoadMacRomFromRefNum(R.ioParam.ioRefNum);
+		(void) FSClose(R.ioParam.ioRefNum);
 	}
 
 	return err;
@@ -3127,7 +3127,7 @@ LOCALFUNC tMacErr InsertADiskFromNamevRef1(ConstStr255Param fileName,
 	tMacErr err;
 
 	if (! ROM_loaded) {
-		err = LoadMacRomFromNamevRef(theRef);
+		err = LoadMacRomFromNamevRef(fileName, vRefNum);
 	} else {
 		err = InsertADiskFromNamevRef(fileName, vRefNum);
 	}
@@ -3795,7 +3795,7 @@ LOCALFUNC tMacErr LoadMacRomFromNameFolder(MyDir_R *d,
 	short refnum;
 
 	if (mnvm_noErr == (err =
-		OpenNamedFileInFolderCStr(d, s, refnum)))
+		OpenNamedFileInFolderCStr(d, s, &refnum)))
 	{
 		err = LoadMacRomFromRefNum(refnum);
 		(void) FSClose(refnum);

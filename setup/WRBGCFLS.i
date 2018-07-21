@@ -149,10 +149,10 @@ LOCALPROC WriteBgcCOptions(void)
 	}
 
 	if (1 /* WantConfigDir */) {
-		WriteCStrToDestFile(" -I./");
-		Write_cfg_d_Name();
-		WriteCStrToDestFile(" -I./");
-		Write_src_d_Name();
+		WriteCStrToDestFile(" -I");
+		Write_cfg_d_ToDestFile();
+		WriteCStrToDestFile(" -I");
+		Write_src_d_ToDestFile();
 	}
 }
 

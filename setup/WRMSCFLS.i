@@ -562,6 +562,10 @@ LOCALPROC WriteMSVCProjectFile(void)
 	if (! WinCE) {
 		WriteCStrToDestFile(" /FD");
 	}
+	WriteCStrToDestFile(" /I ");
+	WriteQuoteToDestFile();
+	Write_cfg_d_ToDestFile();
+	WriteQuoteToDestFile();
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("# ADD BASE MTL");
@@ -586,6 +590,10 @@ LOCALPROC WriteMSVCProjectFile(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("# ADD RSC ");
 	WriteRCexeFlags();
+	WriteCStrToDestFile(" /I ");
+	WriteQuoteToDestFile();
+	Write_src_d_ToDestFile();
+	WriteQuoteToDestFile();
 	WriteEndDestFileLn();
 
 	WriteDestFileLn("BSC32=bscmake.exe");
@@ -779,6 +787,10 @@ LOCALPROC WriteMSVCCompilerToolConfig(void)
 			"PreprocessorDefinitions=\"WIN32;NDEBUG;_WINDOWS\"");
 		WriteDestFileLn("StringPooling=\"true\"");
 	}
+
+	WriteXMLQuotedProp("AdditionalIncludeDirectories",
+		Write_cfg_d_ToDestFile);
+
 	WriteDestFileLn("ExceptionHandling=\"0\"");
 	if (gbk_dbg_on == gbo_dbg) {
 		WriteDestFileLn("BasicRuntimeChecks=\"3\"");
@@ -811,6 +823,12 @@ LOCALPROC WriteMSVCCompilerToolConfig(void)
 		WriteDestFileLn("DebugInformationFormat=\"0\"");
 	}
 	WriteDestFileLn("CompileAs=\"0\"");
+}
+
+LOCALPROC WriteMSVCResourceCompilerToolConfig(void)
+{
+	WriteXMLQuotedProp("AdditionalIncludeDirectories",
+		Write_src_d_ToDestFile);
 }
 
 LOCALPROC WriteMSVCLinkerToolConfig(void)
@@ -860,7 +878,8 @@ LOCALPROC WriteMSVCXMLConfigurationBody(void)
 	if (ide_vers >= 8000) {
 		WriteMSVCToolConfig("VCManagedResourceCompilerTool", NULL);
 	}
-	WriteMSVCToolConfig("VCResourceCompilerTool", NULL);
+	WriteMSVCToolConfig("VCResourceCompilerTool",
+		WriteMSVCResourceCompilerToolConfig);
 	WriteMSVCToolConfig("VCPreLinkEventTool", NULL);
 	WriteMSVCToolConfig("VCLinkerTool", WriteMSVCLinkerToolConfig);
 	if (ide_vers >= 8000) {
@@ -1248,11 +1267,6 @@ LOCALPROC DoSrcFileNMakeAddObjFile(void)
 	WriteEndDestFileLn();
 }
 
-LOCALPROC WriteMainRsrcObjMSCdeps(void)
-{
-	WriteMakeDependFile(WriteMainRsrcSrcPath);
-}
-
 LOCALPROC WriteMainRsrcObjMSCbuild(void)
 {
 	WriteBgnDestFileLn();
@@ -1260,7 +1274,12 @@ LOCALPROC WriteMainRsrcObjMSCbuild(void)
 	WriteRCexeFlags();
 	WriteCStrToDestFile(" /fo\"");
 	WriteMainRsrcObjPath();
-	WriteCStrToDestFile("\" \"");
+	WriteCStrToDestFile("\"");
+	WriteCStrToDestFile(" /i");
+	WriteQuoteToDestFile();
+	Write_src_d_ToDestFile();
+	WriteQuoteToDestFile();
+	WriteCStrToDestFile(" \"");
 	WriteMainRsrcSrcPath();
 	WriteCStrToDestFile("\"");
 	WriteEndDestFileLn();
@@ -1276,12 +1295,16 @@ LOCALPROC WriteNMakeMakeFile(void)
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("mk_COptions=");
 	WriteCLexeFlags();
-	WriteCStrToDestFile(" /Fo\"");
-	Write_obj_d_ToDestFile();
-	WriteCStrToDestFile("\\\\\" /Fd\"");
-	Write_obj_d_ToDestFile();
+	WriteCStrToDestFile(" /I\"");
+	Write_cfg_d_ToDestFile();
 	WriteCStrToDestFile("\\\\\"");
 		/* yes, a double backslash is what is needed */
+	WriteCStrToDestFile(" /Fo\"");
+	Write_obj_d_ToDestFile();
+	WriteCStrToDestFile("\\\\\"");
+	WriteCStrToDestFile(" /Fd\"");
+	Write_obj_d_ToDestFile();
+	WriteCStrToDestFile("\\\\\"");
 	WriteEndDestFileLn();
 
 	WriteBlankLineToDestFile();
@@ -1671,11 +1694,27 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 							maybe more compatibility issues
 						*/
 				}
+				WriteBgnDestFileLn();
+				WriteXMLtagBegin("AdditionalIncludeDirectories");
+				Write_cfg_d_ToDestFile();
+				WriteCStrToDestFile(";%(AdditionalIncludeDirectories)");
+				WriteXMLtagEnd("AdditionalIncludeDirectories");
+				WriteEndDestFileLn();
+
 				WriteXMLtagBeginValEndLine("FunctionLevelLinking",
 					"true");
 				WriteXMLtagBeginValEndLine("ExceptionHandling",
 					"false");
 			WriteEndXMLtagLine("ClCompile");
+
+			WriteBeginXMLtagLine("ResourceCompile");
+				WriteBgnDestFileLn();
+				WriteXMLtagBegin("AdditionalIncludeDirectories");
+				Write_src_d_ToDestFile();
+				WriteCStrToDestFile(";%(AdditionalIncludeDirectories)");
+				WriteXMLtagEnd("AdditionalIncludeDirectories");
+				WriteEndDestFileLn();
+			WriteEndXMLtagLine("ResourceCompile");
 
 			WriteBeginXMLtagLine("Link");
 				WriteXMLtagBeginValEndLine("SubSystem", "Windows");

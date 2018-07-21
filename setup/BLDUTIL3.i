@@ -379,7 +379,7 @@ LOCALPROC WriteLProjFolderName(void)
 
 LOCALPROC WriteLProjFolderPath(void)
 {
-	WriteSubDirToDestFile(Write_src_d_ToDestFile,
+	WriteSubDirToDestFile(Write_cfg_d_ToDestFile,
 		WriteLProjFolderName);
 }
 
@@ -827,6 +827,11 @@ LOCALPROC WriteMakeDependFile(MyProc p)
 		default:
 			break;
 	}
+}
+
+LOCALPROC WriteMainRsrcObjMSCdeps(void)
+{
+	WriteMakeDependFile(WriteMainRsrcSrcPath);
 }
 
 LOCALPROC WriteMakeRule(MyProc ptarg,

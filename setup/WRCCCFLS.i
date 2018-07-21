@@ -25,6 +25,10 @@ LOCALPROC WriteCccMakeFile(void)
 	WriteBlankLineToDestFile();
 
 	WriteDestFileLn("mk_COptions = -c");
+	WriteCStrToDestFile(" -I");
+	Write_cfg_d_ToDestFile();
+	WriteCStrToDestFile(" -I");
+	Write_src_d_ToDestFile();
 	WriteBlankLineToDestFile();
 
 	WriteBgnDestFileLn();

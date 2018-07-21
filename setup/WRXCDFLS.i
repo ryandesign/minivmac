@@ -463,15 +463,19 @@ LOCALPROC DoHeaderFileXCDaddFileRefBody(void)
 
 LOCALPROC DoHeaderFileXCDaddFileRef(void)
 {
-	WriteAPBXCDObjectAp(APBoclsHdr, FileCounter,
-		WriteSrcFileHeaderName,
-		DoHeaderFileXCDaddFileRefBody);
+	if (0 == (DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader)) {
+		WriteAPBXCDObjectAp(APBoclsHdr, FileCounter,
+			WriteSrcFileHeaderName,
+			DoHeaderFileXCDaddFileRefBody);
+	}
 }
 
 LOCALPROC DoHeaderFileXCDaddToGroup(void)
 {
-	WriteAPBXCDobjlistelmp(APBoclsHdr, FileCounter,
-		WriteSrcFileHeaderName);
+	if (0 == (DoSrcFile_gd()->Flgm & kCSrcFlgmNoHeader)) {
+		WriteAPBXCDobjlistelmp(APBoclsHdr, FileCounter,
+			WriteSrcFileHeaderName);
+	}
 }
 
 LOCALPROC WriteDocTypeAPBXCDIconFileInResources(void)
@@ -1125,7 +1129,11 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 		if (gbk_cpufam_ppc == gbo_cpufam) {
 			WriteDestFileLn("MACOSX_DEPLOYMENT_TARGET = 10.1;");
 		} else {
-			WriteDestFileLn("MACOSX_DEPLOYMENT_TARGET = 10.4;");
+			if (ide_vers >= 9000) {
+				WriteDestFileLn("MACOSX_DEPLOYMENT_TARGET = 10.6;");
+			} else {
+				WriteDestFileLn("MACOSX_DEPLOYMENT_TARGET = 10.4;");
+			}
 		}
 	}
 	if (ide_vers < 1500) {
@@ -1180,6 +1188,9 @@ LOCALPROC WriteAPBXCDBuildSettings(void)
 	if ((ide_vers >= 1500) && (ide_vers < 2100)) {
 		WriteDestFileLn("SYMROOT = \"$(PROJECT_DIR)\";");
 	}
+	WriteDestFileLn("USER_HEADER_SEARCH_PATHS = \"$(SRCROOT)/"
+		cfg_d_name
+		"\";");
 	if (ide_vers >= 2100) {
 		WriteAPBXCDBgnObjList("WARNING_CFLAGS");
 			WriteDestFileLn("\"-Wall\",");
@@ -1529,6 +1540,10 @@ LOCALPROC WriteXCDProjectFile(void)
 							0, WriteInfoPlistFileName);
 					}
 					if (HaveAPBXCD_LangDummy) {
+#if 0
+						WriteAPBXCDobjlistelmp(APBospcLangRf,
+							0, WriteLProjFolderName);
+#endif
 						WriteAPBXCDobjlistelmp(APBospcLangDummyRf,
 							0, WriteDummyLangFileName);
 					}
@@ -1658,6 +1673,27 @@ LOCALPROC WriteXCDProjectFile(void)
 				WriteAPBXCDDObjAPropRefType4();
 				WriteAPBXCDDObjAPropSourceTreeGroup();
 			WriteAPBXCDEndObject();
+#if 0
+			WriteAPBXCDBeginObject(APBospcLangRf,
+				0, WriteLProjFolderName);
+
+				if (HaveAPBXCD_IsaFirst) {
+					WriteAPBXCDDObjAPropIsaGroup();
+				}
+
+				WriteAPBXCDBgnObjList("children");
+					WriteAPBXCDobjlistelmp(APBospcLangDummyRf,
+						0, WriteDummyLangFileName);
+				WriteAPBXCDEndObjList();
+				if (! HaveAPBXCD_IsaFirst) {
+					WriteAPBXCDDObjAPropIsaGroup();
+				}
+				WriteAPBXCDDObjAPropName(WriteLProjFolderName);
+				WriteAPBXCDDObjAPropPath(WriteLProjFolderPath);
+				WriteAPBXCDDObjAPropRefType4();
+				WriteAPBXCDDObjAPropSourceTreeGroup();
+			WriteAPBXCDEndObject();
+#endif
 		}
 	DoEndSectionAPBXCD("PBXGroup");
 

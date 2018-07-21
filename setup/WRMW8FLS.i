@@ -303,6 +303,7 @@ LOCALPROC WriteMetrowerksProjectFile(void)
 			}
 			WriteBeginNamedSettingXMLtagLine("UserSearchPaths");
 				WriteMWProjRelSearchPath(Write_src_d_ToDestFile);
+				WriteMWProjRelSearchPath(Write_cfg_d_ToDestFile);
 				if (gbk_targfam_mach == gbo_targfam) {
 					/* seems to be wanted by property list compiler */
 					WriteMWDrvRelSearchPath(":");

@@ -55,7 +55,7 @@ LOCALPROC WriteLongGlueSourceName(void)
 
 LOCALPROC WriteLongGlueSourcePath(void)
 {
-	WriteFileInDirToDestFile0(Write_src_d_ToDestFile,
+	WriteFileInDirToDestFile0(Write_cfg_d_ToDestFile,
 		WriteLongGlueSourceName);
 }
 
@@ -118,6 +118,16 @@ static void WriteMPWCOptions(blnr fast)
 			}
 		}
 	}
+
+	WriteCStrToDestFile(" -i ");
+	WriteQuoteToDestFile();
+	Write_cfg_d_ToDestFile();
+	WriteQuoteToDestFile();
+
+	WriteCStrToDestFile(" -i ");
+	WriteQuoteToDestFile();
+	Write_src_d_ToDestFile();
+	WriteQuoteToDestFile();
 }
 
 LOCALPROC WriteMainRsrcObjDeps(void)
@@ -129,6 +139,17 @@ LOCALPROC WriteMainRsrcObjMPWbody(void)
 {
 	WriteBgnDestFileLn();
 	WriteCStrToDestFile("Rez -t rsrc -c RSED -i \"{RIncludes}\" \"");
+
+	WriteCStrToDestFile(" -i ");
+	WriteQuoteToDestFile();
+	Write_cfg_d_ToDestFile();
+	WriteQuoteToDestFile();
+
+	WriteCStrToDestFile(" -i ");
+	WriteQuoteToDestFile();
+	Write_src_d_ToDestFile();
+	WriteQuoteToDestFile();
+
 	WriteMainRsrcSrcPath();
 	WriteCStrToDestFile("\" -o \"");
 	WriteMainRsrcObjPath();
@@ -318,7 +339,7 @@ LOCALPROC WriteMPWMakeFile(void)
 
 LOCALPROC WriteMPWSpecificFiles(void)
 {
-	if (gbk_cpufam_68k != gbo_cpufam) {
+	if (gbk_cpufam_68k == gbo_cpufam) {
 		WriteADstFile1("my_config_d",
 			"LONGGLUE", ".S", "entry point glue for large program",
 			WriteLONGGLUEContents);

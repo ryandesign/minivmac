@@ -71,6 +71,13 @@ LOCALPROC WriteDevCProjectFile(void)
 	WriteDestFileLn("Ver=1");
 
 	WriteBgnDestFileLn();
+	WriteCStrToDestFile("Includes=");
+	Write_cfg_d_ToDestFile();
+	WriteCStrToDestFile(" ");
+	Write_src_d_ToDestFile();
+	WriteEndDestFileLn();
+
+	WriteBgnDestFileLn();
 	WriteCStrToDestFile("PrivateResource=");
 	WriteAppVariationStr();
 	WriteCStrToDestFile("_private.rc");

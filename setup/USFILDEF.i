@@ -210,7 +210,10 @@ LOCALPROC WriteExtraHeaderFileName(void)
 
 LOCALPROC WriteExtraHeaderFilePath(void)
 {
-	WriteFileInDirToDestFile0(Write_src_d_ToDestFile,
+	WriteFileInDirToDestFile0(
+		((kDepDirCnfg == DoSrcFile_gd()->DepDir)
+			? Write_cfg_d_ToDestFile
+			: Write_src_d_ToDestFile),
 		WriteExtraHeaderFileName);
 }
 

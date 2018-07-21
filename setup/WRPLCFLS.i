@@ -116,9 +116,19 @@ LOCALPROC WritePLCProjectFile(void)
 		"SIGNFLAGS = -timeurl:http://"
 		"timestamp.verisign.com/scripts/timstamp.dll"
 		" -location:CU -store:MY -errkill#");
-	WriteDestFileLn(
-		"INCLUDE = $(PellesCDir)\\Include\\Win;"
-		"$(PellesCDir)\\Include#");
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("INCLUDE = ");
+	WriteCStrToDestFile("$(PellesCDir)\\Include\\Win");
+	WriteCStrToDestFile(";");
+	WriteCStrToDestFile("$(PellesCDir)\\Include");
+	WriteCStrToDestFile(";");
+	Write_src_d_ToDestFile();
+	WriteCStrToDestFile(";");
+	Write_cfg_d_ToDestFile();
+	WriteCStrToDestFile("#");
+	WriteEndDestFileLn();
+
 	WriteDestFileLn(
 		"LIB = $(PellesCDir)\\Lib\\Win;$(PellesCDir)\\Lib#");
 	WriteDestFileLn("WizCreator = Pelle Orinius#");
