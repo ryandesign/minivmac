@@ -321,6 +321,51 @@ LOCALFUNC blnr Sony_Insert1(char *drivepath, blnr silentfail)
 	return falseblnr;
 }
 
+LOCALFUNC tMacErr LoadMacRomFrom(char *path)
+{
+	tMacErr err;
+	FILE *ROM_File;
+	int File_Size;
+
+	ROM_File = fopen(path, "rb");
+	if (NULL == ROM_File) {
+		err = mnvm_fnfErr;
+	} else {
+		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
+		if (File_Size != kROM_Size) {
+			if (feof(ROM_File)) {
+				MacMsgOverride(kStrShortROMTitle,
+					kStrShortROMMessage);
+				err = mnvm_eofErr;
+			} else {
+				MacMsgOverride(kStrNoReadROMTitle,
+					kStrNoReadROMMessage);
+				err = mnvm_miscErr;
+			}
+		} else {
+			err = ROM_IsValid();
+		}
+		fclose(ROM_File);
+	}
+
+	return err;
+}
+
+#if 0 /* no drag and drop to make use of this */
+LOCALFUNC blnr Sony_Insert1a(char *drivepath, blnr silentfail)
+{
+	blnr v;
+
+	if (! ROM_loaded) {
+		v = (mnvm_noErr == LoadMacRomFrom(drivepath));
+	} else {
+		v = Sony_Insert1(drivepath, silentfail);
+	}
+
+	return v;
+}
+#endif
+
 LOCALFUNC blnr Sony_Insert2(char *s)
 {
 	return Sony_Insert1(s, trueblnr);
@@ -360,32 +405,6 @@ LOCALFUNC blnr LoadInitialImages(void)
 
 LOCALVAR char *rom_path = NULL;
 
-LOCALFUNC tMacErr LoadMacRomFrom(char *path)
-{
-	tMacErr err;
-	FILE *ROM_File;
-	int File_Size;
-
-	ROM_File = fopen(path, "rb");
-	if (NULL == ROM_File) {
-		err = mnvm_fnfErr;
-	} else {
-		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
-		if (File_Size != kROM_Size) {
-			if (feof(ROM_File)) {
-				err = mnvm_eofErr;
-			} else {
-				err = mnvm_miscErr;
-			}
-		} else {
-			err = mnvm_noErr;
-		}
-		fclose(ROM_File);
-	}
-
-	return err;
-}
-
 LOCALFUNC blnr LoadMacRom(void)
 {
 	tMacErr err;
@@ -394,20 +413,6 @@ LOCALFUNC blnr LoadMacRom(void)
 		|| (mnvm_fnfErr == (err = LoadMacRomFrom(rom_path))))
 	if (mnvm_fnfErr == (err = LoadMacRomFrom(RomFileName)))
 	{
-	}
-
-	if (mnvm_noErr != err) {
-		if (mnvm_fnfErr == err) {
-			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		} else if (mnvm_eofErr == err) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage,
-				trueblnr);
-		} else {
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage,
-				trueblnr);
-		}
-
-		SpeedStopped = trueblnr;
 	}
 
 	return trueblnr; /* keep launching Mini vMac, regardless */
@@ -2327,14 +2332,15 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (dbglog_open())
 #endif
 	if (ScanCommandLine())
-	if (LoadInitialImages())
 	if (LoadMacRom())
+	if (LoadInitialImages())
 	if (InitLocationDat())
 #if MySoundEnabled
 	if (MySound_Init())
 #endif
 	if (Screen_Init())
 	if (CreateMainWindow())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}

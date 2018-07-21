@@ -840,20 +840,6 @@ LOCALPROC WriteAppEMCONFIGcontents(void)
 		WriteDestFileLn("#define ADB_ShiftOutData VIA1_ShiftInData");
 	}
 
-	WriteBlankLineToDestFile();
-
-	WriteBgnDestFileLn();
-	WriteCStrToDestFile("#define kCheckSumRom_Size ");
-	if (gbk_mdl_Classic == cur_mdl) {
-		WriteCStrToDestFile("0x040000"); /* 256 KB */
-	} else {
-		WriteCStrToDestFile("kROM_Size");
-	}
-	WriteEndDestFileLn();
-
-	if (! WantCheckRomCheckSum) {
-		WriteCompCondBool("CheckRomCheckSum", WantCheckRomCheckSum);
-	}
 	if (! WantDisableRomCheck) {
 		WriteCompCondBool("DisableRomCheck", WantDisableRomCheck);
 	}

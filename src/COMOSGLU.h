@@ -37,6 +37,7 @@
 #endif
 
 GLOBALVAR ui3p ROM = nullpr;
+LOCALVAR blnr ROM_loaded = falseblnr;
 
 GLOBALVAR ui5b vSonyWritableMask = 0;
 GLOBALVAR ui5b vSonyInsertedMask = 0;
@@ -1196,17 +1197,6 @@ LOCALPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal)
 		SavedLongMsg = longMsg;
 		SavedFatalMsg = fatal;
 	}
-}
-
-GLOBALOSGLUPROC WarnMsgCorruptedROM(void)
-{
-	MacMsg(kStrCorruptedROMTitle, kStrCorruptedROMMessage, falseblnr);
-}
-
-GLOBALOSGLUPROC WarnMsgUnsupportedROM(void)
-{
-	MacMsg(kStrUnsupportedROMTitle,
-		kStrUnsupportedROMMessage, falseblnr);
 }
 
 GLOBALOSGLUPROC WarnMsgAbnormalID(ui4r id)

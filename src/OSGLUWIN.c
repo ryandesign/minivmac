@@ -4299,6 +4299,46 @@ LOCALFUNC blnr Sony_Insert1(LPTSTR drivepath, blnr SilentOnMissing)
 	return falseblnr;
 }
 
+LOCALFUNC blnr LoadMacRomFromPath(LPTSTR drivepath)
+{
+	HANDLE refnum = INVALID_HANDLE_VALUE;
+	blnr IsOk = falseblnr;
+
+	refnum = CreateFile(
+		drivepath, /* pointer to name of the file */
+		GENERIC_READ, /* access (read-write) mode */
+		FILE_SHARE_READ, /* share mode */
+		nullpr, /* pointer to security descriptor */
+		OPEN_EXISTING, /* how to create */
+		FILE_ATTRIBUTE_NORMAL, /* file attributes */
+		nullpr /* handle to file with attributes to copy */
+	);
+
+	if (refnum == INVALID_HANDLE_VALUE) {
+		/* MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr); */
+	} else {
+		DWORD BytesRead;
+
+		if (! ReadFile(refnum, /* handle of file to read */
+			(LPVOID)ROM, /* address of buffer that receives data */
+			(DWORD)kROM_Size, /* number of bytes to read */
+			&BytesRead, /* address of number of bytes read */
+			nullpr)) /* address of structure for data */
+		{
+			MacMsgOverride(kStrNoReadROMTitle, kStrNoReadROMMessage);
+		} else
+		if ((ui5b)BytesRead != kROM_Size) {
+			MacMsgOverride(kStrShortROMTitle, kStrShortROMMessage);
+		} else
+		{
+			IsOk = (mnvm_noErr == ROM_IsValid());
+		}
+		(void) CloseHandle(refnum);
+	}
+
+	return IsOk;
+}
+
 #ifndef EnableShellLinks
 #define EnableShellLinks 1
 #endif
@@ -4410,16 +4450,6 @@ LOCALFUNC blnr MyResolveShortcut(LPTSTR FilePath, blnr *directory)
 #endif
 
 #if EnableShellLinks
-LOCALFUNC blnr InsertAnAlias(LPTSTR FilePath)
-{
-	if (MyResolveShortcut(FilePath, NULL)) {
-		return Sony_Insert1(FilePath, falseblnr);
-	}
-	return falseblnr;
-}
-#endif
-
-#if EnableShellLinks
 LOCALFUNC blnr FileIsLink(LPTSTR drivepath)
 {
 	LPTSTR p = FindLastTerm(drivepath, (TCHAR)('.'));
@@ -4433,14 +4463,20 @@ LOCALFUNC blnr FileIsLink(LPTSTR drivepath)
 }
 #endif
 
-LOCALFUNC blnr InsertDiskOrAlias(LPTSTR drivepath)
+LOCALFUNC blnr InsertDiskOrAlias(LPTSTR drivepath,
+	blnr MaybeROM, blnr MaybeAlias)
 {
 #if EnableShellLinks
-	if (FileIsLink(drivepath)) {
-		return InsertAnAlias(drivepath);
-	} else
+	if (MaybeAlias && FileIsLink(drivepath)) {
+		if (! MyResolveShortcut(drivepath, NULL)) {
+			return falseblnr;
+		}
+	}
 #endif
-	{
+
+	if (MaybeROM && ! ROM_loaded) {
+		return LoadMacRomFromPath(drivepath);
+	} else {
 		return Sony_Insert1(drivepath, falseblnr);
 	}
 }
@@ -4640,7 +4676,8 @@ LOCALPROC InsertADisk0(void)
 		}
 #endif
 	} else {
-		(void) Sony_Insert1(ofn.lpstrFile, falseblnr);
+		(void) InsertDiskOrAlias(ofn.lpstrFile,
+			trueblnr, falseblnr);
 	}
 
 #if UseWinCE
@@ -4987,7 +5024,6 @@ LOCALPROC MakeNewDisk(ui5b L, HGLOBAL NewDiskNameDat)
 LOCALFUNC blnr LoadMacRom(void)
 {
 	TCHAR ROMFile[_MAX_PATH];
-	HANDLE refnum = INVALID_HANDLE_VALUE;
 	blnr IsOk = falseblnr;
 
 	if (GetAppDir(ROMFile))
@@ -5008,40 +5044,7 @@ LOCALFUNC blnr LoadMacRom(void)
 	}
 
 	if (IsOk) {
-		IsOk = falseblnr;
-		refnum = CreateFile(
-			ROMFile, /* pointer to name of the file */
-			GENERIC_READ, /* access (read-write) mode */
-			FILE_SHARE_READ, /* share mode */
-			nullpr, /* pointer to security descriptor */
-			OPEN_EXISTING, /* how to create */
-			FILE_ATTRIBUTE_NORMAL, /* file attributes */
-			nullpr /* handle to file with attributes to copy */
-		);
-	}
-
-	if (refnum == INVALID_HANDLE_VALUE) {
-		MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-	} else {
-		DWORD BytesRead;
-
-		if (! ReadFile(refnum, /* handle of file to read */
-			(LPVOID)ROM, /* address of buffer that receives data */
-			(DWORD)kROM_Size, /* number of bytes to read */
-			&BytesRead, /* address of number of bytes read */
-			nullpr)) /* address of structure for data */
-		{
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage, trueblnr);
-		} else if ((ui5b)BytesRead != kROM_Size) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage, trueblnr);
-		} else {
-			IsOk = trueblnr;
-		}
-		(void) CloseHandle(refnum);
-	}
-
-	if (! IsOk) {
-		SpeedStopped = trueblnr;
+		IsOk = LoadMacRomFromPath(ROMFile);
 	}
 
 	return trueblnr;
@@ -5170,7 +5173,8 @@ LOCALFUNC blnr ScanCommandLine(void)
 							falseblnr);
 					}
 				} else {
-					(void) InsertDiskOrAlias(fileName);
+					(void) InsertDiskOrAlias(fileName,
+						falseblnr, trueblnr);
 				}
 			}
 		}
@@ -5282,7 +5286,7 @@ LOCALPROC DragFunc(HDROP hDrop)
 	for (i = 0; i < n; ++i) {
 		if (DragQueryFile(hDrop, i, NULL, 0) < _MAX_PATH - 1) {
 			(void) DragQueryFile(hDrop, i, a, _MAX_PATH);
-			(void) InsertDiskOrAlias(a);
+			(void) InsertDiskOrAlias(a, trueblnr, trueblnr);
 		}
 	}
 
@@ -6038,6 +6042,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (InitHotKeys())
 #endif
 	if (Init60thCheck())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}

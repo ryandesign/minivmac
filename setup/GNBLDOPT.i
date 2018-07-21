@@ -1212,9 +1212,17 @@ LOCALFUNC tMyErr ChooseHaveMacBundleApp(void)
 	HaveMacBundleApp = (gbk_targfam_mach == gbo_targfam)
 		|| ((gbk_targfam_carb == gbo_targfam)
 			&& (gbk_ide_mpw == cur_ide));
+#if 0
 	WantUnTranslocate = (gbk_apifam_cco == gbo_apifam)
 		&& ((gbk_cpufam_x64 == gbo_cpufam)
 			|| (gbk_cpufam_x86 == gbo_cpufam));
+#else
+	WantUnTranslocate = falseblnr;
+		/*
+			on second thought, probably not a good
+			idea to use undocumented calls.
+		*/
+#endif
 
 	return kMyErr_noErr;
 }

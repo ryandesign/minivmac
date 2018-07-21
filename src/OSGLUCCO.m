@@ -1061,16 +1061,58 @@ LOCALFUNC blnr Sony_Insert2(char *s)
 	}
 }
 
+LOCALFUNC tMacErr LoadMacRomPath(NSString *RomPath)
+{
+	FILE *ROM_File;
+	int File_Size;
+	tMacErr err = mnvm_fnfErr;
+	const char *path = [RomPath fileSystemRepresentation];
+
+	ROM_File = fopen(path, "rb");
+	if (NULL != ROM_File) {
+		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
+		if (kROM_Size != File_Size) {
+			if (feof(ROM_File)) {
+				MacMsgOverride(kStrShortROMTitle,
+					kStrShortROMMessage);
+				err = mnvm_eofErr;
+			} else {
+				MacMsgOverride(kStrNoReadROMTitle,
+					kStrNoReadROMMessage);
+				err = mnvm_miscErr;
+			}
+		} else {
+			err = ROM_IsValid();
+		}
+		fclose(ROM_File);
+	}
+
+	return err;
+}
+
+LOCALFUNC blnr Sony_Insert1a(NSString *filePath)
+{
+	blnr v;
+
+	if (! ROM_loaded) {
+		v = (mnvm_noErr == LoadMacRomPath(filePath));
+	} else {
+		v = Sony_Insert1(filePath, falseblnr);
+	}
+
+	return v;
+}
+
 LOCALPROC Sony_ResolveInsert(NSString *filePath)
 {
 	Boolean isDirectory;
 	NSString *RslvPath = MyResolveAlias(filePath, &isDirectory);
 	if (nil != RslvPath) {
 		if (! isDirectory) {
-			(void) Sony_Insert1(RslvPath, falseblnr);
+			(void) Sony_Insert1a(RslvPath);
 		}
 	} else {
-		(void) Sony_Insert1(filePath, falseblnr);
+		(void) Sony_Insert1a(filePath);
 	}
 }
 
@@ -1151,28 +1193,11 @@ LOCALPROC MakeNewDisk0(ui5b L, NSString *sPath)
 
 LOCALFUNC tMacErr LoadMacRomFrom(NSString *parentPath)
 {
-	FILE *ROM_File;
-	int File_Size;
 	NSString *RomPath;
 	tMacErr err = mnvm_fnfErr;
 
 	if (FindNamedChildFilePath(parentPath, RomFileName, &RomPath)) {
-		const char *path = [RomPath fileSystemRepresentation];
-
-		ROM_File = fopen(path, "rb");
-		if (NULL != ROM_File) {
-			File_Size = fread(ROM, 1, kROM_Size, ROM_File);
-			if (kROM_Size != File_Size) {
-				if (feof(ROM_File)) {
-					err = mnvm_eofErr;
-				} else {
-					err = mnvm_miscErr;
-				}
-			} else {
-				err = mnvm_noErr;
-			}
-			fclose(ROM_File);
-		}
+		err = LoadMacRomPath(RomPath);
 	}
 
 	return err;
@@ -1212,20 +1237,6 @@ LOCALFUNC blnr LoadMacRom(void)
 	if (mnvm_fnfErr == (err = LoadMacRomFromAppDir()))
 	if (mnvm_fnfErr == (err = LoadMacRomFromPrefDir()))
 	{
-	}
-
-	if (mnvm_noErr != err) {
-		if (mnvm_fnfErr == err) {
-			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		} else if (mnvm_eofErr == err) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage,
-				trueblnr);
-		} else {
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage,
-				trueblnr);
-		}
-
-		SpeedStopped = trueblnr;
 	}
 
 	return trueblnr; /* keep launching Mini vMac, regardless */
@@ -3055,7 +3066,7 @@ LOCALPROC InsertADisk0(void)
 		for (i = 0; i < n; ++i) {
 			NSURL *fileURL = [a objectAtIndex: i];
 			NSString* filePath = [fileURL path];
-			(void) Sony_Insert1(filePath, falseblnr);
+			(void) Sony_Insert1a(filePath);
 		}
 	}
 
@@ -4694,7 +4705,7 @@ LOCALFUNC blnr setupWorkingDirectory(void)
 - (BOOL)application:(NSApplication *)theApplication
 	openFile:(NSString *)filename
 {
-	(void) Sony_Insert1(filename, falseblnr);
+	(void) Sony_Insert1a(filename);
 
 	return TRUE;
 }
@@ -4886,13 +4897,13 @@ LOCALFUNC blnr InitOSGLU(void)
 #if dbglog_HAVE
 	if (dbglog_open())
 #endif
-	if (LoadInitialImages())
 	if (InitCocoaStuff())
 #if MySoundEnabled
 	if (MySound_Init())
 		/* takes a while to stabilize, do as soon as possible */
 #endif
 	if (LoadMacRom())
+	if (LoadInitialImages())
 #if UseActvCode
 	if (ActvCodeInit())
 #endif
@@ -4902,6 +4913,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (InitLocationDat())
 	if (Screen_Init())
 	if (CreateMainWindow())
+	if (WaitForRom())
 	{
 		IsOk = trueblnr;
 	}

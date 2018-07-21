@@ -34,6 +34,7 @@ enum {
 #if UseActvCode
 	SpclModeActvCode,
 #endif
+	SpclModeNoRom,
 	SpclModeMessage,
 #if UseControlKeys
 	SpclModeControl,
@@ -423,6 +424,28 @@ LOCALPROC DoAboutMsg(void)
 }
 #endif
 
+LOCALPROC NoRomMsgDisplayOff(void)
+{
+	SpecialModeClr(SpclModeNoRom);
+	NeedWholeScreenDraw = trueblnr;
+}
+
+LOCALPROC NoRomMsgDisplayOn(void)
+{
+	NeedWholeScreenDraw = trueblnr;
+	SpecialModeSet(SpclModeNoRom);
+}
+
+LOCALPROC DrawCellsNoRomModeBody(void)
+{
+	DrawCellsOneLineStr(kStrNoROMMessage);
+}
+
+LOCALPROC DrawNoRomMode(void)
+{
+	DrawSpclMode0(kStrNoROMTitle, DrawCellsNoRomModeBody);
+}
+
 #if UseControlKeys
 
 LOCALVAR blnr LastControlKey = falseblnr;
@@ -748,9 +771,11 @@ LOCALPROC DoControlModeKey(ui3r key)
 					ControlMessage = kCntrlMsgNewRunInBack;
 					break;
 				case MKC_D:
-					SpeedStopped = ! SpeedStopped;
-					CurControlMode = kCntrlModeBase;
-					ControlMessage = kCntrlMsgNewStopped;
+					if (ROM_loaded) {
+						SpeedStopped = ! SpeedStopped;
+						CurControlMode = kCntrlModeBase;
+						ControlMessage = kCntrlMsgNewStopped;
+					}
 					break;
 #if EnableAutoSlow
 				case MKC_W:
@@ -1026,6 +1051,9 @@ LOCALPROC DrawSpclMode(void)
 	if (SpecialModeTst(SpclModeMessage)) {
 		DrawMessageMode();
 	} else
+	if (SpecialModeTst(SpclModeNoRom)) {
+		DrawNoRomMode();
+	} else
 #if UseActvCode
 	if (SpecialModeTst(SpclModeActvCode)) {
 		DrawActvCodeMode();
@@ -1233,4 +1261,96 @@ LOCALPROC DisconnectKeyCodes2(void)
 #if UseControlKeys
 	Keyboard_UpdateControlKey(falseblnr);
 #endif
+}
+
+#ifndef CheckRomCheckSum
+#define CheckRomCheckSum 1
+#endif
+
+#if CheckRomCheckSum
+LOCALFUNC ui5r Calc_Checksum(void)
+{
+	long int i;
+	ui5b CheckSum = 0;
+	ui3p p = 4 + ROM;
+
+	for (i = (kCheckSumRom_Size - 4) >> 1; --i >= 0; ) {
+		CheckSum += do_get_mem_word(p);
+		p += 2;
+	}
+
+	return CheckSum;
+}
+#endif
+
+LOCALPROC WarnMsgCorruptedROM(void)
+{
+	MacMsgOverride(kStrCorruptedROMTitle, kStrCorruptedROMMessage);
+}
+
+LOCALPROC WarnMsgUnsupportedROM(void)
+{
+	MacMsgOverride(kStrUnsupportedROMTitle,
+		kStrUnsupportedROMMessage);
+}
+
+LOCALFUNC tMacErr ROM_IsValid(void)
+{
+#if CheckRomCheckSum
+	ui5r CheckSum = Calc_Checksum();
+
+#if RomStartCheckSum
+	if (CheckSum != do_get_mem_long(ROM)) {
+		WarnMsgCorruptedROM();
+		return mnvm_miscErr;
+	} else
+#endif
+#ifdef kRomCheckSum1
+	if (CheckSum == kRomCheckSum1) {
+	} else
+#endif
+#ifdef kRomCheckSum2
+	if (CheckSum == kRomCheckSum2) {
+	} else
+#endif
+#ifdef kRomCheckSum3
+	if (CheckSum == kRomCheckSum3) {
+	} else
+#endif
+	{
+		WarnMsgUnsupportedROM();
+		return mnvm_miscErr;
+	}
+	/*
+		Even if ROM is corrupt or unsupported, go ahead and
+		try to run anyway. It shouldn't do any harm.
+		[update: no, don't]
+	*/
+
+#endif /* CheckRomCheckSum */
+
+	ROM_loaded = trueblnr;
+	SpeedStopped = falseblnr;
+
+	return mnvm_noErr;
+}
+
+LOCALFUNC blnr WaitForRom(void)
+{
+	if (! ROM_loaded) {
+		NoRomMsgDisplayOn();
+
+		SpeedStopped = trueblnr;
+		do {
+			WaitForNextTick();
+
+			if (ForceMacOff) {
+				return falseblnr;
+			}
+		} while (SpeedStopped);
+
+		NoRomMsgDisplayOff();
+	}
+
+	return trueblnr;
 }

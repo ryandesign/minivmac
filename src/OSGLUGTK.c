@@ -242,6 +242,49 @@ LOCALFUNC blnr Sony_Insert1(char *drivepath, blnr silentfail)
 	return falseblnr;
 }
 
+LOCALFUNC tMacErr LoadMacRomFrom(char *path)
+{
+	tMacErr err;
+	FILE *ROM_File;
+	int File_Size;
+
+	ROM_File = fopen(path, "rb");
+	if (NULL == ROM_File) {
+		err = mnvm_fnfErr;
+	} else {
+		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
+		if (kROM_Size != File_Size) {
+			if (feof(ROM_File)) {
+				MacMsgOverride(kStrShortROMTitle,
+					kStrShortROMMessage);
+				err = mnvm_eofErr;
+			} else {
+				MacMsgOverride(kStrNoReadROMTitle,
+					kStrNoReadROMMessage);
+				err = mnvm_miscErr;
+			}
+		} else {
+			err = ROM_IsValid();
+		}
+		fclose(ROM_File);
+	}
+
+	return err;
+}
+
+LOCALFUNC blnr Sony_Insert1a(char *drivepath, blnr silentfail)
+{
+	blnr v;
+
+	if (! ROM_loaded) {
+		v = (mnvm_noErr == LoadMacRomFrom(drivepath));
+	} else {
+		v = Sony_Insert1(drivepath, silentfail);
+	}
+
+	return v;
+}
+
 LOCALFUNC blnr Sony_InsertIth(int i)
 {
 	blnr v;
@@ -276,30 +319,14 @@ LOCALVAR char *rom_path = NULL;
 
 LOCALFUNC blnr LoadMacRom(void)
 {
-	FILE *ROM_File;
-	int File_Size;
+	tMacErr err;
 
-	if (NULL == rom_path) {
-		rom_path = RomFileName;
+	if ((NULL == rom_path)
+		|| (mnvm_fnfErr == (err = LoadMacRomFrom(rom_path))))
+	if (mnvm_fnfErr == (err = LoadMacRomFrom(RomFileName)))
+	{
 	}
-	ROM_File = fopen(rom_path, "rb");
-	if (NULL == ROM_File) {
-		MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		SpeedStopped = trueblnr;
-	} else {
-		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
-		if (File_Size != kROM_Size) {
-			if (feof(ROM_File)) {
-				MacMsg(kStrShortROMTitle,
-					kStrShortROMMessage, trueblnr);
-			} else {
-				MacMsg(kStrNoReadROMTitle,
-					kStrNoReadROMMessage, trueblnr);
-			}
-			SpeedStopped = trueblnr;
-		}
-		fclose(ROM_File);
-	}
+
 	return trueblnr;
 }
 
@@ -1093,7 +1120,7 @@ static void InsertADisk0(void)
 
 		filename =
 			gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-		(void) Sony_Insert1(filename, falseblnr);
+		(void) Sony_Insert1a(filename, falseblnr);
 		g_free(filename);
 	}
 
@@ -1399,7 +1426,7 @@ static void drag_data_received(GtkWidget *widget,
 			file = g_filename_from_uri(uris[i], NULL, NULL);
 			/* file = gnome_vfs_get_local_path_from_uri(uris[i]); */
 			if (file != NULL) {
-				(void) Sony_Insert1(file, falseblnr);
+				(void) Sony_Insert1a(file, falseblnr);
 				handled = TRUE;
 				g_free(file);
 			}
@@ -1542,12 +1569,13 @@ LOCALFUNC blnr InitOSGLU(void)
 #if dbglog_HAVE
 	if (dbglog_open())
 #endif
-	if (LoadInitialImages())
 	if (ScanCommandLine())
 	if (LoadMacRom())
+	if (LoadInitialImages())
 	if (InitLocationDat())
 	/* if (ReCreateMainWindow()) */
 	if (KC2MKCInit())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}

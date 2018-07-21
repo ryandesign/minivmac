@@ -432,14 +432,18 @@ LOCALFUNC tMacErr LoadMacRomFrom(char *path)
 		err = mnvm_fnfErr;
 	} else {
 		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
-		if (File_Size != kROM_Size) {
+		if (kROM_Size != File_Size) {
 			if (feof(ROM_File)) {
+				MacMsgOverride(kStrShortROMTitle,
+					kStrShortROMMessage);
 				err = mnvm_eofErr;
 			} else {
+				MacMsgOverride(kStrNoReadROMTitle,
+					kStrNoReadROMMessage);
 				err = mnvm_miscErr;
 			}
 		} else {
-			err = mnvm_noErr;
+			err = ROM_IsValid();
 		}
 		fclose(ROM_File);
 	}
@@ -453,20 +457,6 @@ LOCALFUNC blnr LoadMacRom(void)
 
 	if (mnvm_fnfErr == (err = LoadMacRomFrom(RomFileName)))
 	{
-	}
-
-	if (mnvm_noErr != err) {
-		if (mnvm_fnfErr == err) {
-			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		} else if (mnvm_eofErr == err) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage,
-				trueblnr);
-		} else {
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage,
-				trueblnr);
-		}
-
-		SpeedStopped = trueblnr;
 	}
 
 	return trueblnr; /* keep launching Mini vMac, regardless */
@@ -1330,14 +1320,15 @@ LOCALFUNC blnr InitOSGLU(void)
 #if dbglog_HAVE
 	if (dbglog_open())
 #endif
-	if (LoadInitialImages())
 	if (LoadMacRom())
+	if (LoadInitialImages())
 	if (InitLocationDat())
 #if MySoundEnabled
 	if (MySound_Init())
 #endif
 	if (Screen_Init())
 	if (KC2MKCInit())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}

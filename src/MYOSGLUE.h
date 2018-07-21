@@ -34,8 +34,6 @@
 #endif
 
 
-EXPORTOSGLUPROC WarnMsgCorruptedROM(void);
-EXPORTOSGLUPROC WarnMsgUnsupportedROM(void);
 EXPORTOSGLUPROC WarnMsgAbnormalID(ui4r id);
 
 #if dbglog_HAVE

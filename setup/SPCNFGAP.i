@@ -63,6 +63,64 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 	WriteCStrToDestFile("\"");
 	WriteEndDestFileLn();
 
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define kCheckSumRom_Size ");
+	if (gbk_mdl_Classic == cur_mdl) {
+		WriteCStrToDestFile("0x040000"); /* 256 KB */
+	} else {
+		WriteCStrToDestFile("0x");
+		WriteHexLongToOutput(1UL << cur_RomSize);
+	}
+	WriteEndDestFileLn();
+
+	switch (cur_mdl) {
+		case gbk_mdl_Twig43:
+			WriteDestFileLn("#define kRomCheckSum1 0x27F4E04B");
+			break;
+		case gbk_mdl_Twiggy:
+			WriteDestFileLn("#define kRomCheckSum1 0x2884371D");
+			break;
+		case gbk_mdl_128K:
+			WriteDestFileLn("#define kRomCheckSum1 0x28BA61CE");
+			WriteDestFileLn("#define kRomCheckSum2 0x28BA4E50");
+			break;
+		case gbk_mdl_SE:
+			WriteDestFileLn("#define kRomCheckSum1 0xB2E362A8");
+			break;
+		case gbk_mdl_SEFDHD:
+			WriteDestFileLn("#define kRomCheckSum1 0xB306E171");
+			break;
+		case gbk_mdl_Classic:
+			WriteDestFileLn("#define kRomCheckSum1 0xA49F9914");
+			break;
+		case gbk_mdl_PB100:
+			WriteDestFileLn("#define kRomCheckSum1 0x96645F9C");
+			break;
+		case gbk_mdl_II:
+			WriteDestFileLn("#define kRomCheckSum1 0x9779D2C4");
+			WriteDestFileLn("#define kRomCheckSum1 0x97221136");
+			break;
+		case gbk_mdl_IIx:
+			WriteDestFileLn("#define kRomCheckSum1 0x97221136");
+			break;
+		case gbk_mdl_512Ke:
+		case gbk_mdl_Plus:
+		default:
+			WriteDestFileLn("#define kRomCheckSum1 0x4D1EEEE1");
+				/* Mac Plus ROM v 1, 'Lonely Hearts' */
+			WriteDestFileLn("#define kRomCheckSum2 0x4D1EEAE1");
+				/* Mac Plus ROM v 2, 'Lonely Heifers' */
+			WriteDestFileLn("#define kRomCheckSum3 0x4D1F8172");
+				/* Mac Plus ROM v 3, 'Loud Harmonicas' */
+			break;
+	}
+
+	if (! WantCheckRomCheckSum) {
+		WriteCompCondBool("CheckRomCheckSum", WantCheckRomCheckSum);
+	}
+
+	WriteCompCondBool("RomStartCheckSum", (cur_mdl >= gbk_mdl_Twiggy));
+
 	if (DbgLogHAVE) {
 		WriteDefineUimr("dbglog_buflnsz", dbglog_buflnsz);
 	}

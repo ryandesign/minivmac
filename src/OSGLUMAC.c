@@ -3059,6 +3059,104 @@ LOCALFUNC tMacErr InsertADiskFromNamevRef(ConstStr255Param fileName,
 }
 #endif
 
+LOCALFUNC tMacErr LoadMacRomFromRefNum(short refnum)
+{
+	/*
+		load the ROM image file into ptr ROM
+	*/
+	tMacErr err;
+	long count = kROM_Size;
+
+	if (mnvm_noErr != (err = To_tMacErr(
+		FSRead(refnum, &count, ROM))))
+	{
+		if (mnvm_eofErr == err) {
+			MacMsgOverride(kStrShortROMTitle, kStrShortROMMessage);
+		} else {
+			MacMsgOverride(kStrNoReadROMTitle, kStrNoReadROMMessage);
+		}
+	} else
+	{
+		err = ROM_IsValid();
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr LoadMacRomFromFSSpec(FSSpec *spec)
+{
+	tMacErr err;
+	short refnum;
+
+	if (mnvm_noErr != (err =
+		To_tMacErr(FSpOpenDF(spec, fsRdPerm, &refnum)))
+	{
+		err = LoadMacRomFromRefNum(refnum);
+		(void) FSClose(refnum);
+	}
+
+	return err;
+}
+
+#if HaveCPUfamM68K
+LOCALFUNC tMacErr LoadMacRomFromNamevRef(ConstStr255Param fileName,
+	short vRefNum)
+{
+	tMacErr err;
+	ParamBlockRec R;
+
+	R.ioParam.ioCompletion = NULL;
+	R.ioParam.ioNamePtr = (StringPtr)fileName;
+	R.ioParam.ioVRefNum = vRefNum;
+	R.ioParam.ioVersNum = 0;
+	R.ioParam.ioPermssn = fsRdPerm;
+	R.ioParam.ioMisc = NULL;
+	if (mnvm_noErr == (err = To_tMacErr(PBOpen(&R, false)))) {
+		err = LoadMacRomFromRefNum(refnum);
+		(void) FSClose(refnum);
+	}
+
+	return err;
+}
+#endif
+
+#if HaveCPUfamM68K
+LOCALFUNC tMacErr InsertADiskFromNamevRef1(ConstStr255Param fileName,
+	short vRefNum)
+{
+	tMacErr err;
+
+	if (! ROM_loaded) {
+		err = LoadMacRomFromNamevRef(theRef);
+	} else {
+		err = InsertADiskFromNamevRef(fileName, vRefNum);
+	}
+
+	return err;
+}
+#endif
+
+LOCALFUNC tMacErr InsertADiskOrAliasFromSpec(FSSpec *spec,
+	blnr MaybeROM, blnr MaybeAlias)
+{
+	Boolean isFolder;
+	Boolean isAlias;
+	tMacErr err;
+
+	if ((! MaybeAlias)
+		|| CheckSaveMacErr(ResolveAliasFile(spec, true,
+			&isFolder, &isAlias)))
+	{
+		if (MaybeROM && ! ROM_loaded) {
+			err = LoadMacRomFromFSSpec(spec);
+		} else {
+			err = InsertADiskFromFileRef(spec);
+		}
+	}
+
+	return err;
+}
+
 LOCALFUNC tMacErr InsertDisksFromDocList(AEDescList *docList)
 {
 	tMacErr err = mnvm_noErr;
@@ -3074,7 +3172,8 @@ LOCALFUNC tMacErr InsertDisksFromDocList(AEDescList *docList)
 			if (CheckSaveMacErr(AEGetNthPtr(docList, index, typeFSS,
 				&keyword, &typeCode, (Ptr)&spec, sizeof(FSSpec),
 				&actualSize)))
-			if (CheckSavetMacErr(InsertADiskFromFileRef(&spec)))
+			if (CheckSavetMacErr(InsertADiskOrAliasFromSpec(&spec,
+				trueblnr, falseblnr)))
 			{
 			}
 			if (mnvm_noErr != err) {
@@ -3084,21 +3183,6 @@ LOCALFUNC tMacErr InsertDisksFromDocList(AEDescList *docList)
 	}
 
 label_fail:
-	return err;
-}
-
-LOCALFUNC tMacErr InsertADiskOrAliasFromSpec(FSSpec *spec)
-{
-	Boolean isFolder;
-	Boolean isAlias;
-	tMacErr err;
-
-	if (CheckSaveMacErr(ResolveAliasFile(spec, true,
-		&isFolder, &isAlias)))
-	{
-		err = InsertADiskFromFileRef(spec);
-	}
-
 	return err;
 }
 
@@ -3118,7 +3202,8 @@ LOCALFUNC tMacErr InsertADiskFromNameEtc(MyDir_R *d,
 		if (CheckSaveMacErr(
 			FSMakeFSSpec(d->VRefNum, d->DirId, fileName, &spec)))
 		{
-			err = InsertADiskOrAliasFromSpec(&spec);
+			err = InsertADiskOrAliasFromSpec(&spec,
+				falseblnr, trueblnr);
 		}
 	}
 
@@ -3256,7 +3341,7 @@ LOCALPROC InsertADisk0(void)
 		MyEndDialog();
 		if (reply.good) {
 			ReportStandardOpenDiskError(
-				InsertADiskFromNamevRef(reply.fName, reply.vRefNum));
+				InsertADiskFromNamevRef1(reply.fName, reply.vRefNum));
 		}
 	} else
 #endif
@@ -3268,7 +3353,8 @@ LOCALPROC InsertADisk0(void)
 		MyEndDialog();
 		if (reply.sfGood) {
 			ReportStandardOpenDiskError(
-				InsertADiskFromFileRef(&reply.sfFile));
+				InsertADiskOrAliasFromSpec(&reply.sfFile,
+					trueblnr, falseblnr));
 		}
 	}
 }
@@ -3702,28 +3788,38 @@ LOCALFUNC tMacErr MyResolveNamedChildDirCStr(MyDir_R *src_d,
 	return MyResolveNamedChildDir_v2(src_d, fileName, dst_d);
 }
 
-LOCALFUNC tMacErr OpenMacRom(short *refnum)
+LOCALFUNC tMacErr LoadMacRomFromNameFolder(MyDir_R *d,
+	char *s)
 {
-	Str255 fileName;
 	tMacErr err;
+	short refnum;
 
-	PStrFromCStr(fileName, RomFileName);
-	err = OpenNamedFileInFolderCStr(&MyDatDir, RomFileName, refnum);
-	if (mnvm_fnfErr == err) {
-		MyDir_R PrefRef;
-		MyDir_R GryphelRef;
-		MyDir_R ROMsRef;
+	if (mnvm_noErr == (err =
+		OpenNamedFileInFolderCStr(d, s, refnum)))
+	{
+		err = LoadMacRomFromRefNum(refnum);
+		(void) FSClose(refnum);
+	}
 
-		if (CheckSavetMacErr(FindPrefFolder(&PrefRef)))
-		if (CheckSavetMacErr(MyResolveNamedChildDirCStr(&PrefRef,
-			"Gryphel", &GryphelRef)))
-		if (CheckSavetMacErr(MyResolveNamedChildDirCStr(&GryphelRef,
-			"mnvm_rom", &ROMsRef)))
-		if (CheckSavetMacErr(OpenNamedFileInFolderCStr(&ROMsRef,
-			RomFileName, refnum)))
-		{
-			/* ok */
-		}
+	return err;
+}
+
+LOCALFUNC tMacErr LoadMacRomFromPrefDir(void)
+{
+	tMacErr err;
+	MyDir_R PrefRef;
+	MyDir_R GryphelRef;
+	MyDir_R ROMsRef;
+
+	if (mnvm_noErr == (err = FindPrefFolder(&PrefRef)))
+	if (mnvm_noErr == (err = MyResolveNamedChildDirCStr(&PrefRef,
+		"Gryphel", &GryphelRef)))
+	if (mnvm_noErr == (err = MyResolveNamedChildDirCStr(&GryphelRef,
+		"mnvm_rom", &ROMsRef)))
+	if (mnvm_noErr == (err = LoadMacRomFromNameFolder(&ROMsRef,
+		RomFileName)))
+	{
+		/* ok */
 	}
 
 	return err;
@@ -3731,28 +3827,13 @@ LOCALFUNC tMacErr OpenMacRom(short *refnum)
 
 LOCALFUNC blnr LoadMacRom(void)
 {
-	/*
-		load the ROM image file into ptr ROM
-	*/
 	tMacErr err;
-	short refnum;
-	long count = kROM_Size;
 
-	if (CheckSavetMacErr(OpenMacRom(&refnum))) {
-		err = To_tMacErr(FSRead(refnum, &count, ROM));
-		(void) FSClose(refnum);
-	}
-
-	if (mnvm_noErr != err) {
-		if (mnvm_fnfErr == err) {
-			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		} else if (mnvm_eofErr == err) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage, trueblnr);
-		} else {
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage, trueblnr);
-		}
-
-		SpeedStopped = trueblnr;
+	if (mnvm_fnfErr == (err =
+		LoadMacRomFromNameFolder(&MyDatDir, RomFileName)))
+	if (mnvm_fnfErr == (err =
+		LoadMacRomFromPrefDir()))
+	{
 	}
 
 	return trueblnr; /* keep launching Mini vMac, regardless */
@@ -3976,12 +4057,12 @@ LOCALFUNC tMacErr OpenActvCodeFile(short *refnum)
 	MyDir_R GryphelRef;
 	MyDir_R ActRef;
 
-	if (CheckSavetMacErr(FindPrefFolder(&PrefRef)))
-	if (CheckSavetMacErr(MyResolveNamedChildDirCStr(&PrefRef,
+	if (mnvm_noErr == (err = FindPrefFolder(&PrefRef)))
+	if (mnvm_noErr == (err = MyResolveNamedChildDirCStr(&PrefRef,
 		"Gryphel", &GryphelRef)))
-	if (CheckSavetMacErr(MyResolveNamedChildDirCStr(&GryphelRef,
+	if (mnvm_noErr == (err = MyResolveNamedChildDirCStr(&GryphelRef,
 		"mnvm_act", &ActRef)))
-	if (CheckSavetMacErr(OpenNamedFileInFolderCStr(&ActRef,
+	if (mnvm_noErr == (err = OpenNamedFileInFolderCStr(&ActRef,
 		ActvCodeFileName, refnum)))
 	{
 		/* ok */
@@ -4013,12 +4094,12 @@ LOCALFUNC tMacErr ActvCodeFileSave(ui3p p)
 	MyDir_R ActRef;
 	long count = ActvCodeFileLen;
 
-	if (CheckSavetMacErr(FindPrefFolder(&PrefRef)))
-	if (CheckSavetMacErr(FindOrMakeChildDirCStr(&GryphelRef,
+	if (mnvm_noErr == (err = FindPrefFolder(&PrefRef)))
+	if (mnvm_noErr == (err = FindOrMakeChildDirCStr(&GryphelRef,
 		&PrefRef, "Gryphel")))
-	if (CheckSavetMacErr(FindOrMakeChildDirCStr(&ActRef,
+	if (mnvm_noErr == (err = FindOrMakeChildDirCStr(&ActRef,
 		&GryphelRef, "mnvm_act")))
-	if (CheckSavetMacErr(MyOpenOverWriteFileCStr(&ActRef,
+	if (mnvm_noErr == (err = MyOpenOverWriteFileCStr(&ActRef,
 		ActvCodeFileName, &refnum)))
 	{
 		err = To_tMacErr(FSWrite(refnum, &count, p));
@@ -4219,7 +4300,8 @@ static pascal OSErr GlobalReceiveHandler(WindowRef pWindow,
 				flavorTypeHFS, (Ptr)&r, &SentSize, 0))
 			{
 				ReportStandardOpenDiskError(
-					InsertADiskOrAliasFromSpec(&r.fileSpec));
+					InsertADiskOrAliasFromSpec(&r.fileSpec,
+						trueblnr, trueblnr));
 			}
 		}
 
@@ -5543,6 +5625,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (ActvCodeInit())
 #endif
 	if (InitLocationDat())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}

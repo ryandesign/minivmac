@@ -805,6 +805,49 @@ LOCALFUNC blnr Sony_Insert1(char *drivepath, blnr silentfail)
 	return falseblnr;
 }
 
+LOCALFUNC tMacErr LoadMacRomFrom(char *path)
+{
+	tMacErr err;
+	FILE *ROM_File;
+	int File_Size;
+
+	ROM_File = fopen(path, "rb");
+	if (NULL == ROM_File) {
+		err = mnvm_fnfErr;
+	} else {
+		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
+		if (kROM_Size != File_Size) {
+			if (feof(ROM_File)) {
+				MacMsgOverride(kStrShortROMTitle,
+					kStrShortROMMessage);
+				err = mnvm_eofErr;
+			} else {
+				MacMsgOverride(kStrNoReadROMTitle,
+					kStrNoReadROMMessage);
+				err = mnvm_miscErr;
+			}
+		} else {
+			err = ROM_IsValid();
+		}
+		fclose(ROM_File);
+	}
+
+	return err;
+}
+
+LOCALFUNC blnr Sony_Insert1a(char *drivepath, blnr silentfail)
+{
+	blnr v;
+
+	if (! ROM_loaded) {
+		v = (mnvm_noErr == LoadMacRomFrom(drivepath));
+	} else {
+		v = Sony_Insert1(drivepath, silentfail);
+	}
+
+	return v;
+}
+
 LOCALFUNC blnr Sony_Insert2(char *s)
 {
 	char *d =
@@ -942,32 +985,6 @@ LOCALPROC MakeNewDiskAtDefault(ui5b L)
 
 LOCALVAR char *rom_path = NULL;
 
-LOCALFUNC tMacErr LoadMacRomFrom(char *path)
-{
-	tMacErr err;
-	FILE *ROM_File;
-	int File_Size;
-
-	ROM_File = fopen(path, "rb");
-	if (NULL == ROM_File) {
-		err = mnvm_fnfErr;
-	} else {
-		File_Size = fread(ROM, 1, kROM_Size, ROM_File);
-		if (File_Size != kROM_Size) {
-			if (feof(ROM_File)) {
-				err = mnvm_eofErr;
-			} else {
-				err = mnvm_miscErr;
-			}
-		} else {
-			err = mnvm_noErr;
-		}
-		fclose(ROM_File);
-	}
-
-	return err;
-}
-
 #if 0
 #include <pwd.h>
 #include <unistd.h>
@@ -1073,20 +1090,6 @@ LOCALFUNC blnr LoadMacRom(void)
 	if (mnvm_fnfErr == (err = LoadMacRomFromHome()))
 	if (mnvm_fnfErr == (err = LoadMacRomFrom(RomFileName)))
 	{
-	}
-
-	if (mnvm_noErr != err) {
-		if (mnvm_fnfErr == err) {
-			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		} else if (mnvm_eofErr == err) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage,
-				trueblnr);
-		} else {
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage,
-				trueblnr);
-		}
-
-		SpeedStopped = trueblnr;
 	}
 
 	return trueblnr; /* keep launching Mini vMac, regardless */
@@ -2859,7 +2862,7 @@ LOCALPROC ParseOneUri(char *s)
 				++s;
 			}
 		}
-		(void) Sony_Insert1(s, falseblnr);
+		(void) Sony_Insert1a(s, falseblnr);
 	}
 }
 #endif
@@ -4819,8 +4822,8 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (dbglog_open())
 #endif
 	if (ScanCommandLine())
-	if (LoadInitialImages())
 	if (LoadMacRom())
+	if (LoadInitialImages())
 #if UseActvCode
 	if (ActvCodeInit())
 #endif
@@ -4831,6 +4834,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (Screen_Init())
 	if (CreateMainWindow())
 	if (KC2MKCInit())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}

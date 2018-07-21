@@ -709,6 +709,7 @@ LOCALFUNC tMacErr MyMakeFSRefC(FSRef *ParentRef, char *fileName,
 		isFolder, ChildRef);
 }
 
+#if UseActvFile
 LOCALFUNC tMacErr OpenNamedFileInFolderRef(FSRef *ParentRef,
 	char *fileName, short *refnum)
 {
@@ -728,6 +729,7 @@ LOCALFUNC tMacErr OpenNamedFileInFolderRef(FSRef *ParentRef,
 
 	return err;
 }
+#endif
 
 #if dbglog_HAVE || UseActvFile
 LOCALFUNC tMacErr OpenWriteNamedFileInFolderRef(FSRef *ParentRef,
@@ -3044,6 +3046,61 @@ LOCALFUNC tMacErr InsertADiskFromFSRef(FSRef *theRef)
 	return err;
 }
 
+LOCALFUNC tMacErr LoadMacRomFromRefNum(SInt16 refnum)
+{
+	tMacErr err;
+	ByteCount actualCount;
+
+	if (mnvm_noErr != (err = To_tMacErr(
+		FSReadFork(refnum, fsFromStart, 0,
+			kROM_Size, ROM, &actualCount))))
+	{
+		if (mnvm_eofErr == err) {
+			MacMsgOverride(kStrShortROMTitle, kStrShortROMMessage);
+		} else {
+			MacMsgOverride(kStrNoReadROMTitle, kStrNoReadROMMessage);
+		}
+	} else
+	{
+		err = ROM_IsValid();
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr LoadMacRomFromFSRef(FSRef *theRef)
+{
+	tMacErr err;
+	HFSUniStr255 forkName;
+	SInt16 refnum;
+
+	if (mnvm_noErr == (err =
+		To_tMacErr(FSGetDataForkName(&forkName))))
+	if (mnvm_noErr == (err = To_tMacErr(
+		FSOpenFork(theRef, forkName.length,
+			forkName.unicode, fsRdPerm, &refnum))))
+	{
+		err = LoadMacRomFromRefNum(refnum);
+
+		(void) FSCloseFork(refnum);
+	}
+
+	return err;
+}
+
+LOCALFUNC tMacErr InsertADiskFromFSRef1(FSRef *theRef)
+{
+	tMacErr err;
+
+	if (! ROM_loaded) {
+		err = LoadMacRomFromFSRef(theRef);
+	} else {
+		err = InsertADiskFromFSRef(theRef);
+	}
+
+	return err;
+}
+
 LOCALFUNC tMacErr InsertDisksFromDocList(AEDescList *docList)
 {
 	tMacErr err = mnvm_noErr;
@@ -3059,7 +3116,7 @@ LOCALFUNC tMacErr InsertDisksFromDocList(AEDescList *docList)
 			if (CheckSaveMacErr(AEGetNthPtr(docList, index, typeFSRef,
 				&keyword, &typeCode, (Ptr)&theRef,
 				sizeof(FSRef), &actualSize)))
-			if (CheckSavetMacErr(InsertADiskFromFSRef(&theRef)))
+			if (CheckSavetMacErr(InsertADiskFromFSRef1(&theRef)))
 			{
 			}
 			if (mnvm_noErr != err) {
@@ -3373,27 +3430,40 @@ LOCALPROC MakeNewDisk(ui5b L, CFStringRef NewDiskName)
 }
 #endif
 
-LOCALFUNC tMacErr OpenMacRom(SInt16 *refnum)
+LOCALFUNC tMacErr LoadMacRomFromNameFolder(FSRef *ParentRef,
+	char *fileName)
 {
 	tMacErr err;
+	blnr isFolder;
+	FSRef ChildRef;
 
-	err = OpenNamedFileInFolderRef(&MyDatDirRef, RomFileName, refnum);
-	if (mnvm_fnfErr == err) {
-		FSRef PrefRef;
-		FSRef GryphelRef;
-		FSRef ROMsRef;
+	if (mnvm_noErr == (err =
+		MyMakeFSRefC(ParentRef, fileName, &isFolder, &ChildRef)))
+	if (mnvm_noErr == (err =
+		LoadMacRomFromFSRef(&ChildRef)))
+	{
+	}
 
-		if (CheckSaveMacErr(FSFindFolder(kUserDomain,
-			kPreferencesFolderType, kDontCreateFolder, &PrefRef)))
-		if (CheckSavetMacErr(FindNamedChildRef(&PrefRef,
-			"Gryphel", &GryphelRef)))
-		if (CheckSavetMacErr(FindNamedChildRef(&GryphelRef,
-			"mnvm_rom", &ROMsRef)))
-		if (CheckSavetMacErr(OpenNamedFileInFolderRef(&ROMsRef,
-			RomFileName, refnum)))
-		{
-			/* ok */
-		}
+	return err;
+}
+
+LOCALFUNC tMacErr LoadMacRomFromPrefDir(void)
+{
+	tMacErr err;
+	FSRef PrefRef;
+	FSRef GryphelRef;
+	FSRef ROMsRef;
+
+	if (mnvm_noErr == (err = To_tMacErr(FSFindFolder(kUserDomain,
+		kPreferencesFolderType, kDontCreateFolder, &PrefRef))))
+	if (mnvm_noErr == (err = FindNamedChildRef(&PrefRef,
+		"Gryphel", &GryphelRef)))
+	if (mnvm_noErr == (err = FindNamedChildRef(&GryphelRef,
+		"mnvm_rom", &ROMsRef)))
+	if (mnvm_noErr == (err = LoadMacRomFromNameFolder(&ROMsRef,
+		RomFileName)))
+	{
+		/* ok */
 	}
 
 	return err;
@@ -3402,27 +3472,12 @@ LOCALFUNC tMacErr OpenMacRom(SInt16 *refnum)
 LOCALFUNC blnr LoadMacRom(void)
 {
 	tMacErr err;
-	SInt16 refnum;
 
-	if (CheckSavetMacErr(OpenMacRom(&refnum))) {
-		ByteCount actualCount;
-		if (CheckSaveMacErr(FSReadFork(refnum, fsFromStart, 0,
-			kROM_Size, ROM, &actualCount)))
-		{
-		}
-		(void) FSCloseFork(refnum);
-	}
-
-	if (mnvm_noErr != err) {
-		if (mnvm_fnfErr == err) {
-			MacMsg(kStrNoROMTitle, kStrNoROMMessage, trueblnr);
-		} else if (mnvm_eofErr == err) {
-			MacMsg(kStrShortROMTitle, kStrShortROMMessage, trueblnr);
-		} else {
-			MacMsg(kStrNoReadROMTitle, kStrNoReadROMMessage, trueblnr);
-		}
-
-		SpeedStopped = trueblnr;
+	if (mnvm_fnfErr == (err =
+		LoadMacRomFromNameFolder(&MyDatDirRef, RomFileName)))
+	if (mnvm_fnfErr == (err =
+		LoadMacRomFromPrefDir()))
+	{
 	}
 
 	return trueblnr; /* keep launching Mini vMac, regardless */
@@ -3736,7 +3791,7 @@ LOCALFUNC tMacErr InsertADiskOrAliasFromFSRef(FSRef *theRef)
 	if (CheckSaveMacErr(FSResolveAliasFile(theRef, true,
 		&isFolder, &isAlias)))
 	{
-		err = InsertADiskFromFSRef(theRef);
+		err = InsertADiskFromFSRef1(theRef);
 	}
 
 	return err;
@@ -5384,6 +5439,7 @@ LOCALFUNC blnr InitOSGLU(void)
 	if (InitLocalTalk())
 #endif
 	if (InitLocationDat())
+	if (WaitForRom())
 	{
 		return trueblnr;
 	}
