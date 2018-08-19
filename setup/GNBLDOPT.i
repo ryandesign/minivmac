@@ -590,6 +590,7 @@ enum {
 	gbk_lang_ptb,
 	gbk_lang_cat,
 	gbk_lang_cze,
+	gbk_lang_srl,
 	kNumLangLevels
 };
 
@@ -637,6 +638,9 @@ LOCALFUNC char * GetLangName(int i)
 			break;
 		case gbk_lang_cze:
 			s = "cze";
+			break;
+		case gbk_lang_srl:
+			s = "srl";
 			break;
 		default:
 			s = "(unknown Language Level)";
@@ -688,6 +692,9 @@ LOCALFUNC char * GetLProjName(int i)
 			break;
 		case gbk_lang_cze:
 			s = "cs";
+			break;
+		case gbk_lang_srl:
+			s = "sr";
 			break;
 		default:
 			s = "(unknown Language Level)";

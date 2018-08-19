@@ -3212,6 +3212,49 @@ LOCALPROC WrtOptGraphicsSwitching(void)
 		dfo_GraphicsSwitching());
 }
 
+
+/* option: Sandbox */
+
+LOCALVAR blnr WantSandbox;
+LOCALVAR ui3r olv_Sandbox;
+
+LOCALPROC ResetSandbox(void)
+{
+	WantSandbox = nanblnr;
+	olv_Sandbox = 0;
+}
+
+LOCALFUNC tMyErr TryAsSandboxNot(void)
+{
+	return BooleanTryAsOptionNot("-sbx",
+		&WantSandbox, &olv_Sandbox);
+}
+
+#define dfo_Sandbox() falseblnr
+
+LOCALFUNC tMyErr ChooseSandbox(void)
+{
+	tMyErr err;
+
+	err = kMyErr_noErr;
+	if (nanblnr == WantSandbox) {
+		WantSandbox = dfo_Sandbox();
+	} else {
+		if (WantSandbox && (gbk_apifam_cco != gbo_apifam)) {
+			err = ReportParseFailure(
+				"-sbx is so far only implemented for cocoa on OS X");
+		}
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptSandbox(void)
+{
+	WrtOptBooleanOption("-sbx", WantSandbox,
+		dfo_Sandbox());
+}
+
 /* ------ */
 
 LOCALVAR blnr NeedScrnHack;
@@ -3454,6 +3497,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetDbgLogHAVE();
 	ResetScreenVSync();
 	ResetGraphicsSwitching();
+	ResetSandbox();
 }
 
 LOCALFUNC tMyErr TryAsSPOptionNot(void)
@@ -3520,6 +3564,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
 	if (kMyErrNoMatch == (err = TryAsGraphicsSwitchingNot()))
+	if (kMyErrNoMatch == (err = TryAsSandboxNot()))
 	{
 	}
 
@@ -3592,6 +3637,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (kMyErr_noErr == (err = ChooseDbgLogHAVE()))
 	if (kMyErr_noErr == (err = ChooseScreenVSync()))
 	if (kMyErr_noErr == (err = ChooseGraphicsSwitching()))
+	if (kMyErr_noErr == (err = ChooseSandbox()))
 
 	if (kMyErr_noErr == (err = ChooseScreenOpts())) /* derived */
 	if (kMyErr_noErr == (err = ChooseVidMemSize())) /* derived */
@@ -3666,4 +3712,5 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptDbgLogHAVE();
 	WrtOptScreenVSync();
 	WrtOptGraphicsSwitching();
+	WrtOptSandbox();
 }

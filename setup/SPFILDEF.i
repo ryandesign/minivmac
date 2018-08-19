@@ -57,6 +57,9 @@ static void DoMYOSGLUEdepends(tDoOneDepends p)
 			case gbk_lang_cze:
 				s = "STRCNCZE.h";
 				break;
+			case gbk_lang_srl:
+				s = "STRCNSRL.h";
+				break;
 		}
 
 		if (nullpr != s) {
@@ -149,6 +152,8 @@ static void DoAllSrcFiles(tDoOneCFile p)
 		CSrcFlagsUseHdrIf(gbk_lang_cat == gbo_lang), nullpr);
 	p("STRCNCZE", kDepDirCSrc,
 		CSrcFlagsUseHdrIf(gbk_lang_cze == gbo_lang), nullpr);
+	p("STRCNSRL", kDepDirCSrc,
+		CSrcFlagsUseHdrIf(gbk_lang_srl == gbo_lang), nullpr);
 
 	p("STRCONST", kDepDirCnfg, kCSrcFlgmNoSource, nullpr);
 	p("INTLCHAR", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);

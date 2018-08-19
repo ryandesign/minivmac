@@ -286,3 +286,29 @@ LOCALPROC WritePListData(void)
 			WriteInfoPListData);
 	}
 }
+
+LOCALPROC WriteEntitlementsData(void)
+{
+	WriteOpenDestFile("my_config_d",
+		vStrAppAbbrev, ".entitlements", "entitlements");
+
+	WriteDestFileLn("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+	WriteDestFileLn(
+		"<!DOCTYPE plist PUBLIC"
+		" \"-//Apple//DTD PLIST 1.0//EN\""
+		" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">");
+	WriteDestFileLn("<plist version=\"1.0\">");
+	WriteDestFileLn("<dict>");
+	++DestFileIndent;
+		WriteDestFileLn("<key>com.apple.security.app-sandbox</key>");
+		WriteDestFileLn("<true/>");
+		WriteDestFileLn("<key>"
+			"com.apple.security.files.user-selected.read-write"
+			"</key>");
+		WriteDestFileLn("<true/>");
+	--DestFileIndent;
+	WriteDestFileLn("</dict>");
+	WriteDestFileLn("</plist>");
+
+	WriteCloseDestFile();
+}

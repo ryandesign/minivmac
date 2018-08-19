@@ -552,6 +552,12 @@ LOCALVAR const ui3b CellData[] = {
 	/* kCellLoURing 077 ? 0x016F 'u' ';ru' #367 (uring) */
 	0x00, 0x00, 0x18, 0x24, 0x24, 0x18, 0x42, 0x42,
 	0x42, 0x42, 0x46, 0x3A, 0x00, 0x00, 0x00, 0x00,
+	/* kCellUpDStroke 077 ? 0x0110 'D' ';dD' #272 (Dstrok) */
+	0x00, 0x00, 0x00, 0x7C, 0x42, 0x42, 0x42, 0xF2,
+	0x42, 0x42, 0x42, 0x7C, 0x00, 0x00, 0x00, 0x00,
+	/* kCellLoDStroke 077 ? 0x0111 'd' ';dd' #273 (dstrok) */
+	0x00, 0x00, 0x00, 0x02, 0x0F, 0x02, 0x3E, 0x42,
+	0x42, 0x42, 0x42, 0x3E, 0x00, 0x00, 0x00, 0x00,
 #endif
 
 	/* kCellUpperLeft */
@@ -845,6 +851,8 @@ enum {
 	kCellLoYAcute,
 	kCellLoUDblac,
 	kCellLoURing,
+	kCellUpDStroke,
+	kCellLoDStroke,
 #endif
 
 	kCellUpperLeft,
@@ -1086,6 +1094,8 @@ LOCALVAR const char Cell2MacAsciiMap[] = {
 	'\171', /* kCellLoYAcute */
 	'\165', /* kCellLoUDblac */
 	'\165', /* kCellLoURing */
+	'\104', /* kCellUpDStroke */
+	'\144', /* kCellLoDStroke */
 #endif
 
 	'\0' /* just so last above line can end in ',' */
@@ -1279,6 +1289,8 @@ LOCALVAR const ui3b Cell2WinAsciiMap[] = {
 	0xFD, /* kCellLoYAcute */
 	0x75, /* kCellLoUDblac */
 	0x75, /* kCellLoURing */
+	0x44, /* kCellUpDStroke */
+	0x64, /* kCellLoDStroke */
 #endif
 
 	'\0' /* just so last above line can end in ',' */
@@ -1472,6 +1484,8 @@ LOCALVAR const char Cell2PlainAsciiMap[] = {
 	'y', /* kCellLoYAcute */
 	'u', /* kCellLoUDblac */
 	'u', /* kCellLoURing */
+	'D', /* kCellUpDStroke */
+	'd', /* kCellLoDStroke */
 #endif
 
 	'\0' /* just so last above line can end in ',' */
@@ -1665,6 +1679,8 @@ LOCALVAR const ui4b Cell2UnicodeMap[] = {
 	0x00FD, /* kCellLoYAcute */
 	0x0171, /* kCellLoUDblac */
 	0x016F, /* kCellLoURing */
+	0x0110, /* kCellUpDStroke */
+	0x0111, /* kCellLoDStroke */
 #endif
 
 	'\0' /* just so last above line can end in ',' */
@@ -1876,6 +1892,8 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 					switch (*p++) {
 						case 'A': x = kCellUpACedille; break;
 						case 'a': x = kCellLoACedille; break;
+						case 'D': x = kCellUpDStroke; break;
+						case 'd': x = kCellLoDStroke; break;
 						case 'E': x = kCellUpECedille; break;
 						case 'e': x = kCellLoECedille; break;
 						case 'L': x = kCellUpLBar; break;

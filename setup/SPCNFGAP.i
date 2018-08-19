@@ -98,7 +98,7 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 			break;
 		case gbk_mdl_II:
 			WriteDestFileLn("#define kRomCheckSum1 0x9779D2C4");
-			WriteDestFileLn("#define kRomCheckSum1 0x97221136");
+			WriteDestFileLn("#define kRomCheckSum2 0x97221136");
 			break;
 		case gbk_mdl_IIx:
 			WriteDestFileLn("#define kRomCheckSum1 0x97221136");

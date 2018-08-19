@@ -482,6 +482,10 @@ LOCALPROC WriteBashGccSpecificFiles(void)
 		WritePListData();
 	}
 
+	if (WantSandbox) {
+		WriteEntitlementsData();
+	}
+
 	WriteADstFile1("my_project_d",
 		"Makefile", "", "Make file",
 		WriteBashGccMakeFile);

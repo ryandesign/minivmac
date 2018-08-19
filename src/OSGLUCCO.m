@@ -1230,12 +1230,33 @@ LOCALFUNC tMacErr LoadMacRomFromPrefDir(void)
 	return err;
 }
 
+LOCALFUNC tMacErr LoadMacRomFromGlobalDir(void)
+{
+	NSString *GryphelPath;
+	NSString *RomsPath;
+	tMacErr err = mnvm_fnfErr;
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(
+		NSApplicationSupportDirectory, NSLocalDomainMask, NO);
+	if ((nil != paths) && ([paths count] > 0))
+	{
+		NSString *LibPath = [paths objectAtIndex:0];
+		if (FindNamedChildDirPath(LibPath, "Gryphel", &GryphelPath))
+		if (FindNamedChildDirPath(GryphelPath, "mnvm_rom", &RomsPath))
+		{
+			err = LoadMacRomFrom(RomsPath);
+		}
+	}
+
+	return err;
+}
+
 LOCALFUNC blnr LoadMacRom(void)
 {
 	tMacErr err;
 
 	if (mnvm_fnfErr == (err = LoadMacRomFromAppDir()))
 	if (mnvm_fnfErr == (err = LoadMacRomFromPrefDir()))
+	if (mnvm_fnfErr == (err = LoadMacRomFromGlobalDir()))
 	{
 	}
 

@@ -2075,4 +2075,8 @@ LOCALPROC WriteXCDSpecificFiles(void)
 			"dummy", ".txt", "Dummy",
 			WriteOutDummyLangContents);
 	}
+
+	if (WantSandbox) {
+		WriteEntitlementsData();
+	}
 }

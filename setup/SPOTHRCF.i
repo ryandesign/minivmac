@@ -526,6 +526,9 @@ LOCALPROC WriteAppSTRCONSTcontents(void)
 		case gbk_lang_cze:
 			s = "CZE";
 			break;
+		case gbk_lang_srl:
+			s = "SRL";
+			break;
 		default:
 			s = "???";
 			break;
