@@ -1817,39 +1817,99 @@ LOCALFUNC char * GetSubstitutionStr(char x)
 	return s;
 }
 
-#define ClStrMaxLength 512
+LOCALFUNC int ClStrSizeSubstCStr(char *s)
+{
+	/* must match ClStrAppendSubstCStr ! */
+
+	char *p = s;
+	char c;
+	int L = 0;
+
+	while (0 != (c = *p++)) {
+		if ('^' == c) {
+			if (0 == (c = *p++)) {
+				goto l_exit; /* oops, unexpected end of string, abort */
+			} else if ('^' == c) {
+				++L;
+			} else {
+				L += ClStrSizeSubstCStr(GetSubstitutionStr(c));
+			}
+		} else if (';' == c) {
+			if (0 == (c = *p++)) {
+				goto l_exit; /* oops, unexpected end of string, abort */
+			}
+
+			switch (c) {
+				case 'l':
+#if NeedIntlChars
+				case '`':
+				case 'd':
+				case 'e':
+				case 'i':
+				case 'n':
+				case 'u':
+				case 'v':
+				case 'E':
+				case 'r':
+#endif
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						goto l_exit;
+					}
+					break;
+				default:
+					break;
+			}
+			++L;
+		} else {
+			++L;
+		}
+	}
+
+l_exit:
+	return L;
+}
 
 LOCALPROC ClStrAppendChar(int *L0, ui3b *r, ui3b c)
 {
-	unsigned short L = *L0;
+	int L = *L0;
 
-	if (ClStrMaxLength != L) {
-		r[L] = c;
-		L++;
-		*L0 = L;
-	}
+	r[L] = c;
+	L++;
+	*L0 = L;
 }
 
 LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 {
+	/* must match ClStrSizeSubstCStr ! */
+
 	char *p = s;
 	char c;
 	ui3b x;
 
-	while ((c = *p++) != 0) {
-		if (c == '^') {
-			if ((c = *p++) == 0) {
+	while (0 != (c = *p++)) {
+		if ('^' == c) {
+			if (0 == (c = *p++)) {
 				return; /* oops, unexpected end of string, abort */
-			} else if (c == '^') {
+			} else if ('^' == c) {
 				ClStrAppendChar(L, r, c);
 			} else {
 				ClStrAppendSubstCStr(L, r, GetSubstitutionStr(c));
 			}
-		} else if (c == ';') {
-			switch (*p++) {
+		} else if (';' == c) {
+			if (0 == (c = *p++)) {
+				return; /* oops, unexpected end of string, abort */
+			}
+
+			switch (c) {
 				case 'g': x = kCellCopyright; break;
 				case 'l':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'a': x = kCellApostrophe; break;
 						case 'l': x = kCellEllipsis; break;
 						case 's': x = kCellSemicolon; break;
@@ -1858,7 +1918,7 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 'e': x = kCellLoAE; break;
 						case '.': x = kCellMidDot; break;
 #endif
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case '[': x = kCellLeftDQuote; break;
@@ -1872,7 +1932,12 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 				case 'O': x = kCellUpOStroke; break;
 				case 'Q': x = kCellUpLigatureOE; break;
 				case '`':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'A': x = kCellUpAGrave; break;
 						case 'E': x = kCellUpEGrave; break;
 						case 'I': x = kCellUpIGrave; break;
@@ -1883,13 +1948,18 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 'i': x = kCellLoIGrave; break;
 						case 'o': x = kCellLoOGrave; break;
 						case 'u': x = kCellLoUGrave; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'a': x = kCellLoARing; break;
 				case 'c': x = kCellLoCCedilla; break;
 				case 'd':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'A': x = kCellUpACedille; break;
 						case 'a': x = kCellLoACedille; break;
 						case 'D': x = kCellUpDStroke; break;
@@ -1900,11 +1970,16 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 'l': x = kCellLoLBar; break;
 						case 'Z': x = kCellUpZDot; break;
 						case 'z': x = kCellLoZDot; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'e':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'A': x = kCellUpAAcute; break;
 						case 'E': x = kCellUpEAcute; break;
 						case 'I': x = kCellUpIAcute; break;
@@ -1927,11 +2002,16 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 'Y': x = kCellUpYAcute; break;
 						case 'y': x = kCellLoYAcute; break;
 
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'i':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'A': x = kCellUpACircumflex; break;
 						case 'E': x = kCellUpECircumflex; break;
 						case 'I': x = kCellUpICircumflex; break;
@@ -1942,25 +2022,35 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 'i': x = kCellLoICircumflex; break;
 						case 'o': x = kCellLoOCircumflex; break;
 						case 'u': x = kCellLoUCircumflex; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'n':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'A': x = kCellUpATilde; break;
 						case 'N': x = kCellUpNTilde; break;
 						case 'O': x = kCellUpOTilde; break;
 						case 'a': x = kCellLoATilde; break;
 						case 'n': x = kCellLoNTilde; break;
 						case 'o': x = kCellLoOTilde; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'o': x = kCellLoOStroke; break;
 				case 'q': x = kCellLoLigatureOE; break;
 				case 's': x = kCellSharpS; break;
 				case 'u':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'A': x = kCellUpADiaeresis; break;
 						case 'E': x = kCellUpEDiaeresis; break;
 						case 'I': x = kCellUpIDiaeresis; break;
@@ -1973,11 +2063,16 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 'o': x = kCellLoODiaeresis; break;
 						case 'u': x = kCellLoUDiaeresis; break;
 						case 'y': x = kCellLoYDiaeresis; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'v':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'C': x = kCellUpCCaron; break;
 						case 'c': x = kCellLoCCaron; break;
 						case 'e': x = kCellLoECaron; break;
@@ -1985,29 +2080,33 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 						case 's': x = kCellLoSCaron; break;
 						case 't': x = kCellLoTCaron; break;
 						case 'z': x = kCellLoZCaron; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'E':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'u': x = kCellLoUDblac; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 				case 'r':
-					switch (*p++) {
+					if (0 == (c = *p++)) {
+						/* oops, unexpected end of string, abort */
+						return;
+					}
+
+					switch (c) {
 						case 'u': x = kCellLoURing; break;
-						default: return; break;
+						default: x = kCellQuestion; break;
 					}
 					break;
 #endif
-				default:
-					return;
-					/*
-						oops, unexpected char,
-						maybe end of string, abort
-					*/
-					break;
+				default: x = kCellQuestion; break;
 			}
 			ClStrAppendChar(L, r, x);
 		} else {
@@ -2086,15 +2185,29 @@ LOCALPROC ClStrAppendSubstCStr(int *L, ui3b *r, char *s)
 				case ';': x = kCellSemicolon; break;
 				case '?': x = kCellQuestion; break;
 				case '_': x = kCellUnderscore; break;
-				default: x = kCellSpace; break;
+				case ' ': x = kCellSpace; break;
+				case '\047': x = kCellApostrophe; break;
+
+				default: x = kCellQuestion; break;
 			}
 			ClStrAppendChar(L, r, x);
 		}
 	}
 }
 
+#define ClStrMaxLength 512
+
 LOCALPROC ClStrFromSubstCStr(int *L, ui3b *r, char *s)
 {
+	int n = ClStrSizeSubstCStr(s);
+
 	*L = 0;
-	ClStrAppendSubstCStr(L, r, s);
+	if (n <= ClStrMaxLength) {
+		ClStrAppendSubstCStr(L, r, s);
+
+		if (n != *L) {
+			/* try to ensure mismatch is noticed */
+			*L = 0;
+		}
+	}
 }

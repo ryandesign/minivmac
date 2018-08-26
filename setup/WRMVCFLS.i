@@ -565,10 +565,24 @@ LOCALPROC WriteMVCMakeFile(void)
 	--DestFileIndent;
 }
 
+LOCALPROC WriteWantSigningFlag(void)
+{
+	WriteOpenDestFile("my_config_d",
+		"codesign", ".txt", "code signing flag");
+
+	WriteDestFileLn("1");
+
+	WriteCloseDestFile();
+}
+
 LOCALPROC WriteMVCSpecificFiles(void)
 {
 	if (HaveMacBundleApp) {
 		WritePListData();
+	}
+
+	if (WantSigning) {
+		WriteWantSigningFlag();
 	}
 
 	if (WantSandbox) {

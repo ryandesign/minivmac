@@ -7782,12 +7782,12 @@ LOCALIPROC DoBitField(void)
 {
 	ui5b tmp;
 	ui5b newtmp;
-	si5b dsta;
+	CPTR dsta;
 	ui5b bf0;
 	ui3b bf1;
 	ui5b dstreg = V_regs.CurDecOpY.v[1].ArgDat;
 	ui4b extra = nextiword();
-	si5b offset = ((extra & 0x0800) != 0)
+	ui5b offset = ((extra & 0x0800) != 0)
 		? m68k_dreg((extra >> 6) & 7)
 		: ((extra >> 6) & 0x1f);
 	ui5b width = ((extra & 0x0020) != 0)
@@ -7812,8 +7812,7 @@ LOCALIPROC DoBitField(void)
 			otherwise illegal and don't get here
 		*/
 		dsta = DecodeDst();
-		dsta +=
-			(offset >> 3) | (offset & 0x80000000 ? ~ 0x1fffffff : 0);
+		dsta += Ui5rASR(offset, 3);
 		offset &= 7;
 		offwid = offset + ((width == 0) ? 32 : width);
 
@@ -7883,7 +7882,7 @@ LOCALIPROC DoBitField(void)
 		case 5: /* BFFFO */
 			{
 				ui5b mask = 1 << ((width == 0) ? 31 : (width - 1));
-				si5b i = offset;
+				ui5r i = offset;
 
 				while ((0 != mask) && (0 == (tmp & mask))) {
 					mask >>= 1;

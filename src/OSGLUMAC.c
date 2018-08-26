@@ -2638,6 +2638,35 @@ LOCALPROC UnInitPbufs(void)
 #endif
 
 #if IncludePbufs
+#define PbufHaveLock 1
+#endif
+
+#if IncludePbufs
+LOCALFUNC ui3p PbufLock(tPbuf i)
+{
+	ui3p p;
+
+	Handle h = PbufDat[i];
+
+	if (NULL == h) {
+		p = nullpr;
+	} else {
+		HLock(h);
+		p = (ui3p)*h;
+	}
+
+	return p;
+}
+#endif
+
+#if IncludePbufs
+LOCALPROC PbufUnlock(tPbuf i)
+{
+	HUnlock(PbufDat[i]);
+}
+#endif
+
+#if IncludePbufs
 GLOBALOSGLUPROC PbufTransfer(ui3p Buffer,
 	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
 {

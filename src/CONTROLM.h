@@ -265,9 +265,9 @@ LOCALPROC DrawCellsOneLineStr(char *s)
 LOCALPROC DrawCellsKeyCommand(char *k, char *s)
 {
 	DrawCellsBeginLine();
-	DrawCellsFromStr("'");
+	DrawCellsFromStr(" ");
 	DrawCellsFromStr(k);
-	DrawCellsFromStr("' - ");
+	DrawCellsFromStr(" - ");
 	DrawCellsFromStr(s);
 	DrawCellsEndLine();
 }
@@ -549,14 +549,43 @@ FORWARDPROC ToggleWantFullScreen(void);
 #endif
 
 #if IncludeHostTextClipExchange
-LOCALPROC CopyOptionsStr(void)
+LOCALPROC HTCEexportSubstCStr(char *s)
 {
-	ui3b ps[ClStrMaxLength];
 	int i;
 	int L;
 	tPbuf j;
+#ifdef PbufHaveLock
+	int n = ClStrSizeSubstCStr(s);
 
-	ClStrFromSubstCStr(&L, ps, kBldOpts);
+	if (mnvm_noErr == PbufNew(n, &j)) {
+		blnr IsOk = falseblnr;
+		ui3p p = PbufLock(j);
+
+		if (nullpr != p) {
+			L = 0;
+			ClStrAppendSubstCStr(&L, p, s);
+
+			if (L == n) {
+				for (i = 0; i < n; ++i) {
+					p[i] = Cell2MacAsciiMap[p[i]];
+				}
+				IsOk = trueblnr;
+			}
+
+			PbufUnlock(j);
+
+		}
+
+		if (IsOk) {
+			HTCEexport(j);
+		} else {
+			PbufDispose(j);
+		}
+	}
+#else
+	ui3b ps[ClStrMaxLength];
+
+	ClStrFromSubstCStr(&L, ps, s);
 
 	for (i = 0; i < L; ++i) {
 		ps[i] = Cell2MacAsciiMap[ps[i]];
@@ -566,6 +595,14 @@ LOCALPROC CopyOptionsStr(void)
 		PbufTransfer(ps, j, 0, L, trueblnr);
 		HTCEexport(j);
 	}
+#endif
+}
+#endif
+
+#if IncludeHostTextClipExchange
+LOCALPROC CopyOptionsStr(void)
+{
+	HTCEexportSubstCStr(kBldOpts);
 }
 #endif
 
@@ -575,21 +612,7 @@ FORWARDPROC CopyRegistrationStr(void);
 #elif EnableDemoMsg
 LOCALPROC CopyRegistrationStr(void)
 {
-	ui3b ps[ClStrMaxLength];
-	int i;
-	int L;
-	tPbuf j;
-
-	ClStrFromSubstCStr(&L, ps, "^v");
-
-	for (i = 0; i < L; ++i) {
-		ps[i] = Cell2MacAsciiMap[ps[i]];
-	}
-
-	if (mnvm_noErr == PbufNew(L, &j)) {
-		PbufTransfer(ps, j, 0, L, trueblnr);
-		HTCEexport(j);
-	}
+	HTCEexportSubstCStr("^v");
 }
 #endif
 #endif
@@ -892,6 +915,7 @@ LOCALPROC DrawCellsControlModeBody(void)
 #if WantEnblCtrlInt
 			DrawCellsKeyCommand("I", kStrCmdInterrupt);
 #endif
+			DrawCellsKeyCommand("P", kStrCmdCopyOptions);
 			DrawCellsKeyCommand("H", kStrCmdHelp);
 			break;
 		case kCntrlMsgSpeedControlStart:
@@ -936,9 +960,9 @@ LOCALPROC DrawCellsControlModeBody(void)
 			DrawCellsOneLineStr(kStrNewFullScreen);
 			break;
 #endif
-#if IncludePbufs
+#if IncludeHostTextClipExchange
 		case kCntrlMsgOptionsStrCopied:
-			DrawCellsOneLineStr("Variation options copied.");
+			DrawCellsOneLineStr(kStrHaveCopiedOptions);
 			break;
 #endif
 #if 0

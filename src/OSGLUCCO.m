@@ -348,109 +348,19 @@ LOCALPROC dbglog_close0(void)
 
 #define WantKeyboard_RemapMac 1
 
+#include "PBUFSTDC.h"
+
 #include "CONTROLM.h"
-
-/* --- parameter buffers --- */
-
-#if IncludePbufs
-LOCALVAR void *PbufDat[NumPbufs];
-#endif
-
-#if IncludePbufs
-LOCALFUNC tMacErr PbufNewFromPtr(void *p, ui5b count, tPbuf *r)
-{
-	tPbuf i;
-	tMacErr err;
-
-	if (! FirstFreePbuf(&i)) {
-		free(p);
-		err = mnvm_miscErr;
-	} else {
-		*r = i;
-		PbufDat[i] = p;
-		PbufNewNotify(i, count);
-		err = mnvm_noErr;
-	}
-
-	return err;
-}
-#endif
-
-#if IncludePbufs
-LOCALPROC PbufKillToPtr(void **p, ui5r *count, tPbuf r)
-{
-	*p = PbufDat[r];
-	*count = PbufSize[r];
-
-	PbufDisposeNotify(r);
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
-{
-	tMacErr err = mnvm_miscErr;
-
-	void *p = calloc(1, count);
-	if (NULL != p) {
-		err = PbufNewFromPtr(p, count, r);
-	}
-
-	return err;
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUPROC PbufDispose(tPbuf i)
-{
-	void *p;
-	ui5r count;
-
-	PbufKillToPtr(&p, &count, i);
-
-	free(p);
-}
-#endif
-
-#if IncludePbufs
-LOCALPROC UnInitPbufs(void)
-{
-	tPbuf i;
-
-	for (i = 0; i < NumPbufs; ++i) {
-		if (PbufIsAllocated(i)) {
-			PbufDispose(i);
-		}
-	}
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUPROC PbufTransfer(ui3p Buffer,
-	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
-{
-	void *p = ((ui3p)PbufDat[i]) + offset;
-	if (IsWrite) {
-		(void) memcpy(p, Buffer, count);
-	} else {
-		(void) memcpy(Buffer, p, count);
-	}
-}
-#endif
 
 /* --- text translation --- */
 
-LOCALPROC UniCharStrFromSubstCStr(int *L, unichar *x, char *s,
-	blnr AddEllipsis)
+LOCALPROC UniCharStrFromSubstCStr(int *L, unichar *x, char *s)
 {
 	int i;
 	int L0;
 	ui3b ps[ClStrMaxLength];
 
 	ClStrFromSubstCStr(&L0, ps, s);
-	if (AddEllipsis) {
-		ClStrAppendChar(&L0, ps, kCellEllipsis);
-	}
 
 	for (i = 0; i < L0; ++i) {
 		x[i] = Cell2UnicodeMap[ps[i]];
@@ -459,13 +369,12 @@ LOCALPROC UniCharStrFromSubstCStr(int *L, unichar *x, char *s,
 	*L = L0;
 }
 
-LOCALFUNC NSString * NSStringCreateFromSubstCStr(char *s,
-	blnr AddEllipsis)
+LOCALFUNC NSString * NSStringCreateFromSubstCStr(char *s)
 {
 	int L;
 	unichar x[ClStrMaxLength];
 
-	UniCharStrFromSubstCStr(&L, x, s, AddEllipsis);
+	UniCharStrFromSubstCStr(&L, x, s);
 
 	return [NSString stringWithCharacters:x length:L];
 }
@@ -604,7 +513,7 @@ LOCALFUNC blnr FindNamedChildPath(NSString *parentPath,
 		initWithData:d encoding:NSASCIIStringEncoding]
 		autorelease];
 #endif
-	NSString *ss = NSStringCreateFromSubstCStr(ChildName, falseblnr);
+	NSString *ss = NSStringCreateFromSubstCStr(ChildName);
 	if (nil != ss) {
 		NSString *r = [parentPath stringByAppendingPathComponent: ss];
 		if (nil != r) {
@@ -2667,19 +2576,18 @@ LOCALPROC FinishSubMenu(NSMenu *theMenu, NSMenu *parentMenu,
 LOCALFUNC NSMenu *setApplicationMenu(NSMenu *mainMenu)
 {
 	NSMenuItem *menuItem;
-	NSString *sAppName = NSStringCreateFromSubstCStr("^p", falseblnr);
+	NSString *sAppName = NSStringCreateFromSubstCStr("^p");
 		/* doesn't matter though, OS X replaces this */
 	NSString *sAbout =
-		NSStringCreateFromSubstCStr(kStrMenuItemAbout, falseblnr);
+		NSStringCreateFromSubstCStr(kStrMenuItemAbout);
 	NSString *sHide =
-		NSStringCreateFromSubstCStr(kStrAppMenuItemHide, falseblnr);
+		NSStringCreateFromSubstCStr(kStrAppMenuItemHide);
 	NSString *sHideOthers =
-		NSStringCreateFromSubstCStr(kStrAppMenuItemHideOthers,
-			falseblnr);
+		NSStringCreateFromSubstCStr(kStrAppMenuItemHideOthers);
 	NSString *sShowAll =
-		NSStringCreateFromSubstCStr(kStrAppMenuItemShowAll, falseblnr);
+		NSStringCreateFromSubstCStr(kStrAppMenuItemShowAll);
 	NSString *sQuit =
-		NSStringCreateFromSubstCStr(kStrAppMenuItemQuit, falseblnr);
+		NSStringCreateFromSubstCStr(kStrAppMenuItemQuit);
 
 	NSMenu *appleMenu = [[NSMenu alloc] initWithTitle: sAppName];
 
@@ -2722,9 +2630,9 @@ LOCALPROC setupFileMenu(NSMenu *mainMenu)
 	NSMenu *fileMenu;
 	NSMenuItem *menuItem;
 	NSString *sFile =
-		NSStringCreateFromSubstCStr(kStrMenuFile, falseblnr);
+		NSStringCreateFromSubstCStr(kStrMenuFile);
 	NSString *sOpen =
-		NSStringCreateFromSubstCStr(kStrMenuItemOpen, trueblnr);
+		NSStringCreateFromSubstCStr(kStrMenuItemOpen ";ll");
 
 	fileMenu = [[NSMenu alloc] initWithTitle: sFile];
 
@@ -2744,9 +2652,9 @@ LOCALPROC setupSpecialMenu(NSMenu *mainMenu)
 {
 	NSMenu *specialMenu;
 	NSString *sSpecial =
-		NSStringCreateFromSubstCStr(kStrMenuSpecial, falseblnr);
+		NSStringCreateFromSubstCStr(kStrMenuSpecial);
 	NSString *sMore =
-		NSStringCreateFromSubstCStr(kStrMenuItemMore, trueblnr);
+		NSStringCreateFromSubstCStr(kStrMenuItemMore ";ll");
 
 	specialMenu = [[NSMenu alloc] initWithTitle: sSpecial];
 
@@ -2972,11 +2880,11 @@ LOCALPROC CheckSavedMacMsg(void)
 
 	if (nullpr != SavedBriefMsg) {
 		NSString *briefMsg0 =
-			NSStringCreateFromSubstCStr(SavedBriefMsg, falseblnr);
+			NSStringCreateFromSubstCStr(SavedBriefMsg);
 		NSString *longMsg0 =
-			NSStringCreateFromSubstCStr(SavedLongMsg, falseblnr);
+			NSStringCreateFromSubstCStr(SavedLongMsg);
 		NSString *quitMsg0 =
-			NSStringCreateFromSubstCStr(kStrCmdQuit, falseblnr);
+			NSStringCreateFromSubstCStr(kStrCmdQuit);
 
 		(void) NSRunAlertPanel(briefMsg0, @"%@", quitMsg0, nil, nil,
 			longMsg0);

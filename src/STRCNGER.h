@@ -163,3 +163,6 @@
 #define kStrAppMenuItemHideOthers "Andere ausblenden"
 #define kStrAppMenuItemShowAll "Alle einblenden"
 #define kStrAppMenuItemQuit "^p beenden"
+
+#define kStrCmdCopyOptions "copy variation options"
+#define kStrHaveCopiedOptions "Variation options copied"

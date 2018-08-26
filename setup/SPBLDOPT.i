@@ -323,7 +323,7 @@ LOCALFUNC tMyErr TryAsInitFullScreenNot(void)
 
 LOCALFUNC blnr dfo_InitFullScreen(void)
 {
-	int v;
+	blnr v;
 
 	v = gbk_targfam_wnce == gbo_targfam;
 
@@ -376,7 +376,7 @@ LOCALFUNC tMyErr TryAsVarFullScreenNot(void)
 
 LOCALFUNC blnr dfo_VarFullScreen(void)
 {
-	int v;
+	blnr v;
 
 	if ((gbk_apifam_gtk == gbo_apifam)
 		|| (gbk_targfam_wnce == gbo_targfam))
@@ -531,7 +531,7 @@ LOCALFUNC tMyErr TryAsSoundOptionNot(void)
 
 LOCALFUNC blnr dfo_SoundEnabled(void)
 {
-	int v;
+	blnr v;
 
 	v = (gbk_apifam_mac == gbo_apifam)
 		|| (gbk_apifam_osx == gbo_apifam)
@@ -1285,7 +1285,7 @@ LOCALFUNC tMyErr TryAsItnlKyBdFixNot(void)
 
 LOCALFUNC blnr dfo_ItnlKyBdFix(void)
 {
-	int v;
+	blnr v;
 
 	v = (gbk_apifam_win == gbo_apifam);
 
@@ -1464,7 +1464,7 @@ LOCALFUNC tMyErr TryAsInitBackgroundNot(void)
 
 LOCALFUNC blnr dfo_InitBackground(void)
 {
-	int v;
+	blnr v;
 
 	if (WantLocalTalk) {
 		v = trueblnr;
@@ -1510,7 +1510,7 @@ LOCALFUNC tMyErr TryAsInitAutoSlowNot(void)
 
 LOCALFUNC blnr dfo_InitAutoSlow(void)
 {
-	int v;
+	blnr v;
 
 	v = ! cur_mIIorIIX;
 
@@ -2547,7 +2547,7 @@ LOCALFUNC tMyErr TryAsMouseMotionOptionNot(void)
 
 LOCALFUNC blnr dfo_MouseMotion(void)
 {
-	int v;
+	blnr v;
 
 	v = (gbk_apifam_gtk != gbo_apifam);
 
@@ -2725,7 +2725,7 @@ LOCALFUNC tMyErr TryAsWantColorImageNot(void)
 
 LOCALFUNC blnr dfo_ColorImage(void)
 {
-	int v;
+	blnr v;
 
 	if (gbk_apifam_xwn == gbo_apifam) {
 		v = trueblnr;
@@ -3213,6 +3213,56 @@ LOCALPROC WrtOptGraphicsSwitching(void)
 }
 
 
+/* option: Signing */
+
+LOCALVAR blnr WantSigning;
+LOCALVAR ui3r olv_Signing;
+
+LOCALPROC ResetSigning(void)
+{
+	WantSigning = nanblnr;
+	olv_Signing = 0;
+}
+
+LOCALFUNC tMyErr TryAsSigningNot(void)
+{
+	return BooleanTryAsOptionNot("-sgn",
+		&WantSigning, &olv_Signing);
+}
+
+LOCALFUNC blnr dfo_Signing(void)
+{
+	blnr v;
+
+	v = (gbk_apifam_cco == gbo_apifam);
+
+	return v;
+}
+
+LOCALFUNC tMyErr ChooseSigning(void)
+{
+	tMyErr err;
+
+	err = kMyErr_noErr;
+	if (nanblnr == WantSigning) {
+		WantSigning = dfo_Signing();
+	} else {
+		if (WantSigning && (gbk_apifam_cco != gbo_apifam)) {
+			err = ReportParseFailure(
+				"-sgn is so far only implemented for cocoa on OS X");
+		}
+	}
+
+	return err;
+}
+
+LOCALPROC WrtOptSigning(void)
+{
+	WrtOptBooleanOption("-sgn", WantSigning,
+		dfo_Signing());
+}
+
+
 /* option: Sandbox */
 
 LOCALVAR blnr WantSandbox;
@@ -3240,9 +3290,18 @@ LOCALFUNC tMyErr ChooseSandbox(void)
 	if (nanblnr == WantSandbox) {
 		WantSandbox = dfo_Sandbox();
 	} else {
-		if (WantSandbox && (gbk_apifam_cco != gbo_apifam)) {
-			err = ReportParseFailure(
-				"-sbx is so far only implemented for cocoa on OS X");
+		if (WantSandbox) {
+			if (gbk_apifam_cco != gbo_apifam) {
+				err = ReportParseFailure("-sbx"
+					" is so far only implemented for cocoa on OS X");
+			} else
+			if (! WantSigning) {
+				err = ReportParseFailure("-sbx"
+					" requires -sgn 1");
+			} else
+			{
+				/* ok */
+			}
 		}
 	}
 
@@ -3497,6 +3556,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetDbgLogHAVE();
 	ResetScreenVSync();
 	ResetGraphicsSwitching();
+	ResetSigning();
 	ResetSandbox();
 }
 
@@ -3564,6 +3624,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
 	if (kMyErrNoMatch == (err = TryAsGraphicsSwitchingNot()))
+	if (kMyErrNoMatch == (err = TryAsSigningNot()))
 	if (kMyErrNoMatch == (err = TryAsSandboxNot()))
 	{
 	}
@@ -3637,6 +3698,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (kMyErr_noErr == (err = ChooseDbgLogHAVE()))
 	if (kMyErr_noErr == (err = ChooseScreenVSync()))
 	if (kMyErr_noErr == (err = ChooseGraphicsSwitching()))
+	if (kMyErr_noErr == (err = ChooseSigning()))
 	if (kMyErr_noErr == (err = ChooseSandbox()))
 
 	if (kMyErr_noErr == (err = ChooseScreenOpts())) /* derived */
@@ -3712,5 +3774,6 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptDbgLogHAVE();
 	WrtOptScreenVSync();
 	WrtOptGraphicsSwitching();
+	WrtOptSigning();
 	WrtOptSandbox();
 }

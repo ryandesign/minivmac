@@ -266,6 +266,106 @@ GLOBALOSGLUPROC MyMoveBytes(anyp srcPtr, anyp destPtr, si5b byteCount)
 	(void) memcpy((char *)destPtr, (char *)srcPtr, byteCount);
 }
 
+/* --- Parameter buffers --- */
+
+#if IncludePbufs
+LOCALVAR HGLOBAL PbufDat[NumPbufs];
+#endif
+
+#if IncludePbufs
+LOCALFUNC tMacErr PbufNewFromHandle(HGLOBAL h, ui5b count, tPbuf *r)
+{
+	tPbuf i;
+	tMacErr err;
+
+	if (! FirstFreePbuf(&i)) {
+		(void) GlobalFree(h);
+		err = mnvm_miscErr;
+	} else {
+		*r = i;
+		PbufDat[i] = h;
+		PbufNewNotify(i, count);
+		err = mnvm_noErr;
+	}
+
+	return err;
+}
+#endif
+
+#if IncludePbufs
+GLOBALOSGLUFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
+{
+	HGLOBAL h;
+	tMacErr err = mnvm_miscErr;
+
+	h = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, count);
+	if (h != NULL) {
+		/* need to clear h */
+		err = PbufNewFromHandle(h, count, r);
+	}
+
+	return err;
+}
+#endif
+
+#if IncludePbufs
+GLOBALOSGLUPROC PbufDispose(tPbuf i)
+{
+	(void) GlobalFree(PbufDat[i]);
+	PbufDisposeNotify(i);
+}
+#endif
+
+#if IncludePbufs
+LOCALPROC UnInitPbufs(void)
+{
+	tPbuf i;
+
+	for (i = 0; i < NumPbufs; ++i) {
+		if (PbufIsAllocated(i)) {
+			PbufDispose(i);
+		}
+	}
+}
+#endif
+
+#if IncludePbufs
+#define PbufHaveLock 1
+#endif
+
+#if IncludePbufs
+LOCALFUNC ui3p PbufLock(tPbuf i)
+{
+	HGLOBAL h = PbufDat[i];
+	return (ui3p)GlobalLock(h);
+}
+#endif
+
+#if IncludePbufs
+LOCALPROC PbufUnlock(tPbuf i)
+{
+	(void) GlobalUnlock(PbufDat[i]);
+}
+#endif
+
+#if IncludePbufs
+GLOBALOSGLUPROC PbufTransfer(ui3p Buffer,
+	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
+{
+	HGLOBAL h = PbufDat[i];
+	ui3p p0 = GlobalLock(h);
+	if (p0 != NULL) {
+		void *p = p0 + offset;
+		if (IsWrite) {
+			(void) memcpy(p, Buffer, count);
+		} else {
+			(void) memcpy(Buffer, p, count);
+		}
+	}
+	(void) GlobalUnlock(h);
+}
+#endif
+
 /* --- control mode and internationalization --- */
 
 #include "CONTROLM.h"
@@ -3680,85 +3780,6 @@ LOCALPROC CheckMouseState(void)
 	NewMousePos.x -= WndX;
 	NewMousePos.y -= WndY;
 	MousePositionNotify(NewMousePos.x, NewMousePos.y);
-}
-#endif
-
-#if IncludePbufs
-LOCALVAR HGLOBAL PbufDat[NumPbufs];
-#endif
-
-#if IncludePbufs
-LOCALFUNC tMacErr PbufNewFromHandle(HGLOBAL h, ui5b count, tPbuf *r)
-{
-	tPbuf i;
-	tMacErr err;
-
-	if (! FirstFreePbuf(&i)) {
-		(void) GlobalFree(h);
-		err = mnvm_miscErr;
-	} else {
-		*r = i;
-		PbufDat[i] = h;
-		PbufNewNotify(i, count);
-		err = mnvm_noErr;
-	}
-
-	return err;
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
-{
-	HGLOBAL h;
-	tMacErr err = mnvm_miscErr;
-
-	h = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, count);
-	if (h != NULL) {
-		/* need to clear h */
-		err = PbufNewFromHandle(h, count, r);
-	}
-
-	return err;
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUPROC PbufDispose(tPbuf i)
-{
-	(void) GlobalFree(PbufDat[i]);
-	PbufDisposeNotify(i);
-}
-#endif
-
-#if IncludePbufs
-LOCALPROC UnInitPbufs(void)
-{
-	tPbuf i;
-
-	for (i = 0; i < NumPbufs; ++i) {
-		if (PbufIsAllocated(i)) {
-			PbufDispose(i);
-		}
-	}
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUPROC PbufTransfer(ui3p Buffer,
-	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
-{
-	HGLOBAL h = PbufDat[i];
-	ui3p p0 = GlobalLock(h);
-	if (p0 != NULL) {
-		void *p = p0 + offset;
-		if (IsWrite) {
-			(void) memcpy(p, Buffer, count);
-		} else {
-			(void) memcpy(Buffer, p, count);
-		}
-	}
-	(void) GlobalUnlock(h);
 }
 #endif
 

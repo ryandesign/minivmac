@@ -657,17 +657,13 @@ LOCALPROC PStrFromChar(ps3p r, char x)
 
 #include "INTLCHAR.h"
 
-LOCALPROC UniCharStrFromSubstCStr(int *L, UniChar *x, char *s,
-	blnr AddEllipsis)
+LOCALPROC UniCharStrFromSubstCStr(int *L, UniChar *x, char *s)
 {
 	int i;
 	int L0;
 	ui3b ps[ClStrMaxLength];
 
 	ClStrFromSubstCStr(&L0, ps, s);
-	if (AddEllipsis) {
-		ClStrAppendChar(&L0, ps, kCellEllipsis);
-	}
 
 	for (i = 0; i < L0; ++i) {
 		x[i] = Cell2UnicodeMap[ps[i]];
@@ -704,7 +700,7 @@ LOCALFUNC tMacErr MyMakeFSRefC(FSRef *ParentRef, char *fileName,
 	int L;
 	UniChar x[ClStrMaxLength];
 
-	UniCharStrFromSubstCStr(&L, x, fileName, falseblnr);
+	UniCharStrFromSubstCStr(&L, x, fileName);
 	return MyMakeFSRefUniChar(ParentRef, L, x,
 		isFolder, ChildRef);
 }
@@ -742,7 +738,7 @@ LOCALFUNC tMacErr OpenWriteNamedFileInFolderRef(FSRef *ParentRef,
 	int L;
 	UniChar x[ClStrMaxLength];
 
-	UniCharStrFromSubstCStr(&L, x, fileName, falseblnr);
+	UniCharStrFromSubstCStr(&L, x, fileName);
 	err = MyMakeFSRefUniChar(ParentRef, L, x, &isFolder, &ChildRef);
 	if (mnvm_fnfErr == err) {
 		err = To_tMacErr(FSCreateFileUnicode(ParentRef, L, x, 0, NULL,
@@ -787,7 +783,7 @@ LOCALFUNC tMacErr FindOrMakeNamedChildRef(FSRef *ParentRef,
 	int L;
 	UniChar x[ClStrMaxLength];
 
-	UniCharStrFromSubstCStr(&L, x, ChildName, falseblnr);
+	UniCharStrFromSubstCStr(&L, x, ChildName);
 	if (CheckSavetMacErr(MyMakeFSRefUniChar(ParentRef, L, x,
 		&isFolder, ChildRef)))
 	{
@@ -974,65 +970,7 @@ LOCALFUNC blnr CheckDateTime(void)
 
 /* --- parameter buffers --- */
 
-#if IncludePbufs
-LOCALVAR void *PbufDat[NumPbufs];
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUFUNC tMacErr PbufNew(ui5b count, tPbuf *r)
-{
-	tPbuf i;
-	void *p;
-	tMacErr err = mnvm_miscErr;
-
-	if (FirstFreePbuf(&i)) {
-		p = calloc(1, count);
-		if (p != NULL) {
-			*r = i;
-			PbufDat[i] = p;
-			PbufNewNotify(i, count);
-
-			err = mnvm_noErr;
-		}
-	}
-
-	return err;
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUPROC PbufDispose(tPbuf i)
-{
-	free(PbufDat[i]);
-	PbufDisposeNotify(i);
-}
-#endif
-
-#if IncludePbufs
-LOCALPROC UnInitPbufs(void)
-{
-	tPbuf i;
-
-	for (i = 0; i < NumPbufs; ++i) {
-		if (PbufIsAllocated(i)) {
-			PbufDispose(i);
-		}
-	}
-}
-#endif
-
-#if IncludePbufs
-GLOBALOSGLUPROC PbufTransfer(ui3p Buffer,
-	tPbuf i, ui5r offset, ui5r count, blnr IsWrite)
-{
-	void *p = ((ui3p)PbufDat[i]) + offset;
-	if (IsWrite) {
-		(void) memcpy(p, Buffer, count);
-	} else {
-		(void) memcpy(Buffer, p, count);
-	}
-}
-#endif
+#include "PBUFSTDC.h"
 
 /* --- drives --- */
 
@@ -2869,13 +2807,12 @@ LOCALPROC ClearWeAreActive(void)
 
 /* --- basic dialogs --- */
 
-LOCALFUNC CFStringRef CFStringCreateFromSubstCStr(char *s,
-	blnr AddEllipsis)
+LOCALFUNC CFStringRef CFStringCreateFromSubstCStr(char *s)
 {
 	int L;
 	UniChar x[ClStrMaxLength];
 
-	UniCharStrFromSubstCStr(&L, x, s, AddEllipsis);
+	UniCharStrFromSubstCStr(&L, x, s);
 
 	return CFStringCreateWithCharacters(kCFAllocatorDefault, x, L);
 }
@@ -2889,10 +2826,10 @@ LOCALPROC CheckSavedMacMsg(void)
 	if (nullpr != SavedBriefMsg) {
 		if (HaveMyCreateStandardAlert() && HaveMyRunStandardAlert()) {
 			CFStringRef briefMsgu = CFStringCreateFromSubstCStr(
-				SavedBriefMsg, falseblnr);
+				SavedBriefMsg);
 			if (NULL != briefMsgu) {
 				CFStringRef longMsgu = CFStringCreateFromSubstCStr(
-					SavedLongMsg, falseblnr);
+					SavedLongMsg);
 				if (NULL != longMsgu) {
 					DialogRef TheAlert;
 					OSStatus err = MyCreateStandardAlert(
@@ -5074,9 +5011,9 @@ static pascal OSStatus MyEventHandler(EventHandlerCallRef nextHandler,
 LOCALPROC AppendMenuConvertCStr(
 	MenuRef menu,
 	MenuCommand inCommandID,
-	char *s, blnr WantEllipsis)
+	char *s)
 {
-	CFStringRef cfStr = CFStringCreateFromSubstCStr(s, WantEllipsis);
+	CFStringRef cfStr = CFStringCreateFromSubstCStr(s);
 	if (NULL != cfStr) {
 		AppendMenuItemTextWithCFString(menu, cfStr,
 			0, inCommandID, NULL);
@@ -5094,7 +5031,7 @@ LOCALFUNC MenuRef NewMenuFromConvertCStr(short menuID, char *s)
 {
 	MenuRef menu = NULL;
 
-	CFStringRef cfStr = CFStringCreateFromSubstCStr(s, falseblnr);
+	CFStringRef cfStr = CFStringCreateFromSubstCStr(s);
 	if (NULL != cfStr) {
 		OSStatus err = CreateNewMenu(menuID, 0, &menu);
 		if (err != noErr) {
@@ -5135,9 +5072,7 @@ LOCALFUNC blnr InstallOurMenus(void)
 	if (menu != NULL) {
 		AppendMenuConvertCStr(menu,
 			kHICommandAbout,
-			kStrMenuItemAbout,
-			falseblnr
-			);
+			kStrMenuItemAbout);
 		AppendMenuSep(menu);
 		InsertMenu(menu, 0);
 	}
@@ -5146,7 +5081,7 @@ LOCALFUNC blnr InstallOurMenus(void)
 	if (menu != NULL) {
 		AppendMenuConvertCStr(menu,
 			kHICommandOpen,
-			kStrMenuItemOpen, trueblnr);
+			kStrMenuItemOpen ";ll");
 		InsertMenu(menu, 0);
 	}
 
@@ -5154,7 +5089,7 @@ LOCALFUNC blnr InstallOurMenus(void)
 	if (menu != NULL) {
 		AppendMenuConvertCStr(menu,
 			kCmdIdMoreCommands,
-			kStrMenuItemMore, trueblnr);
+			kStrMenuItemMore ";ll");
 		InsertMenu(menu, 0);
 	}
 

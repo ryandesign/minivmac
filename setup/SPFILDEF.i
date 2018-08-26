@@ -165,6 +165,12 @@ static void DoAllSrcFiles(tDoOneCFile p)
 	p("ACTVCODE", kDepDirCSrc,
 		CSrcFlagsUseHdrIf(WantActvCode), nullpr);
 	p("CONTROLM", kDepDirCSrc, kCSrcFlgmNoSource, nullpr);
+	p("PBUFSTDC", kDepDirCSrc,
+		CSrcFlagsUseHdrIf((gbk_apifam_xwn == gbo_apifam)
+			|| (gbk_apifam_sd2 == gbo_apifam)
+			|| (gbk_apifam_sdl == gbo_apifam)
+			),
+		nullpr);
 	p("SCRNMAPR", kDepDirCSrc,
 		CSrcFlagsUseHdrIf(WantSCRNMAPR), nullpr);
 	p("SCRNTRNS", kDepDirCSrc,
