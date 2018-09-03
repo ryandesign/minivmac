@@ -1967,9 +1967,9 @@ LOCALFUNC blnr InitLocationDat(void)
 #define dbglog_SoundBuffStats (0 && dbglog_HAVE)
 
 LOCALVAR tpSoundSamp TheSoundBuffer = nullpr;
-volatile static ui4b ThePlayOffset;
-volatile static ui4b TheFillOffset;
-volatile static ui4b MinFilledSoundBuffs;
+static volatile ui4b ThePlayOffset;
+static volatile ui4b TheFillOffset;
+static volatile ui4b MinFilledSoundBuffs;
 #if dbglog_SoundBuffStats
 LOCALVAR ui4b MaxFilledSoundBuffs;
 #endif

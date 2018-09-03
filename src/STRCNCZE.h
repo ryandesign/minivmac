@@ -24,7 +24,7 @@
 #define kStrAboutMessage "Pro zobrazen;ei informac;ei o programu, pou;vzijte p;vr;eikaz ;]A;} v ovl;eadac;eim m;eodu ^p. Pro informace o ovl;eadac;eim m;eodu, pod;eivejte se do ;[V;eice p;vr;eikaz;ru;ll;{ v menu ;[Dal;vs;ei mo;vznosti;{."
 
 #define kStrMoreCommandsTitle "V kontroln;eim m;eodu ^p jsou dostupn;ee dal;vs;ei p;vr;eikazy."
-#define kStrMoreCommandsMessage "pro pou;vzit;ei ovl;eadac;eiho m;eodu stiskn;vete a dr;vzte ;]control;}. V ovl;eadac;eim m;eodu z;rustanete, dokud nepust;eite ;]control;}. stiskn;vete ;]H;} v ovl;eadac;eim m;eodu pro zobrazen;ei dostupn;eych p;vr;eikaz;ru."
+#define kStrMoreCommandsMessage "pro pou;vzit;ei ovl;eadac;eiho m;eodu stiskn;vete a dr;vzte ;]^c;}. V ovl;eadac;eim m;eodu z;rustanete, dokud nepust;eite ;]^c;}. stiskn;vete ;]H;} v ovl;eadac;eim m;eodu pro zobrazen;ei dostupn;eych p;vr;eikaz;ru."
 
 #define kStrTooManyImagesTitle "P;vr;eili;vs mnoho obraz;ru disk;ru"
 #define kStrTooManyImagesMessage "Tolik obraz;ru disk;ru p;vripojit nezvl;eadnu. zkuste jeden odpojit."
@@ -83,7 +83,7 @@
 #define kStrDisclaimer " ^p je distribuov;ean s nad;vej;ei, ;vze ude pou;vz;eiv;ean, ale BEZ JAK;eEKOLIV Z;eARUKY;ls t;ee;vz bez implikovan;ee z;earuky OBCHODOVATELNOSTI nebo VHODNOSTI PRO UR;vCIT;eY ;eU;vCEL."
 
 /* Help Screen */
-#define kStrHowToLeaveControl "Pro opu;vst;ven;ei ovl;ead;eac;eiho m;eodu pus;vtte ;]control;}."
+#define kStrHowToLeaveControl "Pro opu;vst;ven;ei ovl;ead;eac;eiho m;eodu pus;vtte ;]^c;}."
 #define kStrHowToPickACommand "jinak stiskn;vete p;eismeno. Dostupn;ee p;vr;eikazy jsou:"
 #define kStrCmdAbout "O programu (informace o verzi)"
 #define kStrCmdOpenDiskImage "Otev;vr;eit obraz disku"
@@ -91,7 +91,7 @@
 #define kStrCmdSpeedControl "Ovl;ead;ean;ei rychlosti;ll (^s)"
 #define kStrCmdMagnifyToggle "P;vribl;ei;vzen;ei (^g)"
 #define kStrCmdFullScrnToggle "Cel;ea obrazovka (^f)"
-#define kStrCmdCtrlKeyToggle "P;vrep;ein;ean;ei emulovan;eeho CTRL (^k)"
+#define kStrCmdCtrlKeyToggle "P;vrep;ein;ean;ei emulovan;eeho ;]^m;} (^k)"
 #define kStrCmdReset "Reset"
 #define kStrCmdInterrupt "Vyru;vsit"
 #define kStrCmdHelp "Pomoc (uk;eaz;eat tuto str;eanku)"
@@ -115,7 +115,7 @@
 
 #define kStrNewFullScreen "Na celou obrazovku: ^f."
 
-#define kStrNewCntrlKey "Emulovan;ey CTRL: ^k."
+#define kStrNewCntrlKey "Emulovan;ey ;]^m;}: ^k."
 
 #define kStrCmdCancel "Storno"
 

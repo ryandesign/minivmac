@@ -959,11 +959,6 @@ enum {
 	gbk_keynam_Option,
 	gbk_keynam_Shift,
 	gbk_keynam_CapsLock,
-	gbk_keynam_F1,
-	gbk_keynam_F2,
-	gbk_keynam_F3,
-	gbk_keynam_F4,
-	gbk_keynam_F5,
 	gbk_keynam_Escape,
 	gbk_keynam_BackSlash,
 	gbk_keynam_Slash,
@@ -975,6 +970,11 @@ enum {
 	gbk_keynam_End,
 	gbk_keynam_Help,
 	gbk_keynam_ForwardDel,
+	gbk_keynam_F1,
+	gbk_keynam_F2,
+	gbk_keynam_F3,
+	gbk_keynam_F4,
+	gbk_keynam_F5,
 	kNumKeyNames
 };
 
@@ -1024,21 +1024,6 @@ LOCALFUNC char * GetKeyMapName(int i)
 		case gbk_keynam_CapsLock:
 			s = "CapsLock";
 			break;
-		case gbk_keynam_F1:
-			s = "F1";
-			break;
-		case gbk_keynam_F2:
-			s = "F2";
-			break;
-		case gbk_keynam_F3:
-			s = "F3";
-			break;
-		case gbk_keynam_F4:
-			s = "F4";
-			break;
-		case gbk_keynam_F5:
-			s = "F5";
-			break;
 		case gbk_keynam_Escape:
 			s = "Escape";
 			break;
@@ -1071,6 +1056,21 @@ LOCALFUNC char * GetKeyMapName(int i)
 			break;
 		case gbk_keynam_ForwardDel:
 			s = "ForwardDel";
+			break;
+		case gbk_keynam_F1:
+			s = "F1";
+			break;
+		case gbk_keynam_F2:
+			s = "F2";
+			break;
+		case gbk_keynam_F3:
+			s = "F3";
+			break;
+		case gbk_keynam_F4:
+			s = "F4";
+			break;
+		case gbk_keynam_F5:
+			s = "F5";
 			break;
 		default:
 			s = "(unknown key)";
@@ -1195,14 +1195,14 @@ LOCALPROC dfo_keymap(ui3b *a)
 	dfo_keyset(a, gbk_keynam_Command,
 		WantCmndOptSwap ? gbk_keynam_CM : gbk_keynam_Command);
 
-	for (i = gbk_keynam_Option; i <= gbk_keynam_CapsLock; ++i) {
+	for (i = gbk_keynam_Option; i <= gbk_keynam_ForwardDel; ++i) {
 		dfo_keyset(a, i, i);
 	}
 
 	dfo_keyset(a, gbk_keynam_F1, gbk_keynam_Option);
 	dfo_keyset(a, gbk_keynam_F2, gbk_keynam_Command);
 
-	for (i = gbk_keynam_F3; i <= gbk_keynam_ForwardDel; ++i) {
+	for (i = gbk_keynam_F3; i <= gbk_keynam_F5; ++i) {
 		dfo_keyset(a, i, i);
 	}
 
@@ -1212,13 +1212,38 @@ LOCALPROC dfo_keymap(ui3b *a)
 	dfo_keyset(a, gbk_keynam_RShift, gbo_keymap[gbk_keynam_Shift]);
 }
 
+LOCALFUNC ui3r KeyMapInverse(uimr v)
+{
+	uimr i;
+
+	for (i = 0; i < kNumSrcKeyNames; ++i) {
+		if (v == gbo_keymap[i]) {
+			return i;
+		}
+	}
+
+	return 0xFF;
+}
+
+LOCALVAR ui3r ControlModeKey;
+
 LOCALFUNC tMyErr ChooseKeyMap(void)
 {
+	tMyErr err;
 	ui3b a[kNumSrcKeyNames];
 
 	dfo_keymap(a);
 
-	return kMyErr_noErr;
+	ControlModeKey = KeyMapInverse(gbk_keynam_CM);
+
+	if (0xFF == ControlModeKey) {
+		err = ReportParseFailure(
+			"-km : no key maps to CM");
+	} else {
+		err = kMyErr_noErr;
+	}
+
+	return err;
 }
 
 LOCALPROC WrtOptKeyMap(void)
@@ -1236,6 +1261,64 @@ LOCALPROC WrtOptKeyMap(void)
 			WriteCStrToDestFile(GetDstKeyMapName(gbo_keymap[i]));
 		}
 	}
+}
+
+
+/* option: emulated key toggle mapping */
+
+LOCALVAR int gbo_EKTMap;
+LOCALVAR ui3r olv_EKTMap;
+
+LOCALPROC ResetEKTMapOption(void)
+{
+	gbo_EKTMap = kListOptionAuto;
+	olv_EKTMap = 0;
+}
+
+LOCALFUNC tMyErr TryAsEKTMapOptionNot(void)
+{
+	return FindNamedOption("-ekt",
+		kNumKeyNames, GetKeyMapName, &gbo_EKTMap, &olv_EKTMap);
+}
+
+LOCALFUNC int dfo_EKTMap(void)
+{
+	blnr a[kNumKeyNames];
+	uimr i;
+	uimr j;
+
+	for (i = 0; i < kNumKeyNames; ++i) {
+		a[i] = falseblnr;
+	}
+
+	for (i = 0; i < kNumSrcKeyNames; ++i) {
+		j = gbo_keymap[i];
+		if (j < kNumKeyNames) {
+			a[j] = trueblnr;
+		}
+	}
+
+	for (i = 0; i < kNumKeyNames; ++i) {
+		if (! a[i]) {
+			return i;
+		}
+	}
+
+	return gbk_keynam_Control;
+}
+
+LOCALFUNC tMyErr ChooseEKTMap(void)
+{
+	if (kListOptionAuto == gbo_EKTMap) {
+		gbo_EKTMap = dfo_EKTMap();
+	}
+
+	return kMyErr_noErr;
+}
+
+LOCALPROC WrtOptEKTMap(void)
+{
+	WrtOptNamedOption("-ekt", GetKeyMapName, gbo_EKTMap, dfo_EKTMap());
 }
 
 
@@ -2215,11 +2298,19 @@ LOCALFUNC tMyErr TryAsAutoLocationNot(void)
 
 LOCALFUNC tMyErr ChooseAutoLocation(void)
 {
+	tMyErr err;
+
+	err = kMyErr_noErr;
 	if (nanblnr == WantAutoLocation) {
 		WantAutoLocation = dfo_AutoLocation();
+	} else {
+		if (cur_mdl < gbk_mdl_Plus) {
+			err = ReportParseFailure(
+				"-alc not supported for this model (-m)");
+		}
 	}
 
-	return kMyErr_noErr;
+	return err;
 }
 
 LOCALPROC WrtOptAutoLocation(void)
@@ -2253,6 +2344,11 @@ LOCALFUNC tMyErr ChooseInitLatitude(void)
 	err = kMyErr_noErr;
 	if (0 == olv_InitLatitude) {
 		cur_InitLatitude = dfo_InitLatitude();
+	} else {
+		if (cur_mdl < gbk_mdl_Plus) {
+			err = ReportParseFailure(
+				"-lcy not supported for this model (-m)");
+		}
 	}
 
 	return err;
@@ -2291,6 +2387,11 @@ LOCALFUNC tMyErr ChooseInitLongitude(void)
 	err = kMyErr_noErr;
 	if (0 == olv_InitLongitude) {
 		cur_InitLongitude = dfo_InitLongitude();
+	} else {
+		if (cur_mdl < gbk_mdl_Plus) {
+			err = ReportParseFailure(
+				"-lcx not supported for this model (-m)");
+		}
 	}
 
 	return err;
@@ -2326,11 +2427,19 @@ LOCALFUNC tMyErr TryAsAutoTimeZoneNot(void)
 
 LOCALFUNC tMyErr ChooseAutoTimeZone(void)
 {
+	tMyErr err;
+
+	err = kMyErr_noErr;
 	if (nanblnr == WantAutoTimeZone) {
 		WantAutoTimeZone = dfo_AutoTimeZone();
+	} else {
+		if (cur_mdl < gbk_mdl_Plus) {
+			err = ReportParseFailure(
+				"-atz not supported for this model (-m)");
+		}
 	}
 
-	return kMyErr_noErr;
+	return err;
 }
 
 LOCALPROC WrtOptAutoTimeZone(void)
@@ -2360,11 +2469,19 @@ LOCALFUNC tMyErr TryAsTzDSTNot(void)
 
 LOCALFUNC tMyErr ChooseTzDST(void)
 {
+	tMyErr err;
+
+	err = kMyErr_noErr;
 	if (nanblnr == WantTzDST) {
 		WantTzDST = dfo_TzDST();
+	} else {
+		if (cur_mdl < gbk_mdl_Plus) {
+			err = ReportParseFailure(
+				"-lcd not supported for this model (-m)");
+		}
 	}
 
-	return kMyErr_noErr;
+	return err;
 }
 
 LOCALPROC WrtOptTzDST(void)
@@ -2415,7 +2532,12 @@ LOCALFUNC tMyErr ChooseTzDeltS(void)
 	tMyErr err;
 
 	err = kMyErr_noErr;
-	if (0 == olv_TzDeltS) {
+	if (cur_mdl < gbk_mdl_Plus) {
+		if ((0 != olv_TzDeltS) || (0 != olv_TzDeltH)) {
+			err = ReportParseFailure(
+				"-lczs and -lcz are not supported for this model (-m)");
+		}
+	} else if (0 == olv_TzDeltS) {
 		if (0 == olv_TzDeltH) {
 			cur_TzDeltS = dfo_TzDeltS();
 		} else {
@@ -3128,6 +3250,41 @@ LOCALPROC WrtOptDbgLogHAVE(void)
 }
 
 
+/* option: Abnormal Reports */
+
+LOCALVAR blnr gbo_AbnormalReports;
+LOCALVAR ui3r olv_AbnormalReports;
+
+LOCALPROC ResetAbnormalReports(void)
+{
+	gbo_AbnormalReports = nanblnr;
+	olv_AbnormalReports = 0;
+}
+
+LOCALFUNC tMyErr TryAsAbnormalReportsNot(void)
+{
+	return BooleanTryAsOptionNot("-abr", &gbo_AbnormalReports,
+		&olv_AbnormalReports);
+}
+
+#define dfo_AbnormalReports() DbgLogHAVE
+
+LOCALFUNC tMyErr ChooseAbnormalReports(void)
+{
+	if (nanblnr == gbo_AbnormalReports) {
+		gbo_AbnormalReports = dfo_AbnormalReports();
+	}
+
+	return kMyErr_noErr;
+}
+
+LOCALPROC WrtOptAbnormalReports(void)
+{
+	WrtOptBooleanOption("-abr", gbo_AbnormalReports,
+		dfo_AbnormalReports());
+}
+
+
 /* option: Screen VSync */
 
 LOCALVAR blnr WantScreenVSync;
@@ -3406,7 +3563,7 @@ LOCALFUNC tMyErr ChooseMiscEmHardware(void)
 {
 	EmClassicKbrd = cur_mdl <= gbk_mdl_Plus;
 
-	if (cur_mdl <= gbk_mdl_Plus) {
+	if (EmClassicKbrd) {
 		EmADB = falseblnr;
 		EmRTC = trueblnr;
 		EmPMU = falseblnr;
@@ -3515,6 +3672,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetInsertIthDisk();
 	ResetCmndOptSwap();
 	ResetKeyMapOption();
+	ResetEKTMapOption();
 	ResetAltKeysMode();
 	ResetItnlKyBdFixOption();
 	ResetLocalTalk();
@@ -3554,6 +3712,7 @@ LOCALPROC SPResetCommandLineParameters(void)
 	ResetDisableRamTest();
 	ResetWantDisasm();
 	ResetDbgLogHAVE();
+	ResetAbnormalReports();
 	ResetScreenVSync();
 	ResetGraphicsSwitching();
 	ResetSigning();
@@ -3583,6 +3742,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsInsertIthDisk()))
 	if (kMyErrNoMatch == (err = TryAsCmndOptSwapNot()))
 	if (kMyErrNoMatch == (err = TryAsKeyMapOptionNot()))
+	if (kMyErrNoMatch == (err = TryAsEKTMapOptionNot()))
 	if (kMyErrNoMatch == (err = TryAsAltKeysModeNot()))
 	if (kMyErrNoMatch == (err = TryAsItnlKyBdFixNot()))
 	if (kMyErrNoMatch == (err = TryAsLocalTalkNot()))
@@ -3622,6 +3782,7 @@ LOCALFUNC tMyErr TryAsSPOptionNot(void)
 	if (kMyErrNoMatch == (err = TryAsDisableRamTestNot()))
 	if (kMyErrNoMatch == (err = TryAsWantDisasmNot()))
 	if (kMyErrNoMatch == (err = TryAsDbgLogHAVENot()))
+	if (kMyErrNoMatch == (err = TryAsAbnormalReportsNot()))
 	if (kMyErrNoMatch == (err = TryAsScreenVSyncNot()))
 	if (kMyErrNoMatch == (err = TryAsGraphicsSwitchingNot()))
 	if (kMyErrNoMatch == (err = TryAsSigningNot()))
@@ -3655,6 +3816,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 	if (kMyErr_noErr == (err = ChooseInsertIthDisk()))
 	if (kMyErr_noErr == (err = ChooseCmndOptSwap()))
 	if (kMyErr_noErr == (err = ChooseKeyMap()))
+	if (kMyErr_noErr == (err = ChooseEKTMap()))
 	if (kMyErr_noErr == (err = ChooseAltKeysMode()))
 	if (kMyErr_noErr == (err = ChooseItnlKyBdFix()))
 	if (kMyErr_noErr == (err = ChooseLocalTalk()))
@@ -3696,6 +3858,7 @@ LOCALFUNC tMyErr AutoChooseSPSettings(void)
 
 	if (kMyErr_noErr == (err = ChooseWantDisasm()))
 	if (kMyErr_noErr == (err = ChooseDbgLogHAVE()))
+	if (kMyErr_noErr == (err = ChooseAbnormalReports()))
 	if (kMyErr_noErr == (err = ChooseScreenVSync()))
 	if (kMyErr_noErr == (err = ChooseGraphicsSwitching()))
 	if (kMyErr_noErr == (err = ChooseSigning()))
@@ -3733,6 +3896,7 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptInsertIthDisk();
 	WrtOptCmndOptSwap();
 	WrtOptKeyMap();
+	WrtOptEKTMap();
 	WrtOptAltKeysMode();
 	WrtOptItnlKyBdFix();
 	WrtOptLocalTalk();
@@ -3772,6 +3936,7 @@ LOCALPROC WrtOptSPSettings(void)
 	WrtOptDisableRamTest();
 	WrtOptWantDisasmNot();
 	WrtOptDbgLogHAVE();
+	WrtOptAbnormalReports();
 	WrtOptScreenVSync();
 	WrtOptGraphicsSwitching();
 	WrtOptSigning();

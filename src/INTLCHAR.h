@@ -1715,6 +1715,18 @@ LOCALVAR ui3r RequestIthDisk = 0;
 LOCALVAR blnr ControlKeyPressed = falseblnr;
 #endif
 
+#ifndef kStrCntrlKyName
+#define kStrCntrlKyName "control"
+#endif
+
+#ifndef kControlModeKey
+#define kControlModeKey kStrCntrlKyName
+#endif
+
+#ifndef kUnMappedKey
+#define kUnMappedKey kStrCntrlKyName
+#endif
+
 LOCALFUNC char * GetSubstitutionStr(char x)
 {
 	char *s;
@@ -1734,6 +1746,12 @@ LOCALFUNC char * GetSubstitutionStr(char x)
 			break;
 		case 'r':
 			s = RomFileName;
+			break;
+		case 'c':
+			s = kControlModeKey;
+			break;
+		case 'm':
+			s = kUnMappedKey;
 			break;
 #if UseControlKeys
 		case 'k':

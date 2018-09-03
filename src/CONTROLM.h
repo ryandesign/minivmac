@@ -325,6 +325,7 @@ LOCALPROC DrawSpclMode0(char *Title, SpclModeBody Body)
 #define DisconnectKeyCodes1 DisconnectKeyCodes
 #endif
 
+#if WantAbnormalReports || UseActvFile
 LOCALPROC ClStrAppendHexNib(int *L0, ui3b *r, ui3r v)
 {
 	if (v < 10) {
@@ -333,19 +334,25 @@ LOCALPROC ClStrAppendHexNib(int *L0, ui3b *r, ui3r v)
 		ClStrAppendChar(L0, r, kCellUpA + (v - 10));
 	}
 }
+#endif
 
+#if WantAbnormalReports || UseActvFile
 LOCALPROC ClStrAppendHexByte(int *L0, ui3b *r, ui3r v)
 {
 	ClStrAppendHexNib(L0, r, (v >> 4) & 0x0F);
 	ClStrAppendHexNib(L0, r, v & 0x0F);
 }
+#endif
 
+#if WantAbnormalReports || UseActvFile
 LOCALPROC ClStrAppendHexWord(int *L0, ui3b *r, ui4r v)
 {
 	ClStrAppendHexByte(L0, r, (v >> 8) & 0xFF);
 	ClStrAppendHexByte(L0, r, v & 0xFF);
 }
+#endif
 
+#if WantAbnormalReports
 LOCALPROC DrawCellsOneLineHexWord(ui4r v)
 {
 	ui3b ps[ClStrMaxLength];
@@ -360,16 +367,19 @@ LOCALPROC DrawCellsOneLineHexWord(ui4r v)
 	}
 	DrawCellsEndLine();
 }
+#endif
 
 LOCALPROC DrawCellsMessageModeBody(void)
 {
 	DrawCellsOneLineStr(SavedBriefMsg);
 	DrawCellsBlankLine();
 	DrawCellsOneLineStr(SavedLongMsg);
+#if WantAbnormalReports
 	if (0 != SavedIDMsg) {
 		DrawCellsBlankLine();
 		DrawCellsOneLineHexWord(SavedIDMsg);
 	}
+#endif
 }
 
 LOCALPROC DrawMessageMode(void)
@@ -381,7 +391,9 @@ LOCALPROC MacMsgDisplayOff(void)
 {
 	SpecialModeClr(SpclModeMessage);
 	SavedBriefMsg = nullpr;
+#if WantAbnormalReports
 	SavedIDMsg = 0;
+#endif
 	NeedWholeScreenDraw = trueblnr;
 }
 
@@ -573,7 +585,6 @@ LOCALPROC HTCEexportSubstCStr(char *s)
 			}
 
 			PbufUnlock(j);
-
 		}
 
 		if (IsOk) {
@@ -627,7 +638,7 @@ LOCALPROC DoControlModeKey(ui3r key)
 				case MKC_K:
 					ControlKeyPressed = ! ControlKeyPressed;
 					ControlMessage = kCntrlMsgEmCntrl;
-					Keyboard_UpdateKeyMap1(MKC_Control,
+					Keyboard_UpdateKeyMap1(MKC_UnMappedKey,
 						ControlKeyPressed);
 					break;
 #endif
@@ -1307,16 +1318,20 @@ LOCALFUNC ui5r Calc_Checksum(void)
 }
 #endif
 
+#if CheckRomCheckSum && RomStartCheckSum
 LOCALPROC WarnMsgCorruptedROM(void)
 {
 	MacMsgOverride(kStrCorruptedROMTitle, kStrCorruptedROMMessage);
 }
+#endif
 
+#if CheckRomCheckSum
 LOCALPROC WarnMsgUnsupportedROM(void)
 {
 	MacMsgOverride(kStrUnsupportedROMTitle,
 		kStrUnsupportedROMMessage);
 }
+#endif
 
 LOCALFUNC tMacErr ROM_IsValid(void)
 {

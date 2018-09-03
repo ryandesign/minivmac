@@ -34,7 +34,9 @@
 #endif
 
 
+#if WantAbnormalReports
 EXPORTOSGLUPROC WarnMsgAbnormalID(ui4r id);
+#endif
 
 #if dbglog_HAVE
 EXPORTOSGLUPROC dbglog_writeCStr(char *s);

@@ -150,6 +150,32 @@ LOCALPROC WriteAppSpecificCNFGRAPIoptions(void)
 		}
 	}
 
+	if (gbk_keynam_Control == ControlModeKey) {
+		/* kStrCntrlKyName */
+	} else {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define kControlModeKey \"");
+		WriteCStrToDestFile(GetSrcKeyMapName(ControlModeKey));
+		WriteCStrToDestFile("\"");
+		WriteEndDestFileLn();
+	}
+
+	if (gbk_keynam_Control == gbo_EKTMap) {
+		/* kStrCntrlKyName */
+	} else {
+		WriteBgnDestFileLn();
+		WriteCStrToDestFile("#define kUnMappedKey \"");
+		WriteCStrToDestFile(GetDstKeyMapName(gbo_EKTMap));
+		WriteCStrToDestFile("\"");
+		WriteEndDestFileLn();
+	}
+
+	WriteBgnDestFileLn();
+	WriteCStrToDestFile("#define MKC_UnMappedKey ");
+	WriteCStrToDestFile(" MKC_");
+	WriteCStrToDestFile(GetDstKeyMapName(gbo_EKTMap));
+	WriteEndDestFileLn();
+
 	WriteCompCondBool("VarFullScreen", WantVarFullScreen);
 	if (WantVarFullScreen) {
 		WriteCompCondBool("WantInitFullScreen", WantInitFullScreen);

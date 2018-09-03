@@ -30,12 +30,17 @@ LOCALPROC WriteCLexeFlags(void)
 {
 	blnr WinCE = (gbk_targfam_wnce == gbo_targfam);
 	WriteCStrToDestFile("/nologo");
-	if (gbk_dbg_on == gbo_dbg) {
-		/* Optimizations : Disabled */
-		WriteCStrToDestFile(" /Od");
-	} else {
+
+#if 0
+	if (gbk_dbg_on != gbo_dbg) {
 		/* Optimizations : Minimize Size */
 		WriteCStrToDestFile(" /O1");
+	} else
+#endif
+	{
+		/* Maximize chance of correct compile */
+		/* Optimizations : Disabled */
+		WriteCStrToDestFile(" /Od");
 	}
 	if (WinCE) {
 		WriteCStrToDestFile(
@@ -773,16 +778,24 @@ LOCALPROC WriteMSVCToolConfig(char *s, MyProc p)
 
 LOCALPROC WriteMSVCCompilerToolConfig(void)
 {
-	if (gbk_dbg_on == gbo_dbg) {
-		WriteDestFileLn("Optimization=\"0\"");
-		WriteDestFileLn(
-			"PreprocessorDefinitions=\"WIN32;_DEBUG;_WINDOWS\"");
-		WriteDestFileLn("MinimalRebuild=\"true\"");
-	} else {
+#if 0
+	if (gbk_dbg_on != gbo_dbg) {
 		WriteDestFileLn("Optimization=\"1\"");
 		WriteDestFileLn("FavorSizeOrSpeed=\"0\"");
 		WriteDestFileLn("WholeProgramOptimization=\"false\"");
 		WriteDestFileLn("OmitFramePointers=\"true\"");
+	} else
+#endif
+	{
+		/* Maximize chance of correct compile */
+		WriteDestFileLn("Optimization=\"0\"");
+	}
+
+	if (gbk_dbg_on == gbo_dbg) {
+		WriteDestFileLn(
+			"PreprocessorDefinitions=\"WIN32;_DEBUG;_WINDOWS\"");
+		WriteDestFileLn("MinimalRebuild=\"true\"");
+	} else {
 		WriteDestFileLn(
 			"PreprocessorDefinitions=\"WIN32;NDEBUG;_WINDOWS\"");
 		WriteDestFileLn("StringPooling=\"true\"");
@@ -1649,9 +1662,26 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 				WriteXMLtagBeginValEndLine("WarningLevel", "Level4");
 				WriteXMLtagBeginValEndLine("PrecompiledHeader",
 					"NotUsing");
-				if (gbk_dbg_on == gbo_dbg) {
+
+#if 0
+				if (gbk_dbg_on != gbo_dbg) {
+					WriteXMLtagBeginValEndLine("Optimization",
+						"MinSpace");
+					WriteXMLtagBeginValEndLine("FavorSizeOrSpeed",
+						"Neither");
+					WriteXMLtagBeginValEndLine(
+						"WholeProgramOptimization", "false");
+					WriteXMLtagBeginValEndLine("OmitFramePointers",
+						"true");
+				} else
+#endif
+				{
+					/* Maximize chance of correct compile */
 					WriteXMLtagBeginValEndLine("Optimization",
 						"Disabled");
+				}
+
+				if (gbk_dbg_on == gbo_dbg) {
 					WriteDestFileLn("<PreprocessorDefinitions>"
 						"WIN32;_DEBUG;_WINDOWS;"
 						"%(PreprocessorDefinitions)"
@@ -1674,18 +1704,10 @@ LOCALPROC WriteMSVCXML10ProjectFile(void)
 							"EditAndContinue");
 					}
 				} else {
-					WriteXMLtagBeginValEndLine("Optimization",
-						"MinSpace");
 					WriteDestFileLn("<PreprocessorDefinitions>"
 						"WIN32;NDEBUG;_WINDOWS;"
 						"%(PreprocessorDefinitions)"
 						"</PreprocessorDefinitions>");
-					WriteXMLtagBeginValEndLine("FavorSizeOrSpeed",
-						"Neither");
-					WriteXMLtagBeginValEndLine(
-						"WholeProgramOptimization", "false");
-					WriteXMLtagBeginValEndLine("OmitFramePointers",
-						"true");
 					WriteXMLtagBeginValEndLine("StringPooling", "true");
 					WriteXMLtagBeginValEndLine("RuntimeLibrary",
 						"MultiThreaded");

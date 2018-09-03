@@ -55,7 +55,7 @@
 
 
 #ifndef UseCmndLine
-#define UseCmndLine 1
+#define UseCmndLine 0
 #endif
 
 

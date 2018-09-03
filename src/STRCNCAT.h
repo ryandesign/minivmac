@@ -24,7 +24,7 @@
 #define kStrAboutMessage "Per mostrar informaci;eo sobre aquest programa, utilitzeu el comandament ;]A;} del ^p Mode Control. Per coneixer m;ees sobre el Mode Control, vegi ;[M;ees Comandaments;ll;{ en el menu ;[Especial;{ ."
 
 #define kStrMoreCommandsTitle "M;ees comandaments est;`an disponibles en el mode de control de ^p ."
-#define kStrMoreCommandsMessage "Per entrar en el mode de control, mantingueu premut la tecla ;]control;} . Seguir;`a en el mode control fins que deixeu anar la tecla ;]control;} . Polsi ;]H;} en el mode control per llistar els comandaments disponibles."
+#define kStrMoreCommandsMessage "Per entrar en el mode de control, mantingueu premut la tecla ;]^c;} . Seguir;`a en el mode control fins que deixeu anar la tecla ;]^c;} . Polsi ;]H;} en el mode control per llistar els comandaments disponibles."
 
 #define kStrTooManyImagesTitle "Massa imatges de disc"
 #define kStrTooManyImagesMessage "No es poden muntar tantes imatges de disc. Proveu treure alguna."
@@ -83,7 +83,7 @@
 #define kStrDisclaimer " ^p es distribueix amb l;laesperan;ca de ser ;eutil, per;`o SENSE CAP GARANTIA;ls fins i tot sense la garantia impl;eicita de MERCANTIBILITAT O ADECUACI;eO PER A UN ;eUS PARTICULAR."
 
 /* Help Screen */
-#define kStrHowToLeaveControl "Per sortir del Mode Control, deixeu anar la tecla ;]control;} ."
+#define kStrHowToLeaveControl "Per sortir del Mode Control, deixeu anar la tecla ;]^c;} ."
 #define kStrHowToPickACommand "Sin;eo, polsi una lletra. Els comandaments disponibles s;eon:"
 #define kStrCmdAbout "Sobre (informaci;eo sobre versi;eo)"
 #define kStrCmdOpenDiskImage "Obrir imatge de disc..."
@@ -91,7 +91,7 @@
 #define kStrCmdSpeedControl "Control de velocitat;ll (^s)"
 #define kStrCmdMagnifyToggle "Magnificaci;eo (^g)"
 #define kStrCmdFullScrnToggle "Pantalla completa (^f)"
-#define kStrCmdCtrlKeyToggle "Toggle emulaci;eo tecla ;]control;} (^k)"
+#define kStrCmdCtrlKeyToggle "Toggle emulaci;eo tecla ;]^m;} (^k)"
 #define kStrCmdReset "Restablir"
 #define kStrCmdInterrupt "Interrompre"
 #define kStrCmdHelp "Ajuda (mostra aquesta p;`agina)"
@@ -115,7 +115,7 @@
 
 #define kStrNewFullScreen "Pantalla completa est;`a ^f."
 
-#define kStrNewCntrlKey "Emulat tecla ;]control;} ^k."
+#define kStrNewCntrlKey "Emulat tecla ;]^m;} ^k."
 
 #define kStrCmdCancel "cancel;l.lar"
 

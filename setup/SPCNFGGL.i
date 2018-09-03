@@ -33,6 +33,8 @@ LOCALPROC WriteAppSpecificCNFGGLOBoptions(void)
 
 	WriteCompCondBool("dbglog_HAVE", DbgLogHAVE);
 
+	WriteCompCondBool("WantAbnormalReports", gbo_AbnormalReports);
+
 	WriteBlankLineToDestFile();
 
 	WriteDefineUimr("NumDrives", cur_numdrives);

@@ -1182,7 +1182,9 @@ LOCALPROC MyEvtQTryRecoverFromFull(void)
 
 LOCALVAR char *SavedBriefMsg = nullpr;
 LOCALVAR char *SavedLongMsg;
+#if WantAbnormalReports
 LOCALVAR ui4r SavedIDMsg = 0;
+#endif
 LOCALVAR blnr SavedFatalMsg;
 
 LOCALPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal)
@@ -1199,6 +1201,7 @@ LOCALPROC MacMsg(char *briefMsg, char *longMsg, blnr fatal)
 	}
 }
 
+#if WantAbnormalReports
 GLOBALOSGLUPROC WarnMsgAbnormalID(ui4r id)
 {
 	MacMsg(kStrReportAbnormalTitle,
@@ -1213,3 +1216,4 @@ GLOBALOSGLUPROC WarnMsgAbnormalID(ui4r id)
 		SavedIDMsg = id;
 	}
 }
+#endif

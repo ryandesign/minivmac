@@ -34,7 +34,7 @@
 #define kStrAboutMessage "Da bi se pokazale informacije o programu, koristite ;]A;} komandu moda kontrole ^p . Da saznate vi;vse o kontrolnom modu, vidite ;[Jo;vs komandi;ll;{ u ;[Special;{ meniju."
 
 #define kStrMoreCommandsTitle "Vi;vse komanda je dostupno u modu kontrole ^p."
-#define kStrMoreCommandsMessage "Da bi ste u;vsli u kontrolni mod, pretisnite taster ;]control;}. osta;ecete u njemu dok ga ne pustite. Pretisnite ;]H;} da prika;vzete listu dostupnih komandi."
+#define kStrMoreCommandsMessage "Da bi ste u;vsli u kontrolni mod, pretisnite taster ;]^c;}. osta;ecete u njemu dok ga ne pustite. Pretisnite ;]H;} da prika;vzete listu dostupnih komandi."
 
 #define kStrTooManyImagesTitle "Previ;vse diskovnih datoteka"
 #define kStrTooManyImagesMessage "Ne mogu montirati toliko diskovnih datoteka. Izbacite jednu."
@@ -99,7 +99,7 @@
 #define kStrDisclaimer " ^p je distribuiran u nadi da ;ece biti koristan, ali BeZ GaRaNcIjE.;ls  ;vcak i BeZ UtR;vzIvOsTi ili PrIkLaDnOsTi Za OdRe;dDeNu SvRhU."
 
 /* Help Screen */
-#define kStrHowToLeaveControl "da biste iza;vsli iz kontrolnog moda, pustite taster ;]control;}."
+#define kStrHowToLeaveControl "da biste iza;vsli iz kontrolnog moda, pustite taster ;]^c;}."
 #define kStrHowToPickACommand "U drugom slu;vcaju, otkucajte slovo. Dostupne komande su:"
 #define kStrCmdAbout "O programu (informacije o verziji)"
 #define kStrCmdOpenDiskImage "Otvori diskovnu datoteku;ll"
@@ -107,7 +107,7 @@
 #define kStrCmdSpeedControl "Kontrola brzine;ll (^s)"
 #define kStrCmdMagnifyToggle "Prekida;vc lupe (^g)"
 #define kStrCmdFullScrnToggle "Prekida;vc re;vzima celog ekrana (^f)"
-#define kStrCmdCtrlKeyToggle "Prekida;vc emulisanog tastera ;]control;} (^k)"
+#define kStrCmdCtrlKeyToggle "Prekida;vc emulisanog tastera ;]^m;} (^k)"
 #define kStrCmdReset "Resetuj"
 #define kStrCmdInterrupt "Prekid"
 #define kStrCmdHelp "Pomo;ec (poka;vzi ovu stranu)"
@@ -131,7 +131,7 @@
 
 #define kStrNewFullScreen "Ceo ekran je ^f."
 
-#define kStrNewCntrlKey "Emulisani taster ;]control;} je ^k."
+#define kStrNewCntrlKey "Emulisani taster ;]^m;} je ^k."
 
 #define kStrCmdCancel "odbij"
 
