@@ -7726,7 +7726,7 @@ LOCALIPROC DoCodeTRAPcc(void)
 {
 	/* TRAPcc 0101cccc11111sss */
 	/* ReportAbnormal("TRAPcc"); */
-	switch (V_regs.CurDecOpY.v[0].ArgDat) {
+	switch (V_regs.CurDecOpY.v[1].ArgDat) {
 		case 2:
 			ReportAbnormalID(0x011C, "TRAPcc word data");
 			SkipiWord();

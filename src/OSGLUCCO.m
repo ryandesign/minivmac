@@ -1326,6 +1326,26 @@ LOCALPROC QZ_GetMouseLocation(NSPoint *p)
 
 LOCALVAR NSUInteger MyCurrentMods = 0;
 
+/*
+	Apple documentation says:
+	"The lower 16 bits of the modifier flags are reserved
+	for device-dependent bits."
+
+	observed to be:
+*/
+#define My_NSLShiftKeyMask   0x0002
+#define My_NSRShiftKeyMask   0x0004
+#define My_NSLControlKeyMask 0x0001
+#define My_NSRControlKeyMask 0x2000
+#define My_NSLCommandKeyMask 0x0008
+#define My_NSRCommandKeyMask 0x0010
+#define My_NSLOptionKeyMask  0x0020
+#define My_NSROptionKeyMask  0x0040
+/*
+	Avoid using the above unless it is
+	really needed.
+*/
+
 LOCALPROC MyUpdateKeyboardModifiers(NSUInteger newMods)
 {
 	NSUInteger changeMask = MyCurrentMods ^ newMods;
@@ -1335,22 +1355,70 @@ LOCALPROC MyUpdateKeyboardModifiers(NSUInteger newMods)
 			Keyboard_UpdateKeyMap2(MKC_formac_CapsLock,
 				0 != (newMods & NSAlphaShiftKeyMask));
 		}
+
+#if MKC_formac_RShift == MKC_formac_Shift
 		if (0 != (changeMask & NSShiftKeyMask)) {
 			Keyboard_UpdateKeyMap2(MKC_formac_Shift,
 				0 != (newMods & NSShiftKeyMask));
 		}
+#else
+		if (0 != (changeMask & My_NSLShiftKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_Shift,
+				0 != (newMods & My_NSLShiftKeyMask));
+		}
+		if (0 != (changeMask & My_NSRShiftKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_RShift,
+				0 != (newMods & My_NSRShiftKeyMask));
+		}
+#endif
+
+#if MKC_formac_RControl == MKC_formac_Control
 		if (0 != (changeMask & NSControlKeyMask)) {
 			Keyboard_UpdateKeyMap2(MKC_formac_Control,
 				0 != (newMods & NSControlKeyMask));
 		}
+#else
+		if (0 != (changeMask & My_NSLControlKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_Control,
+				0 != (newMods & My_NSLControlKeyMask));
+		}
+		if (0 != (changeMask & My_NSRControlKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_RControl,
+				0 != (newMods & My_NSRControlKeyMask));
+		}
+#endif
+
+#if MKC_formac_RCommand == MKC_formac_Command
 		if (0 != (changeMask & NSCommandKeyMask)) {
 			Keyboard_UpdateKeyMap2(MKC_formac_Command,
 				0 != (newMods & NSCommandKeyMask));
 		}
+#else
+		if (0 != (changeMask & My_NSLCommandKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_Command,
+				0 != (newMods & My_NSLCommandKeyMask));
+		}
+		if (0 != (changeMask & My_NSRCommandKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_RCommand,
+				0 != (newMods & My_NSRCommandKeyMask));
+		}
+#endif
+
+#if MKC_formac_ROption == MKC_formac_Option
 		if (0 != (changeMask & NSAlternateKeyMask)) {
 			Keyboard_UpdateKeyMap2(MKC_formac_Option,
 				0 != (newMods & NSAlternateKeyMask));
 		}
+#else
+		if (0 != (changeMask & My_NSLOptionKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_Option,
+				0 != (newMods & My_NSLOptionKeyMask));
+		}
+		if (0 != (changeMask & My_NSROptionKeyMask)) {
+			Keyboard_UpdateKeyMap2(MKC_formac_ROption,
+				0 != (newMods & My_NSROptionKeyMask));
+		}
+#endif
 
 		MyCurrentMods = newMods;
 	}
@@ -4828,13 +4896,18 @@ LOCALFUNC blnr InitOSGLU(void)
 #if dbglog_HAVE
 	if (dbglog_open())
 #endif
-	if (InitCocoaStuff())
 #if MySoundEnabled
 	if (MySound_Init())
 		/* takes a while to stabilize, do as soon as possible */
 #endif
 	if (LoadMacRom())
 	if (LoadInitialImages())
+	if (InitCocoaStuff())
+		/*
+			Can get openFile call backs here
+			for initial files.
+			So must load ROM, disk1.dsk, etc first.
+		*/
 #if UseActvCode
 	if (ActvCodeInit())
 #endif

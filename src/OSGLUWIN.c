@@ -533,6 +533,7 @@ LOCALPROC SetCurMouseButton(blnr v)
 #define myVK_SCROLL 0x91
 #define myVK_SNAPSHOT 0x2C
 #define myVK_PAUSE 0x13
+#define myVK_CLEAR 0x0C
 
 #define myVK_OEM_8 0xDF
 #define myVK_OEM_102 0xE2
@@ -1750,7 +1751,7 @@ LOCALFUNC blnr InitWinKey2Mac(void)
 
 	AssignOneMacKey(VK_CAPITAL, MKC_formac_CapsLock);
 
-	AssignOneMacKey(VK_APPS, MKC_formac_Option);
+	AssignOneMacKey(VK_APPS, MKC_formac_ROption);
 
 	AssignOneMacKey(VK_LWIN, MKC_formac_Option);
 
@@ -1904,14 +1905,89 @@ LOCALPROC DoVKcode0(int i, blnr down)
 
 LOCALPROC DoVKcode(int i, ui3r flags, blnr down)
 {
-	if (VK_RETURN == i) {
-		Keyboard_UpdateKeyMap2(TestBit(flags, 0)
-			? MKC_formac_Enter : MKC_Return,
-			down);
-	} else if (VK_CAPITAL == i) {
-		CheckTheCapsLock();
-	} else if ((i >= 0) && (i < 256)) {
-		DoVKcode0(i, down);
+	switch (i) {
+#if MKC_formac_Control != MKC_formac_RControl
+		case VK_CONTROL:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_RControl : MKC_formac_Control,
+				down);
+			break;
+#endif
+#if MKC_formac_RCommand != MKC_formac_Command
+		case VK_MENU:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_RCommand : MKC_formac_Command,
+				down);
+			break;
+#endif
+		case VK_RETURN:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_Enter : MKC_Return,
+				down);
+			break;
+		case myVK_HOME:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_Home : MKC_KP7,
+				down);
+			break;
+		case VK_UP:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_Up : MKC_KP8,
+				down);
+			break;
+		case myVK_PRIOR:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_PageUp : MKC_KP9,
+				down);
+			break;
+		case VK_LEFT:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_Left : MKC_KP4,
+				down);
+			break;
+		case myVK_CLEAR:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_Clear : MKC_KP5,
+				down);
+			break;
+		case VK_RIGHT:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_Right : MKC_KP6,
+				down);
+			break;
+		case myVK_END:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_End : MKC_KP1,
+				down);
+			break;
+		case VK_DOWN:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_Down : MKC_KP2,
+				down);
+			break;
+		case myVK_NEXT:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_PageDown : MKC_KP3,
+				down);
+			break;
+		case myVK_INSERT:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_Help : MKC_KP0,
+				down);
+			break;
+		case myVK_DELETE:
+			Keyboard_UpdateKeyMap2(TestBit(flags, 0)
+				? MKC_formac_ForwardDel : MKC_Decimal,
+				down);
+			break;
+		case VK_CAPITAL:
+			CheckTheCapsLock();
+			break;
+		default:
+			if ((i >= 0) && (i < 256)) {
+				DoVKcode0(i, down);
+			}
+			break;
 	}
 }
 
