@@ -164,5 +164,5 @@
 #define kStrAppMenuItemQuit "Zako;encz ^p"
 
 #define kStrCntrlKyName "Control"
-#define kStrCmdCopyOptions "copy variation options"
-#define kStrHaveCopiedOptions "Variation options copied"
+#define kStrCmdCopyOptions "Kopiuj variation options"
+#define kStrHaveCopiedOptions "Variation options kopiowane"

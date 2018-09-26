@@ -180,5 +180,5 @@
 #define kStrAppMenuItemShowAll "Prika;vzi sve"
 #define kStrAppMenuItemQuit "Iza;ddi ^p"
 
-#define kStrCmdCopyOptions "copy variation options"
-#define kStrHaveCopiedOptions "Variation options copied"
+#define kStrCmdCopyOptions "Kopiraj variation options"
+#define kStrHaveCopiedOptions "Variation options kopirane"

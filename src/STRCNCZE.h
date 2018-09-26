@@ -163,5 +163,5 @@
 #define kStrAppMenuItemShowAll "Zobrazit v;vse"
 #define kStrAppMenuItemQuit "Ukon;vcit ^p"
 
-#define kStrCmdCopyOptions "copy variation options"
-#define kStrHaveCopiedOptions "Variation options copied"
+#define kStrCmdCopyOptions "Kop;eirovat variation options"
+#define kStrHaveCopiedOptions "Variation options zkop;eirov;eany"

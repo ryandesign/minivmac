@@ -165,5 +165,5 @@
 #define kStrAppMenuItemQuit "Quitter ^p"
 
 #define kStrCntrlKyName "Contr;iole"
-#define kStrCmdCopyOptions "copy variation options"
-#define kStrHaveCopiedOptions "Variation options copied"
+#define kStrCmdCopyOptions "Copier variation options"
+#define kStrHaveCopiedOptions "Variation options copi;eees"

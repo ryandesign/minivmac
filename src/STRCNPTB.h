@@ -207,5 +207,5 @@
 #define kStrAppMenuItemShowAll "Mostrar Todas"
 #define kStrAppMenuItemQuit "Sair ^p"
 
-#define kStrCmdCopyOptions "copy variation options"
-#define kStrHaveCopiedOptions "Variation options copied"
+#define kStrCmdCopyOptions "Copiar variation options"
+#define kStrHaveCopiedOptions "Variation options copiadas"

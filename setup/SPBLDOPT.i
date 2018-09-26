@@ -339,10 +339,10 @@ LOCALFUNC tMyErr ChooseInitFullScreen(void)
 	if (nanblnr == WantInitFullScreen) {
 		WantInitFullScreen = dfo_InitFullScreen();
 	} else {
-		if (WantInitFullScreen) {
+		if (! WantInitFullScreen) {
 			if (gbk_targ_wcar == cur_targ) {
 				err = ReportParseFailure(
-					"-fullscreen 1 is not supported for -t wcar");
+					"-fullscreen 0 is not supported for -t wcar");
 			}
 		}
 	}
