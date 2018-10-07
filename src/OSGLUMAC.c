@@ -701,7 +701,9 @@ LOCALFUNC blnr dbglog_open0(void)
 	if (noErr == (err = MyHGetDir_v2(&d))) {
 		err = MyFileOpen_v2(&d, (StringPtr)"\pdbglog",
 				(char)fsWrPerm, &dbglog_File);
-		if (mnvm_noErr /* fnfErr */ != err) {
+		if (mnvm_noErr /* fnfErr */ == err) {
+			err = SetEOF(dbglog_File, 0);
+		} else {
 			err = MyOpenNewFile_v3(&d, (StringPtr)"\pdbglog",
 				'MPS ', 'TEXT', &dbglog_File);
 			err = mnvm_noErr;
@@ -3388,199 +3390,6 @@ LOCALPROC InsertADisk0(void)
 	}
 }
 
-#if IncludeSonyNew
-LOCALFUNC tMacErr WriteZero(SInt16 refnum, ui5b L)
-{
-#define ZeroBufferSize 2048
-	tMacErr err;
-	ui5b i;
-	ui3b buffer[ZeroBufferSize];
-
-	if (CheckSaveMacErr(SetFPos(refnum, fsFromStart, 0))) {
-
-		for (i = 0; i < ZeroBufferSize; ++i) {
-			buffer[i] = 0;
-		}
-		while (L > 0) {
-			i = (L > ZeroBufferSize) ? ZeroBufferSize : L;
-			err = To_tMacErr(FSWrite(refnum, (long *)&i, buffer));
-			if (mnvm_noErr != err) {
-				goto label_fail;
-			}
-			L -= i;
-		}
-	}
-
-label_fail:
-	return err;
-}
-#endif
-
-#if HaveCPUfamM68K && IncludeSonyNew
-LOCALPROC MakeNewDiskFromNamevRef(ps3p Name, short vRefNum,
-	ui5b L)
-{
-	short refNum;
-	tMacErr err;
-
-	err = To_tMacErr(Create(Name, vRefNum, '????', '????'));
-	if (mnvm_dupFNErr == err) {
-		if (CheckSaveMacErr(FSDelete(Name, vRefNum))) {
-			err = To_tMacErr(Create(Name, vRefNum, '????', '????'));
-		}
-	}
-	if (mnvm_noErr == err) {
-		if (CheckSaveMacErr(FSOpen(Name, vRefNum, &refNum))) {
-			if (CheckSaveMacErr(SetEOF(refNum, L))) {
-				if (CheckSavetMacErr(WriteZero(refNum, L))) {
-					err = Sony_Insert0(refNum, falseblnr, Name);
-					ReportStandardOpenDiskError(err);
-					refNum = NotAfileRef;
-				}
-			}
-			if (NotAfileRef != refNum) {
-				(void) FSClose(refNum);
-			}
-		}
-		if (mnvm_noErr != err) {
-			(void) FSDelete(Name, vRefNum);
-		}
-	}
-}
-#endif
-
-#if IncludeSonyNew
-LOCALPROC MakeNewDiskFromSpec(FSSpec *NewFileSpec,
-	ui5b L)
-{
-	short refNum;
-	tMacErr err;
-
-	err = To_tMacErr(FSpCreate(NewFileSpec,
-		'????', '????', smSystemScript));
-	if (mnvm_dupFNErr == err) {
-		err = To_tMacErr(FSpDelete(NewFileSpec));
-		if (mnvm_noErr == err) {
-			err = To_tMacErr(FSpCreate(NewFileSpec,
-				'????', '????', smSystemScript));
-		}
-	}
-	if (mnvm_noErr == err) {
-		if (CheckSaveMacErr(
-			FSpOpenDF(NewFileSpec, fsRdWrPerm, &refNum)))
-		{
-			if (CheckSaveMacErr(SetEOF(refNum, L))) {
-				if (CheckSavetMacErr(WriteZero(refNum, L))) {
-					err = Sony_Insert0(refNum, falseblnr, NULL);
-					ReportStandardOpenDiskError(err);
-					refNum = NotAfileRef;
-				}
-			}
-			if (NotAfileRef != refNum) {
-				(void) FSClose(refNum);
-			}
-		}
-		if (mnvm_noErr != err) {
-			(void) FSpDelete(NewFileSpec);
-		}
-	}
-}
-#endif
-
-#if IncludeSonyNew
-LOCALPROC MakeNewDisk(ui5b L, Handle NewDiskName)
-{
-	OSErr theErr;
-
-#if NavigationAvail
-	if (HaveNavServicesAvail()) {
-		NavReplyRecord theReply;
-		NavDialogOptions dialogOptions;
-		NavEventUPP eventUPP = MyNewNavEventUPP(
-			/* (NavEventProcPtr) */ NavigationEventProc);
-
-		theErr = NavGetDefaultDialogOptions(&dialogOptions);
-		dialogOptions.dialogOptionFlags |= kNavNoTypePopup;
-#if IncludeSonyNameNew
-		if (NewDiskName != NULL) {
-			PStrFromHandle(dialogOptions.savedFileName,
-				NewDiskName, 255);
-		}
-#endif
-		MyBeginDialog();
-		theErr = NavPutFile(NULL, &theReply, &dialogOptions,
-			/* NULL */ eventUPP, '????', '????', NULL);
-		MyEndDialog();
-
-		MyDisposeNavEventUPP(eventUPP);
-
-		if (noErr == theErr) {
-			if (theReply.validRecord) {
-				long itemsInList;
-				AEKeyword keyword;
-				DescType typeCode;
-				Size actualSize;
-				FSSpec NewFileSpec;
-
-				if (noErr ==
-					AECountItems(&theReply.selection, &itemsInList))
-				if (1 == itemsInList)
-				if (noErr == AEGetNthPtr(&theReply.selection,
-					1, typeFSS, &keyword, &typeCode,
-					(Ptr)&NewFileSpec, sizeof(FSSpec), &actualSize))
-				{
-					MakeNewDiskFromSpec(&NewFileSpec, L);
-				}
-			}
-			NavDisposeReply(&theReply);
-		}
-	} else
-#endif
-	{
-		Str255 Title;
-		Str255 prompt;
-
-#if IncludeSonyNameNew
-		if (NewDiskName != NULL) {
-			PStrFromHandle(Title, NewDiskName, 255);
-		} else {
-			NativeStrFromCStr(Title, "untitled", falseblnr);
-		}
-#endif
-		NativeStrFromCStr(prompt, "Please select a file", falseblnr);
-
-#if HaveCPUfamM68K
-		if (! HaveFSSpecCallsAvail()) {
-			Point where;
-			SFReply reply;
-
-			where.h = 50;
-			where.v = 50;
-			MyBeginDialog();
-			SFPutFile(*(Point *)&where, prompt, Title, NULL, &reply);
-			MyEndDialog();
-
-			if (reply.good) {
-				MakeNewDiskFromNamevRef(reply.fName,
-					reply.vRefNum, L);
-			}
-		} else
-#endif
-		{
-			StandardFileReply reply;
-
-			MyBeginDialog();
-			StandardPutFile(prompt, Title, &reply);
-			MyEndDialog();
-
-			if (reply.sfGood) {
-				MakeNewDiskFromSpec(&reply.sfFile, L);
-			}
-		}
-	}
-}
-#endif
-
 #ifndef MyAppIsBundle
 #define MyAppIsBundle 0
 #endif
@@ -3901,8 +3710,106 @@ LOCALFUNC blnr LoadInitialImages(void)
 	return trueblnr;
 }
 
-#if UseActvFile
+#if IncludeSonyNew
+LOCALFUNC tMacErr WriteZero(SInt16 refnum, ui5b L)
+{
+#define ZeroBufferSize 2048
+	tMacErr err;
+	ui5b i;
+	ui3b buffer[ZeroBufferSize];
 
+	if (CheckSaveMacErr(SetFPos(refnum, fsFromStart, 0))) {
+
+		for (i = 0; i < ZeroBufferSize; ++i) {
+			buffer[i] = 0;
+		}
+		while (L > 0) {
+			i = (L > ZeroBufferSize) ? ZeroBufferSize : L;
+			err = To_tMacErr(FSWrite(refnum, (long *)&i, buffer));
+			if (mnvm_noErr != err) {
+				goto label_fail;
+			}
+			L -= i;
+		}
+	}
+
+label_fail:
+	return err;
+}
+#endif
+
+#if HaveCPUfamM68K && IncludeSonyNew
+LOCALPROC MakeNewDiskFromNamevRef(ps3p Name, short vRefNum,
+	ui5b L)
+{
+	short refNum;
+	tMacErr err;
+
+	err = To_tMacErr(Create(Name, vRefNum, '????', '????'));
+	if (mnvm_dupFNErr == err) {
+		if (CheckSaveMacErr(FSDelete(Name, vRefNum))) {
+			err = To_tMacErr(Create(Name, vRefNum, '????', '????'));
+		}
+	}
+	if (mnvm_noErr == err) {
+		if (CheckSaveMacErr(FSOpen(Name, vRefNum, &refNum))) {
+			if (CheckSaveMacErr(SetEOF(refNum, L))) {
+				if (CheckSavetMacErr(WriteZero(refNum, L))) {
+					err = Sony_Insert0(refNum, falseblnr, Name);
+					ReportStandardOpenDiskError(err);
+					refNum = NotAfileRef;
+				}
+			}
+			if (NotAfileRef != refNum) {
+				(void) FSClose(refNum);
+			}
+		}
+		if (mnvm_noErr != err) {
+			(void) FSDelete(Name, vRefNum);
+		}
+	}
+}
+#endif
+
+#if IncludeSonyNew
+LOCALPROC MakeNewDiskFromSpec(FSSpec *NewFileSpec,
+	ui5b L)
+{
+	short refNum;
+	tMacErr err;
+
+	err = To_tMacErr(FSpCreate(NewFileSpec,
+		'????', '????', smSystemScript));
+	if (mnvm_dupFNErr == err) {
+		err = To_tMacErr(FSpDelete(NewFileSpec));
+		if (mnvm_noErr == err) {
+			err = To_tMacErr(FSpCreate(NewFileSpec,
+				'????', '????', smSystemScript));
+		}
+	}
+	if (mnvm_noErr == err) {
+		if (CheckSaveMacErr(
+			FSpOpenDF(NewFileSpec, fsRdWrPerm, &refNum)))
+		{
+			if (CheckSaveMacErr(SetEOF(refNum, L))) {
+				if (CheckSavetMacErr(WriteZero(refNum, L))) {
+					err = Sony_Insert0(refNum, falseblnr, NULL);
+					ReportStandardOpenDiskError(err);
+					refNum = NotAfileRef;
+				}
+			}
+			if (NotAfileRef != refNum) {
+				(void) FSClose(refNum);
+			}
+		}
+		if (mnvm_noErr != err) {
+			(void) FSpDelete(NewFileSpec);
+		}
+	}
+}
+#endif
+
+#if UseActvFile || (IncludeSonyNew && ! SaveDialogEnable)
 LOCALFUNC tMacErr MyMakeNamedDir_v2(MyDir_R *d, StringPtr s,
 	MyDir_R *new_d)
 {
@@ -3921,7 +3828,9 @@ LOCALFUNC tMacErr MyMakeNamedDir_v2(MyDir_R *d, StringPtr s,
 
 	return err;
 }
+#endif
 
+#if UseActvFile || (IncludeSonyNew && ! SaveDialogEnable)
 LOCALFUNC tMacErr FindOrMakeMakeNamedDir_v2(MyDir_R *new_d,
 	MyDir_R *d, StringPtr s)
 {
@@ -3934,7 +3843,9 @@ LOCALFUNC tMacErr FindOrMakeMakeNamedDir_v2(MyDir_R *new_d,
 
 	return err;
 }
+#endif
 
+#if UseActvFile || (IncludeSonyNew && ! SaveDialogEnable)
 LOCALFUNC tMacErr FindOrMakeChildDirCStr(MyDir_R *new_d,
 	MyDir_R *d, char *name)
 {
@@ -3943,6 +3854,137 @@ LOCALFUNC tMacErr FindOrMakeChildDirCStr(MyDir_R *new_d,
 	PStrFromCStr(s, name);
 	return FindOrMakeMakeNamedDir_v2(new_d, d, s);
 }
+#endif
+
+#if IncludeSonyNew
+LOCALPROC MakeNewDisk(ui5b L, Handle NewDiskName)
+{
+#if SaveDialogEnable
+	OSErr theErr;
+
+#if NavigationAvail
+	if (HaveNavServicesAvail()) {
+		NavReplyRecord theReply;
+		NavDialogOptions dialogOptions;
+		NavEventUPP eventUPP = MyNewNavEventUPP(
+			/* (NavEventProcPtr) */ NavigationEventProc);
+
+		theErr = NavGetDefaultDialogOptions(&dialogOptions);
+		dialogOptions.dialogOptionFlags |= kNavNoTypePopup;
+#if IncludeSonyNameNew
+		if (NewDiskName != NULL) {
+			PStrFromHandle(dialogOptions.savedFileName,
+				NewDiskName, 255);
+		}
+#endif
+		MyBeginDialog();
+		theErr = NavPutFile(NULL, &theReply, &dialogOptions,
+			/* NULL */ eventUPP, '????', '????', NULL);
+		MyEndDialog();
+
+		MyDisposeNavEventUPP(eventUPP);
+
+		if (noErr == theErr) {
+			if (theReply.validRecord) {
+				long itemsInList;
+				AEKeyword keyword;
+				DescType typeCode;
+				Size actualSize;
+				FSSpec NewFileSpec;
+
+				if (noErr ==
+					AECountItems(&theReply.selection, &itemsInList))
+				if (1 == itemsInList)
+				if (noErr == AEGetNthPtr(&theReply.selection,
+					1, typeFSS, &keyword, &typeCode,
+					(Ptr)&NewFileSpec, sizeof(FSSpec), &actualSize))
+				{
+					MakeNewDiskFromSpec(&NewFileSpec, L);
+				}
+			}
+			NavDisposeReply(&theReply);
+		}
+	} else
+#endif
+	{
+		Str255 Title;
+		Str255 prompt;
+
+#if IncludeSonyNameNew
+		if (NewDiskName != NULL) {
+			PStrFromHandle(Title, NewDiskName, 255);
+		} else
+#endif
+		{
+			NativeStrFromCStr(Title, "untitled", falseblnr);
+		}
+		NativeStrFromCStr(prompt, "Please select a file", falseblnr);
+
+#if HaveCPUfamM68K
+		if (! HaveFSSpecCallsAvail()) {
+			Point where;
+			SFReply reply;
+
+			where.h = 50;
+			where.v = 50;
+			MyBeginDialog();
+			SFPutFile(*(Point *)&where, prompt, Title, NULL, &reply);
+			MyEndDialog();
+
+			if (reply.good) {
+				MakeNewDiskFromNamevRef(reply.fName,
+					reply.vRefNum, L);
+			}
+		} else
+#endif
+		{
+			StandardFileReply reply;
+
+			MyBeginDialog();
+			StandardPutFile(prompt, Title, &reply);
+			MyEndDialog();
+
+			if (reply.sfGood) {
+				MakeNewDiskFromSpec(&reply.sfFile, L);
+			}
+		}
+	}
+#else /* SaveDialogEnable */
+	tMacErr err;
+	Str255 Title;
+	MyDir_R OutDir;
+	FSSpec spec;
+
+#if IncludeSonyNameNew
+	if (NewDiskName != NULL) {
+		PStrFromHandle(Title, NewDiskName, 255);
+	} else
+#endif
+	{
+		NativeStrFromCStr(Title, "untitled", falseblnr);
+	}
+
+	if (mnvm_noErr == (err = FindOrMakeChildDirCStr(&OutDir,
+		&MyDatDir, "out")))
+	{
+#if HaveCPUfamM68K
+		if (! HaveFSSpecCallsAvail()) {
+			MakeNewDiskFromNamevRef(Title, OutDir.VRefNum, L);
+		} else
+#endif
+		{
+			err = To_tMacErr(FSMakeFSSpec(OutDir.VRefNum, OutDir.DirId,
+				Title, &spec));
+			if ((mnvm_noErr == err) || (mnvm_fnfErr == err)) {
+				MakeNewDiskFromSpec(&spec, L);
+			}
+		}
+	}
+#endif /* SaveDialogEnable */
+}
+#endif
+
+#if UseActvFile
 
 LOCALFUNC tMacErr MyCreateFile_v2(MyDir_R *d, StringPtr s)
 {

@@ -44,9 +44,9 @@
 #ifndef ide_vers
 
 #if gbk_ide_xcd == cur_ide
-#define ide_vers 2410
+#define ide_vers 9410
 #elif gbk_ide_msv == cur_ide
-#define ide_vers 8000
+#define ide_vers 15000
 #else
 #define ide_vers 1
 #endif

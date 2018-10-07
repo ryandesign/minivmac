@@ -138,7 +138,7 @@ LOCALPROC WriteMainRsrcObjDeps(void)
 LOCALPROC WriteMainRsrcObjMPWbody(void)
 {
 	WriteBgnDestFileLn();
-	WriteCStrToDestFile("Rez -t rsrc -c RSED -i \"{RIncludes}\" \"");
+	WriteCStrToDestFile("Rez -t rsrc -c RSED -i \"{RIncludes}\"");
 
 	WriteCStrToDestFile(" -i ");
 	WriteQuoteToDestFile();
@@ -150,10 +150,15 @@ LOCALPROC WriteMainRsrcObjMPWbody(void)
 	Write_src_d_ToDestFile();
 	WriteQuoteToDestFile();
 
+	WriteCStrToDestFile(" ");
+	WriteQuoteToDestFile();
 	WriteMainRsrcSrcPath();
-	WriteCStrToDestFile("\" -o \"");
+	WriteQuoteToDestFile();
+
+	WriteCStrToDestFile(" -o ");
+	WriteQuoteToDestFile();
 	WriteMainRsrcObjPath();
-	WriteCStrToDestFile("\"");
+	WriteQuoteToDestFile();
 	WriteEndDestFileLn();
 }
 
